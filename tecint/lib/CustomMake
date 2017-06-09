@@ -1,0 +1,12 @@
+LIBTYPE=statlib
+GUILIB=
+ADDONLIBDIR=`pwd`/$PLATFORM/$OBJSUBDIR
+export ADDONLIBDIR
+mkdir -p $ADDONLIBDIR
+
+case $PLATFORM in
+  sgix*)
+    CFLAGS="$CFLAGS -DUNDERSCORE"
+    ;;
+esac
+

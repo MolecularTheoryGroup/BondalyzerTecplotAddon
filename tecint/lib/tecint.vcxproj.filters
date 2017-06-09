@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{c7e61e7b-2483-46bf-b694-e9ae1438dd9a}</UniqueIdentifier>
+      <Extensions>.c</Extensions>
+    </Filter>
+    <Filter Include="Include Files">
+      <UniqueIdentifier>{7e40c65d-4fa8-445d-8dc2-6fd26f594833}</UniqueIdentifier>
+      <Extensions>.h</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="integrate.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="iresult.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pctdone.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="zoneinfo.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="iresult.h">
+      <Filter>Include Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pctdone.h">
+      <Filter>Include Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tecint.h">
+      <Filter>Include Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zoneinfo.h">
+      <Filter>Include Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

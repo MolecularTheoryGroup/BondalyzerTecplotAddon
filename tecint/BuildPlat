@@ -1,0 +1,90 @@
+#!/bin/ksh
+
+BUILDDIRECTORY=`pwd`/lib
+
+if [ $# -ne 1 ] ; then
+  echo "Usage: $0 platform | ALL"
+  exit 1
+fi
+
+if test ! -x /global/scripts/SetupTecEnv ; then
+  echo "Cannot execute /global/scripts/SetupTecEnv"
+  exit 1
+fi
+
+. /global/scripts/SetupTecEnv
+
+# Tecplot build scripts are used to get the
+# current model list and build machine names.
+
+RAWDISTDIR=/rawdist/tecint
+BUILDUTILDIR=`/global/scripts/GetTecplotSandboxRoot`/autobuild/unixutil
+
+# Tecplot build scripts are used to get the
+# current model list and build machine names.
+
+if test ! -d $BUILDUTILDIR ; then
+  echo "Directory $BUILDUTILDIR does not exist."
+  exit 1
+fi
+
+if test ! -f $BUILDUTILDIR/MasterPlatList ; then
+  echo "File $BUILDUTILDIR/MasterPlatList does not exist."
+  exit 1
+fi
+
+if test ! -f $BUILDUTILDIR/GetModelInfo ; then
+  echo "File $BUILDUTILDIR/GetModelInfo does not exist."
+  exit 1
+fi
+
+Platform=$1
+shift
+
+if [ $Platform = "ALL" ] ; then
+  AllPlatforms=`awk '{print $1}' $BUILDUTILDIR/MasterPlatList | sed 's/^u[a-z.0-9]*//'`
+else
+  AllPlatforms=$Platform
+fi
+echo "Building for platform(s) $AllPlatforms"
+
+for Platform in $AllPlatforms ; do
+  PlatLine=`cat $BUILDUTILDIR/MasterPlatList | grep $Platform`
+
+  if [ $? -ne 0 ] ; then
+    echo "Unrecognized platform: $Platform"
+    exit 1
+  fi
+
+  Machine=`$BUILDUTILDIR/GetModelInfo -machine $Platform`
+  RSH=`/global/scripts/GetInfo -nographicrshcommand $Platform`
+
+  echo
+  echo
+  echo
+  echo "**********************************************************************"
+  echo "*  Building $Platform on $Machine"
+  echo "**********************************************************************"
+  echo
+  echo "$RSH $Machine \"cd $BUILDDIRECTORY && ./Build $Platform\""
+  echo
+  $RSH $Machine "cd $BUILDDIRECTORY && ./Build $Platform"
+done
+
+echo
+echo
+
+for Platform in $AllPlatforms ; do
+  LIBFILE=`/bin/ls lib/$Platform/test/libtecint.a 2>/dev/null`
+  if [ -z "$LIBFILE" ] ; then
+    echo "lib/$Platform/test/libtecint.a does not exist"
+  else
+    ls -l $LIBFILE
+  fi
+  LIBFILE=`/bin/ls lib/$Platform/release/libtecint.a 2>/dev/null`
+  if [ -z "$LIBFILE" ] ; then
+    echo "lib/$Platform/release/libtecint.a does not exist"
+  else
+    ls -l $LIBFILE
+  fi
+done

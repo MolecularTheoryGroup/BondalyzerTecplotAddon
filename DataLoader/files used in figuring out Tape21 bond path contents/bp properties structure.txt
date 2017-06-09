@@ -1,0 +1,18 @@
+x for point 1 for first path, then x for point one for remaining paths
+then x for point 2 for first, then for remaining paths.
+then all y values
+then z
+
+x
+y
+z
+rho
+grad x
+grad y
+grad z
+hess xx
+hess xy
+hess xz
+hess yy
+hess yz
+hess zz

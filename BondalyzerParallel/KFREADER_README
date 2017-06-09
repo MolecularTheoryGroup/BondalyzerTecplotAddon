@@ -1,0 +1,122 @@
+                      README for the KFReader source.
+
+ BACKGROUND
+
+ The ADF software uses the so-called keyed-file (KF) format for storing its data. 
+Almost all the data used by programs from the ADF package (including GUI) can be
+found in one of the KF files. Historically, the ADF's binary files are 
+called TAPE## where ## is a two-digit number. The most important file 
+containing ADF calculation results is called TAPE21. Other important files are
+TAPE13 (subset of TAPE13 used for restart) and TAPE41 (contains volume property 
+data such as orbitals). These files can also have a different name, for example, 
+H2O.t21, in which case the number in the file extension (21) refers to the original 
+filename (TAPE21). 
+
+ The physical structure of a KF file is always the same regardless of its purpose. 
+A KF file always consists of an integer number of data blocks. The standard block size
+is 4096 bytes but in principle it can be anything. The block size is not stored 
+in the file so one should assume it is always equal to 4kB. Each block can be of one
+of the following types: Superindex, Index, Data, and Empty. The first block in every 
+KF file is always a superindex block. 
+
+ Now about the logical structure. At the logical level, every file is divided into sections 
+and a section can contain zero or more variables. The address of a particular
+piece of data in a KF file is written as section%variable. Currently, sections 
+may not contain other sections and variables outside sections are not allowed.
+
+ The maximum length of a section or variable name is 32 bytes and the names shorter
+than 32 bytes are always padded with spaces in the file. 
+
+ A variable can be of one of the following types (in Fortran terms): 
+integer, double precision, character, logical. 
+ The correspondence with the C types is quite straightforward: integer is int, 
+double precision is double, character is char. The logical type has the same size as
+int but the exact content of the variable depends on the representation of the 
+logical type in the Fortran compiler that created the executable with which the 
+particular variable was written. 
+ Every variable also has its length - the number of elements of the corresponding 
+type stored in the file. This means that strictly speaking each variable 
+should be considered as an array of the corresponding type.
+ The character type deserves special attention. Historically, almost all strings 
+in ADF have the same length, 160 bytes. This means that all variables of character 
+type in a KF file will have size that is a multiple of 160.
+ For example, the variable "Geometry%fragmenttype" for the H2O molecule is 320 
+bytes long and it contains 'H' at position 0 and 'O' at position 160, the rest 
+being filled with spaces. This means that it should be treated at an array of 
+two (non-null-terminated) character strings of 160 bytes each. It should be easy 
+enough to write a small utility function that makes C strings out of such 
+Fortran-style character arrays. 
+
+ A detailed description of the TAPE21 file *content* is available in the 
+ADF User's Guide at <http://www.scm.com/Doc>.
+
+ IMPLEMENTATION NOTES
+
+ There is one single class, KFFile, that holds all the necessary data for an open KF file. 
+When you call the openKFFile(KFFile *kf, char *filename) function all the logical 
+structure of the KF file is loaded from file into memory. The variable data is loaded only
+when requested via the getKFData() function. 
+ Please see the KFc.h file for description of the functions.
+
+
+The KFReader source distribution consists of the following files:
+ KFReader.c  - the main file containing the implementation
+ KFc.h       - header file that should be included in your code
+ ArrayList.* - header file and implementation for a simple extendable and searchable
+               container used by the KFReader
+
+ USAGE
+
+ /* Include KFc.h header file */
+ #include "KFc.h"
+ /* Note: see the KFc.h file for a short description of the public functions */
+
+ void my_func() {
+
+    /* Declare/allocate necessary objects */
+    KFFile kf;
+    double *data;
+    int    datasize;
+    char *var = "Geometry%xyz InputOrder";
+
+    /* Note: opening a file is a heavy-weight operation so one should not 
+       do this for each read operation but should open it once and close it 
+       when done reading all the necessary data */
+    /* Open the file */
+    if (openKFFile(&kf, "TAPE21") < 0) exit(1);
+
+    /* Find out the size of the variable in data type units and allocate enough memory */
+    datasize = getKFVariableLength(&kf, var);
+    data = malloc (datasize*sizeof(double));
+
+    /* Get the data */
+    if (getKFData(&kf, var, (void*) data) < 0) exit(1);
+
+    /* Do whatever you want with the data */
+
+    /* Close the file */
+    closeKFFile (&kf);
+ }
+
+ AUTHOR
+
+ Alexei Yakovlev, SCM. For support contact support@scm.com.
+
+ ==============================================================================
+ Copyright (C) 2006-2008 by Scientific Computing and Modelling NV.
+
+ This file is part of the ADF software
+ For more information, see <http://www.scm.com>
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License as published by
+ the Free Software Foundation version 2 or 3 of the License.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ SCM owns the intellectual property right for this file and reserves the
+ right to distribute it under a license other than LGPL
+ ==============================================================================

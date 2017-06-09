@@ -1,0 +1,1 @@
+Immediate Data Loader Sample - This add-on demonstrates immediate (does not use Load on Demand) data loading and use of the Tecplot toolbox.  Run the sample add-on by selecting Tools->Immediate Data Loader Example.

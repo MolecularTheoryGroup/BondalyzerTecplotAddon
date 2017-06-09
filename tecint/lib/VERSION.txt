@@ -1,0 +1,14 @@
+Version history
+
+1.1-2
+Supports platforms for Tecplot 10R3.
+
+1.1-3
+Supports platforms for Tecplot 10 post-R6 (R6 minus 32-bit HPUX).
+Supports the FE Line Segment zone type.
+
+1.1-4
+??? Retrieved from \\datastore\dist\edge\tecint
+
+1.1-5
+Updated to support Windows x64 and Tecplot 360 2009r1.

@@ -1,0 +1,3 @@
+put the following under "Command" and "Command Arguments" in the "Debugging" options:
+$(TEC_360_2013R1)\bin\tec360.exe
+-nostdaddons $(ProjectDir)\$(PlatformTarget)\$(Configuration)\$(TargetFileName)

@@ -1,0 +1,35 @@
+#!/bin/sh
+
+if [ $# -ne 1 ] ; then
+  echo "Usage: $0 platform"
+  exit 1
+fi
+
+echo "TECHOME=`/global/scripts/GetTecplotSandboxRoot`/devhome"
+TECHOME=`/global/scripts/GetTecplotSandboxRoot`/devhome
+echo "export TECHOME"
+export TECHOME
+
+echo TECADDONDEVDIR=`pwd`/..
+TECADDONDEVDIR=`pwd`/..
+echo "export TECADDONDEVDIR"
+export TECADDONDEVDIR
+
+PLATFORM=$1
+
+if [ "$PLATFORM" = "sgix2.65" ] ; then
+  TECHOME=$TECHOME.o32
+  echo "TECHOME=$TECHOME"
+fi
+
+# Build the debug version
+echo "/bin/rm -f obj/$PLATFORM/test/integrate.o"
+/bin/rm -f obj/$PLATFORM/test/integrate.o
+echo "$TECHOME/adk/bin/Runmake $PLATFORM -d > Build.$PLATFORM 2>&1"
+$TECHOME/adk/bin/Runmake $PLATFORM -d  > Build.$PLATFORM 2>&1
+
+# Build the release version
+echo "/bin/rm -f obj/$PLATFORM/release/integrate.o"
+/bin/rm -f obj/$PLATFORM/release/integrate.o
+echo "$TECHOME/adk/bin/Runmake $PLATFORM -r >> Build.$PLATFORM 2>&1"
+$TECHOME/adk/bin/Runmake $PLATFORM -r  >> Build.$PLATFORM 2>&1
