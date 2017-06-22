@@ -122,24 +122,29 @@ void RefineActiveZones(){
 const bool FEZoneDFS(const int & NodeNum,
 				const NodeMap_pa & NodeMap,
 				const NodeToElemMap_pa & NodeToElemMap,
-				const int & ZoneNum,
+				const int & NumNodesPerElem,
 				vector<bool> & IsVisited){
 	bool IsOk = true;
+	IsVisited[NodeNum] = true;
 	int NumElems = TecUtilDataNodeToElemMapGetNumElems(NodeToElemMap, NodeNum + 1);
 	for (int e = 1; e <= NumElems && IsOk; ++e){
 		int ei = TecUtilDataNodeToElemMapGetElem(NodeToElemMap, NodeNum + 1, e);
-		int nn = TecUtilDataNodeGetNodesPerElem(NodeMap);
-		for (int n = 0; n < nn && IsOk; ++n){
+		for (int n = 0; n < NumNodesPerElem && IsOk; ++n){
 			int ni = TecUtilDataNodeGetByRef(NodeMap, ei, n + 1) - 1;
 			if (!IsVisited[ni]){
 				IsVisited[ni] = true;
-				IsOk = FEZoneDFS(ni, NodeMap, NodeToElemMap, ZoneNum, IsVisited);
+				IsOk = FEZoneDFS(ni, NodeMap, NodeToElemMap, NumNodesPerElem, IsVisited);
 			}
 		}
 	}
 
 	return IsOk;
 }
+
+// void FEZoneDFS(const int & NodeNum, const vector<vector<int> > & Elems, vector<bool> & IsVisited){
+// 	IsVisited[NodeNum] = true;
+// 	for ()
+// }
 
 void GetClosedIsoSurfaceFromPoints(){
 	int IsoZoneNum = MAX(1, ZoneNumByName("Iso"));
@@ -302,7 +307,7 @@ void GetClosedIsoSurfaceFromNodes(){
 
 		for (const auto & i : Answers){
 			NodeNums.push_back(stoi(i) - 1);
-			if (NodeNums.back() < 1 || NodeNums.back() > IsoIJK[0]){
+			if (NodeNums.back() < 0 || NodeNums.back() >= IsoIJK[0]){
 				TecUtilDialogErrMsg("Invalid point i number. Try again.");
 				NodeNums.clear();
 				break;
@@ -395,7 +400,22 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 		for (int n = 0; n < IsoIJK[0]; ++n) NodeNums[n] = n;
 	}
 
+// 	 Construct internal representation of the IsoSurface.
+// 	 Only need the connectivity information.
+// 	 NodeConnectivity will be a list of connected nodes for each node
+	vector<vector<int> > Elems(IsoIJK[1]);
+	for (auto & e : Elems) e.reserve(IsoIJK[2]);
+ 
+	int NodesPerElem = TecUtilDataNodeGetNodesPerElem(NodeMap);
+	if (NodesPerElem != IsoIJK[2]) TecUtilDialogErrMsg("Number of nodes per element doesn't match!"); //sanity check
+ 
+	// Get the full list of elements, each element a list of node numbers.
+	// Everything is being stored in base-0.
+	for (int e = 0; e < IsoIJK[1]; ++e) for (int n = 0; n < IsoIJK[2]; ++n) Elems[e].push_back(TecUtilDataNodeGetByRef(NodeMap, e + 1, n + 1) - 1);
+
 	vector<bool> TotalNodeVisited(IsoIJK[0], false);
+
+	int SubZoneNum = 1;
 
 	for (const int & NodeNum : NodeNums){
 		if (TotalNodeVisited[NodeNum]) continue;
@@ -421,7 +441,7 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 			return;
 		}
 
-		FEZoneDFS(NodeNum, NodeMap, NodeToElemMap, IsoZoneNum, NodeVisited);
+		FEZoneDFS(NodeNum, NodeMap, NodeToElemMap, IsoIJK[2], NodeVisited);
 
 		for (int n = 0; n < NodeVisited.size(); ++n){
 			TotalNodeVisited[n] = (TotalNodeVisited[n] || NodeVisited[n]);
@@ -439,8 +459,7 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 		}
 
 		vector<int> NodeNumsNewToOld(NumNewNodes);
-		vector<vector<int> > Elems(IsoIJK[1]);
-		for (auto & i : Elems) i.reserve(4);
+		vector<int> NodeNumsOldToNew(IsoIJK[0]);
 
 		int NodeNumElems;
 		int NewNodeNum = -1;
@@ -448,8 +467,7 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 		for (int n = 0; n < IsoIJK[0]; ++n){
 			if (NodeVisited[n]){
 				NodeNumsNewToOld[++NewNodeNum] = n;
-				NodeNumElems = TecUtilDataNodeToElemMapGetNumElems(NodeToElemMap, n + 1);
-				for (int e = 1; e <= NodeNumElems; ++e) Elems[TecUtilDataNodeToElemMapGetElem(NodeToElemMap, n + 1, e) - 1].push_back(NewNodeNum);
+				NodeNumsOldToNew[n] = NewNodeNum;
 			}
 		}
 
@@ -457,31 +475,28 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 
 		vector<vector<int> > NewElems;
 		NewElems.reserve(IsoIJK[1]);
-		int MinNumNodesPerElem = INT_MAX;
-		int MaxNumNodesPerElem = INT_MIN;
-		for (const auto & i : Elems){
-			if (i.size() == 3 || i.size() == 4){
-				NewElems.push_back(i);
-				MinNumNodesPerElem = MIN(MinNumNodesPerElem, int(i.size()));
-				MaxNumNodesPerElem = MAX(MaxNumNodesPerElem, int(i.size()));
+		vector<bool> ElemAdded(IsoIJK[1], false);
 
+		for (int e = 0; e < IsoIJK[1]; ++e){
+			if (!ElemAdded[e]){
+				for (const auto & n : Elems[e]){
+					if (NodeVisited[n]){
+						ElemAdded[e] = true;
+						NewElems.push_back(Elems[e]);
+						for (auto & ne : NewElems.back()){
+							ne = NodeNumsOldToNew[ne];
+						}
+						break;
+					}
+				}
 			}
-// 			if (i.size() == 3) NewElems.push_back(i);
-// 			else if (i.size() > 0 && i.size() != 3){
-// 				TecUtilDialogErrMsg("Element with less/more than 3 nodes found, and I didn't plan for that.... Quitting.");
-// 				return;
-// 			}
 		}
-
-// 		if (MinNumNodesPerElem != MaxNumNodesPerElem) TecUtilDialogErrMsg("Number of nodes per element not consistent");
-
-		if ((MaxNumNodesPerElem == 4 && IsoZoneType != ZoneType_FEQuad) || (MaxNumNodesPerElem == 3 && IsoZoneType != ZoneType_FETriangle)) TecUtilDialogErrMsg("Isosurface zone type does not match number of nodes per element");
 
 		/*
 		 * Make new zone with single connected component
 		 */
 
-		if (!TecUtilDataSetAddZone(string("CP " + to_string(NodeNum) + ": " + IsoZoneName).c_str(), NumNewNodes, NewElems.size(), MaxNumNodesPerElem, IsoZoneType, NULL)){
+		if (!TecUtilDataSetAddZone(string(IsoZoneName + string(": Subzone ") + to_string(SubZoneNum++)).c_str(), NumNewNodes, NewElems.size(), IsoIJK[2], IsoZoneType, NULL)){
 			TecUtilDialogErrMsg("Failed to make new iso zone. Quitting.");
 			return;
 		}
@@ -504,8 +519,8 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 		}
 
 		for (int e = 0; e < NewElems.size(); ++e){
-			for (int ei = 0; ei < MaxNumNodesPerElem; ++ei){
-				TecUtilDataNodeSetByRef(NewNodeMap, e + 1, ei + 1, NewElems[e][ei % NewElems[e].size()] + 1);
+			for (int ei = 0; ei < IsoIJK[2]; ++ei){
+				TecUtilDataNodeSetByRef(NewNodeMap, e + 1, ei + 1, NewElems[e][ei] + 1);
 			}
 		}
 
