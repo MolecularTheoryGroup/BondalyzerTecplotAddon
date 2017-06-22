@@ -9,7 +9,34 @@
 
 
 extern void InitTGB(void);
+extern LgIndex_t Dialog2Manager;
+extern void BuildDialog2(LgIndex_t  ParentDialog);
+
+extern LgIndex_t  OPT2_OPT_D2;
+extern LgIndex_t  OPT3_OPT_D2;
+extern LgIndex_t  OPT4_OPT_D2;
+extern LgIndex_t  OPT5_OPT_D2;
+extern LgIndex_t  LBL1_LBL_D2;
+extern LgIndex_t Dialog3Manager;
+extern void BuildDialog3(LgIndex_t  ParentDialog);
+
+extern LgIndex_t  OPT2_OPT_D3;
+extern LgIndex_t  OPT1_OPT_D3;
+extern LgIndex_t Dialog4Manager;
+extern void BuildDialog4(LgIndex_t  ParentDialog);
+
 extern LgIndex_t Dialog1Manager;
 extern void BuildDialog1(LgIndex_t  ParentDialog);
 
 extern LgIndex_t  BTN1_BTN_D1;
+extern LgIndex_t  LBLVolZone_LBL_D1;
+extern LgIndex_t  OPT4_OPT_D1;
+extern LgIndex_t  TGLPerSys_TOG_D1;
+extern LgIndex_t  LBLRhoVar_LBL_D1;
+extern LgIndex_t  OPTRhoVar_OPT_D1;
+extern LgIndex_t  LBLX_LBL_D1;
+extern LgIndex_t  LBLY_LBL_D1;
+extern LgIndex_t  LBLZ_LBL_D1;
+extern LgIndex_t  OPTZ_OPT_D1;
+extern LgIndex_t  OPTX_OPT_D1;
+extern LgIndex_t  OPTY_OPT_D1;

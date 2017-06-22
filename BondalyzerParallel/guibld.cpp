@@ -19,183 +19,183 @@ void BuildTab1_1(LgIndex_t  Parent)
   Tab1_1Manager = TecGUITabAddPage(Parent,
                                "Source data and options");
   TecGUIFrameAdd(Tab1_1Manager,
-             78,
+             76,
              793,
-             4398,
-             2173,
+             4403,
+             2175,
                     " Source variables ");
 
   TecGUIFrameAdd(Tab1_1Manager,
-             101,
-             85,
-             4365,
+             105,
+             84,
+             4364,
              576,
                     " Options ");
 
   LBL3_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                               315,
+                               316,
                                926,
                     "Electron density:");
 
   RhoVarNum_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                         2126,
-                                         883,
-                                         2002,
-                                         141,
+                                         2129,
+                                         886,
+                                         2005,
+                                         145,
                         RhoVarNum_OPT_T1_1_List,
                         RhoVarNum_OPT_T1_1_CB);
 
   HasGrad_TOG_T1_1 = TecGUIToggleAdd(Tab1_1Manager,
-                                   371,
-                                   1105,
-                                   3408,
-                                   118,
+                                   364,
+                                   1108,
+                                   3415,
+                                   116,
                                "Gradient variables present",
                                HasGrad_TOG_T1_1_CB);
 
   LBL5_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                               315,
-                               1299,
+                               316,
+                               1297,
                     "Gradient X:");
 
   LBL7_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                               315,
+                               316,
                                1474,
                     "Gradient Y:");
 
   LBL9_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                               315,
-                               1644,
+                               316,
+                               1647,
                     "Gradient Z:");
 
   GradZVar_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                        2126,
-                                        1611,
-                                        2002,
-                                        141,
+                                        2129,
+                                        1607,
+                                        2005,
+                                        145,
                         GradZVar_OPT_T1_1_List,
                         GradZVar_OPT_T1_1_CB);
 
   GradYVar_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                        2126,
-                                        1436,
-                                        2002,
-                                        141,
+                                        2129,
+                                        1434,
+                                        2005,
+                                        145,
                         GradYVar_OPT_T1_1_List,
                         GradYVar_OPT_T1_1_CB);
 
   GradXVar_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                        2126,
+                                        2129,
                                         1261,
-                                        2002,
-                                        141,
+                                        2005,
+                                        145,
                         GradXVar_OPT_T1_1_List,
                         GradXVar_OPT_T1_1_CB);
 
   HasHess_TOG_T1_1 = TecGUIToggleAdd(Tab1_1Manager,
-                                   371,
+                                   364,
                                    1805,
-                                   3296,
-                                   118,
+                                   3300,
+                                   116,
                                "Hessian variables present",
                                HasHess_TOG_T1_1_CB);
 
   LBL22_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                315,
-                                2003,
+                                316,
+                                2002,
                     "Hessian XX:");
 
   HessXX_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                      2126,
-                                      1956,
-                                      2002,
-                                      141,
+                                      2129,
+                                      1958,
+                                      2005,
+                                      145,
                         HessXX_OPT_T1_1_List,
                         HessXX_OPT_T1_1_CB);
 
   LBL21_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                315,
-                                2168,
+                                316,
+                                2171,
                     "Hessian XY:");
 
   LBL23_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                315,
-                                2338,
+                                316,
+                                2336,
                     "Hessian XZ:");
 
   LBL24_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                315,
-                                2504,
+                                316,
+                                2506,
                     "Hessian YY:");
 
   LBL25_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                315,
-                                2669,
+                                316,
+                                2671,
                     "Hessian YZ:");
 
   LBL26_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                315,
-                                2839,
+                                316,
+                                2840,
                     "Hessian ZZ:");
 
   HessZZ_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                      2126,
+                                      2129,
                                       2792,
-                                      2002,
-                                      141,
+                                      2005,
+                                      145,
                         HessZZ_OPT_T1_1_List,
                         HessZZ_OPT_T1_1_CB);
 
   HessYZ_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                      2126,
+                                      2129,
                                       2627,
-                                      2002,
-                                      141,
+                                      2005,
+                                      145,
                         HessYZ_OPT_T1_1_List,
                         HessYZ_OPT_T1_1_CB);
 
   HessYY_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                      2126,
-                                      2461,
-                                      2002,
-                                      141,
+                                      2129,
+                                      2457,
+                                      2005,
+                                      145,
                         HessYY_OPT_T1_1_List,
                         HessYY_OPT_T1_1_CB);
 
   HessXZ_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                      2126,
-                                      2291,
-                                      2002,
-                                      141,
+                                      2129,
+                                      2292,
+                                      2005,
+                                      145,
                         HessXZ_OPT_T1_1_List,
                         HessXZ_OPT_T1_1_CB);
 
   HessXY_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                      2126,
-                                      2126,
-                                      2002,
-                                      141,
+                                      2129,
+                                      2123,
+                                      2005,
+                                      145,
                         HessXY_OPT_T1_1_List,
                         HessXY_OPT_T1_1_CB);
 
   LBL27_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                315,
-                                174,
+                                316,
+                                177,
                     "Calculate variables for:");
 
   PeriodicBC_TOG_T1_1 = TecGUIToggleAdd(Tab1_1Manager,
-                                      270,
-                                      335,
-                                      2520,
-                                      118,
+                                      268,
+                                      334,
+                                      2513,
+                                      116,
                                "Periodic boundary",
                                PeriodicBC_TOG_T1_1_CB);
 
   VolOrZone_RADIO_T1_1 = TecGUIRadioBoxAdd(Tab1_1Manager,
-                                         2621,
-                                         122,
-                                         1901,
-                                         297,
+                                         2618,
+                                         120,
+                                         1899,
+                                         298,
                                  "Selected zone",
                                  "All zones",
                                  (char *)NULL,
@@ -204,10 +204,10 @@ void BuildTab1_1(LgIndex_t  Parent)
                                  VolOrZone_RADIO_T1_1_CB);
 
   SelZone_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,
-                                       236,
-                                       472,
-                                       4117,
-                                       141,
+                                       239,
+                                       471,
+                                       4115,
+                                       145,
                         SelZone_OPT_T1_1_List,
                         SelZone_OPT_T1_1_CB);
 
@@ -223,130 +223,130 @@ void BuildTab2_1(LgIndex_t  Parent)
   Tab2_1Manager = TecGUITabAddPage(Parent,
                                "Variables to calculate");
   CalcGrad_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                    303,
-                                    99,
+                                    297,
+                                    96,
                                     2283,
-                                    118,
+                                    116,
                                "Gradient vector",
                                CalcGrad_TOG_T2_1_CB);
 
   CalcMag_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                   303,
+                                   297,
                                    245,
-                                   2722,
-                                   118,
+                                   2714,
+                                   116,
                                "Gradient magnitude",
                                CalcMag_TOG_T2_1_CB);
 
   CalcHess_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                    303,
-                                    396,
-                                    1518,
-                                    118,
+                                    297,
+                                    394,
+                                    1515,
+                                    116,
                                "Hessian",
                                CalcHess_TOG_T2_1_CB);
 
   CalcGauss_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                     303,
-                                     841,
-                                     2700,
-                                     118,
+                                     297,
+                                     842,
+                                     2705,
+                                     116,
                                "Gaussian curvature",
                                CalcGauss_TOG_T2_1_CB);
 
   CalcEVdotGra_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                        303,
-                                        992,
-                                        4972,
-                                        118,
+                                        297,
+                                        991,
+                                        4969,
+                                        116,
                                "Dot product of gradient with eigenvectors",
                                CalcEVdotGra_TOG_T2_1_CB);
 
   CalcEb1_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                   303,
-                                   1143,
+                                   297,
+                                   1144,
                                    3127,
-                                   118,
+                                   116,
                                "Eberly '1-ridge' function",
                                CalcEb1_TOG_T2_1_CB);
 
   CalcEigRank_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                       303,
-                                       1767,
-                                       2767,
-                                       118,
+                                       297,
+                                       1764,
+                                       2772,
+                                       116,
                                "Rank of eigenvalues",
                                CalcEigRank_TOG_T2_1_CB);
 
   CalcBTN_BTN_T2_1 = TecGUIButtonAdd(Tab2_1Manager,
-                                   1305,
-                                   2863,
-                                   2160,
-                                   141,
+                                   1304,
+                                   2864,
+                                   2158,
+                                   145,
                     "Calculate variables",
                     CalcBTN_BTN_T2_1_CB);
 
   EB2Cutoff_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
                                      585,
                                      1611,
-                                     3476,
-                                     118,
+                                     3482,
+                                     116,
                                "With density cutoff @ rho =",
                                EB2Cutoff_TOG_T2_1_CB);
 
   EB2CutoffVal_TF_T2_1 = TecGUITextFieldAdd(Tab2_1Manager,
-                                          3082,
-                                          1592,
+                                          3079,
+                                          1591,
                                           1237,
-                                          141,
+                                          145,
                        EB2CutoffVal_TF_T2_1_CB);
 
   EB1Cutoff_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
                                      585,
-                                     1299,
-                                     3476,
-                                     118,
+                                     1301,
+                                     3482,
+                                     116,
                                "With density cutoff @ rho =",
                                EB1Cutoff_TOG_T2_1_CB);
 
   EB1CutoffVal_TF_T2_1 = TecGUITextFieldAdd(Tab2_1Manager,
-                                          3082,
-                                          1271,
+                                          3079,
+                                          1273,
                                           1237,
-                                          141,
+                                          145,
                        EB1CutoffVal_TF_T2_1_CB);
 
   LBL14_LBL_T2_1 = TecGUILabelAdd(Tab2_1Manager,
-                                4398,
-                                1597,
+                                4403,
+                                1599,
                     "e");
 
   LBL13_LBL_T2_1 = TecGUILabelAdd(Tab2_1Manager,
-                                4398,
-                                1271,
+                                4403,
+                                1273,
                     "e");
 
   CalcES_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                  303,
+                                  297,
                                   543,
-                                  2081,
-                                  118,
+                                  2072,
+                                  116,
                                "Eigen system",
                                CalcES_TOG_T2_1_CB);
 
   CalcLap_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                   303,
-                                   694,
-                                   1676,
-                                   118,
+                                   297,
+                                   693,
+                                   1678,
+                                   116,
                                "Laplacian",
                                CalcLap_TOG_T2_1_CB);
 
   CalcEb2_TOG_T2_1 = TecGUIToggleAdd(Tab2_1Manager,
-                                   303,
-                                   1455,
+                                   297,
+                                   1454,
                                    3127,
-                                   118,
+                                   116,
                                "Eberly '2-ridge' function",
                                CalcEb2_TOG_T2_1_CB);
 
@@ -367,10 +367,10 @@ void BuildDialog2(LgIndex_t  ParentDialog)
                                              Dialog2CloseButton_CB,
                                              Dialog2HelpButton_CB);
   TAB1_TB_D2 = TecGUITabAdd(Dialog2Manager,
-                          22,
-                          179,
-                          4770,
-                          3052,
+                          19,
+                          181,
+                          4767,
+                          3054,
                     TAB1_TBA_D2_CB,
                     TAB1_TBD_D2_CB);
 

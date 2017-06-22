@@ -888,6 +888,379 @@ $!PAGE
 $!FRAMELAYOUT 
   SHOWHEADER = NO
   BACKGROUNDCOLOR = CUSTOM26
+  HEADERCOLOR = CYAN
+  XYPOS
+    {
+    X = 5.5907
+    Y = 0.48022
+    }
+  WIDTH = 4.8991
+  HEIGHT = 7.4622
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!FRAMENAME  = 'TABPAGE=T ID=2 POS=2 TITLE="Variables to calculate"'
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!SKETCHAXIS 
+  DEPXTOYRATIO = 1
+$!SKETCHAXIS 
+  XDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 1.0001
+    GRSPACING = 0.2
+    }
+$!SKETCHAXIS 
+  YDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 1.5233300442938502
+    GRSPACING = 0.5
+    }
+$!LINKING 
+  BETWEENFRAMES
+    {
+    LINKFRAMESIZEANDPOSITION = YES
+    }
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072431
+    Y = 93.82658147996898
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcGrad Type=Toggle'
+  TEXT = '<math>7</math>   Gradient vector'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072431
+    Y = 88.95688661132964
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcMag Type=Toggle'
+  TEXT = '<math>7</math>   Gradient magnitude'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072431
+    Y = 84.08719174269032
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcHess Type=Toggle'
+  TEXT = '<math>7</math>   Hessian'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072453
+    Y = 69.47810713677234
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcGauss Type=Toggle'
+  TEXT = '<math>7</math>   Gaussian curvature'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072431
+    Y = 64.60841226813299
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcEVdotGrad Type=Toggle'
+  TEXT = '<math>7</math>   Dot product of gradient with eigenvectors'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072431
+    Y = 59.53660348239724
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcEb1 Type=Toggle'
+  TEXT = '<math>7</math>   Eberly \'1-ridge\' function'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072431
+    Y = 39.22093725818577
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcEigRank Type=Toggle'
+  TEXT = '<math>7</math>   Rank of eigenvalues'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 29.39908841911247
+    Y = 2.774514883332757
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcBTN Type=PushButton'
+  TEXT = 'Calculate variables'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 12.25177464696223
+    Y = 44.32117712519029
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=EB2Cutoff Type=Toggle'
+  TEXT = '<math>7</math>   With density cutoff @ rho ='
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 66.63033704364625
+    Y = 44.49448165772814
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=EB2CutoffVal Type=TextField'
+  TEXT = 'TF:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 12.25177464696223
+    Y = 54.46479469666162
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=EB1Cutoff Type=Toggle'
+  TEXT = '<math>7</math>   With density cutoff @ rho ='
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 66.63033704364622
+    Y = 54.97940587629184
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=EB1CutoffVal Type=TextField'
+  TEXT = 'TF:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 92.23577661878375
+    Y = 45.62096111922661
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL14 Type=Label'
+  TEXT = 'e'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 92.23577661878375
+    Y = 56.26056850232549
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL13 Type=Label'
+  TEXT = 'e'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072431
+    Y = 79.21749687405099
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcES Type=Toggle'
+  TEXT = '<math>7</math>   Eigen system'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072431
+    Y = 74.34780200541167
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcLap Type=Toggle'
+  TEXT = '<math>7</math>   Laplacian'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.323426014072431
+    Y = 49.39298591092597
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=CalcEb2 Type=Toggle'
+  TEXT = '<math>7</math>   Eberly \'2-ridge\' function'
+### Frame Number 2 ###
+$!CREATENEWFRAME 
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  BACKGROUNDCOLOR = CUSTOM2
+  HEADERCOLOR = RED
+  XYPOS
+    {
+    X = 5.2792
+    Y = 0.43448
+    }
+  WIDTH = 4.9334
+  HEIGHT = 7.9115
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!FRAMENAME  = 'ID=2 TITLE="Calculate variables" MODE=MODELESS OKCLOSEBUTTON=T HELPBUTTON=T'
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!SKETCHAXIS 
+  DEPXTOYRATIO = 1
+$!SKETCHAXIS 
+  XDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 1.0001
+    GRSPACING = 0.2
+    }
+$!SKETCHAXIS 
+  YDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 1.6038211274171974
+    GRSPACING = 0.2
+    }
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 2.437663544791213
+    Y = 1.36088931227788
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TAB1 Type=Tab'
+  TEXT = 'TAB:Group=1                                                      \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+### Frame Number 3 ###
+$!CREATENEWFRAME 
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  BACKGROUNDCOLOR = CUSTOM26
   HEADERCOLOR = BLUE
   XYPOS
     {
@@ -915,7 +1288,7 @@ $!SKETCHAXIS
   YDETAIL
     {
     RANGEMIN = 0
-    RANGEMAX = 1.52333004429385
+    RANGEMAX = 1.5233300442938502
     GRSPACING = 0.5
     }
 $!LINKING 
@@ -1398,379 +1771,6 @@ $!ATTACHGEOM
   MACROFUNCTIONCOMMAND = ' Options '
   RAWDATA
 91.507512331 18.8088849187 
-### Frame Number 2 ###
-$!CREATENEWFRAME 
-$!FRAMELAYOUT 
-  SHOWHEADER = NO
-  BACKGROUNDCOLOR = CUSTOM26
-  HEADERCOLOR = CYAN
-  XYPOS
-    {
-    X = 5.5907
-    Y = 0.48022
-    }
-  WIDTH = 4.8991
-  HEIGHT = 7.4622
-$!THREEDAXIS 
-  ASPECTRATIOLIMIT = 25
-  BOXASPECTRATIOLIMIT = 25
-$!FRAMENAME  = 'TABPAGE=T ID=2 POS=2 TITLE="Variables to calculate"'
-$!GLOBALTIME 
-  SOLUTIONTIME = 0
-$!SKETCHAXIS 
-  DEPXTOYRATIO = 1
-$!SKETCHAXIS 
-  XDETAIL
-    {
-    RANGEMIN = 0
-    RANGEMAX = 1.0001
-    GRSPACING = 0.2
-    }
-$!SKETCHAXIS 
-  YDETAIL
-    {
-    RANGEMIN = 0
-    RANGEMAX = 1.52333004429385
-    GRSPACING = 0.5
-    }
-$!LINKING 
-  BETWEENFRAMES
-    {
-    LINKFRAMESIZEANDPOSITION = YES
-    }
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072431
-    Y = 93.82658147996898
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcGrad Type=Toggle'
-  TEXT = '<math>7</math>   Gradient vector'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072431
-    Y = 88.95688661132964
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcMag Type=Toggle'
-  TEXT = '<math>7</math>   Gradient magnitude'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072431
-    Y = 84.08719174269032
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcHess Type=Toggle'
-  TEXT = '<math>7</math>   Hessian'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072453
-    Y = 69.47810713677234
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcGauss Type=Toggle'
-  TEXT = '<math>7</math>   Gaussian curvature'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072431
-    Y = 64.60841226813299
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcEVdotGrad Type=Toggle'
-  TEXT = '<math>7</math>   Dot product of gradient with eigenvectors'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072431
-    Y = 59.53660348239724
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcEb1 Type=Toggle'
-  TEXT = '<math>7</math>   Eberly \'1-ridge\' function'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072431
-    Y = 39.22093725818577
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcEigRank Type=Toggle'
-  TEXT = '<math>7</math>   Rank of eigenvalues'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 29.39908841911247
-    Y = 2.774514883332757
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcBTN Type=PushButton'
-  TEXT = 'Calculate variables'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 12.25177464696223
-    Y = 44.32117712519029
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=EB2Cutoff Type=Toggle'
-  TEXT = '<math>7</math>   With density cutoff @ rho ='
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 66.63033704364625
-    Y = 44.49448165772814
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=EB2CutoffVal Type=TextField'
-  TEXT = 'TF:            '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 12.25177464696223
-    Y = 54.46479469666162
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=EB1Cutoff Type=Toggle'
-  TEXT = '<math>7</math>   With density cutoff @ rho ='
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 66.63033704364622
-    Y = 54.97940587629184
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=EB1CutoffVal Type=TextField'
-  TEXT = 'TF:            '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 92.23577661878375
-    Y = 45.62096111922661
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBL14 Type=Label'
-  TEXT = 'e'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 92.23577661878375
-    Y = 56.26056850232549
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBL13 Type=Label'
-  TEXT = 'e'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072431
-    Y = 79.21749687405099
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcES Type=Toggle'
-  TEXT = '<math>7</math>   Eigen system'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072431
-    Y = 74.34780200541167
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcLap Type=Toggle'
-  TEXT = '<math>7</math>   Laplacian'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.323426014072431
-    Y = 49.39298591092597
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=CalcEb2 Type=Toggle'
-  TEXT = '<math>7</math>   Eberly \'2-ridge\' function'
-### Frame Number 3 ###
-$!CREATENEWFRAME 
-$!FRAMELAYOUT 
-  SHOWHEADER = NO
-  BACKGROUNDCOLOR = CUSTOM2
-  HEADERCOLOR = RED
-  XYPOS
-    {
-    X = 5.2792
-    Y = 0.43448
-    }
-  WIDTH = 4.9334
-  HEIGHT = 7.9115
-$!THREEDAXIS 
-  ASPECTRATIOLIMIT = 25
-  BOXASPECTRATIOLIMIT = 25
-$!FRAMENAME  = 'ID=2 TITLE="Calculate variables" MODE=MODELESS OKCLOSEBUTTON=T HELPBUTTON=T'
-$!GLOBALTIME 
-  SOLUTIONTIME = 0
-$!SKETCHAXIS 
-  DEPXTOYRATIO = 1
-$!SKETCHAXIS 
-  XDETAIL
-    {
-    RANGEMIN = 0
-    RANGEMAX = 1.0001
-    GRSPACING = 0.2
-    }
-$!SKETCHAXIS 
-  YDETAIL
-    {
-    RANGEMIN = 0
-    RANGEMAX = 1.603821127417197
-    GRSPACING = 0.2
-    }
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 2.437663544791213
-    Y = 1.36088931227788
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TAB1 Type=Tab'
-  TEXT = 'TAB:Group=1                                                      \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 $!FRAMECONTROL ACTIVATEBYNUMBER
   FRAME = 3
 $!SETSTYLEBASE CONFIG

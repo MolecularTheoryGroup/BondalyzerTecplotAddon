@@ -35,6 +35,7 @@
 #include "CSM_CALC_VARS.h"
 #include "CSM_GRAD_PATH.h"
 #include "CSM_FE_VOLUME.h"
+#include "CSM_GUI.h"
 
 #include "KFc.h"
 
@@ -58,6 +59,9 @@ using std::setprecision;
 
 const string DS_ZoneName_Delim = "_-_";
 const string T41Ext = ".t41";
+
+
+BondalyzerSteps_e CurrentCalcType;
 
 
 void RefineActiveZones(){
@@ -124,7 +128,8 @@ const bool FEZoneDFS(const int & NodeNum,
 	int NumElems = TecUtilDataNodeToElemMapGetNumElems(NodeToElemMap, NodeNum + 1);
 	for (int e = 1; e <= NumElems && IsOk; ++e){
 		int ei = TecUtilDataNodeToElemMapGetElem(NodeToElemMap, NodeNum + 1, e);
-		for (int n = 0; n < 3 && IsOk; ++n){
+		int nn = TecUtilDataNodeGetNodesPerElem(NodeMap);
+		for (int n = 0; n < nn && IsOk; ++n){
 			int ni = TecUtilDataNodeGetByRef(NodeMap, ei, n + 1) - 1;
 			if (!IsVisited[ni]){
 				IsVisited[ni] = true;
@@ -322,10 +327,57 @@ void GetClosedIsoSurfaceFromNodes(){
 	TecUtilDataLoadEnd();
 }
 
-void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c> & IsoReadPtrs, const vector<int> & NodeNums){
+void GetAllClosedIsoSurfaces(){
+	int IsoZoneNum = MAX(1, ZoneNumByName("Iso"));
+	vector<int> NodeNums;
+
+	int NumZones = TecUtilDataSetGetNumZones();
+
+	char *UserInput;
+
+	while (true){
+		if (!TecUtilDialogGetSimpleText("Generate closed isosurfaces. Enter Isosurface zone number:", string(to_string(IsoZoneNum)).c_str(), &UserInput)){
+			return;
+		}
+
+		vector<string> Answers = SplitString(string(UserInput), ',');
+		TecUtilStringDealloc(&UserInput);
+		if (Answers.size() != 1){
+			TecUtilDialogErrMsg("Expected 1 number. Try again.");
+			IsoZoneNum = MAX(1, ZoneNumByName("Iso"));
+		}
+		else{
+			IsoZoneNum = stoi(Answers[0]);
+			break;
+		}
+	}
+
+	if (IsoZoneNum < 1 || IsoZoneNum > NumZones){
+		TecUtilDialogErrMsg("Invalid zone number provided. Quitting.");
+		return;
+	}
+
+	TecUtilDataLoadBegin();
+
+	vector<FieldDataPointer_c> IsoReadPtrs(TecUtilDataSetGetNumVars());
+	for (int i = 0; i < IsoReadPtrs.size(); ++i){
+		if (!IsoReadPtrs[i].GetReadPtr(IsoZoneNum, i + 1)){
+			TecUtilDialogErrMsg("Failed to get isosurface read pointer. Quitting.");
+			return;
+		}
+	}
+
+	GetClosedIsoSurface(IsoZoneNum, IsoReadPtrs, NodeNums);
+
+	TecUtilDataLoadEnd();
+}
+
+void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c> & IsoReadPtrs, vector<int> & NodeNums){
 
 	int IsoIJK[3];
 	TecUtilZoneGetIJK(IsoZoneNum, &IsoIJK[0], &IsoIJK[1], &IsoIJK[2]); // {NumNodes, NumElems, NumNodesPerElem}
+
+	ZoneType_e IsoZoneType = TecUtilZoneGetType(IsoZoneNum);
 
 	char *IsoZoneName;
 	TecUtilZoneGetName(IsoZoneNum, &IsoZoneName);
@@ -338,12 +390,24 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 	NodeMap_pa NodeMap = TecUtilDataNodeGetReadableRef(IsoZoneNum);
 	NodeToElemMap_pa NodeToElemMap = TecUtilDataNodeToElemMapGetReadableRef(IsoZoneNum);
 
+	if (NodeNums.size() == 0){
+		NodeNums.resize(IsoIJK[0]);
+		for (int n = 0; n < IsoIJK[0]; ++n) NodeNums[n] = n;
+	}
+
+	vector<bool> TotalNodeVisited(IsoIJK[0], false);
+
 	for (const int & NodeNum : NodeNums){
+		if (TotalNodeVisited[NodeNum]) continue;
+
 		if (!TecUtilDialogCheckPercentDone(0)){
 			TecUtilDialogDropPercentDone();
 			return;
 		}
-		TecUtilDialogSetPercentDoneText(string("Generating isosurface subzone: " + to_string(PtNum++) + " of " + to_string(NodeNums.size())).c_str());
+		if (NodeNums.size() != IsoIJK[0])
+			TecUtilDialogSetPercentDoneText(string("Generating isosurface subzone: " + to_string(PtNum++) + " of " + to_string(NodeNums.size())).c_str());
+		else
+			TecUtilDialogSetPercentDoneText(string("Generating isosurface subzone: " + to_string(PtNum++)).c_str());
 
 
 		/*
@@ -359,6 +423,10 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 
 		FEZoneDFS(NodeNum, NodeMap, NodeToElemMap, IsoZoneNum, NodeVisited);
 
+		for (int n = 0; n < NodeVisited.size(); ++n){
+			TotalNodeVisited[n] = (TotalNodeVisited[n] || NodeVisited[n]);
+		}
+
 		/*
 		 * Collect nodes/elements of single found connected component
 		 */
@@ -372,7 +440,7 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 
 		vector<int> NodeNumsNewToOld(NumNewNodes);
 		vector<vector<int> > Elems(IsoIJK[1]);
-		for (auto & i : Elems) i.reserve(3);
+		for (auto & i : Elems) i.reserve(4);
 
 		int NodeNumElems;
 		int NewNodeNum = -1;
@@ -389,19 +457,31 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 
 		vector<vector<int> > NewElems;
 		NewElems.reserve(IsoIJK[1]);
+		int MinNumNodesPerElem = INT_MAX;
+		int MaxNumNodesPerElem = INT_MIN;
 		for (const auto & i : Elems){
-			if (i.size() == 3) NewElems.push_back(i);
-			else if (i.size() > 0 && i.size() != 3){
-				TecUtilDialogErrMsg("Element with less/more than 3 nodes found, and I didn't plan for that.... Quitting.");
-				return;
+			if (i.size() == 3 || i.size() == 4){
+				NewElems.push_back(i);
+				MinNumNodesPerElem = MIN(MinNumNodesPerElem, int(i.size()));
+				MaxNumNodesPerElem = MAX(MaxNumNodesPerElem, int(i.size()));
+
 			}
+// 			if (i.size() == 3) NewElems.push_back(i);
+// 			else if (i.size() > 0 && i.size() != 3){
+// 				TecUtilDialogErrMsg("Element with less/more than 3 nodes found, and I didn't plan for that.... Quitting.");
+// 				return;
+// 			}
 		}
+
+// 		if (MinNumNodesPerElem != MaxNumNodesPerElem) TecUtilDialogErrMsg("Number of nodes per element not consistent");
+
+		if ((MaxNumNodesPerElem == 4 && IsoZoneType != ZoneType_FEQuad) || (MaxNumNodesPerElem == 3 && IsoZoneType != ZoneType_FETriangle)) TecUtilDialogErrMsg("Isosurface zone type does not match number of nodes per element");
 
 		/*
 		 * Make new zone with single connected component
 		 */
 
-		if (!TecUtilDataSetAddZone(string("CP " + to_string(NodeNum) + ": " + IsoZoneName).c_str(), NumNewNodes, NewElems.size(), 3, ZoneType_FETriangle, NULL)){
+		if (!TecUtilDataSetAddZone(string("CP " + to_string(NodeNum) + ": " + IsoZoneName).c_str(), NumNewNodes, NewElems.size(), MaxNumNodesPerElem, IsoZoneType, NULL)){
 			TecUtilDialogErrMsg("Failed to make new iso zone. Quitting.");
 			return;
 		}
@@ -423,7 +503,11 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 			return;
 		}
 
-		for (int e = 0; e < NewElems.size(); ++e) for (int ei = 0; ei < 3; ++ei) TecUtilDataNodeSetByRef(NewNodeMap, e + 1, ei + 1, NewElems[e][ei] + 1);
+		for (int e = 0; e < NewElems.size(); ++e){
+			for (int ei = 0; ei < MaxNumNodesPerElem; ++ei){
+				TecUtilDataNodeSetByRef(NewNodeMap, e + 1, ei + 1, NewElems[e][ei % NewElems[e].size()] + 1);
+			}
+		}
 
 		TecUtilSetAddMember(ZoneSet, NewZoneNum, TRUE);
 
@@ -442,97 +526,223 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 	TecUtilDialogDropPercentDone();
 }
 
-void GetInfoFromUserForBondalyzer(BondalyzerSteps_e CalcType){
-	int NumZones = TecUtilDataSetGetNumZones();
-	int NumVars = TecUtilDataSetGetNumVars();
+void ReturnInfoFromUserForBondalyzer(const bool GuiSuccess, const vector<GuiField_c> & Fields){
+	if (!GuiSuccess) return;
 
-	int RhoVarNum = MAX(1, VarNumByName("Electron Density"));
-	vector<int> XYZVarNums(3), GradVarNums(3), HessVarNums(6);
-	vector<string> XYZStr = { "X", "Y", "Z" }, HessXYZStr = { "XX", "XY", "XZ", "YY", "YZ", "ZZ" };
-	for (int i = 0; i < 3; ++i){
-		XYZVarNums[i] = MAX(1, VarNumByName(XYZStr[i]));
-		GradVarNums[i] = MAX(1, VarNumByName(CSMVarName.DensGradVec[i]));
-	}
-	for (int i = 0; i < 6; ++i)
-		HessVarNums[i] = MAX(1, VarNumByName(CSMVarName.DensHessTensor[i]));
-	int VolZoneNum = MAX(1, ZoneNumByName("Full Volume"));
+	TecUtilLockStart(AddOnID);
+
+	int VolZoneNum, RhoVarNum;
+	vector<int> XYZVarNums(3), GradVarNums, HessVarNums;
 	Boolean_t IsPeriodic;
 
-	while (true){
-		char *c;
-		if (TecUtilDialogGetSimpleText("Enter volume zone number to search for critical points", to_string(VolZoneNum).c_str(), &c)){
-			if (StringIsInt(c)){
-				VolZoneNum = atoi(c);
-				TecUtilStringDealloc(&c);
-				if (0 < VolZoneNum && VolZoneNum <= NumZones) break;
-			}
-			else TecUtilDialogErrMsg("Enter integer.");
+	if (CurrentCalcType == CRITICALPOINTS){
+		int fNum = 0;
+		VolZoneNum = Fields[fNum++].GetReturnInt();
+		IsPeriodic = Fields[fNum++].GetReturnBool();
+		fNum++;
+		for (int i = 0; i < 3; ++i) XYZVarNums[i] = Fields[fNum++].GetReturnInt();
+		fNum++;
+		RhoVarNum = Fields[fNum++].GetReturnInt();
+		fNum++;
+
+
+		if (Fields[fNum++].GetReturnBool()){
+			GradVarNums.resize(3);
+			for (int i = 0; i < 3; ++i) GradVarNums[i] = Fields[fNum++].GetReturnInt();
 		}
-		else return;
-	}
-	while (true){
-		char *c;
-		if (TecUtilDialogGetSimpleText("Periodic boundary condition?\ny for yes, n for no.", "n", &c)){
-			if (*c == 'y') IsPeriodic = TRUE;
-			else if (*c == 'n') IsPeriodic = FALSE;
-			else continue;
-			break;
+		else fNum += 3;
+		fNum++;
+
+		if (Fields[fNum++].GetReturnBool()){
+			HessVarNums.resize(6);
+			for (int i = 0; i < 6; ++i) HessVarNums[i] = Fields[fNum++].GetReturnInt();
 		}
-		else return;
-	}
 
-	if (!TecUtilDialogGetVariables("Select electron density variable",
-		"Electron density", NULL, NULL, &RhoVarNum, NULL, NULL)
-		|| !TecUtilDialogGetVariables("Select the spatial X, Y, and Z variables",
-		"X", "Y", "Z", &XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2])) return;
-
-	if (TecUtilDialogMessageBox("Are electron density gradient variables present?", MessageBoxType_YesNo)){
-		if (!TecUtilDialogGetVariables("Select the density gradient X, Y, and Z variables",
-			"X gradient", "Y gradient", "Z gradient",
-			&GradVarNums[0], &GradVarNums[1], &GradVarNums[2])) return;
-	}
-	else GradVarNums = vector<int>();
-
-	if (GradVarNums.size() != 0 && TecUtilDialogMessageBox("Are electron density hessian variables present?", MessageBoxType_YesNo)){
-		if (!TecUtilDialogGetVariables("Select the density hessian XX, XY, and XZ variables",
-			"XX", "XY", "XZ",
-			&HessVarNums[0], &HessVarNums[1], &HessVarNums[2])
-			|| !TecUtilDialogGetVariables("Select the density hessian YY, YZ, and ZZ variables",
-			"YY", "YZ", "ZZ",
-			&HessVarNums[3], &HessVarNums[4], &HessVarNums[5])) return;
-	}
-	else HessVarNums = vector<int>();
-
-	if (CalcType == CRITICALPOINTS){
 		FindCritPoints(VolZoneNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
 	}
-	else if (CalcType == BONDPATHS || CalcType == RINGLINES){
+	else if (CurrentCalcType == BONDPATHS || CurrentCalcType == RINGLINES){
+		int fNum = 0;
+		VolZoneNum = Fields[fNum++].GetReturnInt();
+		IsPeriodic = Fields[fNum++].GetReturnBool();
+		fNum++;
+		for (int i = 0; i < 3; ++i) XYZVarNums[i] = Fields[fNum++].GetReturnInt();
+		fNum++;
+		RhoVarNum = Fields[fNum++].GetReturnInt();
+		fNum++;
+
+		if (Fields[fNum++].GetReturnBool()){
+			GradVarNums.resize(3);
+			for (int i = 0; i < 3; ++i) GradVarNums[i] = Fields[fNum++].GetReturnInt();
+		}
+		else fNum += 3;
+		fNum++;
+
+		if (Fields[fNum++].GetReturnBool()){
+			HessVarNums.resize(6);
+			for (int i = 0; i < 6; ++i) HessVarNums[i] = Fields[fNum++].GetReturnInt();
+		}
+		else fNum += 6;
+		fNum++;
+
+		int CPZoneNum = Fields[fNum++].GetReturnInt(),
+			CPTypeVarNum = Fields[fNum++].GetReturnInt();
+
 		int CPType;
-		if (CalcType == BONDPATHS) CPType = BONDCP;
+		if (CurrentCalcType == BONDPATHS) CPType = BONDCP;
 		else CPType = RINGCP;
 
-		int CPZoneNum = MAX(1, ZoneNumByName("Critical Points", false, true));
-		int CPTypeVarNum = MAX(1, VarNumByName(CPTypeVarName));
-
-		while (true){
-			char *c;
-			if (TecUtilDialogGetSimpleText("Enter critical points zone number", to_string(CPZoneNum).c_str(), &c)){
-				if (StringIsInt(c)){
-					CPZoneNum = atoi(c);
-					TecUtilStringDealloc(&c);
-					if (0 < CPZoneNum && CPZoneNum <= NumZones) break;
-				}
-				else TecUtilDialogErrMsg("Enter integer.");
-			}
-			else return;
-		}
-
-		if (!TecUtilDialogGetVariables("Select the critical point type variable",
-			"CP type", NULL, NULL,
-			&CPTypeVarNum, NULL, NULL)) return;
-
-		FindBondRingLines(VolZoneNum, CPZoneNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+		FindBondRingLines(VolZoneNum, CPZoneNum, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
 	}
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void GetInfoFromUserForBondalyzer(BondalyzerSteps_e CalcType){
+	// new implementation with CSM_Gui
+
+	CurrentCalcType = CalcType;
+
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelect, "Volume zone", "Full Volume"),
+		GuiField_c(Gui_Toggle, "Periodic system"),
+		GuiField_c(Gui_VertSep)
+	};
+
+	vector<string> XYZStr = { "X", "Y", "Z" }, HessXYZStr = { "XX", "XY", "XZ", "YY", "YZ", "ZZ" };
+
+	for (int i = 0; i < 3; ++i) Fields.push_back(GuiField_c(Gui_VarSelect, XYZStr[i], XYZStr[i]));
+	Fields.push_back(GuiField_c(Gui_VertSep));
+
+	Fields.push_back(GuiField_c(Gui_VarSelect, "Electron density", CSMVarName.Dens));
+	Fields.push_back(GuiField_c(Gui_VertSep));
+
+	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density gradient vector variables present"));
+	int iTmp = Fields.size() - 1;
+	for (int i = 0; i < 3; ++i){
+		Fields.push_back(GuiField_c(Gui_VarSelect, XYZStr[i], CSMVarName.DensGradVec[i]));
+		Fields[iTmp].AppendSearchString(to_string(Fields.size() - 1));
+		if (i < 2) Fields[iTmp].AppendSearchString(",");
+	}
+	Fields.push_back(GuiField_c(Gui_VertSep));
+
+	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density Hessian variables present"));
+	iTmp = Fields.size() - 1;
+	for (int i = 0; i < HessXYZStr.size(); ++i){
+		Fields.push_back(GuiField_c(Gui_VarSelect, HessXYZStr[i], CSMVarName.DensHessTensor[i].c_str()));
+		Fields[iTmp].AppendSearchString(to_string(Fields.size() - 1));
+		if (i < 5) Fields[iTmp].AppendSearchString(",");
+	}
+
+	int VolZoneNum, RhoVarNum;
+	vector<int> XYZVarNums(3), GradVarNums, HessVarNums;
+	Boolean_t IsPeriodic;
+
+	if (CalcType == CRITICALPOINTS){
+		CSMGui("Find critical points", Fields, ReturnInfoFromUserForBondalyzer);
+	}
+	else if (CalcType == BONDPATHS || CalcType == RINGLINES){
+
+		Fields.push_back(GuiField_c(Gui_VertSep));
+		Fields.push_back(GuiField_c(Gui_ZoneSelect, "Critical points zone", "Critical Points"));
+		Fields.push_back(GuiField_c(Gui_VarSelect, "CP type variable", CSMVarName.CritPointType));
+
+		string Title = "Find ";
+		if (CalcType == BONDPATHS) Title += "bond paths";
+		else Title += "ring lines";
+		CSMGui(Title, Fields, ReturnInfoFromUserForBondalyzer);
+	}
+
+	// old implementation
+// 	int NumZones = TecUtilDataSetGetNumZones();
+// 	int NumVars = TecUtilDataSetGetNumVars();
+// 
+// 	int RhoVarNum = MAX(1, VarNumByName("Electron Density"));
+// 	vector<int> XYZVarNums(3), GradVarNums(3), HessVarNums(6);
+// 	vector<string> XYZStr = { "X", "Y", "Z" }, HessXYZStr = { "XX", "XY", "XZ", "YY", "YZ", "ZZ" };
+// 	for (int i = 0; i < 3; ++i){
+// 		XYZVarNums[i] = MAX(1, VarNumByName(XYZStr[i]));
+// 		GradVarNums[i] = MAX(1, VarNumByName(CSMVarName.DensGradVec[i]));
+// 	}
+// 	for (int i = 0; i < 6; ++i)
+// 		HessVarNums[i] = MAX(1, VarNumByName(CSMVarName.DensHessTensor[i]));
+// 	int VolZoneNum = MAX(1, ZoneNumByName("Full Volume"));
+// 	Boolean_t IsPeriodic;
+// 
+// 	while (true){
+// 		char *c;
+// 		if (TecUtilDialogGetSimpleText("Enter volume zone number to search for critical points", to_string(VolZoneNum).c_str(), &c)){
+// 			if (StringIsInt(c)){
+// 				VolZoneNum = atoi(c);
+// 				TecUtilStringDealloc(&c);
+// 				if (0 < VolZoneNum && VolZoneNum <= NumZones) break;
+// 			}
+// 			else TecUtilDialogErrMsg("Enter integer.");
+// 		}
+// 		else return;
+// 	}
+// 	while (true){
+// 		char *c;
+// 		if (TecUtilDialogGetSimpleText("Periodic boundary condition?\ny for yes, n for no.", "n", &c)){
+// 			if (*c == 'y') IsPeriodic = TRUE;
+// 			else if (*c == 'n') IsPeriodic = FALSE;
+// 			else continue;
+// 			break;
+// 		}
+// 		else return;
+// 	}
+// 
+// 	if (!TecUtilDialogGetVariables("Select electron density variable",
+// 		"Electron density", NULL, NULL, &RhoVarNum, NULL, NULL)
+// 		|| !TecUtilDialogGetVariables("Select the spatial X, Y, and Z variables",
+// 		"X", "Y", "Z", &XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2])) return;
+// 
+// 	if (TecUtilDialogMessageBox("Are electron density gradient variables present?", MessageBoxType_YesNo)){
+// 		if (!TecUtilDialogGetVariables("Select the density gradient X, Y, and Z variables",
+// 			"X gradient", "Y gradient", "Z gradient",
+// 			&GradVarNums[0], &GradVarNums[1], &GradVarNums[2])) return;
+// 	}
+// 	else GradVarNums = vector<int>();
+// 
+// 	if (GradVarNums.size() != 0 && TecUtilDialogMessageBox("Are electron density hessian variables present?", MessageBoxType_YesNo)){
+// 		if (!TecUtilDialogGetVariables("Select the density hessian XX, XY, and XZ variables",
+// 			"XX", "XY", "XZ",
+// 			&HessVarNums[0], &HessVarNums[1], &HessVarNums[2])
+// 			|| !TecUtilDialogGetVariables("Select the density hessian YY, YZ, and ZZ variables",
+// 			"YY", "YZ", "ZZ",
+// 			&HessVarNums[3], &HessVarNums[4], &HessVarNums[5])) return;
+// 	}
+// 	else HessVarNums = vector<int>();
+// 
+// 	if (CalcType == CRITICALPOINTS){
+// 		FindCritPoints(VolZoneNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+// 	}
+// 	else if (CalcType == BONDPATHS || CalcType == RINGLINES){
+// 		int CPType;
+// 		if (CalcType == BONDPATHS) CPType = BONDCP;
+// 		else CPType = RINGCP;
+// 
+// 		int CPZoneNum = MAX(1, ZoneNumByName("Critical Points", false, true));
+// 		int CPTypeVarNum = MAX(1, VarNumByName(CPTypeVarName));
+// 
+// 		while (true){
+// 			char *c;
+// 			if (TecUtilDialogGetSimpleText("Enter critical points zone number", to_string(CPZoneNum).c_str(), &c)){
+// 				if (StringIsInt(c)){
+// 					CPZoneNum = atoi(c);
+// 					TecUtilStringDealloc(&c);
+// 					if (0 < CPZoneNum && CPZoneNum <= NumZones) break;
+// 				}
+// 				else TecUtilDialogErrMsg("Enter integer.");
+// 			}
+// 			else return;
+// 		}
+// 
+// 		if (!TecUtilDialogGetVariables("Select the critical point type variable",
+// 			"CP type", NULL, NULL,
+// 			&CPTypeVarNum, NULL, NULL)) return;
+// 
+// 		FindBondRingLines(VolZoneNum, CPZoneNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+// 	}
 }
 
 const Boolean_t GetReadPtrsForZone(const int & ZoneNum,
@@ -644,6 +854,7 @@ const Boolean_t FindCritPoints(const int & VolZoneNum,
  */
 const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	const int & CPZoneNum,
+	const int & CPTypeVarNum,
 	const char & CPType,
 	const vector<int> & XYZVarNums,
 	const int & RhoVarNum,
@@ -666,7 +877,6 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 		return FALSE;
 	}
 
-	int CPTypeVarNum = VarNumByName(CPTypeVarName);
 	if (CPTypeVarNum < 0){
 		TecUtilDialogErrMsg("Failed to find CP Type variable");
 		return FALSE;

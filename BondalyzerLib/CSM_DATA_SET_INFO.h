@@ -232,7 +232,9 @@ struct CSMVarName_s{
 		ElecStatField = "Electrostatic Field Magnitude",
 		ElecStatFieldGrad = ElecStatField + " Gradient (Avg. Curvature)",
 		GaussCurvature = "Gaussian Curvature",
-		DiaMagnShift = "Diamagnetic Shift (Shielding) (Avg. Curvature)";
+		DiaMagnShift = "Diamagnetic Shift (Shielding) (Avg. Curvature)",
+		
+		CritPointType = "CritPointType";
 	vector<string> DensGradVec,
 		DensHessTensor,
 		EigVecs,

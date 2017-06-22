@@ -170,6 +170,7 @@
     <ClCompile Include="csm_fe_volume.cpp" />
     <ClCompile Include="csm_field_data_pointer.cpp" />
     <ClCompile Include="csm_grad_path.cpp" />
+    <ClCompile Include="csm_gui.cpp" />
     <ClCompile Include="csm_vol_extent_index_weights.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -180,6 +181,7 @@
     <ClInclude Include="CSM_FE_VOLUME.h" />
     <ClInclude Include="CSM_FIELD_DATA_POINTER.h" />
     <ClInclude Include="CSM_GRAD_PATH.h" />
+    <ClInclude Include="CSM_GUI.h" />
     <ClInclude Include="CSM_VOL_EXTENT_INDEX_WEIGHTS.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="SmallVector.h" />

@@ -11,25 +11,213 @@
 
 /**
  */
+void BuildDialog2(LgIndex_t  ParentDialog)
+{
+  if (Dialog2Manager != BADDIALOGID)
+    return;
+
+  Dialog2Manager = TecGUIDialogCreateModeless(ParentDialog,
+                                             1948,
+                                             818,
+                                             "Untitled",
+                                             Dialog2Init_CB,
+                                             Dialog2CloseButton_CB,
+                                             Dialog2HelpButton_CB);
+  OPT2_OPT_D2 = TecGUIOptionMenuAdd(Dialog2Manager,
+                                  126,
+                                  38,
+                                  1363,
+                                  144,
+                        OPT2_OPT_D2_List,
+                        OPT2_OPT_D2_CB);
+
+  OPT3_OPT_D2 = TecGUIOptionMenuAdd(Dialog2Manager,
+                                  126,
+                                  231,
+                                  1363,
+                                  144,
+                        OPT3_OPT_D2_List,
+                        OPT3_OPT_D2_CB);
+
+  OPT4_OPT_D2 = TecGUIOptionMenuAdd(Dialog2Manager,
+                                  126,
+                                  428,
+                                  1363,
+                                  144,
+                        OPT4_OPT_D2_List,
+                        OPT4_OPT_D2_CB);
+
+  OPT5_OPT_D2 = TecGUIOptionMenuAdd(Dialog2Manager,
+                                  126,
+                                  625,
+                                  1363,
+                                  144,
+                        OPT5_OPT_D2_List,
+                        OPT5_OPT_D2_CB);
+
+  LBL1_LBL_D2 = TecGUILabelAdd(Dialog2Manager,
+                             1443,
+                             43,
+                    "mmmmmmmmmm\nm\nm\nm\nm\nm\nm\nm");
+
+}
+
+/**
+ */
+void BuildDialog3(LgIndex_t  ParentDialog)
+{
+  if (Dialog3Manager != BADDIALOGID)
+    return;
+
+  Dialog3Manager = TecGUIDialogCreateModeless(ParentDialog,
+                                             2165,
+                                             409,
+                                             "Untitled",
+                                             Dialog3Init_CB,
+                                             Dialog3CloseButton_CB,
+                                             Dialog3HelpButton_CB);
+  OPT2_OPT_D3 = TecGUIOptionMenuAdd(Dialog3Manager,
+                                  401,
+                                  226,
+                                  1363,
+                                  144,
+                        OPT2_OPT_D3_List,
+                        OPT2_OPT_D3_CB);
+
+  OPT1_OPT_D3 = TecGUIOptionMenuAdd(Dialog3Manager,
+                                  401,
+                                  43,
+                                  1363,
+                                  144,
+                        OPT1_OPT_D3_List,
+                        OPT1_OPT_D3_CB);
+
+}
+
+/**
+ */
+void BuildDialog4(LgIndex_t  ParentDialog)
+{
+  if (Dialog4Manager != BADDIALOGID)
+    return;
+
+  Dialog4Manager = TecGUIDialogCreateModeless(ParentDialog,
+                                             2922,
+                                             1227,
+                                             "Untitled",
+                                             Dialog4Init_CB,
+                                             Dialog4CloseButton_CB,
+                                             Dialog4HelpButton_CB);
+}
+
+/**
+ */
 void BuildDialog1(LgIndex_t  ParentDialog)
 {
   if (Dialog1Manager != BADDIALOGID)
     return;
 
   Dialog1Manager = TecGUIDialogCreateModeless(ParentDialog,
-                                             4383,
-                                             2249,
+                                             6886,
+                                             2250,
                                              "Untitled",
                                              Dialog1Init_CB,
                                              Dialog1CloseButton_CB,
                                              Dialog1HelpButton_CB);
+  TecGUIFrameAdd(Dialog1Manager,
+             171,
+             72,
+             6485,
+             957,
+                    "System");
+
+  TecGUIFrameAdd(Dialog1Manager,
+             217,
+             1131,
+             6462,
+             731,
+                    "Variables");
+
   BTN1_BTN_D1 = TecGUIButtonAdd(Dialog1Manager,
-                              2096,
-                              1022,
-                              1479,
-                              142,
-                    "Push Button",
+                              2669,
+                              1881,
+                              515,
+                              144,
+                    "OK",
                     BTN1_BTN_D1_CB);
+
+  LBLVolZone_LBL_D1 = TecGUILabelAdd(Dialog1Manager,
+                                   435,
+                                   158,
+                    "Volume zone");
+
+  OPT4_OPT_D1 = TecGUIOptionMenuAdd(Dialog1Manager,
+                                  3495,
+                                  158,
+                                  1363,
+                                  144,
+                        OPT4_OPT_D1_List,
+                        OPT4_OPT_D1_CB);
+
+  TGLPerSys_TOG_D1 = TecGUIToggleAdd(Dialog1Manager,
+                                   1546,
+                                   341,
+                                   2349,
+                                   120,
+                               "Periodic system",
+                               TGLPerSys_TOG_D1_CB);
+
+  LBLRhoVar_LBL_D1 = TecGUILabelAdd(Dialog1Manager,
+                                  435,
+                                  1198,
+                    "Electron density");
+
+  OPTRhoVar_OPT_D1 = TecGUIOptionMenuAdd(Dialog1Manager,
+                                       3460,
+                                       1198,
+                                       1363,
+                                       144,
+                        OPTRhoVar_OPT_D1_List,
+                        OPTRhoVar_OPT_D1_CB);
+
+  LBLX_LBL_D1 = TecGUILabelAdd(Dialog1Manager,
+                             435,
+                             495,
+                    "X");
+
+  LBLY_LBL_D1 = TecGUILabelAdd(Dialog1Manager,
+                             435,
+                             664,
+                    "Y");
+
+  LBLZ_LBL_D1 = TecGUILabelAdd(Dialog1Manager,
+                             435,
+                             832,
+                    "Z");
+
+  OPTZ_OPT_D1 = TecGUIOptionMenuAdd(Dialog1Manager,
+                                  3460,
+                                  832,
+                                  1363,
+                                  144,
+                        OPTZ_OPT_D1_List,
+                        OPTZ_OPT_D1_CB);
+
+  OPTX_OPT_D1 = TecGUIOptionMenuAdd(Dialog1Manager,
+                                  3460,
+                                  495,
+                                  1363,
+                                  144,
+                        OPTX_OPT_D1_List,
+                        OPTX_OPT_D1_CB);
+
+  OPTY_OPT_D1 = TecGUIOptionMenuAdd(Dialog1Manager,
+                                  3460,
+                                  664,
+                                  1363,
+                                  144,
+                        OPTY_OPT_D1_List,
+                        OPTY_OPT_D1_CB);
 
 }
 

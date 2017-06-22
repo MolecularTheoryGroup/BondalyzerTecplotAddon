@@ -39,6 +39,9 @@
     <ClCompile Include="csm_vol_extent_index_weights.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="csm_gui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -72,6 +75,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CSM_VOL_EXTENT_INDEX_WEIGHTS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CSM_GUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

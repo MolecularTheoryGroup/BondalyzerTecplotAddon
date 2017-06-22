@@ -29,8 +29,9 @@ enum BondalyzerSteps_e{
 void RefineActiveZones();
 void GetClosedIsoSurfaceFromPoints();
 void GetClosedIsoSurfaceFromNodes();
+void GetAllClosedIsoSurfaces();
 class FieldDataPointer_c;
-void GetClosedIsoSurface(const int & IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, const std::vector<int> & NodeNums);
+void GetClosedIsoSurface(const int & IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
 
 void GetInfoFromUserForBondalyzer(BondalyzerSteps_e CalcType);
 
@@ -43,6 +44,7 @@ const Boolean_t FindCritPoints(const int & VolZoneNum,
 
 const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	const int & CPZoneNum,
+	const int & CPTypeVarNum,
 	const char & CPType,
 	const vector<int> & XYZVarNums,
 	const int & RhoVarNum,

@@ -287,6 +287,20 @@ static void STDCALL GetClosedIsoSurfaceFromNodesCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL GetAllClosedIsoSurfacesCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		GetAllClosedIsoSurfaces();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL FindCritPointsCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -417,6 +431,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Get closed isosurface from nodes").c_str(),
 		'\0',
 		GetClosedIsoSurfaceFromNodesCallback);
+
+	TecUtilMenuAddOption("Bondalyzer",
+		string("Get all closed isosurface").c_str(),
+		'\0',
+		GetAllClosedIsoSurfacesCallback);
 
 	TecUtilMenuAddOption("Bondalyzer",
 		string("1. Find critical points").c_str(),
