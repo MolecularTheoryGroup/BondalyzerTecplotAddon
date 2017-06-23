@@ -112,6 +112,8 @@ CritPoints_c::CritPoints_c(const int & CPZoneNum,
 			for (auto p : m_XYZ[t]){
 				CalcEigenSystemForPoint(p, EigVals, EigVecs, *MR);
 				m_PrincDir[t].push_back(normalise(EigVecs.col(CPPrincDirInds[t])));
+				m_EigVals[t].push_back(EigVals);
+				m_EigVecs[t].push_back(EigVecs);
 			}
 		}
 	}
@@ -173,6 +175,20 @@ vec3 CritPoints_c::GetPrincDir(const int & TotOffset) const{
 		return GetPrincDir(TypeNumOffset[0], TypeNumOffset[1]);
 
 	return vec3();
+}
+vec3 CritPoints_c::GetEigVals(const int & TotOffset) const{
+	vector<int> TypeNumOffset = GetTypeNumOffsetFromTotOffset(TotOffset);
+	if (TypeNumOffset[0] >= 0)
+		return GetEigVals(TypeNumOffset[0], TypeNumOffset[1]);
+
+	return vec3();
+}
+mat33 CritPoints_c::GetEigVecs(const int & TotOffset) const{
+	vector<int> TypeNumOffset = GetTypeNumOffsetFromTotOffset(TotOffset);
+	if (TypeNumOffset[0] >= 0)
+		return GetEigVecs(TypeNumOffset[0], TypeNumOffset[1]);
+
+	return mat33();
 }
 
 const Boolean_t CritPoints_c::IsValid() const{

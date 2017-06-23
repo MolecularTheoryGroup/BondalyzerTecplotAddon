@@ -98,6 +98,12 @@ public:
 	vec3 GetPrincDir(const int & TypeNum, const int & Offset) const { return m_PrincDir[TypeNum][Offset]; }
 	vec3 GetPrincDir(const int & TotOffset) const;
 
+	vec3 GetEigVals(const int & TypeNum, const int & Offset) const { return m_EigVals[TypeNum][Offset]; }
+	vec3 GetEigVals(const int & TotOffset) const;
+
+	mat33 GetEigVecs(const int & TypeNum, const int & Offset) const { return m_EigVecs[TypeNum][Offset]; }
+	mat33 GetEigVecs(const int & TotOffset) const;
+
 	const Boolean_t IsValid() const;
 
 	/*
@@ -129,7 +135,8 @@ private:
 		*	information for the 6 types of critical points.
 		*/
 	vector<double> m_Rho[6];
-	vector<vec3> m_XYZ[6], m_PrincDir[6];
+	vector<vec3> m_XYZ[6], m_PrincDir[6], m_EigVals[6];
+	vector<mat33> m_EigVecs[6];
 	int m_Dimensions;
 	int m_TotNumCPs, m_NumCPs[6];
 	double m_MinCPDist;

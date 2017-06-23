@@ -1273,7 +1273,7 @@ void MainFunction(){
 						SeedPts[k] = v1 * (Radius * 0.1);
 						double SeedTheta = PI / 2.0;
 						vec4 TmpVec4 = join_cols(SeedPts[k], ones<vec>(1));
-						TmpVec4 = Rotate(SeedTheta, v3) * TmpVec4;
+						TmpVec4 = RotationMatrix(SeedTheta, v3) * TmpVec4;
 
 						SeedPts[k] = vec3(TmpVec4.subvec(0, 2)) + VolCPPos;
 
@@ -1341,7 +1341,7 @@ void MainFunction(){
 								double DelAlpha = Alpha / static_cast<double>(NumEdgeGPs + 1);
 
 								for (int ei = 0; ei < NumEdgeGPs; ++ei){
-									vec4 TmpVec4b = Rotate(DelAlpha * static_cast<double>(ei + 1), RotAxis) * TmpVec4a;
+									vec4 TmpVec4b = RotationMatrix(DelAlpha * static_cast<double>(ei + 1), RotAxis) * TmpVec4a;
 									vec3 SeedPt = vec3(TmpVec4b.subvec(0, 2)) + VolCPPos;
 
 									int GPInd = (ConstrainedNeighborhoodEdgeNums[j].size() - 1) * NumEdgeGPs + ei;

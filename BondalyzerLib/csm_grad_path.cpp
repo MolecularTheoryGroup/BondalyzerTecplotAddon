@@ -1287,7 +1287,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 					if (PointFound)
 						break;
 				}
-				else if (m_TermValue != -1.0 && Rho < m_TermValue){
+				if (m_TermValue != -1.0 && Rho < m_TermValue){
 					double OldRho;
 					OldRho = m_RhoList[m_RhoList.size() - 1];
 

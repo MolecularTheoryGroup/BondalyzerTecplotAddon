@@ -545,63 +545,48 @@ void ReturnInfoFromUserForBondalyzer(const bool GuiSuccess, const vector<GuiFiel
 	vector<int> XYZVarNums(3), GradVarNums, HessVarNums;
 	Boolean_t IsPeriodic;
 
+	int fNum = 0;
+
+	VolZoneNum = Fields[fNum++].GetReturnInt();
+	IsPeriodic = Fields[fNum++].GetReturnBool();
+	fNum++;
+	for (int i = 0; i < 3; ++i) XYZVarNums[i] = Fields[fNum++].GetReturnInt();
+	fNum++;
+	RhoVarNum = Fields[fNum++].GetReturnInt();
+	fNum++;
+
+
+	if (Fields[fNum++].GetReturnBool()){
+		GradVarNums.resize(3);
+		for (int i = 0; i < 3; ++i) GradVarNums[i] = Fields[fNum++].GetReturnInt();
+	}
+	else fNum += 3;
+	fNum++;
+
+	if (Fields[fNum++].GetReturnBool()){
+		HessVarNums.resize(6);
+		for (int i = 0; i < 6; ++i) HessVarNums[i] = Fields[fNum++].GetReturnInt();
+	}
+
 	if (CurrentCalcType == CRITICALPOINTS){
-		int fNum = 0;
-		VolZoneNum = Fields[fNum++].GetReturnInt();
-		IsPeriodic = Fields[fNum++].GetReturnBool();
-		fNum++;
-		for (int i = 0; i < 3; ++i) XYZVarNums[i] = Fields[fNum++].GetReturnInt();
-		fNum++;
-		RhoVarNum = Fields[fNum++].GetReturnInt();
-		fNum++;
-
-
-		if (Fields[fNum++].GetReturnBool()){
-			GradVarNums.resize(3);
-			for (int i = 0; i < 3; ++i) GradVarNums[i] = Fields[fNum++].GetReturnInt();
-		}
-		else fNum += 3;
-		fNum++;
-
-		if (Fields[fNum++].GetReturnBool()){
-			HessVarNums.resize(6);
-			for (int i = 0; i < 6; ++i) HessVarNums[i] = Fields[fNum++].GetReturnInt();
-		}
 
 		FindCritPoints(VolZoneNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
 	}
-	else if (CurrentCalcType == BONDPATHS || CurrentCalcType == RINGLINES){
-		int fNum = 0;
-		VolZoneNum = Fields[fNum++].GetReturnInt();
-		IsPeriodic = Fields[fNum++].GetReturnBool();
-		fNum++;
-		for (int i = 0; i < 3; ++i) XYZVarNums[i] = Fields[fNum++].GetReturnInt();
-		fNum++;
-		RhoVarNum = Fields[fNum++].GetReturnInt();
-		fNum++;
-
-		if (Fields[fNum++].GetReturnBool()){
-			GradVarNums.resize(3);
-			for (int i = 0; i < 3; ++i) GradVarNums[i] = Fields[fNum++].GetReturnInt();
-		}
-		else fNum += 3;
-		fNum++;
-
-		if (Fields[fNum++].GetReturnBool()){
-			HessVarNums.resize(6);
-			for (int i = 0; i < 6; ++i) HessVarNums[i] = Fields[fNum++].GetReturnInt();
-		}
-		else fNum += 6;
+	else if (CurrentCalcType == BONDPATHS || CurrentCalcType == RINGLINES
+		|| CurrentCalcType == INTERATOMICSURFACES || CurrentCalcType == RINGSURFACES){
 		fNum++;
 
 		int CPZoneNum = Fields[fNum++].GetReturnInt(),
 			CPTypeVarNum = Fields[fNum++].GetReturnInt();
 
 		int CPType;
-		if (CurrentCalcType == BONDPATHS) CPType = BONDCP;
-		else CPType = RINGCP;
+		if (CurrentCalcType == BONDPATHS || CurrentCalcType == INTERATOMICSURFACES) CPType = BONDCP;
+		else if (CurrentCalcType == RINGLINES || CurrentCalcType == RINGSURFACES) CPType = RINGCP;
 
-		FindBondRingLines(VolZoneNum, CPZoneNum, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+		if (CurrentCalcType == BONDPATHS || CurrentCalcType == RINGLINES)
+			FindBondRingLines(VolZoneNum, CPZoneNum, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+		else if (CurrentCalcType == INTERATOMICSURFACES || CurrentCalcType == RINGSURFACES)
+			FindBondRingSurfaces(VolZoneNum, CPZoneNum, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
 	}
 
 	TecUtilLockFinish(AddOnID);
@@ -647,112 +632,17 @@ void GetInfoFromUserForBondalyzer(BondalyzerSteps_e CalcType){
 	vector<int> XYZVarNums(3), GradVarNums, HessVarNums;
 	Boolean_t IsPeriodic;
 
-	if (CalcType == CRITICALPOINTS){
-		CSMGui("Find critical points", Fields, ReturnInfoFromUserForBondalyzer);
-	}
-	else if (CalcType == BONDPATHS || CalcType == RINGLINES){
+	string Title = "Find " + BondalyzerStepGUITitles[CalcType];
+
+	if (CalcType > CRITICALPOINTS){
 
 		Fields.push_back(GuiField_c(Gui_VertSep));
 		Fields.push_back(GuiField_c(Gui_ZoneSelect, "Critical points zone", "Critical Points"));
 		Fields.push_back(GuiField_c(Gui_VarSelect, "CP type variable", CSMVarName.CritPointType));
 
-		string Title = "Find ";
-		if (CalcType == BONDPATHS) Title += "bond paths";
-		else Title += "ring lines";
-		CSMGui(Title, Fields, ReturnInfoFromUserForBondalyzer);
 	}
 
-	// old implementation
-// 	int NumZones = TecUtilDataSetGetNumZones();
-// 	int NumVars = TecUtilDataSetGetNumVars();
-// 
-// 	int RhoVarNum = MAX(1, VarNumByName("Electron Density"));
-// 	vector<int> XYZVarNums(3), GradVarNums(3), HessVarNums(6);
-// 	vector<string> XYZStr = { "X", "Y", "Z" }, HessXYZStr = { "XX", "XY", "XZ", "YY", "YZ", "ZZ" };
-// 	for (int i = 0; i < 3; ++i){
-// 		XYZVarNums[i] = MAX(1, VarNumByName(XYZStr[i]));
-// 		GradVarNums[i] = MAX(1, VarNumByName(CSMVarName.DensGradVec[i]));
-// 	}
-// 	for (int i = 0; i < 6; ++i)
-// 		HessVarNums[i] = MAX(1, VarNumByName(CSMVarName.DensHessTensor[i]));
-// 	int VolZoneNum = MAX(1, ZoneNumByName("Full Volume"));
-// 	Boolean_t IsPeriodic;
-// 
-// 	while (true){
-// 		char *c;
-// 		if (TecUtilDialogGetSimpleText("Enter volume zone number to search for critical points", to_string(VolZoneNum).c_str(), &c)){
-// 			if (StringIsInt(c)){
-// 				VolZoneNum = atoi(c);
-// 				TecUtilStringDealloc(&c);
-// 				if (0 < VolZoneNum && VolZoneNum <= NumZones) break;
-// 			}
-// 			else TecUtilDialogErrMsg("Enter integer.");
-// 		}
-// 		else return;
-// 	}
-// 	while (true){
-// 		char *c;
-// 		if (TecUtilDialogGetSimpleText("Periodic boundary condition?\ny for yes, n for no.", "n", &c)){
-// 			if (*c == 'y') IsPeriodic = TRUE;
-// 			else if (*c == 'n') IsPeriodic = FALSE;
-// 			else continue;
-// 			break;
-// 		}
-// 		else return;
-// 	}
-// 
-// 	if (!TecUtilDialogGetVariables("Select electron density variable",
-// 		"Electron density", NULL, NULL, &RhoVarNum, NULL, NULL)
-// 		|| !TecUtilDialogGetVariables("Select the spatial X, Y, and Z variables",
-// 		"X", "Y", "Z", &XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2])) return;
-// 
-// 	if (TecUtilDialogMessageBox("Are electron density gradient variables present?", MessageBoxType_YesNo)){
-// 		if (!TecUtilDialogGetVariables("Select the density gradient X, Y, and Z variables",
-// 			"X gradient", "Y gradient", "Z gradient",
-// 			&GradVarNums[0], &GradVarNums[1], &GradVarNums[2])) return;
-// 	}
-// 	else GradVarNums = vector<int>();
-// 
-// 	if (GradVarNums.size() != 0 && TecUtilDialogMessageBox("Are electron density hessian variables present?", MessageBoxType_YesNo)){
-// 		if (!TecUtilDialogGetVariables("Select the density hessian XX, XY, and XZ variables",
-// 			"XX", "XY", "XZ",
-// 			&HessVarNums[0], &HessVarNums[1], &HessVarNums[2])
-// 			|| !TecUtilDialogGetVariables("Select the density hessian YY, YZ, and ZZ variables",
-// 			"YY", "YZ", "ZZ",
-// 			&HessVarNums[3], &HessVarNums[4], &HessVarNums[5])) return;
-// 	}
-// 	else HessVarNums = vector<int>();
-// 
-// 	if (CalcType == CRITICALPOINTS){
-// 		FindCritPoints(VolZoneNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
-// 	}
-// 	else if (CalcType == BONDPATHS || CalcType == RINGLINES){
-// 		int CPType;
-// 		if (CalcType == BONDPATHS) CPType = BONDCP;
-// 		else CPType = RINGCP;
-// 
-// 		int CPZoneNum = MAX(1, ZoneNumByName("Critical Points", false, true));
-// 		int CPTypeVarNum = MAX(1, VarNumByName(CPTypeVarName));
-// 
-// 		while (true){
-// 			char *c;
-// 			if (TecUtilDialogGetSimpleText("Enter critical points zone number", to_string(CPZoneNum).c_str(), &c)){
-// 				if (StringIsInt(c)){
-// 					CPZoneNum = atoi(c);
-// 					TecUtilStringDealloc(&c);
-// 					if (0 < CPZoneNum && CPZoneNum <= NumZones) break;
-// 				}
-// 				else TecUtilDialogErrMsg("Enter integer.");
-// 			}
-// 			else return;
-// 		}
-// 
-// 		if (!TecUtilDialogGetVariables("Select the critical point type variable",
-// 			"CP type", NULL, NULL,
-// 			&CPTypeVarNum, NULL, NULL)) return;
-// 
-// 		FindBondRingLines(VolZoneNum, CPZoneNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
-// 	}
+	CSMGui(Title, Fields, ReturnInfoFromUserForBondalyzer);
 }
 
 const Boolean_t GetReadPtrsForZone(const int & ZoneNum,
@@ -938,12 +828,10 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	BV[2] << 0. << 0. << 1.;
 	MR.BasisVectors = &BV;
 
-	int PrincipalDirInd = 2;
 	int EndCPNumforName = 0;
 	StreamDir_e GPDir = StreamDir_Forward;
 	ColorIndex_t PathColor = Black_C;
 	if (CPType == RINGCP){
-		PrincipalDirInd = 0;
 		GPDir = StreamDir_Reverse;
 		PathColor = Green_C;
 		EndCPNumforName++;
@@ -958,12 +846,9 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	double TermRadius = 0.2;
 	double RhoCutoff = DefaultRhoCutoff;
 
-// 	vector<GradPath_c> GPs(CPs.NumCPs(TypeInd) * 2);
 	vector<GradPath_c> GPs;
 
-// 	int gpNum = 0;
 	for (int cpNum = 0; cpNum < CPs.NumCPs(TypeInd); ++cpNum){
-// 		CalcEigenSystemForPoint(CPs.GetXYZ(TypeInd, cpNum), EigVals, EigVecs, MR);
 		for (int d = -1; d < 2; d += 2){
 			StartPoint = CPs.GetXYZ(TypeInd, cpNum) + CPs.GetPrincDir(TypeInd, cpNum) * StartPointOffset * static_cast<double>(d);
 
@@ -1052,3 +937,197 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 *	Create interatomic (bond) and ring surfaces from a source CP zone(s)
 *	Also creates bond-ring, and bond-cage (ring-nuclear) paths.
 */
+const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
+	const int & CPZoneNum,
+	const int & CPTypeVarNum,
+	const char & CPType,
+	const vector<int> & XYZVarNums,
+	const int & RhoVarNum,
+	const vector<int> & GradVarNums,
+	const vector<int> & HessVarNums,
+	const Boolean_t & IsPeriodic)
+{
+	TecUtilLockStart(AddOnID);
+
+	int NumZones = TecUtilDataSetGetNumZones();
+	int NumVars = TecUtilDataSetGetNumVars();
+
+	REQUIRE(CPZoneNum > 0 && CPZoneNum <= NumZones);
+	REQUIRE(XYZVarNums.size() == 3);
+	for (const auto & i : XYZVarNums) REQUIRE(i > 0 && i <= NumVars);
+
+	int TypeInd = std::find(CPTypeList, CPTypeList + 6, CPType) - CPTypeList;
+	if (TypeInd >= 6){
+		TecUtilDialogErrMsg("Invalid CP type specified");
+		return FALSE;
+	}
+
+	if (CPTypeVarNum < 0){
+		TecUtilDialogErrMsg("Failed to find CP Type variable");
+		return FALSE;
+	}
+
+	FieldDataPointer_c RhoPtr;
+	vector<FieldDataPointer_c> GradPtrs, HessPtrs;
+
+	TecUtilDataLoadBegin();
+
+	if (!GetReadPtrsForZone(VolZoneNum,
+		RhoVarNum, GradVarNums, HessVarNums,
+		RhoPtr, GradPtrs, HessPtrs)){
+		TecUtilDialogErrMsg("Failed to get read pointer(s)");
+		return FALSE;
+	}
+
+	VolExtentIndexWeights_s VolInfo;
+
+	if (!GetVolInfo(VolZoneNum, XYZVarNums, IsPeriodic, VolInfo)){
+		TecUtilDialogErrMsg("Failed to get volume zone info");
+		return FALSE;
+	}
+
+	vector<int> iJunk(2);
+	int NumCPs;
+
+	TecUtilZoneGetIJK(CPZoneNum, &NumCPs, &iJunk[0], &iJunk[1]);
+	for (const auto & i : iJunk) if (i > 1){
+		TecUtilDialogErrMsg("CP zone is not i-ordered");
+		return FALSE;
+	}
+
+	vec3 EigVals;
+	mat33 EigVecs;
+
+	MultiRootParams_s MR;
+	MR.CalcType = GPType_Classic;
+	MR.VolInfo = &VolInfo;
+	MR.IsPeriodic = IsPeriodic;
+	MR.HasGrad = (GradPtrs.size() == 3);
+	MR.HasHess = (HessPtrs.size() == 6);
+	MR.RhoPtr = &RhoPtr;
+	MR.GradPtrs = &GradPtrs;
+	MR.HessPtrs = &HessPtrs;
+	vector<vec3> BV(3);
+	BV[0] << 1. << 0. << 0.;
+	BV[1] << 0. << 1. << 0.;
+	BV[2] << 0. << 0. << 1.;
+	MR.BasisVectors = &BV;
+
+
+	CritPoints_c CPs(CPZoneNum, XYZVarNums, RhoVarNum, CPTypeVarNum, &MR);
+
+	int EndCPNumforName = 1;
+	StreamDir_e GPDir = StreamDir_Reverse;
+	ColorIndex_t PathColor = Black_C;
+	if (CPType == RINGCP){
+		GPDir = StreamDir_Forward;
+		PathColor = Green_C;
+		EndCPNumforName--;
+	}
+
+	vec3 StartPoint;
+
+	const double StartPointOffset = 0.1 * CPs.GetMinCPDist();
+	const int NumGPPts = 100;
+	double TermRadius = 0.2;
+	double RhoCutoff = DefaultRhoCutoff;
+
+	vector<GradPath_c> GPs;
+
+	/*
+	 *	First seed GPs around each CP along a constant radius circle in the 
+	 *	plane normal to the CP principal direction.
+	 *	These GPs will identify all bond-cage, ring-nuclear, and bond-ring connections.
+	 */
+
+	double AngleStep = 2. * PI / static_cast<double>(NumCircleGPs);
+
+	for (int cpNum = 0; cpNum < CPs.NumCPs(TypeInd); ++cpNum){
+		vec3 StartVec = normalise(CPs.GetEigVecs(TypeInd, cpNum).col(1)) * StartPointOffset;
+
+		for (int gpNum = 0; gpNum < NumCircleGPs; ++gpNum){
+			double RotAngle = static_cast<double>(gpNum)* AngleStep;
+
+			StartPoint = CPs.GetXYZ(TypeInd, cpNum) + Rotate(StartVec, RotAngle, CPs.GetPrincDir(TypeInd, cpNum));
+
+			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &CPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.back().SetStartEndCPNum(CPs.GetTotOffsetFromTypeNumOffset(TypeInd, cpNum), 0);
+
+		}
+// 		break;
+	}
+
+	int NumGPs = GPs.size();
+
+#ifndef _DEBUG
+#pragma omp parallel for schedule(dynamic)
+#endif
+	for (int iGP = 0; iGP < NumGPs; ++iGP){
+		GPs[iGP].Seed(false);
+		GPs[iGP].PointPrepend(CPs.GetXYZ(GPs[iGP].GetStartEndCPNum()[0]), CPs.GetRho(GPs[iGP].GetStartEndCPNum()[0]));
+		GPs[iGP].Resample(NumGPPts);
+		if (CPType == BONDCP) GPs[iGP].Reverse();
+	}
+
+	for (int iGP = 0; iGP < NumGPs; iGP += 2){
+		GradPath_c GP = GPs[iGP];
+		int OldStartCPNum = GP.GetStartEndCPNum()[EndCPNumforName];
+		GP += GPs[iGP + 1];
+		vector<int> StartEndCPNums = GP.GetStartEndCPNum();
+		vector<vector<int> > StartEndCPTypeAndOffset(2);
+		StartEndCPTypeAndOffset[0] = CPs.GetTypeNumOffsetFromTotOffset(OldStartCPNum);
+		string Name = "GP: " + CPNameList[StartEndCPTypeAndOffset[0][0]] + " " + to_string(StartEndCPTypeAndOffset[0][1] + 1) + " (";
+		for (int i = 0; i < 2; ++i){
+			if (StartEndCPNums[i] >= 0){
+				StartEndCPTypeAndOffset[i] = CPs.GetTypeNumOffsetFromTotOffset(StartEndCPNums[i]);
+				Name += CPNameList[StartEndCPTypeAndOffset[i][0]][0] + to_string(StartEndCPTypeAndOffset[i][1] + 1);
+			}
+			else Name += "FF";
+
+			if (i == 0) Name += "-";
+		}
+
+		Name += ")";
+
+		GP.SaveAsOrderedZone(Name, vector<FieldDataType_e>(), XYZVarNums, RhoVarNum, TRUE, PathColor);
+		for (int i = 0; i < 2; ++i){
+			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndNums[i], to_string(StartEndCPNums[i] + 1));
+			if (StartEndCPNums[i] >= 0) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], CPNameList[StartEndCPTypeAndOffset[i][0]]);
+			else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
+		}
+		if (CPType == RINGCP) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
+		else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPath);
+	}
+
+	for (auto & GP : GPs){
+		vector<int> StartEndCPNums = GP.GetStartEndCPNum();
+		vector<vector<int> > StartEndCPTypeAndOffset(2);
+		string Name = "GP: ";
+		for (int i = 0; i < 2; ++i){
+			if (StartEndCPNums[i] >= 0){
+				StartEndCPTypeAndOffset[i] = CPs.GetTypeNumOffsetFromTotOffset(StartEndCPNums[i]);
+				Name += CPNameList[StartEndCPTypeAndOffset[i][0]] + " " + to_string(StartEndCPTypeAndOffset[i][1] + 1);
+			}
+			else Name += "FF";
+
+			if (i == 0) Name += " to ";
+		}
+
+		GP.SaveAsOrderedZone(Name, vector<FieldDataType_e>(), XYZVarNums, RhoVarNum, FALSE, PathColor);
+		for (int i = 0; i < 2; ++i){
+			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndNums[i], to_string(StartEndCPNums[i] + 1));
+			if (StartEndCPNums[i] >= 0) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], CPNameList[StartEndCPTypeAndOffset[i][0]]);
+			else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
+		}
+		if (CPType == RINGCP) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
+		else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPath);
+	}
+
+	TecUtilDataLoadEnd();
+
+	TecUtilLockFinish(AddOnID);
+
+	TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
+
+	return TRUE;
+}

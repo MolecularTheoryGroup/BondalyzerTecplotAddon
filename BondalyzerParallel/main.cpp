@@ -344,6 +344,34 @@ static void STDCALL FindRingLinesCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL FindBondSurfacesCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		GetInfoFromUserForBondalyzer(INTERATOMICSURFACES);
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL FindRingSurfacesCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		GetInfoFromUserForBondalyzer(RINGSURFACES);
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 /**
  * When Tecplot first loads an add-on, it makes a
  * call to initialize the add-on. This function
@@ -443,14 +471,24 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		FindCritPointsCallback);
 
 	TecUtilMenuAddOption("Bondalyzer",
-		string("1. Find bond paths").c_str(),
+		string("2. Find bond paths").c_str(),
 		'\0',
 		FindBondPathsCallback);
 
 	TecUtilMenuAddOption("Bondalyzer",
-		string("1. Find ring lines").c_str(),
+		string("3. Find ring lines").c_str(),
 		'\0',
 		FindRingLinesCallback);
+
+	TecUtilMenuAddOption("Bondalyzer",
+		string("4. Find interatomic surfaces").c_str(),
+		'\0',
+		FindBondSurfacesCallback);
+
+	TecUtilMenuAddOption("Bondalyzer",
+		string("5. Find ring surfaces").c_str(),
+		'\0',
+		FindRingSurfacesCallback);
 
 
     /*

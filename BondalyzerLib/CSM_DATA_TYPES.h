@@ -148,7 +148,8 @@ const vector<string> ElementNameList = {
 
 double DistSqr(const vec & A, const vec & B);
 double Distance(const vec & A, const vec & B);
-const mat44		Rotate(const double & Angle, vec3 &Axis);
+const mat44		RotationMatrix(const double & Angle, vec3 Axis);
+const vec3 Rotate(const vec3 & Point, const double & Angle, vec3 Axis);
 const double TriangleArea(const vec3 & A, const vec3 & B, const vec3 & C);
 
 typedef double ImportType_t;

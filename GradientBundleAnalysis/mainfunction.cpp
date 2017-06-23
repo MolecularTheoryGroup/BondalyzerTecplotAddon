@@ -1051,7 +1051,7 @@ void MainFunction(){
 							double SeedTheta = PI / 2.0;
 
 							vec4 TmpVec4 = join_cols(SeedPt, ones<vec>(1));
-							TmpVec4 = Rotate(SeedTheta, v3) * TmpVec4;
+							TmpVec4 = RotationMatrix(SeedTheta, v3) * TmpVec4;
 							SeedPts[CornerI] = vec3(TmpVec4) + VolCPPos;
 						}
 

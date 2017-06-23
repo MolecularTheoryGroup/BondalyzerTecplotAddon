@@ -366,13 +366,13 @@ Boolean_t GTARunGTA(std::vector<vec3> *Pts){
 		TecUtilZoneGetName(1, &TmpChar);
 
 		vec4 SliceVec4 = 
-			Rotate(SliceRadStep * SliceNum, v1) 
+			RotationMatrix(SliceRadStep * SliceNum, v1) 
 			* join_cols(v3, ones<vec>(1));
 		vec3 PlaneNormVec;
 		PlaneNormVec << SliceVec4[0] << SliceVec4[1] << SliceVec4[2];
 
 		SliceVec4 =
-			Rotate(SliceRadStep * SliceNum, v1)
+			RotationMatrix(SliceRadStep * SliceNum, v1)
 			* join_cols(v2, ones<vec>(1));
 		vec3 PlaneParVec;
 		PlaneParVec << SliceVec4[0] << SliceVec4[1] << SliceVec4[2];
@@ -609,7 +609,7 @@ Boolean_t GTARunGTA(std::vector<vec3> *Pts){
 					if (StreamTraceNum == 0)
 						StreamtraceTheta *= -1.;
 					TmpVec4 = join_cols(SeedPoint, ones<vec>(1));
-					TmpVec4 = Rotate(StreamtraceTheta, PlaneNormVec)
+					TmpVec4 = RotationMatrix(StreamtraceTheta, PlaneNormVec)
 						* TmpVec4;
 
 					SeedPoint = vec(vector<double>({ TmpVec4[0], TmpVec4[1], TmpVec4[2] })) + Pts->at(1);
@@ -618,7 +618,7 @@ Boolean_t GTARunGTA(std::vector<vec3> *Pts){
 					StreamtraceTheta = StreamtraceRadStep * (double)StreamTraceNum;
 					SeedPoint = v1 * Radius;
 					TmpVec4 = join_cols(SeedPoint, ones<vec>(1));
-					TmpVec4 = Rotate(StreamtraceTheta, PlaneNormVec) * TmpVec4;
+					TmpVec4 = RotationMatrix(StreamtraceTheta, PlaneNormVec) * TmpVec4;
 
 					SeedPoint = vec(vector<double>({ TmpVec4[0], TmpVec4[1], TmpVec4[2] })) + Pts->at(0);
 				}

@@ -12,7 +12,7 @@ using namespace arma;
 double DistSqr(const vec & A, const vec & B) { return sum(square(B - A)); }
 double Distance(const vec & A, const vec & B) { return norm(A - B); }
 
-const mat44		Rotate(const double & Angle, vec3 &Axis){
+const mat44		RotationMatrix(const double & Angle, vec3 Axis){
 	double L = norm(Axis);
 	double LSqr = L * L;
 	double L_sinAngle = L * sin(Angle), cosAngle = cos(Angle), OneMinusCosAngle = 1. - cosAngle;
@@ -55,6 +55,17 @@ const mat44		Rotate(const double & Angle, vec3 &Axis){
 // 		0.0 << 0.0 << 0.0 << 1.0;
 
 	return Out;
+}
+
+/*
+ *	Rotates Point Angle radians clockwise around Axis
+ *	Note that Point will be rotated around the origin, so
+ *	remember to translate it to whereever it needs to be afterwards.
+ */
+const vec3 Rotate(const vec3 & Point, const double & Angle, vec3 Axis){
+	mat44 RotMat = RotationMatrix(Angle, Axis);
+	vec4 TmpVec4 = RotMat * join_cols(Point, ones<vec>(1));
+	return vec3(TmpVec4.subvec(0, 2));
 }
 
 const double TriangleArea(const vec3 & A, const vec3 & B, const vec3 & C){
