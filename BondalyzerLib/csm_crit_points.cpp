@@ -66,7 +66,8 @@ CritPoints_c::CritPoints_c(const vector<CritPoints_c> & CPLists){
 CritPoints_c::CritPoints_c(const int & CPZoneNum, 
 	const vector<int> & XYZVarNums, 
 	const int & RhoVarNum, 
-	const int & CPTypeVarNum) : CritPoints_c()
+	const int & CPTypeVarNum,
+	MultiRootParams_s *MR) : CritPoints_c()
 {
 	int NumZones = TecUtilDataSetGetNumZones();
 	int NumVars = TecUtilDataSetGetNumVars();
@@ -101,6 +102,18 @@ CritPoints_c::CritPoints_c(const int & CPZoneNum,
 		m_Rho[ind].push_back(RhoPtr[iCP]);
 		m_XYZ[ind].push_back(vec3());
 		for (int d = 0; d < 3; ++d) m_XYZ[ind].back()[d] = XYZPtrs[d][iCP];
+	}
+
+	if (MR != NULL){
+		vec3 EigVals;
+		mat33 EigVecs;
+
+		for (int t = 0; t < 4; ++t){ // only calculate principal directions for near field CPs
+			for (auto p : m_XYZ[t]){
+				CalcEigenSystemForPoint(p, EigVals, EigVecs, *MR);
+				m_PrincDir[t].push_back(normalise(EigVecs.col(CPPrincDirInds[t])));
+			}
+		}
 	}
 
 	TecUtilDataLoadEnd();

@@ -36,6 +36,15 @@ const static char CPTypeList[] = { ATOMCP, BONDCP, RINGCP, CAGECP, RINGCPFF, CAG
 
 const static vector<string> CPNameList = { "Nuclear", "Bond", "Ring", "Cage", "Ring FF", "Cage FF" };
 
+const static vector<int> CPPrincDirInds = {
+	0, // atoms, most negative direction
+	2, // bonds, most (only) positive direction
+	0, // rings, most (only) negative direction
+	2, // cages, most positive direction
+	-1, // ringFF n/a
+	-1 // cageFF n/a
+};
+
 const static vector<ColorIndex_t> CPColorList = { White_C, Red_C, Green_C, Cyan_C, Custom5_C, Custom6_C };
 
 /*
@@ -50,7 +59,11 @@ public:
 	// Construct from a set of other CritPoints_c's
 	CritPoints_c(const vector<CritPoints_c> & CPLists);
 	// Construct from existing CP zone
-	CritPoints_c(const int & CPZoneNum, const vector<int> & XYZVarNums, const int & RhoVarNum, const int & CPTypeVarNum);
+	CritPoints_c(const int & CPZoneNum, 
+		const vector<int> & XYZVarNums, 
+		const int & RhoVarNum, 
+		const int & CPTypeVarNum,
+		MultiRootParams_s *MR = NULL);
 	~CritPoints_c();
 
 	/*

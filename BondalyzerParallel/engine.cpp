@@ -477,19 +477,14 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 		NewElems.reserve(IsoIJK[1]);
 		vector<bool> ElemAdded(IsoIJK[1], false);
 
-		for (int e = 0; e < IsoIJK[1]; ++e){
-			if (!ElemAdded[e]){
-				for (const auto & n : Elems[e]){
-					if (NodeVisited[n]){
-						ElemAdded[e] = true;
-						NewElems.push_back(Elems[e]);
-						for (auto & ne : NewElems.back()){
-							ne = NodeNumsOldToNew[ne];
-						}
-						break;
-					}
-				}
+		for (int e = 0; e < IsoIJK[1]; ++e) if (!ElemAdded[e]) for (const auto & n : Elems[e]) if (NodeVisited[n])
+		{
+			ElemAdded[e] = true;
+			NewElems.push_back(Elems[e]);
+			for (auto & ne : NewElems.back()){
+				ne = NodeNumsOldToNew[ne];
 			}
+			break;
 		}
 
 		/*
@@ -954,7 +949,7 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 		EndCPNumforName++;
 	}
 
-	CritPoints_c CPs(CPZoneNum, XYZVarNums, RhoVarNum, CPTypeVarNum);
+	CritPoints_c CPs(CPZoneNum, XYZVarNums, RhoVarNum, CPTypeVarNum, &MR);
 
 	vec3 StartPoint;
 
@@ -968,12 +963,9 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 
 // 	int gpNum = 0;
 	for (int cpNum = 0; cpNum < CPs.NumCPs(TypeInd); ++cpNum){
-		CalcEigenSystemForPoint(CPs.GetXYZ(TypeInd, cpNum), EigVals, EigVecs, MR);
+// 		CalcEigenSystemForPoint(CPs.GetXYZ(TypeInd, cpNum), EigVals, EigVecs, MR);
 		for (int d = -1; d < 2; d += 2){
-			StartPoint = CPs.GetXYZ(TypeInd, cpNum) + normalise(EigVecs.col(PrincipalDirInd)) * StartPointOffset * static_cast<double>(d);
-
-// 			GPs[gpNum].SetStartEndCPNum(CPs.GetTotOffsetFromTypeNumOffset(TypeInd, cpNum), 0);
-// 			GPs[gpNum++].SetupGradPath(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &CPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+			StartPoint = CPs.GetXYZ(TypeInd, cpNum) + CPs.GetPrincDir(TypeInd, cpNum) * StartPointOffset * static_cast<double>(d);
 
 			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &CPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
 			GPs.back().SetStartEndCPNum(CPs.GetTotOffsetFromTypeNumOffset(TypeInd, cpNum), 0);
@@ -1055,3 +1047,8 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 
 	return TRUE;
 }
+
+/*
+*	Create interatomic (bond) and ring surfaces from a source CP zone(s)
+*	Also creates bond-ring, and bond-cage (ring-nuclear) paths.
+*/

@@ -350,9 +350,6 @@
     <ProjectReference Include="..\BondalyzerLib\BondalyzerLib.vcxproj">
       <Project>{56a88a1b-1458-47bc-aab9-2ca1c440312a}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\tecint\lib\tecint.vcxproj">
-      <Project>{bde2196c-60ce-463c-a111-aff63b7f2c5c}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
