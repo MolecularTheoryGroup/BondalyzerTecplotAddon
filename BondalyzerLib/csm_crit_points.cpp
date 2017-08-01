@@ -289,6 +289,20 @@ vector<int> CritPoints_c::GetTypeNumOffsetFromTotOffset(const int & TotOffset) c
 	return TypeNumAndOffset;
 }
 
+const CPType_e CritPoints_c::GetTypeFromTotOffset(const int & TotOffset) const{
+	CPType_e Type = CPType_Invalid;
+
+	int CPCount = 0;
+	for (int i = 0; i < 6; ++i){
+		if (TotOffset < CPCount + m_NumCPs[i]){
+			Type = CPTypeList[i];
+			break;
+		}
+		CPCount += m_NumCPs[i];
+	}
+	return Type;
+}
+
 const int CritPoints_c::GetTotOffsetFromTypeNumOffset(const int & TypeNum, const int & TypeOffset) const
 {
 	int TotOffset = 0;
@@ -342,6 +356,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 	NewZoneNums.push_back(TecUtilDataSetGetNumZones());
 
 	AuxDataZoneSetItem(NewZoneNums.back(), CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeCPs);
+	AuxDataZoneSetItem(NewZoneNums.back(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneTypeCPsAll);
 
 	Set_pa CPZoneSet = TecUtilSetAlloc(TRUE);
 	TecUtilSetAddMember(CPZoneSet, NewZoneNums.back(), TRUE);
@@ -419,13 +434,10 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 					return{ -1 };
 				}
 				for (int ti = 0; ti < NumCPs(t); ++ti){
-// 					string str = to_string(CPTypeList[t]) + " at ";
 					for (int d = 0; d < 3; ++d){
 						XYZPtrs[d].Write(ti, GetXYZ(t, ti)[d]);
-// 						str += to_string(GetXYZ(t, ti)[d]) + ", ";
 					}
 					CPTypeZonePtr.Write(ti, CPTypeList[t]);
-// 					TecUtilDialogMessageBox(str.c_str(), MessageBoxType_Information);
 				}
 
 				CPTypeZonePtr.Close();
@@ -456,6 +468,52 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 /*
 *	End CritPoints_c methods
 */
+
+void SetCPZone(const int & ZoneNum){
+	REQUIRE(0 < ZoneNum && ZoneNum <= TecUtilDataSetGetNumZones());
+
+	Set_pa TmpSet = TecUtilSetAlloc(TRUE);
+	TecUtilSetAddMember(TmpSet, ZoneNum, TRUE);
+
+	char* ZoneName;
+	TecUtilZoneGetName(ZoneNum, &ZoneName);
+
+	int IJK[3];
+	TecUtilZoneGetIJK(ZoneNum, &IJK[0], &IJK[1], &IJK[2]);
+
+	int CPTypeVarNum = VarNumByName(CSMVarName.CritPointType);
+	if (CPTypeVarNum < 0){
+		TecUtilDialogErrMsg("Failed to find CP type variable when setting CP zone information");
+		return;
+	}
+
+	AuxDataZoneSetItem(ZoneNum, CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeCPs);
+
+	bool CPTypeFound = false;
+	for (int t = 0; t < 6; ++t){
+		if (!CPTypeFound && string("Critical Points: " + CPNameList[t]) == ZoneName){
+			AuxDataZoneSetItem(ZoneNum, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.CPSubTypes[t]);
+			TecUtilZoneSetScatter(SV_COLOR, TmpSet, 0.0, CPColorList[t]);
+			CPTypeFound = true;
+		}
+
+		int NumCPs = 0;
+		for (int i = 0; i < IJK[0]; ++i){
+			if ((int)TecUtilDataValueGetByZoneVar(ZoneNum, CPTypeVarNum, i + 1) == (int)CPTypeList[t]) NumCPs++;
+		}
+		if (NumCPs > 0 || CPTypeFound){
+			AuxDataZoneSetItem(ZoneNum, CSMAuxData.CC.NumCPs[t], to_string(NumCPs));
+		}
+		if (CPTypeFound) break;
+	}
+	if (!CPTypeFound){
+		TecUtilZoneSetScatter(SV_COLOR, TmpSet, 0.0, Black_C);
+		TecUtilZoneSetActive(TmpSet, AssignOp_MinusEquals);
+	}
+
+	TecUtilSetDealloc(&TmpSet);
+	TecUtilStringDealloc(&ZoneName);
+}
 
 /*
 	*	Functions for the GSL MultiRoots root finder
@@ -674,7 +732,7 @@ const Boolean_t CritPointInCell(const vector<int> & IJK,
 				else
 					Type--;
 			}
-			if (Type == ATOMCP || Type == RINGCP)
+			if (Type == CPType_NuclearCP || Type == CPType_RingCP)
 				PrincDir = EigVecs.row(0).t();
 			else
 				PrincDir = EigVecs.row(2).t();
@@ -770,7 +828,7 @@ const Boolean_t CritPointInCell(
 				else
 					Type--;
 			}
-			if (Type == ATOMCP || Type == RINGCP)
+			if (Type == CPType_NuclearCP || Type == CPType_RingCP)
 				PrincDir = EigVecs.row(0).t();
 			else
 				PrincDir = EigVecs.row(2).t();

@@ -13,6 +13,7 @@
 #include <armadillo>
 
 #include "CSM_DATA_SET_INFO.h"
+#include "CSM_CRIT_POINTS.h"
 #include "CSM_GUI.h"
 
 using std::vector;
@@ -92,11 +93,9 @@ const vec3 GetCoordsFromListItem(const LgIndex_t & ItemIndex,
 	if (ItemNumber != NULL)
 		*ItemNumber = ItemNum;
 
-	vector<string> RankStrs = { "Atom", "Bond", "Ring", "Cage" };
-
 	EntIndex_t ItemZoneNum = -1;
 	
-	if (SearchVectorForString(RankStrs, ItemName) >= 0 && ItemName.find_first_of(' ') == string::npos){
+	if (SearchVectorForString(CPNameList, ItemName) >= 0 && ItemName.find_first_of(' ') == string::npos){
 		if (IsCP != NULL)
 			*IsCP = true;
 		ItemZoneNum = ZoneNumByName(string("Critical Points"));
@@ -119,7 +118,7 @@ const vec3 GetCoordsFromListItem(const LgIndex_t & ItemIndex,
 		}
 
 		for (int j = 0; j < 4; ++j){
-			if (ItemName == RankStrs[j]){
+			if (ItemName == CPNameList[j]){
 				int RealCPNum = 0;
 				for (int k = 0; k < j; ++k){
 					RealCPNum += NumCPs[k];

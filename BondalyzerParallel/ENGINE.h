@@ -12,19 +12,23 @@
 #define ENGINE_H_ /* Only include once */
 
 #include <fstream>
-#include<vector>
+#include <vector>
+
+#include "CSM_CRIT_POINTS.h"
 
 using std::vector;
 using std::string;
 
 enum BondalyzerSteps_e{
-	CRITICALPOINTS,
-	BONDPATHS,
-	RINGLINES,
-	INTERATOMICSURFACES,
-	RINGSURFACES,
-	BONDBUNDLESURFACES,
-	RINGBUNDLESURFACES
+	BondalyzerSteps_CriticalPoints,
+	BondalyzerSteps_BondPaths,
+	BondalyzerSteps_RingLines,
+	BondalyzerSteps_InteratomicSurfaces,
+	BondalyzerSteps_RingSurfaces,
+	BondalyzerSteps_BondBundleSurfaces,
+	BondalyzerSteps_RingBundleSurfaces,
+
+	BondalyzerSteps_Invalid
 };
 
 const static vector<string> BondalyzerStepGUITitles = {
@@ -32,10 +36,11 @@ const static vector<string> BondalyzerStepGUITitles = {
 	"bond paths",
 	"ring lines",
 	"interatomic surfaces",
-	"ring surfaces"
+	"ring surfaces",
+	"bond bundle surfaces",
+	"ring bundle surfaces"
 };
 
-const static int NumCircleGPs = 100;
 
 void RefineActiveZones();
 void GetClosedIsoSurfaceFromPoints();
@@ -44,19 +49,23 @@ void GetAllClosedIsoSurfaces();
 class FieldDataPointer_c;
 void GetClosedIsoSurface(const int & IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
 
-void GetInfoFromUserForBondalyzer(BondalyzerSteps_e CalcType);
+void BondalyzerGetUserInfo(BondalyzerSteps_e CalcType);
 
 const Boolean_t FindCritPoints(const int & VolZoneNum,
 	const vector<int> & XYZVarNums,
 	const int & RhoVarNum,
 	const vector<int> & GradVarNums,
 	const vector<int> & HessVarNums,
-	const Boolean_t & IsPeriodic);
+	const Boolean_t & IsPeriodic,
+	const double & CellSpacing);
+
+void DeleteCPsGetUserInfo();
 
 const Boolean_t FindBondRingLines(const int & VolZoneNum,
-	const int & CPZoneNum,
+	const int & AllCPsZoneNum,
+	const vector<int> & SelectedCPNums,
 	const int & CPTypeVarNum,
-	const char & CPType,
+	const CPType_e & CPType,
 	const vector<int> & XYZVarNums,
 	const int & RhoVarNum,
 	const vector<int> & GradVarNums,
@@ -65,8 +74,9 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 
 const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 	const int & CPZoneNum,
+	const vector<int> & SelectedCPNums,
 	const int & CPTypeVarNum,
-	const char & CPType,
+	const CPType_e & CPType,
 	const vector<int> & XYZVarNums,
 	const int & RhoVarNum,
 	const vector<int> & GradVarNums,

@@ -19,6 +19,7 @@
 
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_DATA_TYPES.h"
+#include "CSM_CRIT_POINTS.h"
 #include "GBAENGINE.h"
 #include "INTEGRATE.h"
 #include "VIEWRESULTS.h"
@@ -569,7 +570,6 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 // 	}
 	if (CPZoneNum > 0 && CPVarNum > 0){
 		int Ranks[4] = { -3, -1, 1, 3 };
-		vector<string> RankStrs = { "Atom", "Bond", "Ring", "Cage" };
 		LgIndex_t IJK[3]; LgIndex_t NumCPs[4] = { 0, 0, 0, 0 };
 		TecUtilZoneGetIJK(CPZoneNum, &IJK[0], &IJK[1], &IJK[2]);
 		for (int i = 1; i <= IJK[0]; ++i){
@@ -582,7 +582,7 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 						int CPOffset = 0;
 						for (int k = 0; k < j; ++k)
 							CPOffset += NumCPs[k];
-						ss << RankStrs[j] << " " << i - CPOffset;
+						ss << CPNameList[j] << " " << i - CPOffset;
 						TecGUIListAppendItem(MLSelCPs_MLST_T1_1, ss.str().c_str());
 					}
 					break;

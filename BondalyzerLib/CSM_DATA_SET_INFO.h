@@ -93,6 +93,7 @@ struct CSMAuxData_s{
 		ZoneType = Prefix + "ZoneType",
 		ZoneSubType = Prefix + "ZoneSubType",
 		ZoneTypeCPs = Prefix + "CriticalPoints",
+		ZoneTypeCPsAll = Prefix + "AllCPs",
 		ZoneTypeGP = Prefix + "GradientPath",
 		ZoneSubTypeBondPath = Prefix + "BondPath",
 		ZoneSubTypeRingLine = Prefix + "RingLine";
@@ -274,7 +275,7 @@ struct CSMVarName_s{
 			"Eigenvalue 3"
 		};
 		EigSys = EigVecs;
-		EigSys.insert(EigSys.begin(), EigVals.cbegin(), EigVals.cend());
+		EigSys.insert(EigSys.end(), EigVals.cbegin(), EigVals.cend());
 		GradDotEigVecs = {
 			"Gradient dot Eigenvector 1",
 			"Gradient dot Eigenvector 2",

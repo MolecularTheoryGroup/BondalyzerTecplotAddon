@@ -90,6 +90,7 @@ GradPathBase_c::GradPathBase_c()
 	m_GradPathReady = FALSE;
 	m_GradPathMade = FALSE;
 	m_NumGPPoints = -1;
+	m_Length = -1;
 }
 
 GradPathBase_c::~GradPathBase_c()
@@ -177,12 +178,20 @@ GradPathBase_c & GradPathBase_c::operator=(const GradPathBase_c & rhs)
 
 	m_NumGPPoints = rhs.m_NumGPPoints;
 
+	m_Length = rhs.m_Length;
+
 	return *this;
 }// GradPathBase_c & GradPathBase_c::operator=(const GradPathBase_c & rhs)
 const Boolean_t GradPathBase_c::IsSame(const GradPathBase_c & rhs) const
 {
 	Boolean_t AreSame = (
 		m_RhoList == rhs.m_RhoList &&
+
+		m_ZoneNum == rhs.m_ZoneNum &&
+
+		m_NumGPPoints == rhs.m_NumGPPoints &&
+
+		m_Length == rhs.m_Length &&
 
 		m_GradPathReady == rhs.m_GradPathReady &&
 		m_GradPathMade == rhs.m_GradPathMade
@@ -259,15 +268,18 @@ const GradPathBase_c GradPathBase_c::operator+(const GradPathBase_c & rhs) const
 *	Getter methods
 */
 
-const double GradPathBase_c::GetLength() const {
-	double Length = 0.0;
+const double GradPathBase_c::GetLength() {
+	if (m_Length >= 0) 
+		return m_Length;
+
+	m_Length = 0.0;
 
 	if (m_GradPathMade){
 		for (int i = 0; i < GetCount() - 1; ++i)
-			Length += Distance(m_XYZList[i], m_XYZList[i + 1]);
+			m_Length += Distance(m_XYZList[i], m_XYZList[i + 1]);
 	}
 
-	return Length;
+	return m_Length;
 }
 
 const GradPathBase_c GradPathBase_c::SubGP(int BegPt, int EndPt) const{
@@ -402,6 +414,8 @@ const Boolean_t GradPathBase_c::Resample(const int & NumPoints){
 	}
 	else IsOk = FALSE;
 
+	m_NumGPPoints = m_XYZList.size();
+
 	return IsOk;
 }
 
@@ -430,7 +444,7 @@ const Boolean_t GradPathBase_c::Reverse(){
 *	sharp bend can cut the corner at the bend, so
 *	this method avoids that.
 */
-GradPathBase_c & GradPathBase_c::ConcatenateResample(const GradPathBase_c & rhs, const int & NumPoints)
+GradPathBase_c & GradPathBase_c::ConcatenateResample(GradPathBase_c & rhs, const int & NumPoints)
 {
 	int iJunk;
 
@@ -439,7 +453,7 @@ GradPathBase_c & GradPathBase_c::ConcatenateResample(const GradPathBase_c & rhs,
 	return *this;
 }
 
-GradPathBase_c & GradPathBase_c::ConcatenateResample(const GradPathBase_c & rhs, const int & NumPoints, int & BrigePtNum)
+GradPathBase_c & GradPathBase_c::ConcatenateResample(GradPathBase_c & rhs, const int & NumPoints, int & BrigePtNum)
 {
 	double MyLength = GetLength();
 	double rhsLength = rhs.GetLength();
@@ -640,7 +654,7 @@ const Boolean_t GradPathBase_c::SaveAsOrderedZone(const string & ZoneName, const
 
 			VarTypes[RhoVarNum - 1] = FieldDataType_Double;
 
-			IsOk = SaveAsOrderedZone(ZoneName, VarTypes, XYZVarNums, RhoVarNum, MeshColor);
+			IsOk = SaveAsOrderedZone(ZoneName, VarTypes, XYZVarNums, RhoVarNum, TRUE, MeshColor);
 		}
 	}
 
@@ -737,7 +751,7 @@ const Boolean_t GradPathBase_c::SaveAsCSV(const string & PathToFile, const Boole
 /*
 *	Default constructor
 */
-GradPath_c::GradPath_c() : GradPathBase_c()
+GradPath_c::GradPath_c()
 {
 	m_StartPoint.fill(-1e50);
 	m_ODE_Data.Direction = StreamDir_Invalid;
@@ -822,11 +836,11 @@ GradPath_c::GradPath_c(EntIndex_t ZoneNum,
 /*
  *	Copy constructor
  */
-GradPath_c::GradPath_c(const GradPath_c & a)
+GradPath_c::GradPath_c(const GradPath_c & a) : GradPathBase_c()
 {
 	*this = a;
 }
-GradPath_c::GradPath_c(const GradPathBase_c & a)
+GradPath_c::GradPath_c(const GradPathBase_c & a) : GradPathBase_c()
 {
 	*this = a;
 }
@@ -1059,6 +1073,12 @@ const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
 
 		m_GradPathMade = FALSE;
 
+		if (m_GradPathReady){
+			int GPSize = GP_NumPointsBufferFactor * m_NumGPPoints;
+			m_XYZList.reserve(GPSize);
+			m_RhoList.reserve(GPSize);
+		}
+
 		return m_GradPathReady;
 	}
 
@@ -1085,12 +1105,14 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 		IsOk = SetIndexAndWeightsForPoint(m_StartPoint, m_ODE_Data.VolZoneInfo);
 
 		if (IsOk){
-			m_XYZList.reserve(GPSize);
+// 			m_XYZList.reserve(GPSize);
 			m_XYZList.push_back(m_StartPoint);
 
-			m_RhoList.reserve(GPSize);
+// 			m_RhoList.reserve(GPSize);
 			m_RhoList.push_back(RhoByCurrentIndexAndWeights());
 		}
+
+		m_StartEndCPNum[1] = -1;
 
 
 		int Status = GSL_SUCCESS;
@@ -1252,35 +1274,62 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 				}
 				else if (m_HowTerminate == GPTerminate_AtCP || m_HowTerminate == GPTerminate_AtCPRadius){
 					Boolean_t PointFound = FALSE;
-					for (int CPNum = 0; CPNum < m_NumCPs && !PointFound; ++CPNum){
-						if (CPNum != m_StartEndCPNum[0]){
-							if (m_CPs == NULL){
+					if (m_CPs == NULL){
+						for (int CPNum = 0; CPNum < m_NumCPs && !PointFound; ++CPNum){
+							if (CPNum != m_StartEndCPNum[0]){
 								for (int i = 0; i < 3; ++i){
 									NewPoint[i] = m_CPXYZPtrs[i][CPNum];
 								}
-							}
-							else{
-								NewPoint = m_CPs->GetXYZ(CPNum);
-							}
-							double PointRadiusSqr = DistSqr(PtI, NewPoint);
-							if (PointRadiusSqr <= m_TermPointRadiusSqr){
-								if (m_HowTerminate == GPTerminate_AtCPRadius){
-									double OldRadius = Distance(PtIm1, NewPoint);
+								double PointRadiusSqr = DistSqr(PtI, NewPoint);
+								if (PointRadiusSqr <= m_TermPointRadiusSqr){
+									if (m_HowTerminate == GPTerminate_AtCPRadius){
+										double OldRadius = Distance(PtIm1, NewPoint);
 
-									NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (sqrt(PointRadiusSqr) - OldRadius));
+										NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (sqrt(PointRadiusSqr) - OldRadius));
+									}
+
+									IsOk = SetIndexAndWeightsForPoint(NewPoint, m_ODE_Data.VolZoneInfo);
+									if (IsOk){
+										Rho = RhoByCurrentIndexAndWeights();
+
+										m_XYZList.push_back(NewPoint);
+										m_RhoList.push_back(Rho);
+
+										m_StartEndCPNum[1] = CPNum;
+									}
+
+									PointFound = TRUE;
 								}
+							}
+						}
+					}
+					else{
+						for (const auto & SaddleTypeNum : CPSaddleTypeNums){
+							for (int SaddleCPNum = 0; SaddleCPNum < m_CPs->NumCPs(SaddleTypeNum) && !PointFound; ++SaddleCPNum){
+								int TotCPNum = m_CPs->GetTotOffsetFromTypeNumOffset(SaddleTypeNum, SaddleCPNum);
+								if (TotCPNum != m_StartEndCPNum[0]){
+									NewPoint = m_CPs->GetXYZ(SaddleTypeNum, SaddleCPNum);
+									double PointRadiusSqr = DistSqr(PtI, NewPoint);
+									if (PointRadiusSqr <= m_TermPointRadiusSqr){
+										if (m_HowTerminate == GPTerminate_AtCPRadius){
+											double OldRadius = Distance(PtIm1, NewPoint);
 
-								IsOk = SetIndexAndWeightsForPoint(NewPoint, m_ODE_Data.VolZoneInfo);
-								if (IsOk){
-									Rho = RhoByCurrentIndexAndWeights();
+											NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (sqrt(PointRadiusSqr) - OldRadius));
+										}
 
-									m_XYZList.push_back(NewPoint);
-									m_RhoList.push_back(Rho);
+										IsOk = SetIndexAndWeightsForPoint(NewPoint, m_ODE_Data.VolZoneInfo);
+										if (IsOk){
+											Rho = RhoByCurrentIndexAndWeights();
 
-									m_StartEndCPNum[1] = CPNum;
+											m_XYZList.push_back(NewPoint);
+											m_RhoList.push_back(Rho);
+
+											m_StartEndCPNum[1] = TotCPNum;
+										}
+
+										PointFound = TRUE;
+									}
 								}
-
-								PointFound = TRUE;
 							}
 						}
 					}
@@ -1328,6 +1377,30 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 			gsl_multiroot_fdfsolver_free(MR.s);
 		// 	if (m_GPType && MR.pos != NULL)
 		// 		gsl_vector_free(MR.pos);
+
+		if (m_StartEndCPNum[1] < 0 && (m_HowTerminate == GPTerminate_AtCP || m_HowTerminate == GPTerminate_AtCPRadius)){
+			/*
+			 *	Check to see if terminating point coincides with a CP
+			 */
+			Boolean_t PointFound = FALSE;
+			for (int CPNum = 0; CPNum < m_NumCPs && !PointFound; ++CPNum){
+				if (CPNum != m_StartEndCPNum[0]){
+					if (m_CPs == NULL){
+						for (int i = 0; i < 3; ++i){
+							NewPoint[i] = m_CPXYZPtrs[i][CPNum];
+						}
+					}
+					else{
+						NewPoint = m_CPs->GetXYZ(CPNum);
+					}
+					double PointRadiusSqr = DistSqr(PtI, NewPoint);
+					if (PointRadiusSqr <= m_TermPointRadiusSqr){
+						m_StartEndCPNum[1] = CPNum;
+						PointFound = TRUE;
+					}
+				}
+			}
+		}
 
 		IsOk = m_GradPathMade = (IsOk && m_RhoList.size() > 0);
 		if (IsOk && m_GPType)

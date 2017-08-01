@@ -1207,6 +1207,8 @@ const Boolean_t CalcEigenSystemForNode(const int & ii,
 // 	
 	eig_sym( EigenValues, EigenVectors, Hessian);
 
+// 	EigenVectors = mat33(EigenVectors.t());
+
 	return IsOk;
 }
 
@@ -3356,7 +3358,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 // 											}
 
 											for (int i = 0; i < 3; ++i)
-												ThreadDotPtds[ThreadNum][i] = abs(dot(ThreadEigVecs[ThreadNum].row(i), ThreadGrad[ThreadNum]));
+												ThreadDotPtds[ThreadNum][i] = abs(dot(ThreadEigVecs[ThreadNum].col(i), ThreadGrad[ThreadNum]));
 
 											std::sort(ThreadDotPtds[ThreadNum].begin(), ThreadDotPtds[ThreadNum].end());
 										}
@@ -3484,7 +3486,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 										}
 
 										for (int i = 0; i < 3; ++i)
-											ThreadDotPtds[ThreadNum][i] = dot(ThreadEigVecs[ThreadNum].row(i), ThreadGrad[ThreadNum]);
+											ThreadDotPtds[ThreadNum][i] = dot(ThreadEigVecs[ThreadNum].col(i), ThreadGrad[ThreadNum]);
 									}
 
 									switch (*CalcVar){

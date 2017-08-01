@@ -306,7 +306,21 @@ static void STDCALL FindCritPointsCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		GetInfoFromUserForBondalyzer(CRITICALPOINTS);
+		BondalyzerGetUserInfo(BondalyzerSteps_CriticalPoints);
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL DeleteCritPointsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		DeleteCPsGetUserInfo();
 	}
 	else
 	{
@@ -321,7 +335,7 @@ static void STDCALL FindBondPathsCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		GetInfoFromUserForBondalyzer(BONDPATHS);
+		BondalyzerGetUserInfo(BondalyzerSteps_BondPaths);
 	}
 	else
 	{
@@ -335,7 +349,7 @@ static void STDCALL FindRingLinesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		GetInfoFromUserForBondalyzer(RINGLINES);
+		BondalyzerGetUserInfo(BondalyzerSteps_RingLines);
 	}
 	else
 	{
@@ -349,7 +363,7 @@ static void STDCALL FindBondSurfacesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		GetInfoFromUserForBondalyzer(INTERATOMICSURFACES);
+		BondalyzerGetUserInfo(BondalyzerSteps_InteratomicSurfaces);
 	}
 	else
 	{
@@ -363,7 +377,7 @@ static void STDCALL FindRingSurfacesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		GetInfoFromUserForBondalyzer(RINGSURFACES);
+		BondalyzerGetUserInfo(BondalyzerSteps_RingSurfaces);
 	}
 	else
 	{
@@ -469,6 +483,12 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("1. Find critical points").c_str(),
 		'\0',
 		FindCritPointsCallback);
+
+
+	TecUtilMenuAddOption("Bondalyzer",
+		string("1a. Delete critical point(s)").c_str(),
+		'\0',
+		DeleteCritPointsCallback);
 
 	TecUtilMenuAddOption("Bondalyzer",
 		string("2. Find bond paths").c_str(),

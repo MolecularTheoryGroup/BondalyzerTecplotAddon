@@ -90,10 +90,7 @@ public:
 	const GradPathBase_c operator+(const GradPathBase_c & rhs) const;
 	const vec3 operator[](const int & i) const{
 		REQUIRE(abs(i) < m_XYZList.size());
-		if (i >= 0)
-			return m_XYZList[i];
-		else
-			return m_XYZList[m_XYZList.size() + i];
+		return (i >= 0) ? m_XYZList[i] : m_XYZList[m_XYZList.size() + i];
 	}
 
 
@@ -116,8 +113,8 @@ public:
 
 	const Boolean_t Resample(const int & NumPoints);
 	const Boolean_t Reverse();
-	GradPathBase_c & ConcatenateResample(const GradPathBase_c & rhs, const int & NumPoints);
-	GradPathBase_c & ConcatenateResample(const GradPathBase_c & rhs, const int & NumPoints, int & BrigePtNum);
+	GradPathBase_c & ConcatenateResample(GradPathBase_c & rhs, const int & NumPoints);
+	GradPathBase_c & ConcatenateResample(GradPathBase_c & rhs, const int & NumPoints, int & BrigePtNum);
 	GradPathBase_c & Concatenate(const GradPathBase_c & rhs) { return *this += rhs; }
 	const Boolean_t Trim(const vec3 & Point, const double & Radius);
 	void PointAppend(const vec3 & Point, const double & Rho);
@@ -138,13 +135,17 @@ public:
 	*/
 	const Boolean_t IsMade() const { return m_GradPathMade; }
 	const Boolean_t IsReady() const { return m_GradPathReady; }
-	const double GetLength() const;
+	const double GetLength();
 	const int GetCount() const {
 		return static_cast<const int>(m_XYZList.size());
 	}
 	vector<int> GetStartEndCPNum() const{
 		vector<int> Nums = { m_StartEndCPNum[0], m_StartEndCPNum[1] };
 		return Nums;
+	}
+	const int GetStartEndCPNum(const unsigned int & i) const{
+		REQUIRE(i < 2);
+		return m_StartEndCPNum[i];
 	}
 
 	const vec3 XYZAt(const int & i) const { return vec3(m_XYZList[i]); }
@@ -168,6 +169,8 @@ protected:
 	int m_StartEndCPNum[2];
 
 	int m_NumGPPoints;
+
+	double m_Length = -1;
 
 	Boolean_t m_GradPathReady = FALSE;
 	Boolean_t m_GradPathMade = FALSE;

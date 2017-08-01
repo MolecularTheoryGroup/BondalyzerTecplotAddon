@@ -23,16 +23,18 @@ using namespace arma;
 using std::vector;
 
 enum CPType_e{
-	ATOMCP = -3,
-	BONDCP = -1,
-	RINGCP = 1,
-	CAGECP = 3,
-	RINGCPFF = 11,
-	CAGECPFF = 13
+	CPType_NuclearCP = -3,
+	CPType_BondCP = -1,
+	CPType_RingCP = 1,
+	CPType_CageCP = 3,
+	CPType_RingCPFF = 11,
+	CPType_CageCPFF = 13,
+
+	CPType_Invalid = -99
 };
 
 // const static char CPTypeList[] = { -3, -1, 1, 3, 11, 13 };
-const static char CPTypeList[] = { ATOMCP, BONDCP, RINGCP, CAGECP, RINGCPFF, CAGECPFF };
+const static CPType_e CPTypeList[] = { CPType_NuclearCP, CPType_BondCP, CPType_RingCP, CPType_CageCP, CPType_RingCPFF, CPType_CageCPFF };
 
 const static vector<string> CPNameList = { "Nuclear", "Bond", "Ring", "Cage", "Ring FF", "Cage FF" };
 
@@ -44,6 +46,8 @@ const static vector<int> CPPrincDirInds = {
 	-1, // ringFF n/a
 	-1 // cageFF n/a
 };
+
+const static vector<int> CPSaddleTypeNums = { 1, 2 };
 
 const static vector<ColorIndex_t> CPColorList = { White_C, Red_C, Green_C, Cyan_C, Custom5_C, Custom6_C };
 
@@ -87,6 +91,7 @@ public:
 	const int NumDimensions() const { return m_Dimensions; }
 
 	vector<int> GetTypeNumOffsetFromTotOffset(const int & TotOffset) const;
+	const CPType_e GetTypeFromTotOffset(const int & TotOffset) const;
 	const int GetTotOffsetFromTypeNumOffset(const int & TypeNum, const int & TypeOffset) const;
 
 	const double GetMinCPDist();
@@ -144,6 +149,8 @@ private:
 	double m_RhoCutoff;
 
 };
+
+void SetCPZone(const int & ZoneNum);
 
 const Boolean_t FindCPs(CritPoints_c & CPs,
 	VolExtentIndexWeights_s VolInfo,
