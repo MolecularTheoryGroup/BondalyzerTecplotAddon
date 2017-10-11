@@ -1,7 +1,11 @@
 #include "TECADDON.h"
 
-#include "CSM_FIELD_DATA_POINTER.h"
+#include <armadillo>
 
+#include "CSM_FIELD_DATA_POINTER.h"
+#include "CSM_VOL_EXTENT_INDEX_WEIGHTS.h"
+
+using namespace arma;
 
 /*
 *	Begin methods for FieldDataPointer_c
@@ -63,90 +67,95 @@ FieldDataPointer_c & FieldDataPointer_c::operator=(const FieldDataPointer_c & rh
 const double FieldDataPointer_c::operator[](const unsigned int & i) const{
 	double Val = 0.0;
 	REQUIRE(m_IsReady && i < m_Size && i >= 0);
-	if (m_IsReady && i < m_Size && i >= 0){
-		if (m_IsReadPtr){
-			switch (m_FDType){
-				case FieldDataType_Float:
-					Val = static_cast<double>(m_ReadFltPtr[i]);
-					break;
-				case FieldDataType_Double:
-					Val = static_cast<double>(m_ReadDblPtr[i]);
-					break;
-				case FieldDataType_Int16:
-					Val = static_cast<double>(m_ReadInt16Ptr[i]);
-					break;
-				case FieldDataType_Int32:
-					Val = static_cast<double>(m_ReadInt32Ptr[i]);
-					break;
-				case FieldDataType_Byte:
-					Val = static_cast<double>(m_ReadBytePtr[i]);
-					break;
-				case FieldDataType_Bit:
-					Val = static_cast<double>(m_ReadBitPtr[i]);
-					break;
-				default:
-					break;
-			}
-		}
-		else{
-			switch (m_FDType){
-				case FieldDataType_Float:
-					Val = static_cast<double>(m_WriteFltPtr[i]);
-					break;
-				case FieldDataType_Double:
-					Val = static_cast<double>(m_WriteDblPtr[i]);
-					break;
-				case FieldDataType_Int16:
-					Val = static_cast<double>(m_WriteInt16Ptr[i]);
-					break;
-				case FieldDataType_Int32:
-					Val = static_cast<double>(m_WriteInt32Ptr[i]);
-					break;
-				case FieldDataType_Byte:
-					Val = static_cast<double>(m_WriteBytePtr[i]);
-					break;
-				case FieldDataType_Bit:
-					Val = static_cast<double>(m_WriteBitPtr[i]);
-					break;
-				default:
-					break;
-			}
+	if (m_IsReadPtr){
+		switch (m_FDType){
+			case FieldDataType_Float:
+				Val = static_cast<double>(m_ReadFltPtr[i]);
+				break;
+			case FieldDataType_Double:
+				Val = static_cast<double>(m_ReadDblPtr[i]);
+				break;
+			case FieldDataType_Int16:
+				Val = static_cast<double>(m_ReadInt16Ptr[i]);
+				break;
+			case FieldDataType_Int32:
+				Val = static_cast<double>(m_ReadInt32Ptr[i]);
+				break;
+			case FieldDataType_Byte:
+				Val = static_cast<double>(m_ReadBytePtr[i]);
+				break;
+			case FieldDataType_Bit:
+				Val = static_cast<double>(m_ReadBitPtr[i]);
+				break;
+			default:
+				break;
 		}
 	}
-	else throw - 1;
+	else{
+		switch (m_FDType){
+			case FieldDataType_Float:
+				Val = static_cast<double>(m_WriteFltPtr[i]);
+				break;
+			case FieldDataType_Double:
+				Val = static_cast<double>(m_WriteDblPtr[i]);
+				break;
+			case FieldDataType_Int16:
+				Val = static_cast<double>(m_WriteInt16Ptr[i]);
+				break;
+			case FieldDataType_Int32:
+				Val = static_cast<double>(m_WriteInt32Ptr[i]);
+				break;
+			case FieldDataType_Byte:
+				Val = static_cast<double>(m_WriteBytePtr[i]);
+				break;
+			case FieldDataType_Bit:
+				Val = static_cast<double>(m_WriteBitPtr[i]);
+				break;
+			default:
+				break;
+		}
+	}
 
 	return Val;
 }
-const Boolean_t FieldDataPointer_c::Write(const unsigned int & i, const double & Val) const{
-	Boolean_t IsOk = (m_IsReady && !m_IsReadPtr && i < m_Size && i >= 0);
 
-	if (IsOk){
-		switch (m_FDType){
-			case FieldDataType_Float:
-				m_WriteFltPtr[i] = static_cast<float_t>(Val);
-				break;
-			case FieldDataType_Double:
-				m_WriteDblPtr[i] = static_cast<double_t>(Val);
-				break;
-			case FieldDataType_Int16:
-				m_WriteInt16Ptr[i] = static_cast<Int16_t>(Val);
-				break;
-			case FieldDataType_Int32:
-				m_WriteInt32Ptr[i] = static_cast<Int32_t>(Val);
-				break;
-			case FieldDataType_Byte:
-				m_WriteBytePtr[i] = static_cast<Byte_t>(Val);
-				break;
-			case FieldDataType_Bit:
-				m_WriteBitPtr[i] = static_cast<bool>(Val);
-				break;
-			default:
-				IsOk = FALSE;
-				break;
-		}
+const double FieldDataPointer_c::At(vec3 & Pt, VolExtentIndexWeights_s & VolInfo) const{
+	if (SetIndexAndWeightsForPoint(Pt, VolInfo)){
+		return ValByCurrentIndexAndWeightsFromRawPtr(VolInfo, *this);
+	}
+	else{
+		TecUtilDialogErrMsg("Failed to interpolate value with data pointer");
+		return -1;
+	}
+}
+
+const Boolean_t FieldDataPointer_c::Write(const unsigned int & i, const double & Val) const{
+	REQUIRE(m_IsReady && !m_IsReadPtr && i < m_Size && i >= 0);
+
+	switch (m_FDType){
+		case FieldDataType_Float:
+			m_WriteFltPtr[i] = static_cast<float_t>(Val);
+			break;
+		case FieldDataType_Double:
+			m_WriteDblPtr[i] = static_cast<double_t>(Val);
+			break;
+		case FieldDataType_Int16:
+			m_WriteInt16Ptr[i] = static_cast<Int16_t>(Val);
+			break;
+		case FieldDataType_Int32:
+			m_WriteInt32Ptr[i] = static_cast<Int32_t>(Val);
+			break;
+		case FieldDataType_Byte:
+			m_WriteBytePtr[i] = static_cast<Byte_t>(Val);
+			break;
+		case FieldDataType_Bit:
+			m_WriteBitPtr[i] = static_cast<bool>(Val);
+			break;
+		default:
+			break;
 	}
 
-	return IsOk;
+	return TRUE;
 }
 const Boolean_t FieldDataPointer_c::GetReadPtr(const int & ZoneNum, const int & VarNum){
 	m_IsReady = (
@@ -167,10 +176,12 @@ const Boolean_t FieldDataPointer_c::GetReadPtr(const int & ZoneNum, const int & 
 
 		TecUtilZoneGetIJK(ZoneNum, &m_MaxIJK[0], &m_MaxIJK[1], &m_MaxIJK[2]);
 
-		if (TecUtilZoneIsOrdered(ZoneNum)){
+		m_ZoneType = TecUtilZoneGetType(ZoneNum);
+
+		if (m_ZoneType == ZoneType_Ordered){
 			m_Size = m_MaxIJK[0] * m_MaxIJK[1] * m_MaxIJK[2];
 		}
-		else if (TecUtilZoneIsFiniteElement(ZoneNum)){
+		else if (m_ZoneType != ZoneType_Invalid){
 			if (m_ValueLocation == ValueLocation_Nodal)
 				m_Size = m_MaxIJK[0];
 			else
@@ -225,10 +236,12 @@ const Boolean_t FieldDataPointer_c::GetWritePtr(const int & ZoneNum, const int &
 
 		TecUtilZoneGetIJK(ZoneNum, &m_MaxIJK[0], &m_MaxIJK[1], &m_MaxIJK[2]);
 
-		if (TecUtilZoneIsOrdered(ZoneNum)){
+		m_ZoneType = TecUtilZoneGetType(ZoneNum);
+
+		if (m_ZoneType == ZoneType_Ordered){
 			m_Size = m_MaxIJK[0] * m_MaxIJK[1] * m_MaxIJK[2];
 		}
-		else if (TecUtilZoneIsFiniteElement(ZoneNum)){
+		else if (m_ZoneType != ZoneType_Invalid){
 			if (m_ValueLocation == ValueLocation_Nodal)
 				m_Size = m_MaxIJK[0];
 			else
@@ -267,7 +280,7 @@ const Boolean_t FieldDataPointer_c::GetWritePtr(const int & ZoneNum, const int &
 
 void FieldDataPointer_c::Close(){
 	if (m_IsReady){
-		if (m_IsReadPtr && m_Zone > 0 && m_Var > 0){
+		if (!m_IsReadPtr && m_Zone > 0 && m_Var > 0){
 			Set_pa ZoneList = TecUtilSetAlloc(FALSE);
 			TecUtilSetAddMember(ZoneList, m_Zone, FALSE);
 
@@ -284,29 +297,69 @@ void FieldDataPointer_c::Close(){
 			TecUtilSetDealloc(&ZoneList);
 			TecUtilSetDealloc(&VarList);
 		}
-		*this = FieldDataPointer_c();
-// 		m_VoidPtr = NULL;
-// 
-// 		m_ReadBitPtr = NULL;
-// 		m_ReadBytePtr = NULL;
-// 		m_ReadInt16Ptr = NULL;
-// 		m_ReadInt32Ptr = NULL;
-// 		m_ReadFltPtr = NULL;
-// 		m_ReadDblPtr = NULL;
-// 
-// 		m_WriteBitPtr = NULL;
-// 		m_WriteBytePtr = NULL;
-// 		m_WriteInt16Ptr = NULL;
-// 		m_WriteInt32Ptr = NULL;
-// 		m_WriteFltPtr = NULL;
-// 		m_WriteDblPtr = NULL;
-// 
-// 		m_Size = 0;
-// 
-// 		m_Zone = -1;
-// 		m_Var = -1;
-// 
-// 		m_IsReady = FALSE;
-// 		m_FDType = FieldDataType_Invalid;
+		m_IsReady = FALSE;
 	}
+}
+
+
+/*
+ *	Begin methods for FieldVecPointer_c
+ */
+
+
+FieldVecPointer_c::FieldVecPointer_c(vector<FieldDataPointer_c> & InVecs){
+	REQUIRE(InVecs.size() == 3);
+	for (int i = 0; i < 3; ++i) Ptrs[i] = InVecs[i];
+}
+
+const Boolean_t FieldVecPointer_c::operator == (const FieldVecPointer_c & rhs) const{
+	for (int i = 0; i < 3; ++i) if (!(Ptrs[i] == rhs.Ptrs[i])) return FALSE;
+
+	return TRUE;
+}
+FieldVecPointer_c & FieldVecPointer_c::operator=(const FieldVecPointer_c & rhs){
+	if (rhs == *this)
+		return *this;
+
+	for (int i = 0; i < 3; ++i) Ptrs[i] = rhs.Ptrs[i];
+
+	return *this;
+}
+const vec3 FieldVecPointer_c::operator[](const unsigned int & i) const{
+	vec3 a;
+	for (int d = 0; d < 3; ++d) a[d] = Ptrs[d][i];
+
+	return a;
+}
+const Boolean_t FieldVecPointer_c::Write(const unsigned int & i, const vec3 & Vec) const{
+	for (int d = 0; d < 3; ++d) if (!Ptrs[d].Write(i, Vec[d])) return FALSE;
+
+	return TRUE;
+}
+const Boolean_t FieldVecPointer_c::GetReadPtr(const int & ZoneNum, const vector<int> & VarNums){
+	Boolean_t IsOk = TRUE;
+
+	for (int i = 0; i < 3 && IsOk; ++i){
+		IsOk = (Ptrs[i].GetReadPtr(ZoneNum, VarNums[i]) && Ptrs[i].FDType() == FieldDataType_Double);
+		if (i > 0) IsOk = (IsOk && Ptrs[i].ValueLocation() == Ptrs[i - 1].ValueLocation());
+	}
+
+	if (!IsOk) Close();
+
+	return IsOk;
+}
+const Boolean_t FieldVecPointer_c::GetWritePtr(const int & ZoneNum, const vector<int> & VarNums){
+	Boolean_t IsOk = TRUE;
+	
+	for (int i = 0; i < 3 && IsOk; ++i){
+		IsOk = (Ptrs[i].GetWritePtr(ZoneNum, VarNums[i]) && Ptrs[i].FDType() == FieldDataType_Double);
+		if (i > 0) IsOk = (IsOk && Ptrs[i].ValueLocation() == Ptrs[i - 1].ValueLocation());
+	}
+
+	if (!IsOk) Close();
+
+	return IsOk;
+}
+void FieldVecPointer_c::Close(){
+	for (int i = 0; i < 3; ++i) Ptrs[i].Close();
 }

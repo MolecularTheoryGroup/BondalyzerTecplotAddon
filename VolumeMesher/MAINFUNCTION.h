@@ -3,6 +3,6 @@
 
 void Mesher();
 void MainFunction();
-Boolean_t SetPercent(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText);
+Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText);
 
 #endif

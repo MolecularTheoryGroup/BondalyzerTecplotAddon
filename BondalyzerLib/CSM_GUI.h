@@ -15,6 +15,7 @@ enum GuiFieldType_e{ // comment describes gui field and specifies what should be
 
 	Gui_ZoneSelectInt,			// Text input field to select zone: zone name
 	Gui_VarSelectInt,			// Text input field to select var: var name
+	Gui_Int,					// Text input to specity an integer: default value
 	Gui_Double,					// Text input field to specify double value: default value
 
 	Gui_Toggle,					// Toggle (checkbox): "1" for true (checked) or "0" for false (unchecked)
@@ -29,6 +30,8 @@ enum GuiFieldType_e{ // comment describes gui field and specifies what should be
 	//	Option menu is placed above multi-select box to specify zone
 	//	Val is zone name to load in option menu
 	//	** YOU CAN ONLY HAVE ONE IN A SINGLE DIALOG DUE TO LIMITATIONS OF THE LIST CALLBACK FUNCTION!!
+	
+	Gui_String,					// User-provided string
 
 	Gui_VertSep,				// specify neither Label or Val
 
@@ -41,7 +44,8 @@ public:
 	GuiField_c();
 	GuiField_c(const GuiFieldType_e & Type,
 		const string & Label = "",
-		const string & Val = "");
+		const string & Val = "",
+		const vector<void*> & CallbackFuntions = vector<void*>());
 	~GuiField_c();
 
 	const GuiFieldType_e GetType() const { return Type_m; }
@@ -54,6 +58,7 @@ public:
 	const string GetReturnString() const;
 	const bool GetReturnBool() const;
 	const vector<int> GetReturnIntVec() const;
+	const vector<string> GetReturnStringVec() const;
 
 	void SetSearchString(const string & s){ InputVal_m = s; }
 	void AppendSearchString(const string & s){ InputVal_m += s; }
@@ -64,6 +69,7 @@ public:
 	void SetReturnString(const string & Val);
 	void SetReturnBool(const bool & Val);
 	void SetReturnIntVec(const vector<int> & Val);
+	void SetReturnStringVec(const vector<string> & Val);
 
 private:
 	void CheckIntType() const;
@@ -71,6 +77,7 @@ private:
 	void CheckBoolType() const;
 	void CheckStringType() const;
 	void CheckIntVecType() const;
+	void CheckStringVecType() const;
 
 	GuiFieldType_e Type_m;
 	string Label_m;
@@ -81,13 +88,20 @@ private:
 	string ValueString_m;
 	bool ValueBool_m;
 	vector<int> ValueIntVec_m;
+	vector<string> ValueStringVec_m;
 	int FieldID_m[2];
+	vector<void*> CallbackFuntions_m;
 };
 
 typedef void(*CSMGuiReturnFunc_pf)(const bool GuiSuccess, const vector<GuiField_c> & Fields);
 
 void CSMGui(const string & Title, const vector<GuiField_c> & Fields, CSMGuiReturnFunc_pf ReturnFunc, const AddOn_pa & InputAddOnID);
 
+void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID = NULL);
+void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID = NULL);
+
+void CSMGuiLock();
+void CSMGuiUnlock();
 
 
 #endif

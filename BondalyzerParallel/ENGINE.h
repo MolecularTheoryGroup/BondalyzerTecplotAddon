@@ -46,10 +46,15 @@ void RefineActiveZones();
 void GetClosedIsoSurfaceFromPoints();
 void GetClosedIsoSurfaceFromNodes();
 void GetAllClosedIsoSurfaces();
+void ConnectCPsGetUserInfo();
+void DrawEigenvectorArrowsGetUserInfo();
 class FieldDataPointer_c;
 void GetClosedIsoSurface(const int & IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
 
 void BondalyzerGetUserInfo(BondalyzerSteps_e CalcType);
+
+void VarNameFindReplaceGetUserInfo();
+void ZoneNameFindReplaceGetUserInfo();
 
 const Boolean_t FindCritPoints(const int & VolZoneNum,
 	const vector<int> & XYZVarNums,
@@ -60,6 +65,7 @@ const Boolean_t FindCritPoints(const int & VolZoneNum,
 	const double & CellSpacing);
 
 void DeleteCPsGetUserInfo();
+void ExtractCPsGetUserInfo();
 
 const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	const int & AllCPsZoneNum,
@@ -81,7 +87,17 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 	const int & RhoVarNum,
 	const vector<int> & GradVarNums,
 	const vector<int> & HessVarNums,
+	const int & RCSFuncVarNum,
 	const Boolean_t & IsPeriodic);
+
+void ExtractRadiusContourLinesToIOrderedPoints(const vector<int> & ZoneNums,
+	const vec3 & Origin, 
+	const double & Radius,
+	const vector<int> & XYZVarNums);
+
+void ExtractRSIntersectionsGetUserInfo();
+
+void TestFunction();
 
 
 #endif /* ENGINE_H_ */

@@ -63,8 +63,8 @@ void X2DataValues(vector<double> &LevelVector, double Min, double Max)
 	else
 	{
 		LevelVector.push_back(Min);
-		while (LevelVector[LevelVector.size() - 1] < Max){
-			LevelVector.push_back(2 * LevelVector[LevelVector.size() - 1]);
+		while (LevelVector.back() < Max){
+			LevelVector.push_back(2 * LevelVector.back());
 		}
 	}
 }

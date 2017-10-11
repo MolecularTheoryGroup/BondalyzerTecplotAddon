@@ -8,6 +8,7 @@
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_VOL_EXTENT_INDEX_WEIGHTS.h"
 #include "CSM_CALC_VARS.h"
+#include "CSM_GRAD_PATH.h"
 
 #include "CSM_CRIT_POINTS.h"
 
@@ -64,16 +65,16 @@ CritPoints_c::CritPoints_c(const vector<CritPoints_c> & CPLists){
 }
 
 CritPoints_c::CritPoints_c(const int & CPZoneNum, 
-	const vector<int> & XYZVarNums, 
-	const int & RhoVarNum, 
+	const vector<int> & XYZVarNums,
 	const int & CPTypeVarNum,
+	const int & RhoVarNum, 
 	MultiRootParams_s *MR) : CritPoints_c()
 {
 	int NumZones = TecUtilDataSetGetNumZones();
 	int NumVars = TecUtilDataSetGetNumVars();
 
 	REQUIRE(0 < CPZoneNum && CPZoneNum <= NumZones);
-	REQUIRE(0 < RhoVarNum && RhoVarNum <= NumVars);
+	REQUIRE(RhoVarNum <= NumVars);
 	REQUIRE(0 < CPTypeVarNum && CPTypeVarNum <= NumVars);
 	REQUIRE(XYZVarNums.size() == 3);
 	for (const auto & i : XYZVarNums) REQUIRE(0 < i && i < NumVars);
@@ -83,7 +84,7 @@ CritPoints_c::CritPoints_c(const int & CPZoneNum,
 
 	TecUtilDataLoadBegin();
 
-	if (!RhoPtr.GetReadPtr(CPZoneNum, RhoVarNum)){
+	if (RhoVarNum >= 0 && !RhoPtr.GetReadPtr(CPZoneNum, RhoVarNum)){
 		TecUtilDialogErrMsg("Failed to get CP rho pointer");
 		return;
 	}
@@ -96,10 +97,11 @@ CritPoints_c::CritPoints_c(const int & CPZoneNum,
 		return;
 	}
 
-	for (int iCP = 0; iCP < RhoPtr.GetSize(); ++iCP){
-		int ind = std::find(CPTypeList, CPTypeList + 6, CPTypePtr[iCP]) - CPTypeList;
+	for (int iCP = 0; iCP < CPTypePtr.Size(); ++iCP){
+		int CPType = CPTypePtr[iCP];
+		int ind = std::find(CPTypeList, std::end(CPTypeList), CPType) - CPTypeList;
 
-		m_Rho[ind].push_back(RhoPtr[iCP]);
+		m_Rho[ind].push_back(RhoPtr.IsReady() ? RhoPtr[iCP] : 0.0);
 		m_XYZ[ind].push_back(vec3());
 		for (int d = 0; d < 3; ++d) m_XYZ[ind].back()[d] = XYZPtrs[d][iCP];
 	}
@@ -144,10 +146,10 @@ CritPoints_c & CritPoints_c::operator+=(const CritPoints_c & rhs){
 	*	Getter methods
 	*/
 
-const double CritPoints_c::GetMinCPDist(){
-	if (m_MinCPDistFound)
+const double CritPoints_c::GetMinCPDist(const vector<CPType_e> & CPTypes){
+	if (m_MinCPDistFound && CPTypes == m_MinDistCPTypes)
 		return m_MinCPDist;
-	else if (FindMinCPDist())
+	else if (FindMinCPDist(CPTypes))
 		return m_MinCPDist;
 	else
 		return -1;
@@ -244,29 +246,55 @@ void CritPoints_c::Append(const CritPoints_c & rhs)
 	*	Mutators and other methods
 	*/
 
-const Boolean_t CritPoints_c::FindMinCPDist(){
+const Boolean_t CritPoints_c::FindMinCPDist(const vector<CPType_e> & CPTypes){
 	Boolean_t IsOk = (m_TotNumCPs > 0);
-	int MinI = -1, MinJ = -1;
+
+	vector<int> TypeIndList;
+	m_MinDistCPTypes = CPTypes;
+	for (const auto & i : CPTypes) TypeIndList.push_back(std::find(CPTypeList, std::end(CPTypeList), i) - CPTypeList);
+
+	int MinI = -1, MinJ = -1, MinII = -1, MinJJ = -1;
 	double TmpDbl;
 
 	m_MinCPDist = DBL_MAX;
 
 	if (IsOk){
-		for (int i = 0; i < m_TotNumCPs; ++i){
-			for (int j = i + 1; j < m_TotNumCPs; ++j){
-				TmpDbl = DistSqr(GetXYZ(i), GetXYZ(j));
-				if (TmpDbl < m_MinCPDist){
-					m_MinCPDist = TmpDbl;
-					MinI = i;
-					MinJ = j;
+		for (int i = 0; i < TypeIndList.size() - 1; ++i){
+			for (int j = i; j < TypeIndList.size(); ++j){
+				for (int ii = 0; ii < NumCPs(TypeIndList[i]); ++ii){
+					for (int jj = 0; jj < NumCPs(TypeIndList[j]); ++jj){
+						if (i != j || ii != jj){
+							TmpDbl = DistSqr(GetXYZ(TypeIndList[i], ii), GetXYZ(TypeIndList[j], jj));
+							if (TmpDbl < m_MinCPDist){
+								m_MinCPDist = TmpDbl;
+								MinI = i;
+								MinII = ii;
+								MinJ = j;
+								MinJJ = jj;
+							}
+						}
+					}
 				}
 			}
 		}
-		IsOk = (MinI >= 0 && MinJ >= 0);
+		IsOk = (MinI >= 0 && MinJ >= 0 && MinII >= 0 && MinJJ >= 0);
+
+// 		for (int i = 0; i < m_TotNumCPs; ++i){
+// 			for (int j = i + 1; j < m_TotNumCPs; ++j){
+// 				TmpDbl = DistSqr(GetXYZ(i), GetXYZ(j));
+// 				if (TmpDbl < m_MinCPDist){
+// 					m_MinCPDist = TmpDbl;
+// 					MinI = i;
+// 					MinJ = j;
+// 				}
+// 			}
+// 		}
+// 		IsOk = (MinI >= 0 && MinJ >= 0);
 	}
 
 	if (IsOk){
-		m_MinCPDist = Distance(GetXYZ(MinI), GetXYZ(MinJ));
+// 		m_MinCPDist = Distance(GetXYZ(MinI), GetXYZ(MinJ));
+		m_MinCPDist = Distance(GetXYZ(TypeIndList[MinI], MinII), GetXYZ(TypeIndList[MinJ], MinJJ));
 		m_MinCPDistFound = TRUE;
 	}
 
@@ -291,6 +319,7 @@ vector<int> CritPoints_c::GetTypeNumOffsetFromTotOffset(const int & TotOffset) c
 
 const CPType_e CritPoints_c::GetTypeFromTotOffset(const int & TotOffset) const{
 	CPType_e Type = CPType_Invalid;
+	if (TotOffset < 0) return Type;
 
 	int CPCount = 0;
 	for (int i = 0; i < 6; ++i){
@@ -329,7 +358,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 	/*
 	 *	Make CP type variable if it doesn't exist yet.
 	 */
-	int CPTypeVarNum = VarNumByName(CPTypeVarName);
+	int CPTypeVarNum = VarNumByName(CSMVarName.CritPointType);
 	FieldDataPointer_c CPTypePtr;
 	if (CPTypeVarNum <= 0){
 		/*
@@ -338,7 +367,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 		 *	bit for the CP type variable.
 		 */
 		vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Bit);
-		if (!TecUtilDataSetAddVar(CPTypeVarName.c_str(), DataTypes.data())){
+		if (!TecUtilDataSetAddVar(CSMVarName.CritPointType.c_str(), DataTypes.data())){
 			TecUtilDialogErrMsg("Failed to create CP type variable for CP zone");
 			return{ -1 };
 		}
@@ -349,7 +378,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 		DataTypes[i] = TecUtilDataValueGetType(1, i + 1);
 	DataTypes.back() = FieldDataType_Int16;
 
-	if (!TecUtilDataSetAddZone("Critical Points", NumCPs(), 1, 1, ZoneType_Ordered, DataTypes.data())){
+	if (!TecUtilDataSetAddZone(CSMZoneName.CriticalPoints.c_str(), NumCPs(), 1, 1, ZoneType_Ordered, DataTypes.data())){
 		TecUtilDialogErrMsg("Failed to create CP zone");
 		return{ -1 };
 	}
@@ -401,7 +430,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 		for (int t = 0; t < 6; ++t){
 			if (NumCPs(t) > 0){
 // 				DataTypes.push_back(FieldDataType_Int16);
-				if (!TecUtilDataSetAddZone(("Critical Points: " + CPNameList[t]).c_str(), NumCPs(t), 1, 1, ZoneType_Ordered, DataTypes.data())){
+				if (!TecUtilDataSetAddZone(CSMZoneName.CPType[t].c_str(), NumCPs(t), 1, 1, ZoneType_Ordered, DataTypes.data())){
 					TecUtilDialogErrMsg("Failed to create CP type zone");
 					return{ -1 };
 				}
@@ -491,7 +520,7 @@ void SetCPZone(const int & ZoneNum){
 
 	bool CPTypeFound = false;
 	for (int t = 0; t < 6; ++t){
-		if (!CPTypeFound && string("Critical Points: " + CPNameList[t]) == ZoneName){
+		if (!CPTypeFound && CSMZoneName.CPType[t] == ZoneName){
 			AuxDataZoneSetItem(ZoneNum, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.CPSubTypes[t]);
 			TecUtilZoneSetScatter(SV_COLOR, TmpSet, 0.0, CPColorList[t]);
 			CPTypeFound = true;
@@ -511,6 +540,18 @@ void SetCPZone(const int & ZoneNum){
 		TecUtilZoneSetActive(TmpSet, AssignOp_MinusEquals);
 	}
 
+	TecUtilStateChanged(StateChange_ZonesAdded, (ArbParam_t)TmpSet);
+
+	TecUtilZoneSetScatter(SV_SHOW, TmpSet, 0.0, TRUE);
+	TecUtilZoneSetScatter(SV_FRAMESIZE, TmpSet, 1, FALSE);
+	TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TmpSet, GeomShape_Sphere);
+	TecUtilZoneSetMesh(SV_SHOW, TmpSet, 0.0, FALSE);
+	TecUtilZoneSetContour(SV_SHOW, TmpSet, 0.0, FALSE);
+	TecUtilZoneSetShade(SV_SHOW, TmpSet, 0.0, FALSE);
+	TecUtilZoneSetVector(SV_SHOW, TmpSet, 0.0, FALSE);
+
+	TecUtilZoneSetActive(TmpSet, AssignOp_PlusEquals);
+
 	TecUtilSetDealloc(&TmpSet);
 	TecUtilStringDealloc(&ZoneName);
 }
@@ -522,6 +563,8 @@ void SetCPZone(const int & ZoneNum){
 /*
 	*	Function to return the actual function (gradient) value
 	*/
+
+
 
 int F3D(const gsl_vector * pos, void * params, gsl_vector * GradValues){
 
@@ -549,7 +592,7 @@ int F3D(const gsl_vector * pos, void * params, gsl_vector * GradValues){
 	}
 	else{
 		vec3 Grad;
-		CalcGradForPoint(Point, RootParams->VolInfo->DelXYZ, *RootParams->VolInfo, *RootParams->BasisVectors, 0, RootParams->IsPeriodic, Grad, *RootParams->RhoPtr, GPType_Invalid, params);
+		CalcGradForPoint(Point, RootParams->VolInfo->DelXYZ, *RootParams->VolInfo, eye<mat>(3,3), 0, RootParams->IsPeriodic, Grad, *RootParams->RhoPtr, GPType_Invalid, params);
 		for (int i = 0; i < 3; ++i){
 			gsl_vector_set(GradValues, i, Grad[i]);
 		}
@@ -613,7 +656,7 @@ int DF3D(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
 			CalcHessForPoint(Point,
 				RootParams->VolInfo->DelXYZ,
 				*RootParams->VolInfo,
-				*RootParams->BasisVectors,
+				eye<mat>(3,3),
 				RootParams->IsPeriodic,
 				Hess,
 				*RootParams->RhoPtr,
@@ -764,6 +807,10 @@ const Boolean_t CritPointInCell(
 	Point = (CellMaxXYZ + CellMinXYZ) * 0.5;
 	for (int i = 0; i < 3; ++i) gsl_vector_set(MR.pos, i, Point[i]);
 
+	vec3 CheckPt;
+	vec3 CellMinCheck = RootParams.VolInfo->BasisInverse * (CellMinXYZ - RootParams.VolInfo->MinXYZ), 
+		CellMaxCheck = RootParams.VolInfo->BasisInverse * (CellMaxXYZ - RootParams.VolInfo->MinXYZ);
+
 	// 	TecUtilDialogMessageBox("start point set", MessageBoxType_Information);
 
 	CPInCell = SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo);
@@ -798,17 +845,21 @@ const Boolean_t CritPointInCell(
 			Status = gsl_multiroot_test_residual(MR.s->f, 1e-7);
 
 			if (Iter > CheckPosIter || Iter >= MaxCPIter){
-				CPInCell = sum(Point >= CellMinXYZ) == 3 && sum(Point <= CellMaxXYZ) == 3;
+				CheckPt = RootParams.VolInfo->BasisInverse * (Point - RootParams.VolInfo->MinXYZ);
+				CPInCell = sum(CheckPt >= CellMinCheck) == 3 && sum(CheckPt <= CellMaxCheck) == 3;
 			}
 
 		} while (CPInCell && Status == GSL_CONTINUE && Iter < MaxCPIter);
 
-		Point = MR.s->x->data;
-
-		CPInCell = sum(Point >= CellMinXYZ) == 3 && sum(Point <= CellMaxXYZ) == 3;
-
-		RhoValue = 0.0;
 		if (CPInCell){
+			Point = MR.s->x->data;
+
+			CheckPt = RootParams.VolInfo->BasisInverse * (Point - RootParams.VolInfo->MinXYZ);
+			CPInCell = sum(CheckPt >= CellMinCheck) == 3 && sum(CheckPt <= CellMaxCheck) == 3;
+		}
+
+		if (CPInCell){
+			RhoValue = 0.0;
 			CPInCell = SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo);
 			RhoValue = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, *RootParams.RhoPtr);
 		}
@@ -874,11 +925,8 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 // 
 // 	TecUtilDialogMessageBox(string("FindCPs, RootParams.RhoPtr.IsReady() = " + to_string(RootParams.RhoPtr->IsReady())).c_str(), MessageBoxType_Information);
 
-	vector<vec3> BV(3);
-	BV[0] << 1 << 0 << 0;
-	BV[1] << 0 << 1 << 0;
-	BV[2] << 0 << 0 << 1;
-	RootParams.BasisVectors = &BV;
+	mat33 I = eye<mat>(3, 3);
+	RootParams.BasisVectors = &I;
 
 	RootParams.HasHess = HessPtrs.size() == 6;
 
@@ -900,11 +948,11 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 	vector<int> IJK(3);
 
 	if (StartIJK[2] == 1)
-		TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+		StatusLaunch(StatusStr.c_str(), VolInfo.AddOnID, TRUE);
 
 	for (IJK[2] = StartIJK[2]; IJK[2] <= EndIJK[2] && IsOk; ++IJK[2]){
 		kNum++;
-		if (StartIJK[2] == 1 && !SetPercent(kNum, Range, StatusStr, VolInfo.AddOnID)){
+		if (StartIJK[2] == 1 && !StatusUpdate(kNum, Range, StatusStr, VolInfo.AddOnID)){
 			IsOk = FALSE;
 		}
 		for (IJK[1] = StartIJK[1]; IJK[1] <= EndIJK[1] && IsOk; ++IJK[1]){
@@ -922,7 +970,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 	}
 
 	if (StartIJK[2] == 1)
-		TecUtilDialogDropPercentDone();
+		StatusDrop(VolInfo.AddOnID);
 
 	if (MR.s != NULL)
 		gsl_multiroot_fdfsolver_free(MR.s);
@@ -941,11 +989,11 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 const Boolean_t FindCPs(CritPoints_c & CPs,
 	const VolExtentIndexWeights_s & VolInfo,
 	const double & CellSpacing,
-	const double & RhoCutoff,
+	double & RhoCutoff,
 	const Boolean_t & IsPeriodic,
-	const FieldDataPointer_c & RhoPtr,
-	const vector<FieldDataPointer_c> & GradXYZPtrs,
-	const vector<FieldDataPointer_c> & HessPtrs)
+	FieldDataPointer_c & RhoPtr,
+	vector<FieldDataPointer_c> & GradXYZPtrs,
+	vector<FieldDataPointer_c> & HessPtrs)
 {
 	Boolean_t IsOk = ((GradXYZPtrs.size() == 3 || GradXYZPtrs.size() == 0)
 		&& (HessPtrs.size() == 0 || HessPtrs.size() == 6));
@@ -956,20 +1004,22 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 
 	vector<VolExtentIndexWeights_s> VolInfoList(NumThreads, VolInfo);
 
-	vector<vec3> BV(3);
-	BV[0] << 1 << 0 << 0;
-	BV[1] << 0 << 1 << 0;
-	BV[2] << 0 << 0 << 1;
+// 	vector<vec3> BV(3);
+// 	BV[0] << 1 << 0 << 0;
+// 	BV[1] << 0 << 1 << 0;
+// 	BV[2] << 0 << 0 << 1;
 
 	vector<MultiRootParams_s> RootParams(NumThreads);
+	mat33 I = eye<mat>(3, 3);
 	for (int r = 0; r < NumThreads; ++r){
+		RootParams[r].CalcType = GPType_Classic;
 		RootParams[r].VolInfo = &VolInfoList[r];
 		RootParams[r].IsPeriodic = IsPeriodic;
 		RootParams[r].RhoPtr = &RhoPtr;
 		RootParams[r].GradPtrs = &GradXYZPtrs;
 		RootParams[r].HessPtrs = &HessPtrs;
 
-		RootParams[r].BasisVectors = &BV;
+		RootParams[r].BasisVectors = &I;
 
 		RootParams[r].HasGrad = GradXYZPtrs.size() == 3;
 		RootParams[r].HasHess = HessPtrs.size() == 6;
@@ -999,41 +1049,180 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 	vector<CritPoints_c> ThreadCPs(NumThreads);
 
 	vector<int> NumPtsXYZ(3);
-	vec3 ExtentXYZ = VolInfo.MaxXYZ - VolInfo.MinXYZ;
-	for (int d = 0; d < 3; ++d) NumPtsXYZ[d] = ExtentXYZ[d] / CellSpacing;
+	for (int d = 0; d < 3; ++d) NumPtsXYZ[d] = VolInfo.BasisExtent[d] / CellSpacing;
 
-	int NumThreadPts = NumPtsXYZ[2] / NumThreads;
+	int NumThreadPts = NumPtsXYZ[2];
+#ifndef _DEBUG
+	NumThreadPts /= NumThreads;
+#endif
 	int ThreadPtNum = 0;
 
-	vector<int> IJK(3);
+	StatusLaunch(StatusStr.c_str(), VolInfo.AddOnID, TRUE);
 
-	TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+	mat33 LatticeVector = normalise(VolInfo.BasisVectors) * CellSpacing;
+	mat33 LatticeInverse = normalise(VolInfo.BasisInverse) * CellSpacing;
 
+	cube RhoVals(NumPtsXYZ[0], NumPtsXYZ[1], NumPtsXYZ[2]);
+#ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
+#endif
 	for (int zi = 0; zi < NumPtsXYZ[2]; ++zi){
 		int ThreadNum = omp_get_thread_num();
-		if (ThreadNum == 0 && !SetPercent(ThreadPtNum++, NumThreadPts, StatusStr, VolInfo.AddOnID)){
+		for (int yi = 0; yi < NumPtsXYZ[1]; ++yi){
+			for (int xi = 0; xi < NumPtsXYZ[0]; ++xi){
+				vec3 iXYZ;
+				iXYZ << xi << yi << zi;
+				vec3 Pt = VolInfo.MinXYZ + LatticeVector * iXYZ;
+				double CellRho = RhoPtr.At(Pt, *RootParams[ThreadNum].VolInfo);
+				RhoVals(xi, yi, zi) = CellRho;
+			}
+		}
+	}
+
+#ifndef _DEBUG
+#pragma omp parallel for schedule(dynamic)
+#endif
+	for (int zi = 0; zi < NumPtsXYZ[2]; ++zi){
+		int ThreadNum = omp_get_thread_num();
+		if (ThreadNum == 0 && !StatusUpdate(ThreadPtNum++, NumThreadPts, StatusStr, VolInfo.AddOnID)){
 			IsOk = FALSE;
 #pragma omp flush (IsOk)
 		}
 #pragma omp flush (IsOk)
-		CellMinXYZ[ThreadNum][2] = VolInfo.MinXYZ[2] + static_cast<double>(zi)* CellSpacing;
-		if (zi < NumPtsXYZ[2] - 1) CellMaxXYZ[ThreadNum][2] = CellMinXYZ[ThreadNum][2] + CellSpacing;
-		else CellMaxXYZ[ThreadNum][2] = VolInfo.MaxXYZ[2];
-
-		CellMinXYZ[ThreadNum][1] = VolInfo.MinXYZ[1];
+// 		CellMinXYZ[ThreadNum][2] = VolInfo.MinXYZ[2] + static_cast<double>(zi)* CellSpacing;
+// 		if (zi < NumPtsXYZ[2] - 1) CellMaxXYZ[ThreadNum][2] = CellMinXYZ[ThreadNum][2] + CellSpacing;
+// 		else CellMaxXYZ[ThreadNum][2] = VolInfo.MaxXYZ[2];
+// 
+// 		CellMinXYZ[ThreadNum][1] = VolInfo.MinXYZ[1];
 
 		for (int yi = 0; yi < NumPtsXYZ[1] && IsOk; ++yi){
-			if (yi < NumPtsXYZ[1] - 1) CellMaxXYZ[ThreadNum][1] = CellMinXYZ[ThreadNum][1] + CellSpacing;
-			else CellMaxXYZ[ThreadNum][1] = VolInfo.MaxXYZ[1];
-
-			CellMinXYZ[ThreadNum][0] = VolInfo.MinXYZ[0];
+// 			if (yi < NumPtsXYZ[1] - 1) CellMaxXYZ[ThreadNum][1] = CellMinXYZ[ThreadNum][1] + CellSpacing;
+// 			else CellMaxXYZ[ThreadNum][1] = VolInfo.MaxXYZ[1];
+// 
+// 			CellMinXYZ[ThreadNum][0] = VolInfo.MinXYZ[0];
 
 			for (int xi = 0; xi < NumPtsXYZ[0] && IsOk; ++xi){
-				if (xi < NumPtsXYZ[0] - 1) CellMaxXYZ[ThreadNum][0] = CellMinXYZ[ThreadNum][0] + CellSpacing;
-				else CellMaxXYZ[ThreadNum][0] = VolInfo.MaxXYZ[0];
+// 				if (xi < NumPtsXYZ[0] - 1) CellMaxXYZ[ThreadNum][0] = CellMinXYZ[ThreadNum][0] + CellSpacing;
+// 				else CellMaxXYZ[ThreadNum][0] = VolInfo.MaxXYZ[0];
 
-				if (CritPointInCell(CellMinXYZ[ThreadNum], 
+				vec3 iXYZ;
+				iXYZ << xi << yi << zi;
+				CellMinXYZ[ThreadNum] = VolInfo.MinXYZ + LatticeVector * iXYZ;
+				for (int d = 0; d < 3; ++d) {
+					if (iXYZ[d] < NumPtsXYZ[d] - 1){
+						CellMaxXYZ[ThreadNum][d] = CellMinXYZ[ThreadNum][d];
+						for (int di = 0; di < 3; ++di) CellMaxXYZ[ThreadNum][d] += LatticeVector.at(d, di);
+					}
+					else{
+						CellMaxXYZ[ThreadNum][d] = VolInfo.MinXYZ[d];
+						for (int di = 0; di < 3; ++di) CellMaxXYZ[ThreadNum][d] += VolInfo.BasisVectors.at(d, di);
+					}
+				}
+
+				/*
+				 *	Check for local Min/Max
+				 */
+				bool IsMaxMin;
+				vector<double> Signs = { 1, -1 };
+// 				double CellRho = RhoPtr.At(CellMinXYZ[ThreadNum], *RootParams[ThreadNum].VolInfo);
+				double CellRho = RhoVals(xi, yi, zi);
+				for (int s = 0; s < 2; ++s){
+					IsMaxMin = true; 
+					vec3 CompPt;
+					for (int xj = xi - 1; xj <= xi + 1 && IsMaxMin; ++xj){
+						int xk = xj;
+						if (xk < 0){
+							if (VolInfo.IsPeriodic) xk = NumPtsXYZ[0] - 1;
+							else continue;
+						}
+						else if (xk >= NumPtsXYZ[0]){
+							if (VolInfo.IsPeriodic) xk = 0;
+							else continue;
+						}
+						for (int yj = yi - 1; yj <= yi + 1 && IsMaxMin; ++yj){
+							int yk = yj;
+							if (yk < 0){
+								if (VolInfo.IsPeriodic) yk = NumPtsXYZ[1] - 1;
+								else continue;
+							}
+							else if (yk >= NumPtsXYZ[1]){
+								if (VolInfo.IsPeriodic) yk = 0;
+								else continue;
+							}
+							for (int zj = zi - 1; zj <= zi + 1 && IsMaxMin; ++zj){
+								int zk = zj;
+								if (zk < 0){
+									if (VolInfo.IsPeriodic) zk = NumPtsXYZ[2] - 1;
+									else continue;
+								}
+								else if (zk >= NumPtsXYZ[2]){
+									if (VolInfo.IsPeriodic) zk = 0;
+									else continue;
+								}
+								if (xi != xk || yi != yk || zi != zk){
+// 									iXYZ << xj << yj << zj;
+// 									CompPt = VolInfo.MinXYZ + LatticeVector * iXYZ;
+// 									double CompVal = RhoPtr.At(CompPt, *RootParams[ThreadNum].VolInfo);
+									double CompVal = RhoVals(xk, yk, zk);
+									IsMaxMin = IsMaxMin && (Signs[s] * CellRho >= Signs[s] * CompVal);
+								}
+							}
+						}
+					}
+					if (IsMaxMin){
+						GradPath_c GP(
+							CellMinXYZ[ThreadNum],
+							(StreamDir_e)s, 
+							100, 
+							GPType_Classic, 
+							GPTerminate_AtRhoValue, 
+							NULL, 
+							&ThreadCPs[ThreadNum], 
+							NULL, 
+							&RhoCutoff, 
+							*RootParams[ThreadNum].VolInfo, 
+							*RootParams[ThreadNum].HessPtrs, 
+							*RootParams[ThreadNum].GradPtrs, 
+							*RootParams[ThreadNum].RhoPtr);
+
+						GP.Seed(false);
+
+						if (GP.IsMade()){
+							CompPt = GP[-1];
+							vec3 EigVals, PrincDir;
+							mat33 EigVecs;
+							char Type = 0;
+
+							CalcEigenSystemForPoint(CompPt,
+								EigVals,
+								EigVecs,
+								RootParams[ThreadNum]);
+
+							for (int i = 0; i < 3; ++i){
+								if (EigVals[i] > 0)
+									Type++;
+								else
+									Type--;
+							}
+							if (Type == CPType_NuclearCP || Type == CPType_RingCP)
+								PrincDir = EigVecs.row(0).t();
+							else
+								PrincDir = EigVecs.row(2).t();
+
+							IsMaxMin = (Type == CPType_NuclearCP || Type == CPType_CageCP);
+
+							// 						if (IsMaxMin)
+							// 						ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, Type);
+							ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, (s == 0 ? CPType_NuclearCP : CPType_CageCP));
+						}
+
+						break;
+					}
+				}
+				/*
+				 *	Rigorous check using Newton-Raphson method
+				 */
+				if (!IsMaxMin && CritPointInCell(CellMinXYZ[ThreadNum], 
 					CellMaxXYZ[ThreadNum], 
 					TmpPoint[ThreadNum], 
 					PrincDir[ThreadNum],
@@ -1041,18 +1230,19 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 					RhoCutoff, 
 					TmpType[ThreadNum], 
 					RootParams[ThreadNum],
-					MR[ThreadNum])){
+					MR[ThreadNum]))
+				{
 					ThreadCPs[ThreadNum].AddPoint(TmpRho[ThreadNum], TmpPoint[ThreadNum], PrincDir[ThreadNum], TmpType[ThreadNum]);
 				}
 
-				CellMinXYZ[ThreadNum][0] += CellSpacing;
+// 				CellMinXYZ[ThreadNum][0] += CellSpacing;
 			}
 
-			CellMinXYZ[ThreadNum][1] += CellSpacing;
+// 			CellMinXYZ[ThreadNum][1] += CellSpacing;
 		}
 	}
 
-	TecUtilDialogDropPercentDone();
+	StatusDrop(VolInfo.AddOnID);
 
 	for (auto & m : MR)	if (m.s != NULL) gsl_multiroot_fdfsolver_free(m.s);
 	// 	if (MR.pos != NULL)

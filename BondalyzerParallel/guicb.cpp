@@ -198,7 +198,15 @@ static void CalcBTN_BTN_T2_1_CB(void)
 
 	TecGUIDialogDrop(Dialog2Manager);
 
+	TecUtilDrawGraphics(FALSE);
+	TecUtilInterfaceSuspend(TRUE);
+	TecUtilWorkAreaSuspend(TRUE);
+
 	CalcVars(Opt);
+
+	TecUtilDrawGraphics(TRUE);
+	TecUtilInterfaceSuspend(FALSE);
+	TecUtilWorkAreaSuspend(FALSE);
 
 	TecUtilLockFinish(AddOnID);
 }
@@ -546,41 +554,25 @@ static void Dialog2Init_CB(void)
 		}
 		TecUtilStringDealloc(&ZoneName);
 	}
-	if (NumZones > 0)
-		TecGUIOptionMenuSet(SelZone_OPT_T1_1, 1);
+	if (NumZones > 0){
+		int ZoneNum = ZoneNumByName("Full Volume", false, true);
+		TecGUIOptionMenuSet(SelZone_OPT_T1_1, MAX(1,ZoneNum));
+	}
 
 	/*
 	 *	Attempt to automatically set variables based
 	 *	on the names they 'should' have
 	 */
-	vector<string> RhoVarNames = {
-		"Electron Density",
-		"rho",
-		"Rho"
-	},
-	GradVarNames = {
-		"X Density",
-		"Y Density",
-		"Z Density"
-	},
-	HessVarNames = {
-		"XX Density",
-		"XY Density",
-		"XZ Density",
-		"YY Density",
-		"YZ Density",
-		"ZZ Density"
-	};
 
 	int NumHits = 0;
 
 	if (IsOk){
-		int TmpNum = VarNumByNameList(RhoVarNames);
+		int TmpNum = VarNumByName(CSMVarName.Dens);
 		if (TmpNum > 0)
 			TecGUIOptionMenuSet(RhoVarNum_OPT_T1_1, TmpNum);
 
 		for (int i = 0; i < 3; ++i){
-			TmpNum = VarNumByName(GradVarNames[i]);
+			TmpNum = VarNumByName(CSMVarName.DensGradVec[i]);
 			if (TmpNum > 0){
 				NumHits++;
 				TecGUIOptionMenuSet(CalcVarVarListDialogs[1 + i], TmpNum);
@@ -593,7 +585,7 @@ static void Dialog2Init_CB(void)
 
 		NumHits = 0;
 		for (int i = 0; i < 6; ++i){
-			TmpNum = VarNumByName(HessVarNames[i]);
+			TmpNum = VarNumByName(CSMVarName.DensHessTensor[i]);
 			if (TmpNum > 0){
 				NumHits++;
 				TecGUIOptionMenuSet(CalcVarVarListDialogs[4 + i], TmpNum);

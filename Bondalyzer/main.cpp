@@ -324,23 +324,23 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
         TecUtilStateChangeAddCallbackX(ArgList);
         TecUtilArgListDealloc(&ArgList);
     }
-    TecUtilMenuAddOption("Bondalyzer",
+    TecUtilMenuAddOption("MTG_Bondalyzer",
                          "Scalar Gradient Topology",
                          '\0',
                          MenuCallback);
-// 	TecUtilMenuAddOption("Bondalyzer",
+// 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 		"Calculate Gradient Vector and Magnitude",
 // 		'\0',
 // 		CalcGradGradMagMenuCallback);
-// 	TecUtilMenuAddOption("Bondalyzer",
+// 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 		"Calculate Gradient Vector and Magnitude (Periodic System)",
 // 		'\0',
 // 		CalcGradGradMagPeriodicMenuCallback);
-// 	TecUtilMenuAddOption("Bondalyzer",
+// 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 		"Chemical System View",
 // 		'\0',
 // 		ChemSysViewMenuCallback);
-// 	TecUtilMenuAddOption("Bondalyzer",
+// 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 		"SGradTopo Test View",
 // 		'\0',
 // 		SGradTopoViewMenuCallback);

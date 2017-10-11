@@ -391,9 +391,9 @@ void MainFunction(){
 										TmpCP[k] = TecUtilDataValueGetByRef(CPXYZPtrs[k], StartEndCPs[(i + 1) % 2]);
 									}
 									IntZoneSaddleCPNodeNums.push_back(vector<LgIndex_t>());
-									IntZoneSaddleCPNodeNums[IntZoneSaddleCPNodeNums.size() - 1].push_back(IntersectionPoints.size());
-									IntZoneSaddleCPNodeNums[IntZoneSaddleCPNodeNums.size() - 1].push_back(CurZoneNum);
-									IntZoneSaddleCPNodeNums[IntZoneSaddleCPNodeNums.size() - 1].push_back(StartEndCPs[(i + 1) % 2]);
+									IntZoneSaddleCPNodeNums.back().push_back(IntersectionPoints.size());
+									IntZoneSaddleCPNodeNums.back().push_back(CurZoneNum);
+									IntZoneSaddleCPNodeNums.back().push_back(StartEndCPs[(i + 1) % 2]);
 									IntCPPos.push_back(TmpCP);
 
 									if (TmpIJK[0] < NumSTPoints){
@@ -408,8 +408,8 @@ void MainFunction(){
 									if (StartEndTypes[(i + 1) % 2] == RankStrs[k]){
 										AllIntVolumeCPNames.push_back(StartEndTypes[(i + 1) % 2] + string(" ") + to_string(StartEndCPs[(i + 1) % 2] - CPCount));
 										AllIntCPNodeNums.push_back(vector<LgIndex_t>());
-										AllIntCPNodeNums[AllIntCPNodeNums.size() - 1].push_back(IntersectionPoints.size());
-										AllIntCPNodeNums[AllIntCPNodeNums.size() - 1].push_back(StartEndCPs[(i + 1) % 2]);
+										AllIntCPNodeNums.back().push_back(IntersectionPoints.size());
+										AllIntCPNodeNums.back().push_back(StartEndCPs[(i + 1) % 2]);
 									}
 									CPCount += NumCPs[k];
 								}
@@ -451,9 +451,9 @@ void MainFunction(){
 // 									if (Distance(TmpCP, TmpPt) < MAX(ClosestCPDist * 0.2, Radius)){
 // 										if (i == 1 || i == 2){
 // 											IntZoneSaddleCPNodeNums.push_back(vector<LgIndex_t>());
-// 											IntZoneSaddleCPNodeNums[IntZoneSaddleCPNodeNums.size() - 1].push_back(IntersectionPoints.size());
-// 											IntZoneSaddleCPNodeNums[IntZoneSaddleCPNodeNums.size() - 1].push_back(CurZoneNum);
-// 											IntZoneSaddleCPNodeNums[IntZoneSaddleCPNodeNums.size() - 1].push_back(CPIndexList[i][j]);
+// 											IntZoneSaddleCPNodeNums.back().push_back(IntersectionPoints.size());
+// 											IntZoneSaddleCPNodeNums.back().push_back(CurZoneNum);
+// 											IntZoneSaddleCPNodeNums.back().push_back(CPIndexList[i][j]);
 // 											IntCPPos.push_back(TmpCP);
 // 											IsFound = TRUE;
 // 
@@ -465,8 +465,8 @@ void MainFunction(){
 // 											}
 // 										}
 // 										AllIntSaddleCPNodeNums.push_back(vector<LgIndex_t>());
-// 										AllIntSaddleCPNodeNums[AllIntSaddleCPNodeNums.size() - 1].push_back(IntersectionPoints.size());
-// 										AllIntSaddleCPNodeNums[AllIntSaddleCPNodeNums.size() - 1].push_back(CPIndexList[i][j]);
+// 										AllIntSaddleCPNodeNums.back().push_back(IntersectionPoints.size());
+// 										AllIntSaddleCPNodeNums.back().push_back(CPIndexList[i][j]);
 // 									}
 // 								}
 // 							}
@@ -2000,8 +2000,8 @@ void MainFunction(){
 							double Ang = acosf(dot(VI, VIp1) / (norm(VI) * norm(VIp1))) * 180.0 / PI;
 							if (Ang > IBCheckAngle && Dist > IBCheckDistRatio){
 								InterIBEdges.push_back(vector<int>(2));
-								InterIBEdges[InterIBEdges.size() - 1][0] = t[TriNum][i];
-								InterIBEdges[InterIBEdges.size() - 1][1] = t[TriNum][(i + 1) % 3];
+								InterIBEdges.back()[0] = t[TriNum][i];
+								InterIBEdges.back()[1] = t[TriNum][(i + 1) % 3];
 							}
 						}
 					}
@@ -2233,7 +2233,7 @@ void MainFunction(){
 
 
 				TecUtilDrawGraphics(TRUE);
-				if (!SetPercent(TriNum, NumTriangles, ProgressStr.str().c_str())){
+				if (!StatusUpdate(TriNum, NumTriangles, ProgressStr.str().c_str())){
 					TecUtilDrawGraphics(TRUE);
 					TecUtilInterfaceSuspend(FALSE);
 					TecUtilStatusFinishPercentDone();
@@ -2460,7 +2460,7 @@ void MainFunction(){
 	return;
 }
 
-Boolean_t SetPercent(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText){
+Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText){
 	unsigned int Percent = MIN((int)((double)CurrentNum / (double)TotalNum * 100.), 100);
 
 	Boolean_t IsOk = TRUE;

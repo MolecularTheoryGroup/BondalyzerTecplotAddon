@@ -128,11 +128,11 @@ double CostFunc(const gsl_vector *v, void* params){
 	Mean /= (double)TAreas.size();
 
 	/*
-	 * get the variace of the areas of the triangles
+	 * get the variance of the areas of the triangles
 	 */
 	double Var = 0;
 	for (const double & i : TAreas)
-		Var += pow(i - Mean, 2);
+		Var += (i - Mean) * (i - Mean);
 	Var /= (double)TAreas.size();
 
 	return Var;

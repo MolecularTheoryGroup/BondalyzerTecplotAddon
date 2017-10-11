@@ -143,7 +143,7 @@
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>;4244</DisableSpecificWarnings>
-      <PreprocessorDefinitions>ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -169,6 +169,7 @@
     <ClCompile Include="csm_data_types.cpp" />
     <ClCompile Include="csm_fe_volume.cpp" />
     <ClCompile Include="csm_field_data_pointer.cpp" />
+    <ClCompile Include="csm_geometry.cpp" />
     <ClCompile Include="csm_grad_path.cpp" />
     <ClCompile Include="csm_gui.cpp" />
     <ClCompile Include="csm_vol_extent_index_weights.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="CSM_GRAD_PATH.h" />
     <ClInclude Include="CSM_GUI.h" />
     <ClInclude Include="CSM_VOL_EXTENT_INDEX_WEIGHTS.h" />
+    <ClInclude Include="CSM_GEOMETRY.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="SmallVector.h" />
     <ClInclude Include="type_traits.h" />

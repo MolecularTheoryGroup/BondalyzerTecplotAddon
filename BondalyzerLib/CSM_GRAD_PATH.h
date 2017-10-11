@@ -15,9 +15,10 @@ using namespace arma;
 
 using std::vector;
 
-#define GP_PointSqrDistTol			1e-8
 #define GP_NumPointsBufferFactor	5
 #define GP_StallPointCount			10
+#define GP_StallNumPointsToCheck	10
+#define GP_StallPointDistTol		1e-4 * GP_StallNumPointsToCheck
 #define GP_MaxNumPoints				10000
 #define GP_PlaneCPStallCount		30
 #define GP_PlaneCPMaxIter			100
@@ -88,10 +89,7 @@ public:
 	const Boolean_t operator==(const GradPathBase_c & rhs) const;
 	GradPathBase_c & operator+=(const GradPathBase_c & rhs);
 	const GradPathBase_c operator+(const GradPathBase_c & rhs) const;
-	const vec3 operator[](const int & i) const{
-		REQUIRE(abs(i) < m_XYZList.size());
-		return (i >= 0) ? m_XYZList[i] : m_XYZList[m_XYZList.size() + i];
-	}
+	const vec3 operator[](const int & i) const;
 
 
 	const Boolean_t SetStartEndCPNum(const int & CPNum, const int & StartEnd) {
@@ -148,8 +146,8 @@ public:
 		return m_StartEndCPNum[i];
 	}
 
-	const vec3 XYZAt(const int & i) const { return vec3(m_XYZList[i]); }
-	const double RhoAt(const int & i) const { return m_RhoList[i]; }
+	const vec3 XYZAt(const int & i) const { return operator[](i); }
+	const double RhoAt(const int & i) const;
 
 	const GradPathBase_c SubGP(int BegPt, int EndPt) const;
 
@@ -157,6 +155,11 @@ public:
 	const vec3 ClosestPoint(const vec3 & rhs, int & PtNum) const;
 
 private:
+
+	const unsigned int GetInd(const int & i) const{
+		REQUIRE(abs(i) < m_XYZList.size());
+		return (i >= 0) ? i : m_XYZList.size() + i;
+	}
 
 protected:
 	/*
@@ -180,7 +183,7 @@ protected:
 
 class GradPath_c : public GradPathBase_c
 {
-	friend class FEVolume_c;
+	friend class FESurface_c;
 public:
 	/*
 		*	Constructors and destructors

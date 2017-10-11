@@ -3810,7 +3810,7 @@ void CalcGradGradMag(Boolean_t IsPeriodic){
 
 #pragma omp parallel for
 		for (LgIndex_t kk = 1; kk <= IJKMax[2]; ++kk){
-			if (omp_get_thread_num() == 0 && !SetPercent(kk, StatusKMax, "Calculating gradient vector")){
+			if (omp_get_thread_num() == 0 && !StatusUpdate(kk, StatusKMax, "Calculating gradient vector")){
 				TaskQuit = true;
 #pragma omp flush (TaskQuit)
 			}
@@ -3905,7 +3905,7 @@ void CalcGradGradMag(Boolean_t IsPeriodic){
 
 #pragma omp parallel for
 		for (LgIndex_t kk = 1; kk <= IJKMax[2]; ++kk){
-			if (omp_get_thread_num() == 0 && !SetPercent(kk, StatusKMax, "Calculating gradient magnitude")){
+			if (omp_get_thread_num() == 0 && !StatusUpdate(kk, StatusKMax, "Calculating gradient magnitude")){
 				TaskQuit = true;
 #pragma omp flush (TaskQuit)
 			}
@@ -3944,7 +3944,7 @@ void CalcGradGradMag(Boolean_t IsPeriodic){
 	TecUtilLockFinish(AddOnID);
 }
 
-Boolean_t SetPercent(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText){
+Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText){
 	unsigned int Percent = MIN(int((double)CurrentNum / (double)TotalNum * 100.), 100);
 
 	std::stringstream ss;

@@ -43,6 +43,6 @@ void SpinButtonInt(LgIndex_t DialogIndex, LgIndex_t Difference);
 void SpinValueChangedInt(LgIndex_t DialogIndex);
 
 void MakeDensfScriptForZones();
-void ImportAdditionalTape41Files(const Boolean_t & MatchZones);
+void ImportAdditionalTape41Files(const Boolean_t & MatchZones = TRUE, const Boolean_t & MatchDataSet = FALSE);
 
 #endif

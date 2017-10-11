@@ -11,6 +11,7 @@
 #include <cstring>
 #include <sstream>
 #include <cctype>
+#include <algorithm>
 
 #include <omp.h>
 
@@ -331,7 +332,7 @@ const Boolean_t LoadVASPData(){
 				while (1){
 					if (!IsNumber(TmpStr)){
 						AtomGroupList.push_back(AtomGroup_s(TmpStr));
-						AtomGroupList[AtomGroupList.size() - 1].AtomColor = GetAtomColor(AtomColorList, TmpStr);
+						AtomGroupList.back().AtomColor = GetAtomColor(AtomColorList, TmpStr);
 						InFile >> TmpStr;
 					}
 					else
@@ -435,7 +436,7 @@ const Boolean_t LoadVASPData(){
 		vector<vector<vector<double> > > Diff;
 		// 		vector<double> Charge(NumPts), Diff;
 
-		TecUtilDialogLaunchPercentDone("Reading data...", TRUE);
+		StatusLaunch("Reading data...", AddOnID, TRUE);
 
 		/*
 		 *	Now read in the block of ASCII data that is the
@@ -498,8 +499,8 @@ const Boolean_t LoadVASPData(){
 // 		}
 
 		for (int k = 0; k < Mz; ++k){
-			if (!SetPercent(k + CurK, MzTotal, "Reading data... Charge Density", AddOnID)){
-				TecUtilDialogDropPercentDone();
+			if (!StatusUpdate(k + CurK, MzTotal, "Reading data... Charge Density", AddOnID)){
+				StatusDrop(AddOnID);
 				TecUtilMemoryChangeNotify(-ArrayMemoryKB);
 				TecUtilDataLoadEnd();
 				TecUtilLockFinish(AddOnID);
@@ -513,7 +514,7 @@ const Boolean_t LoadVASPData(){
 			}
 		}
 
-		TecUtilDialogDropPercentDone();
+		StatusDrop(AddOnID);
 
 // 		if (Charge[NumPts - 1] == BlankValue){
 		if (Charge[Mz - 1][My - 1][Mx - 1] == BlankValue){
@@ -539,7 +540,7 @@ const Boolean_t LoadVASPData(){
 				TecUtilMemoryChangeNotify(ArrayMemoryKB);
 // 				Diff.resize(NumPts, BlankValue);
 				Diff.resize(Mz, vector<vector<double> >(My, vector<double>(Mx, BlankValue)));
-				TecUtilDialogLaunchPercentDone("Reading data...", TRUE);
+				StatusLaunch("Reading data...", AddOnID, TRUE);
 				TmpCStr = strtok(NULL, " \n");
 
 // 				for (int i = 0; i < NumPts; ++i){
@@ -555,8 +556,8 @@ const Boolean_t LoadVASPData(){
 // 				}
 
 				for (int k = 0; k < Mz; ++k){
-					if (!SetPercent(k + CurK, MzTotal, "Reading data... Spin Density", AddOnID)){
-						TecUtilDialogDropPercentDone();
+					if (!StatusUpdate(k + CurK, MzTotal, "Reading data... Spin Density", AddOnID)){
+						StatusDrop(AddOnID);
 						TecUtilMemoryChangeNotify(-2 * ArrayMemoryKB);
 						TecUtilDataLoadEnd();
 						TecUtilLockFinish(AddOnID);
@@ -570,7 +571,7 @@ const Boolean_t LoadVASPData(){
 					}
 				}
 
-				TecUtilDialogDropPercentDone();
+				StatusDrop(AddOnID);
 
 // 				if (Diff[NumPts - 1] == BlankValue){
 				if (Diff[Mz - 1][My - 1][Mx - 1] == BlankValue){
@@ -750,7 +751,7 @@ const Boolean_t LoadVASPData(){
 
 			TecUtilDataLoadBegin();
 
-			TecUtilDialogLaunchPercentDone("Loading data into dataset...", TRUE);
+			StatusLaunch("Loading data into dataset...", AddOnID, TRUE);
 
 			for (EntIndex_t VarNum = 0; VarNum < NumVars; ++VarNum)
 				VarRawPtrs[VarNum].GetWritePtr(VolZoneNum, VarNum + 1);
@@ -762,7 +763,7 @@ const Boolean_t LoadVASPData(){
 			for (int Zz = 0; Zz < NCellsZ; ++Zz){
 #pragma omp parallel for
 				for (LgIndex_t k = 1; k <= Mz; ++k){
-					if (omp_get_thread_num() == 0 && !SetPercent(k + Mz * Zz, TotPtsStatus, "Loading data into dataset...", AddOnID)){
+					if (omp_get_thread_num() == 0 && !StatusUpdate(k + Mz * Zz, TotPtsStatus, "Loading data into dataset...", AddOnID)){
 						TaskQuit = TRUE;
 #pragma omp flush (TaskQuit)
 					}
@@ -815,8 +816,9 @@ const Boolean_t LoadVASPData(){
 				}
 			}
 
+
+			StatusDrop(AddOnID);
 			if (TaskQuit){
-				TecUtilDialogDropPercentDone();
 				TecUtilMemoryChangeNotify(-ArrayMemoryKB);
 				if (IsPolar)
 					TecUtilMemoryChangeNotify(-ArrayMemoryKB);
@@ -824,8 +826,6 @@ const Boolean_t LoadVASPData(){
 				TecUtilLockFinish(AddOnID);
 				return FALSE;
 			}
-
-			TecUtilDialogDropPercentDone();
 
 
 			TecUtilDataLoadEnd();
@@ -1271,8 +1271,7 @@ const int LoadADFTape41ASCIIData(char* FileNameCStr)
 	int CharSize = sizeof(char);
 	unsigned int AtomCount = 0;
 
-	TecUtilDialogLaunchPercentDone("Indexing variables", TRUE);
-	TecUtilDialogCheckPercentDone(0);
+	StatusLaunch("Indexing variables", AddOnID, FALSE);
 
 	while (!InFile.eof()){
 		getline(InFile, TempVarType);
@@ -1297,13 +1296,12 @@ const int LoadADFTape41ASCIIData(char* FileNameCStr)
 							T41VarList.push_back(TempType);
 							++NumVars;
 
-							if (!TecUtilDialogCheckPercentDone(0)){
+							stringstream ss;
+							ss << "Indexing variable " << NumVars << ": " << TempType.NameStr;
+							if (!StatusUpdate(0, 1, ss.str(), AddOnID)){
 								TecUtilLockFinish(AddOnID);
 								return 0;
 							}
-							stringstream ss;
-							ss << "Indexing variable " << NumVars << ": " << TempType.NameStr;
-							TecUtilDialogSetPercentDoneText(ss.str().c_str());
 
 							if (TempType.UseForIsosurface)
 								IsoSurfaceVarName = TempType.NameStr;
@@ -1444,7 +1442,7 @@ const int LoadADFTape41ASCIIData(char* FileNameCStr)
 	LgIndex_t TotalPoints = NumPoints * static_cast<int>(T41VarList.size());
 	LgIndex_t CurrentOverallPoint = 0;
 
-	TecUtilDialogSetPercentDoneText("Loading ASCII Tape41 File");
+	StatusUpdate(0, 1, "Loading ASCII Tape41 File", AddOnID);
 
 	int BufferMemoryKB = sizeof(ImportType_t) * BufSize / 1024;
 
@@ -1502,8 +1500,8 @@ const int LoadADFTape41ASCIIData(char* FileNameCStr)
 				}
 			}
 
-			if (!TecUtilDialogCheckPercentDone(static_cast<int>(static_cast<double>(CurrentOverallPoint) / static_cast<double>(TotalPoints * 100)))){
-				TecUtilDialogDropPercentDone();
+			if (!StatusUpdate(CurrentOverallPoint, TotalPoints, "", AddOnID)){
+				StatusDrop(AddOnID);
 				TecUtilLockFinish(AddOnID);
 				return 0;
 			}
@@ -1521,7 +1519,7 @@ const int LoadADFTape41ASCIIData(char* FileNameCStr)
 
 	InFile.close();
 
-	TecUtilDialogDropPercentDone();
+	StatusDrop(AddOnID);
 
 	/*
 	 *	Keep list of created zones for informing Tecplot later
@@ -2340,7 +2338,7 @@ void LoadADFTape41Data(){
 
 	double TotNumPoints = MaxI * MaxJ * MaxK;
 
-	TecUtilDialogLaunchPercentDone("Loading Tape41 file", TRUE);
+	StatusLaunch("Loading Tape41 file", AddOnID, TRUE);
 
 	string IsoSurfaceVarName;
 	EntIndex_t VarNum;
@@ -2365,8 +2363,7 @@ void LoadADFTape41Data(){
 				VarNum = i + 1;
 
 			ss << "Loading Tape41 file: Loading variable " << CurrentVarName;
-			TecUtilDialogSetPercentDoneText(ss.str().c_str());
-			if (!TecUtilDialogCheckPercentDone(static_cast<int>(static_cast<double>(i) / static_cast<double>(SelectedVarNums.size() * 100))))
+			if (!StatusUpdate(i, SelectedVarNums.size(), ss.str(), AddOnID))
 				IsOk = FALSE;
 			if (IsoSurfaceVarName.empty() && strncmp("Electron Density", CurrentVarName.c_str(), 16) == 0)
 				IsoSurfaceVarName = CurrentVarName;
@@ -2651,7 +2648,7 @@ void LoadADFTape41Data(){
 		}
 	}
 
-	TecUtilDialogDropPercentDone();
+	StatusDrop(AddOnID);
 
 	TecUtilDataLoadEnd();
 
@@ -2841,7 +2838,7 @@ void LoadBANDTape41Data(){
 	if (IsOk)
 		VolZoneNum = TecUtilDataSetGetNumZones();
 
-	TecUtilDialogLaunchPercentDone("Loading Tape41 file", TRUE);
+	StatusLaunch("Loading Tape41 file", AddOnID, TRUE);
 
 	string IsoSurfaceVarName;
 
@@ -2850,8 +2847,7 @@ void LoadBANDTape41Data(){
 	for (int i = 3; i < SelectedVarNums.size() && IsOk; ++i){
 		stringstream ss;
 		ss << "Loading Tape41 file: Loading variable " << T41LoadUserVarStrings[SelectedVarNums[i] - 1];
-		TecUtilDialogSetPercentDoneText(ss.str().c_str());
-		if (!TecUtilDialogCheckPercentDone(static_cast<int>(static_cast<double>(i) / static_cast<double>(SelectedVarNums.size() * 100))))
+		if (!StatusUpdate(i, SelectedVarNums.size(), ss.str(), AddOnID))
 			IsOk = FALSE;
 		string CurrentVarName = T41LoadUserVarStrings[SelectedVarNums[i] - 1];
 		if (IsoSurfaceVarName.empty() && strncmp("Electron Density", T41LoadUserVarStrings[SelectedVarNums[i] - 1].c_str(), 16) == 0)
@@ -2876,12 +2872,12 @@ void LoadBANDTape41Data(){
 
 	TecUtilDataLoadBegin();
 
-	TecUtilDialogLaunchPercentDone("Loading data into dataset...", TRUE);
+	StatusUpdate(0, 1, "Loading data into dataset...", AddOnID);
 
 	for (int Zz = 0; Zz < NCellsZ; ++Zz){
 #pragma omp parallel for
 		for (LgIndex_t k = 1; k <= MaxK; ++k){
-			if (omp_get_thread_num() == 0 && !SetPercent(k + MaxK * Zz, TotalPoints, "Loading data into dataset...", AddOnID)){
+			if (omp_get_thread_num() == 0 && !StatusUpdate(k + MaxK * Zz, TotalPoints, "Loading data into dataset...", AddOnID)){
 				TaskQuit = TRUE;
 #pragma omp flush (TaskQuit)
 			}
@@ -2919,16 +2915,14 @@ void LoadBANDTape41Data(){
 		}
 	}
 
+	StatusDrop(AddOnID);
+	TecUtilDataLoadEnd();
 	if (TaskQuit){
-		TecUtilDialogDropPercentDone();
-		TecUtilDataLoadEnd();
 		TecUtilLockFinish(AddOnID);
 		return;
 	}
 
-	TecUtilDialogDropPercentDone();
 
-	TecUtilDataLoadEnd();
 
 	if (IsOk){
 		Set_pa TempSet = TecUtilSetAlloc(FALSE);
@@ -3395,6 +3389,14 @@ int dos2unix2(const string & FileName)
 	return 0;
 }
 
+template <typename T>
+std::string to_string_with_precision(const T a_value, const int n = 6)
+{
+	std::ostringstream out;
+	out << std::setprecision(n) << a_value;
+	return out.str();
+}
+
 void MakeDensfScriptForZones(){
 	/*
 	*	Get the list of selected zones
@@ -3471,9 +3473,6 @@ void MakeDensfScriptForZones(){
 	/*
 	* Start the real work
 	*/
-
-	FieldDataPointer_c XYZPrts[3];
-	int P[3];
 	LgIndex_t Index;
 
 	/*
@@ -3512,46 +3511,66 @@ void MakeDensfScriptForZones(){
 
 	string StatusStr = "Creating densf script";
 
-	TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+	StatusLaunch(StatusStr.c_str(), AddOnID, TRUE);
+
+	vector<string> ZoneStrs(NumZonesSelected);
+	vector<vector<FieldDataPointer_c> > XYZPtrs(NumZonesSelected, vector<FieldDataPointer_c>(3));
 
 	TecUtilDataLoadBegin();
-	for (int SelZoneNum = 0; SelZoneNum < NumZonesSelected && IsOk; SelZoneNum++){
-		EntIndex_t ZoneNum = ZoneNumByName(ZoneNameList[SelZoneNum]);
-		IsOk = SetPercent(SelZoneNum, NumZonesSelected, StatusStr, AddOnID);
+
+	for (int SelZoneNum = 0; SelZoneNum < NumZonesSelected; ++SelZoneNum){
+		int ZoneNum = ZoneNumByName(ZoneNameList[SelZoneNum]);
+
+		for (int i = 0; i < 3 && IsOk; ++i){
+			IsOk = XYZPtrs[SelZoneNum][i].GetReadPtr(ZoneNum, XYZVarNums[i]);
+		}
+		int NumSigFigs = (XYZPtrs[SelZoneNum][0].FDType() == FieldDataType_Double ? 18 : 10);
+
+		ZoneStrs[SelZoneNum].reserve((XYZPtrs[SelZoneNum][0].Size() * NumSigFigs * 3 + 5) + 500);
+	}
+
+#ifndef _DEBUG
+#pragma omp parallel for schedule(dynamic)
+#endif
+	for (int SelZoneNum = 0; SelZoneNum < NumZonesSelected; SelZoneNum++){
+		EntIndex_t ZoneNum = XYZPtrs[SelZoneNum][0].ZoneNum();
+		if (omp_get_thread_num() == 0){
+			IsOk = StatusUpdate(SelZoneNum, NumZonesSelected, StatusStr, AddOnID);
+#pragma omp flush (IsOk)
+		}
+#pragma omp flush (IsOk)
 		if (ZoneNum >= 0){
-			vector<LgIndex_t> MaxIJK(3);
+			vector<LgIndex_t> MaxIJK = XYZPtrs[SelZoneNum][0].MaxIJK();
 			TecUtilZoneGetIJK(ZoneNum, &MaxIJK[0], &MaxIJK[1], &MaxIJK[2]);
-
-			for (int i = 0; i < 3 && IsOk; ++i){
-				IsOk = XYZPrts[i].GetReadPtr(ZoneNum, XYZVarNums[i]);
-				if (IsOk){
-					if (XYZPrts[i].GetDFType() == FieldDataType_Double)
-						P[i] = 18;
-					else
-						P[i] = 10;
-
-					IsOk = (MaxIJK[i] >= 1);
-				}
-			}
+			int NumSigFigs = (XYZPtrs[SelZoneNum][0].FDType() == FieldDataType_Double ? 18 : 10);
 
 			if (IsOk){
 
-				OutFile << "$ADFBIN/densf << eor" << endl << endl
+				ZoneStrs[SelZoneNum] += string("$ADFBIN/densf << eor\n\n")
 
-					<< "INPUTFILE $INPUTFILE" << endl
-					<< "OUTPUTFILE $NEWPATH/" << DataSetName << DS_ZoneName_Delim << ZoneNameList[SelZoneNum] << ".t41" << endl << endl
+					+ string("INPUTFILE $INPUTFILE\n")
+					+ string("OUTPUTFILE $NEWPATH/") + DataSetName + DS_ZoneName_Delim + ZoneNameList[SelZoneNum] + string(".t41\n\n")
 
-					<< "GRID Inline" << endl;
+					+ string("GRID Inline\n");
 
-				if (TecUtilZoneIsOrdered(ZoneNum)){
+// 				OutFile << "$ADFBIN/densf << eor" << endl << endl
+// 
+// 					<< "INPUTFILE $INPUTFILE" << endl
+// 					<< "OUTPUTFILE $NEWPATH/" << DataSetName << DS_ZoneName_Delim << ZoneNameList[SelZoneNum] << ".t41" << endl << endl
+// 
+// 					<< "GRID Inline" << endl;
+
+				if (XYZPtrs[SelZoneNum][0].ZoneIsOrdered()){
 					for (int kk = 1; kk <= MaxIJK[2] && IsOk; ++kk){
 						for (int jj = 1; jj <= MaxIJK[1] && IsOk; ++jj){
 							for (int ii = 1; ii <= MaxIJK[0] && IsOk; ++ii){
 								Index = IndexFromIJK(ii, jj, kk, MaxIJK[0], MaxIJK[1]) - 1;
-								OutFile << "\t";
+								ZoneStrs[SelZoneNum] += "\t";
+// 								OutFile << "\t";
 								for (int Dir = 0; Dir < 3; ++Dir)
-									OutFile << setprecision(P[Dir]) << XYZPrts[Dir][Index] << " ";
-								OutFile << endl;
+									ZoneStrs[SelZoneNum] += to_string_with_precision(XYZPtrs[SelZoneNum][Dir][Index], NumSigFigs) + " ";
+// 								OutFile << endl;
+								ZoneStrs[SelZoneNum] += "\n";
 							}
 						}
 					}
@@ -3559,27 +3578,43 @@ void MakeDensfScriptForZones(){
 				else{
 					for (int ii = 1; ii <= MaxIJK[0] && IsOk; ++ii){
 						Index = ii - 1;
-						OutFile << "\t";
+// 						OutFile << "\t";
+						ZoneStrs[SelZoneNum] += "\t";
 						for (int Dir = 0; Dir < 3; ++Dir)
-							OutFile << setprecision(P[Dir]) << XYZPrts[Dir][Index] << " ";
-						OutFile << endl;
+							ZoneStrs[SelZoneNum] += to_string_with_precision(XYZPtrs[SelZoneNum][Dir][Index], NumSigFigs) + " ";
+// 						OutFile << endl;
+						ZoneStrs[SelZoneNum] += "\n";
 					}
 				}
 
-				OutFile << "End" << endl << endl
 
-					<< "$CALCVARS" << endl << endl
+				ZoneStrs[SelZoneNum] += string("End\n\n")
 
-					<< "eor" << endl << endl << endl;
+					+ string("$CALCVARS\n\n")
 
-				OutFile.flush();
+					+ string("eor\n\n\n");
+
+// 				OutFile << "End" << endl << endl
+// 
+// 					<< "$CALCVARS" << endl << endl
+// 
+// 					<< "eor" << endl << endl << endl;
+
+// 				OutFile.flush();
 			}
 		}
 	}
 
 	TecUtilDataLoadEnd();
 
-	TecUtilDialogDropPercentDone();
+	StatusStr = "Writing densf script";
+
+	for (int SelZoneNum = 0; SelZoneNum < NumZonesSelected && IsOk; SelZoneNum++){
+		IsOk = StatusUpdate(SelZoneNum, NumZonesSelected, StatusStr, AddOnID);
+		if (IsOk){
+			OutFile << ZoneStrs[SelZoneNum];
+		}
+	}
 
 	OutFile << "rm ./logfile ./SINFO* ./IINFO*" << endl << endl;
 
@@ -3589,6 +3624,8 @@ void MakeDensfScriptForZones(){
 
 	dos2unix2(OutFileName);
 	//dos2unix(OutFileName);
+
+	StatusDrop(AddOnID);
 
 	if (IsOk)
 		TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
@@ -3620,7 +3657,7 @@ const vector<string> SelectDensfTape41Folder(){
 	return T41FileNames;
 }
 
-void ImportAdditionalTape41Files(const Boolean_t & MatchZones){
+void ImportAdditionalTape41Files(const Boolean_t & MatchZones, const Boolean_t & MatchDataSet){
 	Boolean_t IsOk = TRUE;
 
 	/*
@@ -3723,10 +3760,10 @@ void ImportAdditionalTape41Files(const Boolean_t & MatchZones){
 		TecUtilDataLoadBegin();
 
 		const string StatusStr = "Importing data";
-		TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+		StatusLaunch(StatusStr, AddOnID, TRUE);
 
 		for (int FileNum = 0; FileNum < NumFiles; ++FileNum){
-			IsOk = SetPercent(FileNum, NumFiles, StatusStr.c_str(), AddOnID);
+			IsOk = StatusUpdate(FileNum, NumFiles, StatusStr.c_str(), AddOnID);
 
 			if (IsOk){
 				FullPath = T41FileNames[FileNum];
@@ -3735,9 +3772,18 @@ void ImportAdditionalTape41Files(const Boolean_t & MatchZones){
 				InDataSetName = FileName.substr(0, FileName.find(DS_ZoneName_Delim));
 				ZoneName = FileName.substr(FileName.find(DS_ZoneName_Delim) + DS_ZoneName_Delim.length(), FileName.find_last_of(".") - (FileName.find(DS_ZoneName_Delim) + DS_ZoneName_Delim.length()));
 
+				/*
+				 *	Zones that have colon ":" in the name have the colon replaced with forward slash "/"
+				 *	when the output Tape41 file is made, which is read by Windows as a middle dot, which
+				 *	is read by CPP as "" for some reason. These characters are ASCII -17, -128, and -94
+				 *	respectively, so replace those in zone name with colon if present.
+				 */
+
+				ZoneName = StringReplaceSubString(ZoneName, string({ (char)-17, (char)-128, (char)-94 }), ":");
+
 				if (MatchZones){
 
-					ZoneNum = ZoneNumByName(ZoneName);
+					ZoneNum = ZoneNumByName(ZoneName, false, true);
 
 					IsOk = (ZoneNum > 0 && InDataSetName == DataSetName);
 					REQUIRE(ZoneNum > 0 && InDataSetName == DataSetName);
@@ -3858,7 +3904,7 @@ void ImportAdditionalTape41Files(const Boolean_t & MatchZones){
 
 		TecUtilDataLoadEnd();
 
-		TecUtilDialogDropPercentDone();
+		StatusDrop(AddOnID);
 
 		if (IsOk)
 			TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
@@ -4757,8 +4803,7 @@ void LoadGaussianCubeFiles()
 				return;
 			}
 
-			TecUtilPleaseWait("Reading file contents. Please wait.", TRUE);
-			TecUtilStatusSuspend(TRUE);
+			StatusLaunch("Reading file contents. Please wait.", AddOnID, FALSE);
 			/*
 			 *	trim off the "Title Card Required" from the front of the header if it's present
 			 */
@@ -4994,8 +5039,7 @@ void LoadGaussianCubeFiles()
 			vector<FieldDataType_e> ZoneDataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Bit);
 			ZoneDataTypes[VolZoneNum - 1] = FieldDataType_Double;
 
-			TecUtilStatusSuspend(FALSE);
-			TecUtilPleaseWait(NULL, FALSE);
+			StatusDrop(AddOnID);
 
 			TecUtilDataLoadBegin();
 
@@ -5033,12 +5077,12 @@ void LoadGaussianCubeFiles()
 			 */
 			int TotalPoints = IJK[0] * IJK[1] * IJK[2] * NumVarBlocks;
 			string StatusStr = "Loading Gaussian Cube file: " + DataSetName;
-			TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+			StatusLaunch(StatusStr, AddOnID, TRUE);
 
 			double Val;
 			vec3 TmpIJK = zeros<vec>(3);
 			for (int i = 0; i < IJK[0] && IsOk; ++i){
-				IsOk = SetPercent(i, IJK[0], StatusStr, AddOnID);
+				IsOk = StatusUpdate(i, IJK[0], StatusStr, AddOnID);
 				TmpIJK[1] = 0;
 				for (int j = 0; j < IJK[1] && IsOk; ++j){
 					if (IsMOFile){
@@ -5086,7 +5130,7 @@ void LoadGaussianCubeFiles()
 				++TmpIJK[0];
 			}
 
-			TecUtilDialogDropPercentDone();
+			StatusDrop(AddOnID);
 
 			if (TmpCStr == NULL 
 				&& (TmpIJK[0] < IJK[0] || TmpIJK[1] < IJK[1] || TmpIJK[2] < IJK[2]))
@@ -5372,8 +5416,7 @@ void LoadTurboMoleCubeFiles()
 			string TmpStr;
 			ss >> TmpStr;
 
-			TecUtilPleaseWait("Reading file contents. Please wait.", TRUE);
-			TecUtilStatusSuspend(TRUE);
+			StatusLaunch("Reading file contents. Please wait.", AddOnID, FALSE);
 
 			/*
 			*	Now get the rest of the header
@@ -5557,8 +5600,7 @@ void LoadTurboMoleCubeFiles()
 			vector<FieldDataType_e> ZoneDataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Bit);
 			ZoneDataTypes[VolZoneNum - 1] = FieldDataType_Double;
 
-			TecUtilStatusSuspend(FALSE);
-			TecUtilPleaseWait(NULL, FALSE);
+			StatusDrop(AddOnID);
 
 			TecUtilDataLoadBegin();
 
@@ -5594,7 +5636,7 @@ void LoadTurboMoleCubeFiles()
 			*/
 			int TotalPoints = IJK[0] * IJK[1] * IJK[2] * NumVarBlocks;
 			string StatusStr = "Loading TurboMole Cube file: " + DataSetName;
-			TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+			StatusLaunch(StatusStr, AddOnID, TRUE);
 
 			// now add the XYZ values (in the order ZYX)
 			// x is the innermost loop for how the data is organized
@@ -5610,7 +5652,7 @@ void LoadTurboMoleCubeFiles()
 			double Val;
 			vec3 TmpIJK = zeros<vec>(3);
 			for (int i = 0; i < IJK[0] && IsOk; ++i){
-				IsOk = SetPercent(i, IJK[0], StatusStr, AddOnID);
+				IsOk = StatusUpdate(i, IJK[0], StatusStr, AddOnID);
 				TmpIJK[1] = 0;
 				for (int j = 0; j < IJK[1] && IsOk; ++j){
 					TmpIJK[2] = 0;
@@ -5633,7 +5675,7 @@ void LoadTurboMoleCubeFiles()
 
 			FirstFile = FALSE;
 
-			TecUtilDialogDropPercentDone();
+			StatusDrop(AddOnID);
 
 			if (TmpCStr == NULL
 				&& (TmpIJK[0] < IJK[0] || TmpIJK[1] < IJK[1] || TmpIJK[2] < IJK[2]))

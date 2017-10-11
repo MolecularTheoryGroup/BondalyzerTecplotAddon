@@ -64,9 +64,9 @@ public:
 	CritPoints_c(const vector<CritPoints_c> & CPLists);
 	// Construct from existing CP zone
 	CritPoints_c(const int & CPZoneNum, 
-		const vector<int> & XYZVarNums, 
-		const int & RhoVarNum, 
+		const vector<int> & XYZVarNums,
 		const int & CPTypeVarNum,
+		const int & RhoVarNum = -1, 
 		MultiRootParams_s *MR = NULL);
 	~CritPoints_c();
 
@@ -94,7 +94,7 @@ public:
 	const CPType_e GetTypeFromTotOffset(const int & TotOffset) const;
 	const int GetTotOffsetFromTypeNumOffset(const int & TypeNum, const int & TypeOffset) const;
 
-	const double GetMinCPDist();
+	const double GetMinCPDist(const vector<CPType_e> & CPTypes = vector<CPType_e>(CPTypeList, std::end(CPTypeList)));
 
 	const double GetRho(const int & TypeNum, const int & Offset) const { return m_Rho[TypeNum][Offset]; }
 	const double GetRho(const int & TotOffset) const;
@@ -128,7 +128,7 @@ public:
 		*	Mutators and other methods
 		*/
 
-	const Boolean_t FindMinCPDist();
+	const Boolean_t FindMinCPDist(const vector<CPType_e> & CPTypes);
 	
 	const vector<int> SaveAsOrderedZone(const vector<int> & XYZVarNum, const int & RhoVarNum, const Boolean_t & SaveCPTypeZones = FALSE);
 
@@ -148,6 +148,7 @@ private:
 	Boolean_t m_MinCPDistFound;
 	double m_RhoCutoff;
 
+	vector<CPType_e> m_MinDistCPTypes;
 };
 
 void SetCPZone(const int & ZoneNum);
@@ -164,11 +165,11 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 const Boolean_t FindCPs(CritPoints_c & CPs,
 	const VolExtentIndexWeights_s & VolInfo,
 	const double & CellSpacing,
-	const double & RhoCutoff,
+	double & RhoCutoff,
 	const Boolean_t & IsPeriodic,
-	const FieldDataPointer_c & RhoPtr,
-	const vector<FieldDataPointer_c> & GradXYZPtrs,
-	const vector<FieldDataPointer_c> & HessPtrs);
+	FieldDataPointer_c & RhoPtr,
+	vector<FieldDataPointer_c> & GradXYZPtrs,
+	vector<FieldDataPointer_c> & HessPtrs);
 
 const Boolean_t CritPointInCell(const vector<int> & IJK,
 	vec3 & Point,

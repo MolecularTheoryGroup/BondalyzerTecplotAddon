@@ -100,7 +100,7 @@ void CalcGradForNode(const int & ii,
 void CalcGradForPoint(const vec3 & Point,
 	const vec3 & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const vector<vec3> & DirVects,
+	const mat33 & DirVects,
 	const int & StartDir,
 	const Boolean_t & IsPeriodic,
 	vec & OutValues,
@@ -124,7 +124,7 @@ void CalcHessForNode(const int & ii,
 void CalcHessForPoint(const vec3 & Point,
 	const vec3 & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const vector<vec3> & DirVects,
+	const mat33 & DirVects,
 	const Boolean_t & IsPeriodic,
 	mat & OutValues,
 	const FieldDataPointer_c & VarReadPtr,
@@ -200,7 +200,7 @@ void GaussianBlur(const Boolean_t & IsPeriodic,
 	const double & Sigma);
 
 const vec3 Transform2dTo3d(const vec2 & TwoPt,
-	const vector<vec3> & BasisVectors,
+	const mat33 & BasisVectors,
 	const vec3 & Origin);
 
 #endif

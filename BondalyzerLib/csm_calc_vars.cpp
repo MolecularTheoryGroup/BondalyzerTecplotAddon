@@ -36,18 +36,15 @@ static const vector<vector<int> > ValInds = { { 0, 1, 3, 4 }, { 1, 3 }, { 2, 3, 
 
 void CalcGradGradMagForDataset(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 
-	vector<string> GradXYZMagStr = {
-		"X Density Gradient",
-		"Y Density Gradient",
-		"Z Density Gradient",
-		"Density Gradient Magnitude"
-	};
+	vector<string> GradXYZMagStr = CSMVarName.DensGradVec;
+	GradXYZMagStr.push_back(CSMVarName.DensGradMag);
+
 	vector<EntIndex_t> GradXYZMagVarNum(GradXYZMagStr.size(), -1);
 
 	TecUtilLockStart(AddOnID);
 
 	EntIndex_t RhoVarNum = VarNumByNameList(vector<string>({
-		"Electron Density",
+		CSMVarName.Dens,
 		"Rho",
 		"rho"
 	}));
@@ -232,7 +229,7 @@ const Boolean_t CalcGradForRegularVar(const vector<int> & IJKMax,
 
 	string StatusStr = string("Calculating ") + VarName;
 
-	TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+	StatusLaunch(StatusStr.c_str(), AddOnID, TRUE);
 	vector<vec3> OutValues(numCPU);
 
 	if (!TaskQuit){
@@ -241,7 +238,7 @@ const Boolean_t CalcGradForRegularVar(const vector<int> & IJKMax,
 #endif
 		for (LgIndex_t kk = 1; kk <= IJKMax[2]; ++kk){
 			int ThreadNum = omp_get_thread_num();
-			if (ThreadNum == 0 && !SetPercent(kk, StatusKMax, StatusStr, AddOnID)){
+			if (ThreadNum == 0 && !StatusUpdate(kk, StatusKMax, StatusStr, AddOnID)){
 				TaskQuit = TRUE;
 #pragma omp flush (TaskQuit)
 			}
@@ -259,7 +256,7 @@ const Boolean_t CalcGradForRegularVar(const vector<int> & IJKMax,
 		}
 	}
 
-	TecUtilDialogDropPercentDone();
+	StatusDrop(AddOnID);
 
 	return !TaskQuit;
 }
@@ -285,12 +282,12 @@ const Boolean_t CalcMagForRegularVectorVar(const vector<int> & IJKMax,
 
 	string StatusStr = string("Calculating ") + VarName;
 
-	TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+	StatusLaunch(StatusStr.c_str(), AddOnID, TRUE);
 
 	if (!TaskQuit){
 #pragma omp parallel for
 		for (LgIndex_t kk = 1; kk <= IJKMax[2]; ++kk){
-			if (omp_get_thread_num() == 0 && !SetPercent(kk, StatusKMax, StatusStr, AddOnID)){
+			if (omp_get_thread_num() == 0 && !StatusUpdate(kk, StatusKMax, StatusStr, AddOnID)){
 				TaskQuit = TRUE;
 #pragma omp flush (TaskQuit)
 			};
@@ -310,7 +307,7 @@ const Boolean_t CalcMagForRegularVectorVar(const vector<int> & IJKMax,
 		}
 	}
 
-	TecUtilDialogDropPercentDone();
+	StatusDrop(AddOnID);
 
 	return !TaskQuit;
 }
@@ -470,7 +467,7 @@ void CalcGradForNode(const int & ii,
 void CalcGradForPoint(const vec3 & Point,
 	const vec3 & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const vector<vec3> & DirVects,
+	const mat33 & DirVects,
 	const int & StartDir,
 	const Boolean_t & IsPeriodic,
 	vec & OutValues,
@@ -482,7 +479,9 @@ void CalcGradForPoint(const vec3 & Point,
 	vec3 Points[5];
 	vec3 DelXYZx2 = DelXYZ * 2, DelXYZx12 = DelXYZ * 12;
 
-	for (int Dir = StartDir; Dir < DirVects.size(); ++Dir){
+	int NumDirs = sqrt(DirVects.size());
+
+	for (int Dir = StartDir; Dir < NumDirs; ++Dir){
 		/*
 		*	Use a combination of four potential methods for approximating
 		*	derivative:
@@ -509,7 +508,7 @@ void CalcGradForPoint(const vec3 & Point,
 		*/
 
 		for (int i = 0; i < 5; ++i)
-			Points[i] = Point + DelXYZ % (DirVects[Dir] * static_cast<double>(i - 2));
+			Points[i] = Point + DelXYZ % (DirVects.col(Dir) * static_cast<double>(i - 2));
 
 		if (!IsPeriodic && (sum(Points[0] < VolInfo.MinXYZ) > 0 || sum(Points[4] > VolInfo.MaxXYZ) > 0)){
 			if (sum(Points[0] < VolInfo.MinXYZ) > 0){
@@ -738,7 +737,7 @@ void CalcHessForNode(const int & ii,
 void CalcHessForPoint(const vec3 & Point,
 	const vec3 & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const vector<vec3> & DirVects,
+	const mat33 & DirVects,
 	const Boolean_t & IsPeriodic,
 	mat & OutValues,
 	const FieldDataPointer_c & VarReadPtr,
@@ -748,7 +747,7 @@ void CalcHessForPoint(const vec3 & Point,
 	vec3 Points[5], Grad[5];
 	vec3 DelXYZx2 = DelXYZ * 2, DelXYZx12 = DelXYZ * 12;
 
-	int Rank = static_cast<int>(DirVects.size());
+	int Rank = sqrt(DirVects.size());
 
 	for (int iDir = 0; iDir < Rank; ++iDir){
 		/*
@@ -777,7 +776,7 @@ void CalcHessForPoint(const vec3 & Point,
 		*/
 
 		for (int i = 0; i < 5; ++i)
-			Points[i] = Point + DelXYZ % DirVects[iDir] * static_cast<double>(i - 2);
+			Points[i] = Point + DelXYZ % DirVects.col(iDir) * static_cast<double>(i - 2);
 
 		if (!IsPeriodic && (sum(Points[0] < VolInfo.MinXYZ) > 0 || sum(Points[4] > VolInfo.MaxXYZ) > 0)){
 			if (sum(Points[0] < VolInfo.MinXYZ) > 0){
@@ -890,13 +889,13 @@ void CalcHessFor3DPoint(const vec3 & Point,
 void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	TecUtilLockStart(AddOnID); 
 	
-	EntIndex_t VolZoneNum = ZoneNumByName("Full");
+	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
 	if (VolZoneNum < 0){
 		TecUtilDialogErrMsg("Failed to get volume zone");
 		return;
 	}
 
-	EntIndex_t RhoVarNum = VarNumByNameList({ "Rho", "Electron Density" });
+	EntIndex_t RhoVarNum = VarNumByNameList({ "Rho", CSMVarName.Dens });
 	if (RhoVarNum < 0){
 		TecUtilDialogErrMsg("Failed to get density (rho) variable");
 		return;
@@ -905,9 +904,8 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	Boolean_t HasGrad = TRUE, HasHess = TRUE;
 
 	vector<EntIndex_t> GradVarNums(3);
-	vector<string> GradVarNames = { "X Density Gradient", "Y Density Gradient", "Z Density Gradient" };
 	for (int i = 0; i < 3 && HasGrad; ++i){
-		GradVarNums[i] = VarNumByName(GradVarNames[i]);
+		GradVarNums[i] = VarNumByName(CSMVarName.DensGradVec[i]);
 		HasGrad = GradVarNums[i] > 0;
 	}
 
@@ -915,7 +913,7 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		CalcGradGradMagForDataset(IsPeriodic, AddOnID); 
 
 		for (int i = 0; i < 3; ++i){
-			GradVarNums[i] = VarNumByName(GradVarNames[i]);
+			GradVarNums[i] = VarNumByName(CSMVarName.DensGradVec[i]);
 			HasGrad = GradVarNums[i] > 0;
 		}
 
@@ -925,23 +923,15 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		}
 	}
 
-	EntIndex_t GradMagVarNum = VarNumByName("Density Gradient Magnitude");
+	EntIndex_t GradMagVarNum = VarNumByName(CSMVarName.DensGradMag);
 	if (GradMagVarNum < 0){
 		TecUtilDialogErrMsg("Failed to get gradient magnitude variable");
 		return;
 	}
 
 	vector<EntIndex_t> HessVarNums(6);
-	vector<string> HessVarNames = {
-		"XX Density Hessian",
-		"XY Density Hessian",
-		"XZ Density Hessian",
-		"YY Density Hessian",
-		"YZ Density Hessian",
-		"ZZ Density Hessian"
-	};
 	for (int i = 0; i < 6 && HasHess; ++i){
-		HessVarNums[i] = VarNumByName(HessVarNames[i]);
+		HessVarNums[i] = VarNumByName(CSMVarName.DensHessTensor[i]);
 		HasHess = HessVarNums[i] > 0;
 	}
 
@@ -969,17 +959,12 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	VolExtentIndexWeights_s VolInfo;
 	VolInfo.AddOnID = AddOnID;
 	VolInfo.IsPeriodic = PeriodicBC;
-	TecUtilZoneGetIJK(VolZoneNum, &VolInfo.MaxIJK[0], &VolInfo.MaxIJK[1], &VolInfo.MaxIJK[2]);
+	GetVolInfo(VolZoneNum, XYZVarNums, IsPeriodic, VolInfo);
 
 	/*
 	*	Using this DelXYZ for the distance in the derivative approximations
 	*	assumes regular spacing in the data!!!
 	*/
-	for (int i = 0; i < 3; ++i){
-		TecUtilVarGetMinMax(XYZVarNums[i], &VolInfo.MinXYZ[i], &VolInfo.MaxXYZ[i]);
-// 		VolInfo.DelXYZ[i] = (VolInfo.MaxXYZ[i] - VolInfo.MinXYZ[i]) / (VolInfo.MaxIJK[i] - 1);
-	}
-	VolInfo.DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, VolZoneNum);
 
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
@@ -1006,16 +991,12 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		return;
 	}
 
-
-	vector<vec3> BV(3);
-	BV[0] << 1 << 0 << 0;
-	BV[1] << 0 << 1 << 0;
-	BV[2] << 0 << 0 << 1;
-
+	mat33 I = eye<mat>(3, 3);
 	vector<MultiRootParams_s> TmpParams(numCPU);
 	for (int i = 0; i < numCPU; ++i){
 		TmpParams[i].CalcType = GPType_NormalPlaneEberlyCP;
-		TmpParams[i].BasisVectors = &BV;
+// 		TmpParams[i].BasisVectors = &VolInfo.BasisVectors;
+		TmpParams[i].BasisVectors = &I;
 		TmpParams[i].HasHess = HasHess;
 		TmpParams[i].IsPeriodic = PeriodicBC;
 		TmpParams[i].RhoPtr = &RhoPtr;
@@ -1039,7 +1020,7 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		EntIndex_t NewVarNum;
 
 		ArgList_pa Args = TecUtilArgListAlloc();
-		TecUtilArgListAppendString(Args, SV_NAME, HessVarNames[i].c_str());
+		TecUtilArgListAppendString(Args, SV_NAME, CSMVarName.DensHessTensor[i].c_str());
 		TecUtilArgListAppendArray(Args, SV_VARDATATYPE, DataType.data());
 		TecUtilArgListAppendArray(Args, SV_VALUELOCATION, DataLoc.data());
 		TecUtilArgListAppendInt(Args, SV_SHAREVARWITHALLZONES, FALSE);
@@ -1057,7 +1038,7 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	}
 
 	const string TmpStr = "Calculating Hessian of rho";
-	TecUtilDialogLaunchPercentDone(TmpStr.c_str(), TRUE);
+	StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 	int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
 
@@ -1074,7 +1055,7 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		vec3 Pos;
 		mat33 TmpHess;
 		if (ThreadNum == 0){
-			if (!SetPercent(NumCompleted, NumTotal, TmpStr, AddOnID)){
+			if (!StatusUpdate(NumCompleted, NumTotal, TmpStr, AddOnID)){
 				IsOk = FALSE;
 #pragma omp flush (IsOk)
 			}
@@ -1103,7 +1084,7 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		}
 	}
 
-	TecUtilDialogDropPercentDone();
+	StatusDrop(AddOnID);
 
 	TecUtilDataLoadEnd();
 
@@ -1223,7 +1204,7 @@ const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 // 	if (!SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo))
 		return FALSE;
 
-	int NumDirs = static_cast<int>(RootParams.BasisVectors->size());
+	int NumDirs = sqrt(RootParams.BasisVectors->size());
 
 	mat33 Hessian;
 
@@ -1250,7 +1231,7 @@ const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 			{ 2, 4, 5 }
 		};
 
-		for (int i = 0; i < 3; ++i)
+ 		for (int i = 0; i < 3; ++i)
 			for (int j = 0; j < 3; ++j)
 				if (RootParams.Index >= 0)
 					Hessian.at(i, j) = RootParams.HessPtrs->at(HessIndices[i][j])[RootParams.Index];
@@ -1349,25 +1330,24 @@ const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	TecUtilLockStart(AddOnID); 
 	
-	EntIndex_t VolZoneNum = ZoneNumByName("Full");
+	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
 	if (VolZoneNum < 0){
 		TecUtilDialogErrMsg("Failed to get volume zone");
 		return;
 	}
 
-	EntIndex_t RhoVarNum = VarNumByNameList({ "Rho", "Electron Density" });
+	EntIndex_t RhoVarNum = VarNumByNameList({ "Rho", CSMVarName.Dens });
 
 	vector<EntIndex_t> GradVarNums(3);
-	vector<string> GradVarNames = { "X Density Gradient", "Y Density Gradient", "Z Density Gradient" };
 	for (int i = 0; i < 3; ++i){
-		GradVarNums[i] = VarNumByName(GradVarNames[i]);
+		GradVarNums[i] = VarNumByName(CSMVarName.DensGradVec[i]);
 		if (GradVarNums[i] < 0){
 			TecUtilDialogErrMsg("Failed to get gradient variable");
 			return;
 		}
 	}
 
-	EntIndex_t GradMagVarNum = VarNumByName("Density Gradient Magnitude");
+	EntIndex_t GradMagVarNum = VarNumByName(CSMVarName.DensGradMag);
 	if (GradMagVarNum < 0){
 		TecUtilDialogErrMsg("Failed to get gradient magnitude variable");
 		return;
@@ -1375,16 +1355,8 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 
 	Boolean_t HasHess = TRUE;
 	vector<EntIndex_t> HessVarNums(6);
-	vector<string> HessVarNames = {
-		"XX Density",
-		"XY Density",
-		"XZ Density",
-		"YY Density",
-		"YZ Density",
-		"ZZ Density"
-	};
 	for (int i = 0; i < 6 && HasHess; ++i){
-		HessVarNums[i] = VarNumByName(HessVarNames[i]);
+		HessVarNums[i] = VarNumByName(CSMVarName.DensHessTensor[i]);
 		HasHess = HessVarNums[i] > 0;
 	}
 
@@ -1412,17 +1384,7 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	VolExtentIndexWeights_s VolInfo;
 	VolInfo.AddOnID = AddOnID;
 	VolInfo.IsPeriodic = PeriodicBC;
-	TecUtilZoneGetIJK(VolZoneNum, &VolInfo.MaxIJK[0], &VolInfo.MaxIJK[1], &VolInfo.MaxIJK[2]);
-
-	/*
-	*	Using this DelXYZ for the distance in the derivative approximations
-	*	assumes regular spacing in the data!!!
-	*/
-// 	for (int i = 0; i < 3; ++i){
-// 		TecUtilVarGetMinMax(XYZVarNums[i], &VolInfo.MinXYZ[i], &VolInfo.MaxXYZ[i]);
-// 		VolInfo.DelXYZ[i] = (VolInfo.MaxXYZ[i] - VolInfo.MinXYZ[i]) / (VolInfo.MaxIJK[i] - 1);
-// 	}
-	VolInfo.DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, VolZoneNum);
+	GetVolInfo(VolZoneNum, XYZVarNums, PeriodicBC, VolInfo);
 
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
@@ -1450,16 +1412,11 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 			IsOk = HessPtrs[i].GetReadPtr(VolZoneNum, HessVarNums[i]);
 	}
 
-
-	vector<vec3> BV(3);
-	BV[0] << 1 << 0 << 0;
-	BV[1] << 0 << 1 << 0;
-	BV[2] << 0 << 0 << 1;
-
 	vector<MultiRootParams_s> TmpParams(numCPU);
+	mat33 I = eye<mat>(3, 3);
 	for (int i = 0; i < numCPU; ++i){
 		TmpParams[i].CalcType = GPType_NormalPlaneEberlyCP;
-		TmpParams[i].BasisVectors = &BV;
+		TmpParams[i].BasisVectors = &I;
 		TmpParams[i].HasHess = HasHess;
 		TmpParams[i].IsPeriodic = PeriodicBC;
 		TmpParams[i].RhoPtr = &RhoPtr;
@@ -1518,7 +1475,7 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	}
 
 	const string TmpStr = "Calculating Eigen system";
-	TecUtilDialogLaunchPercentDone(TmpStr.c_str(), TRUE);
+	StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 	int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
 
@@ -1530,7 +1487,7 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		vec3 EigenValues;
 		mat33 EigenVectors;
 		if (ThreadNum == 0){
-			if (!SetPercent(NumCompleted, NumTotal, TmpStr, AddOnID)){
+			if (!StatusUpdate(NumCompleted, NumTotal, TmpStr, AddOnID)){
 				IsOk = FALSE;
 #pragma omp flush (IsOk)
 			}
@@ -1558,7 +1515,7 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		}
 	}
 
-	TecUtilDialogDropPercentDone();
+	StatusDrop(AddOnID);
 
 	TecUtilDataLoadEnd();
 
@@ -1571,25 +1528,24 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 {
 	TecUtilLockStart(AddOnID); 
 	
-	EntIndex_t VolZoneNum = ZoneNumByName("Full");
+	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
 	if (VolZoneNum < 0){
 		TecUtilDialogErrMsg("Failed to get volume zone");
 		return;
 	}
 
-	EntIndex_t RhoVarNum = VarNumByNameList({ "Rho", "Electron Density" });
+	EntIndex_t RhoVarNum = VarNumByNameList({ "Rho", CSMVarName.Dens });
 
 	vector<EntIndex_t> GradVarNums(3);
-	vector<string> GradVarNames = { "X Density Gradient", "Y Density Gradient", "Z Density Gradient" };
 	for (int i = 0; i < 3; ++i){
-		GradVarNums[i] = VarNumByName(GradVarNames[i]);
+		GradVarNums[i] = VarNumByName(CSMVarName.DensGradVec[i]);
 		if (GradVarNums[i] < 0){
 			TecUtilDialogErrMsg("Failed to get gradient variable");
 			return;
 		}
 	}
 
-	EntIndex_t GradMagVarNum = VarNumByName("Density Gradient Magnitude");
+	EntIndex_t GradMagVarNum = VarNumByName(CSMVarName.DensGradMag);
 	if (GradMagVarNum < 0){
 		TecUtilDialogErrMsg("Failed to get gradient magnitude variable");
 		return;
@@ -1597,16 +1553,8 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 
 	Boolean_t HasHess = TRUE;
 	vector<EntIndex_t> HessVarNums(6);
-	vector<string> HessVarNames = {
-		"XX Density",
-		"XY Density",
-		"XZ Density",
-		"YY Density",
-		"YZ Density",
-		"ZZ Density"
-	};
 	for (int i = 0; i < 6 && HasHess; ++i){
-		HessVarNums[i] = VarNumByName(HessVarNames[i]);
+		HessVarNums[i] = VarNumByName(CSMVarName.DensHessTensor[i]);
 		HasHess = HessVarNums[i] > 0;
 	}
 
@@ -1635,18 +1583,7 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 	VolExtentIndexWeights_s VolInfo;
 	VolInfo.AddOnID = AddOnID;
 	VolInfo.IsPeriodic = PeriodicBC;
-	TecUtilZoneGetIJK(VolZoneNum, &VolInfo.MaxIJK[0], &VolInfo.MaxIJK[1], &VolInfo.MaxIJK[2]);
-
-	/*
-	*	Using this DelXYZ for the distance in the derivative approximations
-	*	assumes regular spacing in the data!!!
-	*/
-// 	for (int i = 0; i < 3; ++i){
-// 		TecUtilVarGetMinMax(XYZVarNums[i], &VolInfo.MinXYZ[i], &VolInfo.MaxXYZ[i]);
-// 		VolInfo.DelXYZ[i] = (VolInfo.MaxXYZ[i] - VolInfo.MinXYZ[i]) / (VolInfo.MaxIJK[i] - 1);
-// 		DelXYZ[i] = VolInfo.DelXYZ[i];
-// 	}
-	VolInfo.DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, VolZoneNum);
+	GetVolInfo(VolZoneNum, XYZVarNums, PeriodicBC, VolInfo);
 
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
@@ -1674,16 +1611,11 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 			IsOk = HessPtrs[i].GetReadPtr(VolZoneNum, HessVarNums[i]);
 	}
 
-
-	vector<vec3> BV(3);
-	BV[0] << 1 << 0 << 0;
-	BV[1] << 0 << 1 << 0;
-	BV[2] << 0 << 0 << 1;
-
 	vector<MultiRootParams_s> TmpParams(numCPU);
+	mat33 I = eye<mat>(3, 3);
 	for (int i = 0; i < numCPU; ++i){
 		TmpParams[i].CalcType = GPType_NormalPlaneEberlyCP;
-		TmpParams[i].BasisVectors = &BV;
+		TmpParams[i].BasisVectors = &I;
 		TmpParams[i].HasHess = HasHess;
 		TmpParams[i].IsPeriodic = PeriodicBC;
 		TmpParams[i].RhoPtr = &RhoPtr;
@@ -1733,7 +1665,7 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 	}
 
 	const string TmpStr = "Calculating dot products of Hessian eigenvectors with gradient of rho";
-	TecUtilDialogLaunchPercentDone(TmpStr.c_str(), TRUE);
+	StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 	int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
 
@@ -1744,7 +1676,7 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 		vec3 Pos;
 		vec3 DotProducts;
 		if (ThreadNum == 0){
-			if (!SetPercent(NumCompleted, NumTotal, TmpStr, AddOnID)){
+			if (!StatusUpdate(NumCompleted, NumTotal, TmpStr, AddOnID)){
 				IsOk = FALSE;
 #pragma omp flush (IsOk)
 			}
@@ -1764,7 +1696,7 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 		}
 	}
 
-	TecUtilDialogDropPercentDone();
+	StatusDrop(AddOnID);
 
 	TecUtilDataLoadEnd();
 
@@ -1921,25 +1853,24 @@ const double NEBForceFunction(vec3 & Point,
 void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const double & RhoCutoff){
 	TecUtilLockStart(AddOnID); 
 	
-	EntIndex_t VolZoneNum = ZoneNumByName("Full");
+	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
 	if (VolZoneNum < 0){
 		TecUtilDialogErrMsg("Failed to get volume zone");
 		return;
 	}
 
-	EntIndex_t RhoVarNum = VarNumByNameList({ "Rho", "Electron Density" });
+	EntIndex_t RhoVarNum = VarNumByNameList({ "Rho", CSMVarName.Dens });
 
 	vector<EntIndex_t> GradVarNums(3);
-	vector<string> GradVarNames = { "X Density Gradient", "Y Density Gradient", "Z Density Gradient" };
 	for (int i = 0; i < 3; ++i){
-		GradVarNums[i] = VarNumByName(GradVarNames[i]);
+		GradVarNums[i] = VarNumByName(CSMVarName.DensGradVec[i]);
 		if (GradVarNums[i] < 0){
 			TecUtilDialogErrMsg("Failed to get gradient variable");
 			return;
 		}
 	}
 
-	EntIndex_t GradMagVarNum = VarNumByName("Density Gradient Magnitude");
+	EntIndex_t GradMagVarNum = VarNumByName(CSMVarName.DensGradMag);
 	if (GradMagVarNum < 0){
 		TecUtilDialogErrMsg("Failed to get gradient magnitude variable");
 		return;
@@ -1947,16 +1878,8 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 
 	Boolean_t HasHess = TRUE;
 	vector<EntIndex_t> HessVarNums(6);
-	vector<string> HessVarNames = {
-		"XX Density",
-		"XY Density",
-		"XZ Density",
-		"YY Density",
-		"YZ Density",
-		"ZZ Density"
-	};
 	for (int i = 0; i < 6 && HasHess; ++i){
-		HessVarNums[i] = VarNumByName(HessVarNames[i]);
+		HessVarNums[i] = VarNumByName(CSMVarName.DensHessTensor[i]);
 		HasHess = HessVarNums[i] > 0;
 	}
 
@@ -1988,24 +1911,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 	VolExtentIndexWeights_s VolInfo;
 	VolInfo.AddOnID = AddOnID;
 	VolInfo.IsPeriodic = PeriodicBC;
-	TecUtilZoneGetIJK(VolZoneNum, &MaxIJK[0], &MaxIJK[1], &MaxIJK[2]);
-	IMax = MaxIJK[0];
-	JMax = MaxIJK[1];
-	KMax = MaxIJK[2];
-	REQUIRE(IMax > 1 && JMax > 1 && KMax > 1); /* Must be 3D volume */
-
-	VolInfo.MaxIJK = MaxIJK;
-
-	/*
-	*	Using this DelXYZ for the distance in the derivative approximations
-	*	assumes regular spacing in the data!!!
-	*/
-// 	for (int i = 0; i < 3; ++i){
-// 		TecUtilVarGetMinMax(XYZVarNums[i], &VolInfo.MinXYZ[i], &VolInfo.MaxXYZ[i]);
-// 		VolInfo.DelXYZ[i] = (VolInfo.MaxXYZ[i] - VolInfo.MinXYZ[i]) / (MaxIJK[i] - 1);
-// 		DelXYZ[i] = VolInfo.DelXYZ[i];
-// 	}
-	DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, VolZoneNum);
+	GetVolInfo(VolZoneNum, XYZVarNums, PeriodicBC, VolInfo);
 
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
@@ -2033,16 +1939,11 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 			IsOk = HessPtrs[i].GetReadPtr(VolZoneNum, HessVarNums[i]);
 	}
 
-
-	vector<vec3> BV(3);
-	BV[0] << 1 << 0 << 0;
-	BV[1] << 0 << 1 << 0;
-	BV[2] << 0 << 0 << 1;
-
 	vector<MultiRootParams_s> TmpParams(numCPU);
+	mat33 I = eye<mat>(3, 3);
 	for (auto & i : TmpParams){
 		i.CalcType = GPType_NormalPlaneEberlyCP;
-		i.BasisVectors = &BV;
+		i.BasisVectors = &I;
 		i.HasHess = HasHess;
 		i.IsPeriodic = PeriodicBC;
 		i.RhoPtr = &RhoPtr;
@@ -2087,14 +1988,14 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 		VarPtr.GetWritePtr(VolZoneNum, NewVarNum);
 
 		const string TmpStr = "Calculate Eberly 1-ridge function";
-		TecUtilDialogLaunchPercentDone(TmpStr.c_str(), TRUE);
+		StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 		int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
 
 #pragma omp parallel for
 		for (int k = 1; k <= VolInfo.MaxIJK[2]; ++k){
 			if (omp_get_thread_num() == 0){
-				if (!SetPercent(NumCompleted, NumTotal, TmpStr, AddOnID)){
+				if (!StatusUpdate(NumCompleted, NumTotal, TmpStr, AddOnID)){
 					IsOk = FALSE;
 #pragma omp flush (IsOk)
 				}
@@ -2113,7 +2014,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 			}
 		}
 
-		TecUtilDialogDropPercentDone();
+		StatusDrop(AddOnID);
 	}
 
 	/*
@@ -2150,14 +2051,14 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 		VarPtr.GetWritePtr(VolZoneNum, NewVarNum);
 
 		const string TmpStr = "Calculate Eberly 2-ridge function";
-		TecUtilDialogLaunchPercentDone(TmpStr.c_str(), TRUE);
+		StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 		int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
 
 #pragma omp parallel for
 		for (int k = 1; k <= VolInfo.MaxIJK[2]; ++k){
 			if (omp_get_thread_num() == 0){
-				if (!SetPercent(NumCompleted, NumTotal, TmpStr, AddOnID)){
+				if (!StatusUpdate(NumCompleted, NumTotal, TmpStr, AddOnID)){
 					IsOk = FALSE;
 #pragma omp flush (IsOk)
 				}
@@ -2176,7 +2077,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 			}
 		}
 
-		TecUtilDialogDropPercentDone();
+		StatusDrop(AddOnID);
 	}
 
 	TecUtilDataLoadEnd();
@@ -2218,24 +2119,10 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 		}
 	}
 
-	vector<LgIndex_t> MaxIJK(3);
 	VolExtentIndexWeights_s VolInfo;
 	VolInfo.AddOnID = AddOnID;
+	GetVolInfo(VolZoneNum, XYZVarNums, FALSE, VolInfo);
 	VolInfo.IsPeriodic = FALSE;
-	TecUtilZoneGetIJK(VolZoneNum, &MaxIJK[0], &MaxIJK[1], &MaxIJK[2]);
-
-	VolInfo.MaxIJK = MaxIJK;
-
-	/*
-	*	Using this DelXYZ for the distance in the derivative approximations
-	*	assumes regular spacing in the data!!!
-	*/
-// 	for (int i = 0; i < 3; ++i){
-// 		TecUtilVarGetMinMax(XYZVarNums[i], &VolInfo.MinXYZ[i], &VolInfo.MaxXYZ[i]);
-// 		VolInfo.DelXYZ[i] = (VolInfo.MaxXYZ[i] - VolInfo.MinXYZ[i]) / (MaxIJK[i] - 1);
-// 	}
-	VolInfo.DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, VolZoneNum);
-	ZoneXYZVarGetMinMax_Ordered3DZone(XYZVarNums, VolZoneNum, VolInfo.MinXYZ, VolInfo.MaxXYZ);
 	
 
 	vector<VolExtentIndexWeights_s> ThreadVolInfo(numCPU, VolInfo);
@@ -2259,8 +2146,8 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 	for (auto & ChkPtr : VolReadPtrs){
 		bool HasUniqueVals = false;
 
-		for (int i = 0; i < MIN(4,ChkPtr.GetSize()-1) && !HasUniqueVals; ++i){
-			for (int j = i + 1; j < MIN(5,ChkPtr.GetSize()) && !HasUniqueVals; ++j){
+		for (int i = 0; i < MIN(4,ChkPtr.Size()-1) && !HasUniqueVals; ++i){
+			for (int j = i + 1; j < MIN(5,ChkPtr.Size()) && !HasUniqueVals; ++j){
 				HasUniqueVals = (ChkPtr[j] != ChkPtr[i]);
 			}
 		}
@@ -2269,11 +2156,11 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 	}
 
 	string StatusStr = "Mapping all variables to each zone";
-	TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+	StatusLaunch(StatusStr.c_str(), AddOnID, TRUE);
 
 	for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum){
 		if (ZoneNum != VolZoneNum){
-			IsOk = SetPercent(ZoneNum, NumZones, StatusStr, AddOnID);
+			IsOk = StatusUpdate(ZoneNum, NumZones, StatusStr, AddOnID);
 			if (IsOk){
 // 				for (int i = 0; i < 3 && IsOk; ++i)
 // 					IsOk = XYZReadPtrs[i].GetReadPtr(ZoneNum, XYZVarNums[i]);
@@ -2344,7 +2231,7 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 		}
 	}
 
-	TecUtilDialogDropPercentDone();
+	StatusDrop(AddOnID);
 
 	TecUtilDataLoadEnd();
 
@@ -2432,15 +2319,9 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	 *	Get system information
 	 */
 	VolExtentIndexWeights_s VolInfo;
+	GetVolInfo(VolZoneNum, XYZVarNums, Opt.IsPeriodic, VolInfo);
 	VolInfo.AddOnID = Opt.AddOnID;
 	VolInfo.IsPeriodic = Opt.IsPeriodic;
-	TecUtilZoneGetIJK(VolZoneNum, &VolInfo.MaxIJK[0], &VolInfo.MaxIJK[1], &VolInfo.MaxIJK[2]);
-	VolInfo.MaxXYZ = MaxXYZ;
-	VolInfo.MinXYZ = MinXYZ;
-// 	for (int i = 0; i < 3; ++i){
-// 		VolInfo.DelXYZ[i] = (VolInfo.MaxXYZ[i] - VolInfo.MinXYZ[i]) / (VolInfo.MaxIJK[i] - 1);
-// 	}
-	VolInfo.DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, VolZoneNum);
 
 	vec3 DelXYZx2 = VolInfo.DelXYZ * 2,
 		DelXYZx12 = VolInfo.DelXYZ * 12;
@@ -2522,13 +2403,9 @@ void CalcVars(CalcVarsOptions_s & Opt)
 
 	vector<MultiRootParams_s> Params(numCPU);
 	vector<VolExtentIndexWeights_s> VI(numCPU, VolInfo);
-
-	vector<vec3> BV(3);
-	BV[0] << 1 << 0 << 0;
-	BV[1] << 0 << 1 << 0;
-	BV[2] << 0 << 0 << 1;
+	mat33 I = eye<mat>(3, 3);
 	for (int i = 0; i < numCPU; ++i){
-		Params[i].BasisVectors = &BV;
+		Params[i].BasisVectors = &I;
 		Params[i].CalcType = GPType_Invalid;
 		Params[i].IsPeriodic = Opt.IsPeriodic;
 		Params[i].VolInfo = &VI[i];
@@ -2884,7 +2761,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 		vec3 BlankPoint;
 
 		string StatusStr = string("Calculating ") + CalcVarTypeNames[*CalcVar];
-		TecUtilDialogLaunchPercentDone(StatusStr.c_str(), TRUE);
+		StatusLaunch(StatusStr.c_str(), VolInfo.AddOnID, TRUE);
 
 		/*
 		 *	Loop over every zone and calculate the necessary variables.
@@ -2907,22 +2784,10 @@ void CalcVars(CalcVarsOptions_s & Opt)
 				if (IsVolZone){
 					VolInfo.MaxIJK = IJK;
 					if (ZoneNum == VolZoneNum){
-						VolInfo.IsPeriodic = Opt.IsPeriodic;
-						VolInfo.MaxXYZ = MaxXYZ;
-						VolInfo.MinXYZ = MinXYZ;
-// 						for (int i = 0; i < 3; ++i){
-// 							VolInfo.DelXYZ[i] = (VolInfo.MaxXYZ[i] - VolInfo.MinXYZ[i]) / (VolInfo.MaxIJK[i] - 1);
-// 						}
-						VolInfo.DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, ZoneNum);
+						GetVolInfo(ZoneNum, XYZVarNums, Opt.IsPeriodic, VolInfo);
 					}
 					else{
-						VolInfo.IsPeriodic = FALSE;
-// 						for (int j = 0; j < 3; ++j){
-// 							VolInfo.MaxXYZ[j] = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[j], IndexFromIJK(IJK[0], IJK[1], IJK[2], IJK[0], IJK[1]));
-// 							VolInfo.MinXYZ[j] = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[j], 1);
-// 							VolInfo.DelXYZ[j] = (VolInfo.MaxXYZ[j] - VolInfo.MinXYZ[j]) / (VolInfo.MaxIJK[j] - 1);
-// 						}
-						VolInfo.DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, ZoneNum);
+						GetVolInfo(ZoneNum, XYZVarNums, FALSE, VolInfo);
 					}
 					DelXYZx2 = VolInfo.DelXYZ * 2;
 					DelXYZx12 = VolInfo.DelXYZ * 12;
@@ -2949,7 +2814,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						for (int i = 0; i < 3 && !Opt.HasGrad; ++i){
 							FieldDataPointer_c TmpPtr;
 							if (TmpPtr.GetReadPtr(ZoneNum, Opt.GradVarNums[i])){
-								int jMax = TmpPtr.GetSize();
+								int jMax = TmpPtr.Size();
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
 									if (!Opt.HasGrad && TmpPtr[j] != 0.0)
@@ -2964,7 +2829,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						HasGradMag = FALSE;
 						FieldDataPointer_c TmpPtr;
 						if (TmpPtr.GetReadPtr(ZoneNum, GradMagVarNum)){
-							int jMax = TmpPtr.GetSize();
+							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
 								if (!HasGradMag && TmpPtr[j] != 0.0)
@@ -2981,7 +2846,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						for (int i = 0; i < 6 && !Opt.HasHess; ++i){
 							FieldDataPointer_c TmpPtr;
 							if (TmpPtr.GetReadPtr(ZoneNum, Opt.HessVarNums[i])){
-								int jMax = TmpPtr.GetSize();
+								int jMax = TmpPtr.Size();
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
 									if (!Opt.HasHess && TmpPtr[j] != 0.0)
@@ -2997,7 +2862,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						for (int i = 0; i < 12 && !HasEigSys; ++i){
 							FieldDataPointer_c TmpPtr;
 							if (TmpPtr.GetReadPtr(ZoneNum, EigSysVarNums[i])){
-								int jMax = TmpPtr.GetSize();
+								int jMax = TmpPtr.Size();
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
 									if (!HasEigSys && TmpPtr[j] != 0.0)
@@ -3012,7 +2877,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						HasLap = FALSE;
 						FieldDataPointer_c TmpPtr;
 						if (TmpPtr.GetReadPtr(ZoneNum, LapVarNum)){
-							int jMax = TmpPtr.GetSize();
+							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
 								if (!HasLap && TmpPtr[j] != 0.0)
@@ -3026,7 +2891,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						HasGaussCurvature = FALSE;
 						FieldDataPointer_c TmpPtr;
 						if (TmpPtr.GetReadPtr(ZoneNum, GaussCurvatureVarNum)){
-							int jMax = TmpPtr.GetSize();
+							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
 								if (!HasGaussCurvature && TmpPtr[j] != 0.0)
@@ -3041,7 +2906,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						for (int i = 0; i < 3 && !HasEigVecDotGrad; ++i){
 							FieldDataPointer_c TmpPtr;
 							if (TmpPtr.GetReadPtr(ZoneNum, EigVecDotGradVarNums[i])){
-								int jMax = TmpPtr.GetSize();
+								int jMax = TmpPtr.Size();
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
 									if (!HasEigVecDotGrad && TmpPtr[j] != 0.0)
@@ -3056,7 +2921,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						HasEberlyFunc[0] = FALSE;
 						FieldDataPointer_c TmpPtr;
 						if (TmpPtr.GetReadPtr(ZoneNum, EberlyFuncVarNums[0])){
-							int jMax = TmpPtr.GetSize();
+							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
 								if (!HasEberlyFunc[0] && TmpPtr[j] != 0.0)
@@ -3070,7 +2935,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						HasEberlyFunc[1] = FALSE;
 						FieldDataPointer_c TmpPtr;
 						if (TmpPtr.GetReadPtr(ZoneNum, EberlyFuncVarNums[1])){
-							int jMax = TmpPtr.GetSize();
+							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
 								if (!HasEberlyFunc[1] && TmpPtr[j] != 0.0)
@@ -3084,7 +2949,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						HasEigenRank = FALSE;
 						FieldDataPointer_c TmpPtr;
 						if (TmpPtr.GetReadPtr(ZoneNum, EigenRankVarNum)){
-							int jMax = TmpPtr.GetSize();
+							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
 								if (!HasEigenRank && TmpPtr[j] != 0.0)
@@ -3144,7 +3009,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 
 
 				if (Opt.CalcForAllZones)
-					IsOk = SetPercent(ZoneNum, NumZones, StatusStr, Opt.AddOnID);
+					IsOk = StatusUpdate(ZoneNum, NumZones, StatusStr, Opt.AddOnID);
 				/*
 				*	Get all the read pointers
 				*/
@@ -3264,7 +3129,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 							int ThreadNum = omp_get_thread_num();
 
 							if (ThreadNum == 0 && !Opt.CalcForAllZones){
-								if (SetPercent(NumCompleted, NumTotal, StatusStr, Opt.AddOnID))
+								if (StatusUpdate(NumCompleted, NumTotal, StatusStr, Opt.AddOnID))
 									NumCompleted++;
 								else{
 									IsOk = FALSE;
@@ -3581,7 +3446,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 				break;
 		}
 
-		TecUtilDialogDropPercentDone();
+		StatusDrop(VolInfo.AddOnID);
+// 		TecUtilDialogDropPercentDone();
 
 // 		switch (*CalcVar){
 // 			case CalcGradVec:
@@ -3698,7 +3564,7 @@ void GaussianBlur(const Boolean_t & IsPeriodic,
 	NewVar.GetWritePtr(ZoneNum, TecUtilDataSetGetNumVars());
 	if (!NewVar.IsReady()) return;
 
-	vector<int> IJK = NewVar.GetMaxIJK();
+	vector<int> IJK = NewVar.MaxIJK();
 
 #pragma omp parallel for
 	for (int i = 1; i <= IJK[0]; ++i){
@@ -3752,12 +3618,12 @@ void GaussianBlur(const Boolean_t & IsPeriodic,
 // 
 
 const vec3 Transform2dTo3d(const vec2 & TwoPt,
-	const vector<vec3> & BasisVectors,
+	const mat33 & BasisVectors,
 	const vec3 & Origin)
 {
 	vec3 ThreePt(Origin);
 	for (int i = 0; i < 2; ++i){
-		ThreePt += BasisVectors[i] * TwoPt[i];
+		ThreePt += BasisVectors.col(i) * TwoPt[i];
 	}
 
 	return ThreePt;

@@ -50,7 +50,7 @@ Boolean_t ExtractTopology(EntIndex_t        ZoneNum,
                           CompletionLevel_e CompletionLevel,
                           Boolean_t         PeriodicBC);
 void CalcGradGradMag(Boolean_t IsPeriodic);
-Boolean_t SetPercent(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText);
+Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText);
 
 
 #endif /* ENGINE_H_ */

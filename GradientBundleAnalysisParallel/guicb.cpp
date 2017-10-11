@@ -268,7 +268,11 @@ static void BTNRun_BTN_T1_1_CB(void)
 		MainFunction();
 		GBAResultViewerPrepareGUI();
 		GBATabNumber = 3;
-		if (TecGUIToggleGet(TGLInt_TOG_T1_1))
+		Boolean_t DoIntegration = TecGUIToggleGet(TGLInt_TOG_T1_1);
+		int NumSelectedVars, *SelectedVarNums;
+		TecGUIListGetSelectedItems(MLSelVars_MLST_T1_1, &SelectedVarNums, &NumSelectedVars);
+		DoIntegration = (NumSelectedVars > 0);
+		if (DoIntegration)
 			PrepareIntegration(FALSE);
 	}
 	else{
@@ -966,7 +970,7 @@ static void BTNExport_BTN_T3_1_CB(void)
 									for (int i = 0; i < Ptrs.size(); ++i){
 										OutFile << IntVarNames[i] << "," << i+1 << ",";
 										double Total = 0.0;
-										for (int j = 0; j < Ptrs[i].GetSize(); ++j){
+										for (int j = 0; j < Ptrs[i].Size(); ++j){
 											Total += Ptrs[i][j];
 										}
 										OutFile << std::setprecision(16) << std::scientific << Total << '\n';
@@ -977,7 +981,7 @@ static void BTNExport_BTN_T3_1_CB(void)
 										OutFile << "," << i;
 									OutFile << '\n';
 
-									for (int i = 0; i < Ptrs[0].GetSize(); ++i){
+									for (int i = 0; i < Ptrs[0].Size(); ++i){
 										char* GBZoneName;
 										TecUtilZoneGetName(ZoneNum + i + 1, &GBZoneName);
 										OutFile << GBZoneName << "," << ZoneNum + i + 1 << "," << i + 1;

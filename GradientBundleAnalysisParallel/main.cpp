@@ -359,11 +359,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		TecUtilArgListDealloc(&ArgList);
 	}
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Bondalyzer",
 						 "Gradient Bundle Analysis",
 						 '\0',
 						 MenuCallback);
-// 	TecUtilMenuAddOption("Bondalyzer",
+// 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 						"GP Test",
 // 						'\0',
 // 						GPTestMenuCB);

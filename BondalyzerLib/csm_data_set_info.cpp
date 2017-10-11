@@ -29,6 +29,17 @@ size_t getTotalSystemMemory()
 #endif
 }
 
+// template <class T>
+// const int VectorGetElementNum(const vector<T> & SearchVec, const T & Item){
+// 	int ElemNum;
+// 
+// 	vector<T>::const_iterator itr = std::find(SearchVec.cbegin(), SearchVec.cend(), Item);
+// 
+// 	if (itr == SearchVec.cend()) return -1;
+// 
+// 	ElemNum = itr - SearchVec.cbegin();
+// 	return ElemNum;
+// }
 
 const int SearchVectorForString(const vector<string> & Vec, const string & SearchString, const bool & UseVectorStringLength){
 	Boolean_t IsFound = FALSE;
@@ -42,13 +53,16 @@ const int SearchVectorForString(const vector<string> & Vec, const string & Searc
 	return -1;
 }
 
-const vector<string> SplitString(const string &s, char delim) {
-	stringstream ss(s);
-	string item;
+const vector<string> SplitString(const string &s, const string & delim) {
 	vector<string> tokens;
-	while (getline(ss, item, delim)) {
-		tokens.push_back(item);
+	auto start = 0U;
+	auto end = s.find(delim);
+	while (end != std::string::npos){
+		tokens.push_back(s.substr(start, end - start));
+		start = end + delim.length();
+		end = s.find(delim, start);
 	}
+	if (tokens.size() == 0) tokens.push_back(s);
 	return tokens;
 }
 
@@ -66,6 +80,24 @@ const Boolean_t StringIsFloat(const string & s){
 	return TRUE;
 }
 
+
+const string StringReplaceSubString(const string & InStr, const string & OldStr, const string & NewStr){
+	string OutStr = InStr;
+
+	size_t Index = 0;
+
+	while (true){
+		Index = OutStr.find(OldStr, Index);
+
+		if (Index == string::npos) break;
+
+		OutStr.replace(Index, OldStr.length(), NewStr);
+
+		Index += NewStr.length();
+	}
+
+	return OutStr;
+}
 
 
 /*
@@ -111,12 +143,39 @@ const string AuxDataMakeStringValidName(string Str){
 	*	Begin aux data wrapper functions
 	*/
 
+void AuxDataCopy(const int & SourceNum, const int & DestNum, bool IsZone){
+	AuxData_pa SourcePtr = NULL, DestPtr = NULL;
+
+	if (IsZone){
+		SourcePtr = TecUtilAuxDataZoneGetRef(SourceNum);
+		DestPtr = TecUtilAuxDataZoneGetRef(DestNum);
+	}
+	else{
+		SourcePtr = TecUtilAuxDataVarGetRef(SourceNum);
+		DestPtr = TecUtilAuxDataVarGetRef(DestNum);
+	}
+
+	if (SourcePtr != NULL && DestPtr != NULL){
+		int NumItems = TecUtilAuxDataGetNumItems(SourcePtr);
+		for (int i = 1; i <= NumItems; ++i){
+			char *name, *value;
+			Boolean_t retain;
+			AuxDataType_e type;
+			TecUtilAuxDataGetItemByIndex(SourcePtr, i, &name, reinterpret_cast<ArbParam_t*>(&value), &type, &retain);
+			TecUtilAuxDataSetItem(DestPtr, const_cast<const char*>(name), reinterpret_cast<ArbParam_t>(value), type, retain);
+
+			TecUtilStringDealloc(&name);
+			TecUtilStringDealloc(&value);
+		}
+	}
+}
+
 const Boolean_t AuxDataZoneHasItem(const int & ZoneNum, const string & CheckString)
 {
 	Boolean_t ZoneOK = TRUE;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	ZoneOK = VALID_REF(TempAuxData);
+	ZoneOK = (TempAuxData != NULL);
 	if (ZoneOK){
 		char* TempCStr;
 		AuxDataType_e ADTJunk;
@@ -132,7 +191,7 @@ const Boolean_t AuxDataZoneItemMatches(const int & ZoneNum, const string & AuxDa
 	Boolean_t ZoneOK = TRUE;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	ZoneOK = VALID_REF(TempAuxData);
+	ZoneOK = (TempAuxData != NULL);
 	if (ZoneOK){
 		char* TempCStr;
 		AuxDataType_e ADTJunk;
@@ -152,10 +211,10 @@ const string AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataName)
 	Boolean_t ZoneOK = TRUE;
 
 	char* TempCStr = NULL;
-	string TmpStr = "";
+	string TmpStr = "-1";
 
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	ZoneOK = VALID_REF(TempAuxData);
+	ZoneOK = (TempAuxData != NULL);
 	if (ZoneOK){
 		AuxDataType_e ADTJunk;
 		Boolean_t BJunk;
@@ -176,7 +235,7 @@ const Boolean_t AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataNa
 	char* TempCStr = NULL;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	ZoneOK = VALID_REF(TempAuxData);
+	ZoneOK = (TempAuxData != NULL);
 	if (ZoneOK){
 		AuxDataType_e ADTJunk;
 		Boolean_t BJunk;
@@ -190,11 +249,15 @@ const Boolean_t AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataNa
 	return ZoneOK;
 }
 
+const vector<string> AuxDataZoneGetList(const int & ZoneNum, const string & AuxDataName, string & Value){
+	return SplitString(AuxDataZoneGetItem(ZoneNum, AuxDataName), ",,");
+}
+
 
 const Boolean_t AuxDataZoneSetItem(const int & ZoneNum, const string & AuxDataName, const string & AuxDataValue)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	Boolean_t IsOk = VALID_REF(TempAuxData);
+	Boolean_t IsOk = (TempAuxData != NULL);
 	if (IsOk){
 		IsOk = TecUtilAuxDataSetStrItem(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str(), AuxDataValue.c_str(), TRUE);
 	}
@@ -204,7 +267,7 @@ const Boolean_t AuxDataZoneSetItem(const int & ZoneNum, const string & AuxDataNa
 const Boolean_t AuxDataZoneDeleteItemByName(const int & ZoneNum, const string & AuxDataName)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	Boolean_t IsOk = VALID_REF(TempAuxData);
+	Boolean_t IsOk = (TempAuxData != NULL);
 	if (IsOk){
 		IsOk = TecUtilAuxDataDeleteItemByName(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str());
 	}
@@ -214,7 +277,7 @@ const Boolean_t AuxDataZoneDeleteItemByName(const int & ZoneNum, const string & 
 const Boolean_t AuxDataDataSetDeleteItemByName(const string & AuxDataName)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
-	Boolean_t IsOk = VALID_REF(TempAuxData);
+	Boolean_t IsOk = (TempAuxData != NULL);
 	if (IsOk){
 		IsOk = TecUtilAuxDataDeleteItemByName(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str());
 	}
@@ -229,7 +292,7 @@ const string AuxDataDataSetGetItem(const string & AuxDataName)
 	string TmpStr;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
-	ZoneOK = VALID_REF(TempAuxData);
+	ZoneOK = (TempAuxData != NULL);
 	if (ZoneOK){
 		AuxDataType_e ADTJunk;
 		Boolean_t BJunk;
@@ -250,7 +313,7 @@ const Boolean_t AuxDataDataSetGetItem(const string & AuxDataName, string & Value
 	char* TempCStr = NULL;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
-	ZoneOK = VALID_REF(TempAuxData);
+	ZoneOK = (TempAuxData != NULL);
 	if (ZoneOK){
 		AuxDataType_e ADTJunk;
 		Boolean_t BJunk;
@@ -268,7 +331,7 @@ const Boolean_t AuxDataDataSetGetItem(const string & AuxDataName, string & Value
 const Boolean_t AuxDataDataSetSetItem(const string & AuxDataName, const string & AuxDataValue)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
-	Boolean_t IsOk = VALID_REF(TempAuxData);
+	Boolean_t IsOk = (TempAuxData != NULL);
 	if (IsOk){
 		IsOk = TecUtilAuxDataSetStrItem(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str(), AuxDataValue.c_str(), TRUE);
 	}
@@ -370,7 +433,6 @@ const vec3 GetDelXYZ_Ordered3DZone(const vector<int> & XYZVarNums, const int & Z
 		REQUIRE(XYZVarNums[i] >= 1 && XYZVarNums[i] <= TecUtilDataSetGetNumVars());
 
 	vec3 DelXYZ;
-
 	LgIndex_t IJK[3];
 	TecUtilZoneGetIJK(ZoneNum, &IJK[0], &IJK[1], &IJK[2]);
 
@@ -424,6 +486,41 @@ const vector<vec3> ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarN
 }
 
 
+void ZoneXYZVarGetBasisVectors_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum, mat33 & BasisVectors, vec3 & BVExtent){
+	REQUIRE(TecUtilZoneIsOrdered(ZoneNum));
+	REQUIRE(XYZVarNums.size() == 3);
+	REQUIRE(ZoneNum >= 1 && ZoneNum <= TecUtilDataSetGetNumZones());
+	for (int i = 0; i < 3; ++i)
+		REQUIRE(XYZVarNums[i] >= 1 && XYZVarNums[i] <= TecUtilDataSetGetNumVars());
+
+	LgIndex_t IJK[3];
+	TecUtilZoneGetIJK(ZoneNum, &IJK[0], &IJK[1], &IJK[2]);
+
+	vec3 LowXYZ, HighXYZ;
+
+	FieldVecPointer_c XYZPtr;
+
+	TecUtilDataLoadBegin();
+
+	if (XYZPtr.GetReadPtr(ZoneNum, XYZVarNums)){
+		LowXYZ = XYZPtr[0];
+
+		for (int dir = 0; dir < 3; ++dir){
+			HighXYZ = XYZPtr[IndexFromIJK(
+				dir == 0 ? IJK[0] : 1,
+				dir == 1 ? IJK[1] : 1,
+				dir == 2 ? IJK[2] : 1,
+				IJK[0], IJK[1]) - 1];
+			BasisVectors.col(dir) = HighXYZ - LowXYZ;
+			BVExtent[dir] = norm(BasisVectors.col(dir));
+		}
+// 		BasisVectors = mat33(normalise(BasisVectors));
+	}
+
+	TecUtilDataLoadEnd();
+}
+
+
 void ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum, vec3 & MinXYZ, vec3 & MaxXYZ){
 	REQUIRE(TecUtilZoneIsOrdered(ZoneNum));
 	REQUIRE(XYZVarNums.size() == 3);
@@ -435,8 +532,8 @@ void ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int
 	IJK[0][0] = IJK[0][1] = IJK[0][2] = 1;
 	TecUtilZoneGetIJK(ZoneNum, &IJK[1][0], &IJK[1][1], &IJK[1][2]);
 
-	MinXYZ.fill(1e150);
-	MaxXYZ.fill(-1e150);
+	MinXYZ.fill(DBL_MAX);
+	MaxXYZ.fill(DBL_MIN);
 
 	double  Value;
 
@@ -519,16 +616,48 @@ void ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int
 	*	Begin other functions
 	*/
 
+void StatusLaunch(const string & StatusStr, const AddOn_pa & AddOnID, const Boolean_t & ShowScale, const Boolean_t & ShowButton){
+	TecUtilLockStart(AddOnID);
+// 	TecUtilDrawGraphics(TRUE);
+	TecUtilStatusSuspend(FALSE);
 
-const Boolean_t SetPercent(unsigned int CurrentNum, unsigned int TotalNum, const string & ProgresssText, const AddOn_pa & AddOnID){
+	TecUtilStatusStartPercentDone(StatusStr.c_str(), ShowButton, ShowScale);
+// 	TecUtilDialogLaunchPercentDone(StatusStr.c_str(), ShowScale);
+
+	TecUtilStatusSuspend(TRUE);
+// 	TecUtilDrawGraphics(FALSE);
+	TecUtilLockFinish(AddOnID);
+}
+
+void StatusDrop(const AddOn_pa & AddOnID){
+	TecUtilLockStart(AddOnID);
+// 	TecUtilDrawGraphics(TRUE);
+	TecUtilStatusSuspend(FALSE);
+
+	TecUtilStatusFinishPercentDone();
+// 	TecUtilDialogDropPercentDone();
+
+	TecUtilLockFinish(AddOnID);
+}
+
+
+const Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const string & ProgresssText, const AddOn_pa & AddOnID){
 	unsigned int Percent = MAX(0, MIN(static_cast<int>(static_cast<double>(CurrentNum) / static_cast<double>(TotalNum)* 100.), 100));
 
-	stringstream ss;
-	ss << ProgresssText << "  (" << Percent << "% Complete)";
-
 	TecUtilLockStart(AddOnID);
-	Boolean_t IsOk = TecUtilDialogCheckPercentDone(Percent);
-	TecUtilDialogSetPercentDoneText(ss.str().c_str());
+
+// 	TecUtilDrawGraphics(TRUE);
+	TecUtilStatusSuspend(FALSE);
+	if (ProgresssText != string("")){
+		stringstream ss;
+		ss << ProgresssText << "  (" << Percent << "% Complete)";
+		TecUtilStatusSetPercentDoneText(ss.str().c_str());
+		// 		TecUtilDialogSetPercentDoneText(ss.str().c_str());
+	}
+	Boolean_t IsOk = TecUtilStatusCheckPercentDone(Percent);
+// 	Boolean_t IsOk = TecUtilDialogCheckPercentDone(Percent);
+	TecUtilStatusSuspend(TRUE);
+// 	TecUtilDrawGraphics(FALSE);
 
 	TecUtilLockFinish(AddOnID);
 

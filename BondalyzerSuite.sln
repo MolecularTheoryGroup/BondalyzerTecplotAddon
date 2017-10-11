@@ -39,6 +39,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VolumeMesher", "VolumeMeshe
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "armadillo", "armadillo\armadillo.vcxproj", "{0BB88127-9643-4F80-9474-6C98ABA3A11C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestSpace", "TestSpace\TestSpace.vcxproj", "{4432924A-42CB-4534-BCF4-7D52089EEC4F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -114,6 +116,10 @@ Global
 		{09EC4FE0-F948-4666-BCE7-3F4910C03D36}.Release|x64.Build.0 = Release|x64
 		{0BB88127-9643-4F80-9474-6C98ABA3A11C}.Debug|x64.ActiveCfg = Debug|Win32
 		{0BB88127-9643-4F80-9474-6C98ABA3A11C}.Release|x64.ActiveCfg = Release|Win32
+		{4432924A-42CB-4534-BCF4-7D52089EEC4F}.Debug|x64.ActiveCfg = Debug|x64
+		{4432924A-42CB-4534-BCF4-7D52089EEC4F}.Debug|x64.Build.0 = Debug|x64
+		{4432924A-42CB-4534-BCF4-7D52089EEC4F}.Release|x64.ActiveCfg = Release|x64
+		{4432924A-42CB-4534-BCF4-7D52089EEC4F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

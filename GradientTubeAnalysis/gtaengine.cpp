@@ -631,7 +631,7 @@ Boolean_t GTARunGTA(std::vector<vec3> *Pts){
 					ZoneCount++;
 
 				if (IsOk)
-					IsOk = SetPercent(ZoneCount, PercentTotal, ss2.str().c_str());
+					IsOk = StatusUpdate(ZoneCount, PercentTotal, ss2.str().c_str());
 			}
 			/*
 			*	Extract all streamtraces as individual zones
@@ -709,7 +709,7 @@ Boolean_t GTARunGTA(std::vector<vec3> *Pts){
 				}
 
 				if (IsOk)
-					IsOk = SetPercent(ZoneCount, PercentTotal, ss2.str().c_str());
+					IsOk = StatusUpdate(ZoneCount, PercentTotal, ss2.str().c_str());
 			}
 			if (RunNum == 0)
 				SurfaceZoneNumBegin[RunNum] = StreamtraceZoneNumEnd[1] + 1;
@@ -819,7 +819,7 @@ Boolean_t GTARunGTA(std::vector<vec3> *Pts){
 					ZoneCount += NumNewZones * 0.1 * 0.5;
 
 					if (IsOk)
-						IsOk = SetPercent(ZoneCount, PercentTotal, ss2.str().c_str());
+						IsOk = StatusUpdate(ZoneCount, PercentTotal, ss2.str().c_str());
 				}
 			}
 
@@ -1080,7 +1080,7 @@ Boolean_t PopulateRadiusVar(EntIndex_t RadVarNum,
 	return IsOk;
 }
 
-Boolean_t SetPercent(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText){
+Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText){
 	unsigned int Percent = (int)((double)CurrentNum / (double)TotalNum * 100.);
 
 	std::stringstream ss;

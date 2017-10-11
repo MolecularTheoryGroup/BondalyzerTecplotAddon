@@ -65,7 +65,6 @@ void MainFunction(){
 
 
 	TecUtilLockStart(AddOnID);
-	TecUtilDrawGraphics(FALSE);
 
 	Boolean_t DoTiming = TRUE;
 
@@ -79,7 +78,7 @@ void MainFunction(){
 	int MemoryRequired;
 	string TmpString;
 
-	vector<string> GoodSGPEndCPTypes = { "Atom", "Bond" };
+	vector<string> GoodSGPEndCPTypes = { "Nuclear", "Atom", "Bond" };
 
 	EntIndex_t NumVars = TecUtilDataSetGetNumVars();
 
@@ -92,6 +91,7 @@ void MainFunction(){
 	TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
 	for (int i = 0; i < 3 && IsOk; ++i)
 		IsOk = (XYZVarNums[i] > 0);
+
 
 	vec3 VolMinXYZ, VolMaxXYZ;
 	vector<int> VolMaxIJK(3);
@@ -186,6 +186,10 @@ void MainFunction(){
 
 
 
+	VolExtentIndexWeights_s VolInfo;
+	GetVolInfo(VolZoneNum, XYZVarNums, FALSE, VolInfo);
+
+
 	EntIndex_t OldNumZones = TecUtilDataSetGetNumZones();	
 
 	if (!IsOk){
@@ -278,9 +282,7 @@ void MainFunction(){
 
 		if (IsOk){
 			TmpString = ProgressStr.str() + string(" ... Step 1 of 4 ... Generating mesh");
-			TecUtilDrawGraphics(TRUE);
-			TecUtilPleaseWait(TmpString.c_str(), TRUE);
-			TecUtilDrawGraphics(FALSE);
+			StatusLaunch(TmpString, AddOnID, FALSE);
 		}
 
 // 		for (int i = 0; i < 3; ++i){
@@ -393,13 +395,24 @@ void MainFunction(){
 				Boolean_t StartsFrom1;
 				LgIndex_t StartEndCPs[2];
 				string StartEndTypes[2];
-				Boolean_t ZoneOK = TRUE;
-				if (ZoneOK){
+				for (int i = 0; i < 2 && ZoneOK; ++i){
+					ZoneOK = AuxDataZoneGetItem(CurZoneNum, CCDataGPEndNums[i], TmpString);
+					if (ZoneOK){
+						StartEndCPs[i] = stoi(TmpString);
+						ZoneOK = AuxDataZoneGetItem(CurZoneNum, CCDataGPEndTypes[i], TmpString);
+						if (ZoneOK)
+							ZoneOK = (SearchVectorForString(GoodSGPEndCPTypes, TmpString) >= 0);
+						if (ZoneOK)
+							StartEndTypes[i] = TmpString;
+					}
+				}
+				if (!ZoneOK){
+					ZoneOK = TRUE;
 					for (int i = 0; i < 2 && ZoneOK; ++i){
-						ZoneOK = AuxDataZoneGetItem(CurZoneNum, CCDataGPEndNums[i], TmpString);
+						ZoneOK = AuxDataZoneGetItem(CurZoneNum, CSMAuxData.CC.GPEndNumStrs[i], TmpString);
 						if (ZoneOK){
 							StartEndCPs[i] = stoi(TmpString);
-							ZoneOK = AuxDataZoneGetItem(CurZoneNum, CCDataGPEndTypes[i], TmpString);
+							ZoneOK = AuxDataZoneGetItem(CurZoneNum, CSMAuxData.CC.GPEndTypes[i], TmpString);
 							if (ZoneOK)
 								ZoneOK = (SearchVectorForString(GoodSGPEndCPTypes, TmpString) >= 0);
 							if (ZoneOK)
@@ -408,7 +421,7 @@ void MainFunction(){
 					}
 				}
 
-				Boolean_t IntValid = TRUE;
+				Boolean_t IntValid = ZoneOK && StartEndTypes[0] != StartEndTypes[1];
 				
 				if (ZoneOK){
 					Boolean_t IntRecorded = FALSE;
@@ -416,7 +429,7 @@ void MainFunction(){
 						if (StartEndCPs[i] == CPNum){
 							ConnectsToCP = TRUE;
 							StartsFrom1 = (i == 0);
-							for (int j = 1; j < 4 && IsOk && IntValid; ++j){
+							for (int j = 2; j < 4 && IsOk && IntValid; ++j){
 								if (StartEndTypes[(i + 1) % 2] == RankStrs[j]){
 									GradPath_c TmpGP(CurZoneNum, XYZRhoVarNums, AddOnID);
 									if (Distance(CPPos, TmpGP[0]) < Distance(CPPos, TmpGP[-1])){
@@ -449,9 +462,9 @@ void MainFunction(){
 											TmpCP[k] = TecUtilDataValueGetByZoneVar(CPZoneNum, XYZVarNums[k], StartEndCPs[(i + 1) % 2]);
 										}
 										IntZoneSaddleCPNodeNums.push_back(vector<LgIndex_t>());
-										IntZoneSaddleCPNodeNums[IntZoneSaddleCPNodeNums.size() - 1].push_back(static_cast<int>(IntersectionPoints.size()));
-										IntZoneSaddleCPNodeNums[IntZoneSaddleCPNodeNums.size() - 1].push_back(CurZoneNum);
-										IntZoneSaddleCPNodeNums[IntZoneSaddleCPNodeNums.size() - 1].push_back(StartEndCPs[(i + 1) % 2]);
+										IntZoneSaddleCPNodeNums.back().push_back(static_cast<int>(IntersectionPoints.size()));
+										IntZoneSaddleCPNodeNums.back().push_back(CurZoneNum);
+										IntZoneSaddleCPNodeNums.back().push_back(StartEndCPs[(i + 1) % 2]);
 										IntCPPos.push_back(TmpCP);
 									}
 
@@ -464,14 +477,14 @@ void MainFunction(){
 								}
 								if (IntValid){
 									int CPCount = 0;
-									for (int k = 0; k < 4; ++k){
+									for (int k = 0; k < RankStrs.size(); ++k){
 										if (StartEndTypes[(i + 1) % 2] == RankStrs[k] && !IntRecorded){
 											AllIntVolumeCPNames.push_back(StartEndTypes[(i + 1) % 2] + string(" ") + to_string(StartEndCPs[(i + 1) % 2] - CPCount));
 											AllIntCPNodeNums.push_back(vector<LgIndex_t>());
-											AllIntCPNodeNums[AllIntCPNodeNums.size() - 1].push_back(static_cast<int>(IntersectionPoints.size()));
-											AllIntCPNodeNums[AllIntCPNodeNums.size() - 1].push_back(StartEndCPs[(i + 1) % 2]);
+											AllIntCPNodeNums.back().push_back(static_cast<int>(IntersectionPoints.size()));
+											AllIntCPNodeNums.back().push_back(StartEndCPs[(i + 1) % 2]);
 											Boolean_t ZoneFound = FALSE;
-											if (StartEndTypes[(i + 1) % 2] == RankStrs[1]){
+											if (StartEndTypes[(i + 1) % 2] == RankStrs[2]){
 												// if the intersecting SGP connects to a bond point,
 												// then find the CP on the other side of the bond path.
 
@@ -527,7 +540,7 @@ void MainFunction(){
 											IntRecorded = TRUE;
 											break;
 										}
-										CPCount += NumCPs[k];
+										CPCount += NumCPs[k == 0 ? k : k - 1];
 									}
 								}
 							}
@@ -542,7 +555,7 @@ void MainFunction(){
 					// 
 					point IntPt;
 					for (int i = 0; i < 3; ++i){
-						IntPt[i] = IntGPs[IntGPs.size() - 1][-1][i] - CPPos[i];
+						IntPt[i] = IntGPs.back()[-1][i] - CPPos[i];
 					}
 					/*
 					*	Make sure this intersection isn't too close to another
@@ -951,10 +964,8 @@ void MainFunction(){
 				IsOk = (GradXYZVarNums[i] > 0);
 			}
 			if (!IsOk){
-				TecUtilDrawGraphics(TRUE);
+				StatusDrop(AddOnID);
 				TecUtilDialogErrMsg("Couldn't find gradient vector variables.");
-				TecUtilStatusSuspend(FALSE);
-				TecUtilStatusFinishPercentDone();
 				TecUtilDataLoadEnd();
 				TecUtilLockFinish(AddOnID);
 				return;
@@ -1042,18 +1053,12 @@ void MainFunction(){
 			StreamDir = StreamDir_Forward;
 
 
-		TecUtilDrawGraphics(TRUE);
-		TecUtilPleaseWait(NULL, FALSE);
-		TecUtilDrawGraphics(FALSE);
+		StatusDrop(AddOnID);
 
 
 		if (IsOk){
-			TecUtilDrawGraphics(TRUE);
-			TecUtilPleaseWait(NULL, FALSE);
 			TmpString = ProgressStr.str() + string(" ... Step 2 of 4 ... Seeding gradient paths");
-			TecUtilStatusStartPercentDone(TmpString.c_str(), TRUE, TRUE);
-			TecUtilStatusSuspend(TRUE);
-			TecUtilDrawGraphics(FALSE);
+			StatusLaunch(TmpString, AddOnID, TRUE);
 		}
 
 		Boolean_t UserQuit = FALSE;
@@ -1061,14 +1066,14 @@ void MainFunction(){
 		int TmpNumIterations = NumPoints / numCPU;
 		int NumCompleted = 0;
 
+#ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
+#endif
 		for (int PtNum = 0; PtNum < NumPoints; ++PtNum){
 			if (omp_get_thread_num() == 0){
-				TecUtilDrawGraphics(TRUE);
-				UserQuit = !SetPercent(NumCompleted, TmpNumIterations, TmpString, AddOnID);
+				UserQuit = !StatusUpdate(NumCompleted, TmpNumIterations, TmpString, AddOnID);
 				NumCompleted++;
 #pragma omp flush (UserQuit)
-				TecUtilDrawGraphics(FALSE);
 			}
 #pragma omp flush (UserQuit)
 
@@ -1077,15 +1082,27 @@ void MainFunction(){
 				for (int ii = 0; ii < 3; ++ii)
 					NodePos[ii] = p[PtNum][ii];
 
-				IsOk = GPsNonSaddle[PtNum].SetupGradPath(NodePos,
+// 				IsOk = GPsNonSaddle[PtNum].SetupGradPath(NodePos,
+// 					StreamDir, 
+// 					NumSTPoints,
+// 					HowTerminate, 
+// 					NULL, vector<FieldDataPointer_c>(), NULL, NULL,
+// 					&CutoffVal, 
+// 					VolMaxIJK,
+// 					VolMaxXYZ,
+// 					VolMinXYZ,
+// 					GradRawPtrs, 
+// 					RhoRawPtr);
+
+				IsOk = GPsNonSaddle[PtNum].SetupGradPath(NodePos, 
 					StreamDir, 
-					NumSTPoints,
+					NumSTPoints, 
+					GPType_Classic, 
 					HowTerminate, 
-					NULL, vector<FieldDataPointer_c>(), NULL, NULL,
+					NULL, NULL, NULL, 
 					&CutoffVal, 
-					VolMaxIJK,
-					VolMaxXYZ,
-					VolMinXYZ,
+					VolInfo, 
+					vector<FieldDataPointer_c>(), 
 					GradRawPtrs, 
 					RhoRawPtr);
 
@@ -1101,14 +1118,14 @@ void MainFunction(){
 		vector<vector<int> > ConstrainedNeighborEdgeNodesNum = ConstrainedNeighborNodesNum;
 		vector<vector<int> > ConstrainedNeighborhoodEdgeNums(ConstrainedNeighborNodesNum.size());
 
+#ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
+#endif
 		for (int EdgeNum = 0; EdgeNum < NumEdges; ++EdgeNum){
 			if (omp_get_thread_num() == 0){
-				TecUtilDrawGraphics(TRUE);
-				UserQuit = !SetPercent(NumCompleted, TmpNumIterations, TmpString, AddOnID);
+				UserQuit = !StatusUpdate(NumCompleted, TmpNumIterations, TmpString, AddOnID);
 				NumCompleted++;
 #pragma omp flush (UserQuit)
-				TecUtilDrawGraphics(FALSE);
 			}
 #pragma omp flush (UserQuit)
 			// Get the first edge node and a vector to step down the edge
@@ -1124,15 +1141,27 @@ void MainFunction(){
 					SeedPt = eNodes[0] + DelVec * static_cast<double>(EdgeGPNum + 1);
 					int GPInd = EdgeNum * NumEdgeGPs + EdgeGPNum;
 
+// 					IsOk = GPsEdges[GPInd].SetupGradPath(SeedPt,
+// 						StreamDir,
+// 						NumSTPoints,
+// 						HowTerminate,
+// 						NULL, vector<FieldDataPointer_c>(), NULL, NULL,
+// 						&CutoffVal,
+// 						VolMaxIJK,
+// 						VolMaxXYZ,
+// 						VolMinXYZ,
+// 						GradRawPtrs,
+// 						RhoRawPtr);
+
 					IsOk = GPsEdges[GPInd].SetupGradPath(SeedPt,
 						StreamDir,
 						NumSTPoints,
+						GPType_Classic,
 						HowTerminate,
-						NULL, vector<FieldDataPointer_c>(), NULL, NULL,
+						NULL, NULL, NULL,
 						&CutoffVal,
-						VolMaxIJK,
-						VolMaxXYZ,
-						VolMinXYZ,
+						VolInfo,
+						vector<FieldDataPointer_c>(),
 						GradRawPtrs,
 						RhoRawPtr);
 
@@ -1172,9 +1201,7 @@ void MainFunction(){
 		}
 
 		if (UserQuit){
-			TecUtilDrawGraphics(TRUE);
-			TecUtilStatusSuspend(FALSE);
-			TecUtilStatusFinishPercentDone();
+			StatusDrop(AddOnID);
 
 			MemoryRequired = sizeof(point) * NumPoints
 				+ sizeof(triangle) * NumTriangles
@@ -1277,9 +1304,21 @@ void MainFunction(){
 
 						SeedPts[k] = vec3(TmpVec4.subvec(0, 2)) + VolCPPos;
 
-						IsOk = GPsSaddle[i][k].SetupGradPath(SeedPts[k], StreamDir, NumSTPoints, HowTerminate,
-							NULL, vector<FieldDataPointer_c>(), NULL, NULL, &CutoffVal,
-							VolMaxIJK, VolMaxXYZ, VolMinXYZ,
+// 						IsOk = GPsSaddle[i][k].SetupGradPath(SeedPts[k], StreamDir, NumSTPoints, HowTerminate,
+// 							NULL, vector<FieldDataPointer_c>(), NULL, NULL, &CutoffVal,
+// 							VolMaxIJK, VolMaxXYZ, VolMinXYZ,
+// 							GradRawPtrs,
+// 							RhoRawPtr);
+
+						IsOk = GPsSaddle[i][k].SetupGradPath(SeedPts[k],
+							StreamDir,
+							NumSTPoints,
+							GPType_Classic,
+							HowTerminate,
+							NULL, NULL, NULL,
+							&CutoffVal,
+							VolInfo,
+							vector<FieldDataPointer_c>(),
 							GradRawPtrs,
 							RhoRawPtr);
 
@@ -1346,9 +1385,21 @@ void MainFunction(){
 
 									int GPInd = (ConstrainedNeighborhoodEdgeNums[j].size() - 1) * NumEdgeGPs + ei;
 
-									IsOk = GPsSaddleEdges[i][GPInd].SetupGradPath(SeedPt, StreamDir, NumSTPoints, HowTerminate,
-										NULL, vector<FieldDataPointer_c>(), NULL, NULL, &CutoffVal,
-										VolMaxIJK, VolMaxXYZ, VolMinXYZ,
+// 									IsOk = GPsSaddleEdges[i][GPInd].SetupGradPath(SeedPt, StreamDir, NumSTPoints, HowTerminate,
+// 										NULL, vector<FieldDataPointer_c>(), NULL, NULL, &CutoffVal,
+// 										VolMaxIJK, VolMaxXYZ, VolMinXYZ,
+// 										GradRawPtrs,
+// 										RhoRawPtr);
+
+									IsOk = GPsSaddleEdges[i][GPInd].SetupGradPath(SeedPt,
+										StreamDir,
+										NumSTPoints,
+										GPType_Classic,
+										HowTerminate,
+										NULL, NULL, NULL,
+										&CutoffVal,
+										VolInfo,
+										vector<FieldDataPointer_c>(),
 										GradRawPtrs,
 										RhoRawPtr);
 
@@ -1545,11 +1596,15 @@ void MainFunction(){
 // 			NumSaddleFEZones += static_cast<int>(GPsSaddle[i].size());
 
 		TecUtilMemoryChangeNotify((NumSTPoints * 4 * 4 * NumTriangles * sizeof(double)) / 1024);
-		vector<FEVolume_c> FEVolumes(NumTriangles);
+		vector<FESurface_c> FEVolumes(NumTriangles);
 
 
 		TmpString = ProgressStr.str() + string(" ... Step 3 of 4 ... Making volumes");
-		TmpNumIterations = NumTriangles / numCPU;
+		TmpNumIterations = NumTriangles;
+#ifndef _DEBUG
+			TmpNumIterations /= numCPU;
+#endif // !_DEBUG
+			
 		NumCompleted = 0;
 
 		vector<vector<int> > GPSaddleNodeNums1(NumTriangles), GPSaddleNodeNums2(NumTriangles), GPNonSaddleNodeNums(NumTriangles);
@@ -1559,6 +1614,7 @@ void MainFunction(){
 			GPNonSaddleNodeNums[i].reserve(3);
 		}
 
+// 		TecUtilDialogMessageBox("Before making FEVolume", MessageBoxType_Information);
 
 		TecUtilDataLoadBegin();
 #ifndef _DEBUG
@@ -1566,11 +1622,9 @@ void MainFunction(){
 #endif
 		for (int TriNum = 0; TriNum < NumTriangles; ++TriNum){
 			if (omp_get_thread_num() == 0){
-				TecUtilDrawGraphics(TRUE);
-				UserQuit = !SetPercent(NumCompleted, TmpNumIterations, TmpString, AddOnID);
+				UserQuit = !StatusUpdate(NumCompleted, TmpNumIterations, TmpString, AddOnID);
 				NumCompleted++;
 #pragma omp flush (UserQuit)
-				TecUtilDrawGraphics(FALSE);
 			}
 #pragma omp flush (UserQuit)
 			if (!UserQuit){
@@ -1674,7 +1728,7 @@ void MainFunction(){
 // 							&GPsSaddle[ConstrainedNodeNum][ConstrainedGPNums[1]],
 // 							&GPsSaddle[ConstrainedNodeNum][ConstrainedGPNums[0]]};
 							
-						/*IsOk = FEVolumes[TriNum].Make(GPsNonSaddle[NonConstrainedNodeNums[0]],
+						/*IsOk = FEVolumes[TriNum].MakeGradientBundle(GPsNonSaddle[NonConstrainedNodeNums[0]],
 							GPsNonSaddle[NonConstrainedNodeNums[1]],
 							GPsSaddle[ConstrainedNodeNum][ConstrainedGPNums[1]],
 							GPsSaddle[ConstrainedNodeNum][ConstrainedGPNums[0]]);*/
@@ -1717,7 +1771,7 @@ void MainFunction(){
 // 					GPPtrs = {&GPsNonSaddle[t[TriNum][0]],
 // 						&GPsNonSaddle[t[TriNum][1]],
 // 						&GPsNonSaddle[t[TriNum][2]]};
-					/*IsOk = FEVolumes[TriNum].Make(GPsNonSaddle[t[TriNum][0]],
+					/*IsOk = FEVolumes[TriNum].MakeGradientBundle(GPsNonSaddle[t[TriNum][0]],
 						GPsNonSaddle[t[TriNum][1]],
 						GPsNonSaddle[t[TriNum][2]]);*/
 					if (IsOk){
@@ -1727,10 +1781,14 @@ void MainFunction(){
 					}
 				}
 				if (IsOk){
-					IsOk = FEVolumes[TriNum].Make(GPPtrs);
+// 					if (TriNum < 3) TecUtilDialogMessageBox("Before making FEVolume", MessageBoxType_Information);
+					IsOk = FEVolumes[TriNum].MakeGradientBundle(GPPtrs);
+// 					if (TriNum < 3) TecUtilDialogMessageBox("After making FEVolume", MessageBoxType_Information);
 				}
 			}
 		}
+
+// 		TecUtilDialogMessageBox("After making FEVolume", MessageBoxType_Information);
 
 		/*
 		 *	Save neighboring element numbers to GP zones
@@ -1801,9 +1859,7 @@ void MainFunction(){
 // 		}
 
 		if (UserQuit){
-			TecUtilDrawGraphics(TRUE);
-			TecUtilStatusSuspend(FALSE);
-			TecUtilStatusFinishPercentDone();
+			StatusDrop(AddOnID);
 
 			MemoryRequired = sizeof(point) * NumPoints
 				+ sizeof(triangle) * NumTriangles
@@ -1856,11 +1912,8 @@ void MainFunction(){
 		TecUtilDataLoadBegin();
 		vector<EntIndex_t> TriangleFEZoneNums(NumTriangles, -1);
 		for (int TriNum = 0; TriNum < NumTriangles && IsOk; ++TriNum){
-			TecUtilDrawGraphics(TRUE);
-			if (!SetPercent(TriNum, NumTriangles, TmpString, AddOnID)){
-				TecUtilDrawGraphics(TRUE);
-				TecUtilStatusSuspend(FALSE);
-				TecUtilStatusFinishPercentDone();
+			if (!StatusUpdate(TriNum, NumTriangles, TmpString, AddOnID)){
+				StatusDrop(AddOnID);
 
 				MemoryRequired = sizeof(point) * NumPoints
 					+ sizeof(triangle) * NumTriangles
@@ -1879,10 +1932,12 @@ void MainFunction(){
 				TecUtilLockFinish(AddOnID);
 				return;
 			}
-			TecUtilDrawGraphics(FALSE);
 
 			//TriangleFEZoneNums[TriNum] = FEVolumes[TriNum].SaveAsFEZone(VarDataTypes, XYZVarNums, CutoffVarNum);
+
+// 			if (TriNum < 3) TecUtilDialogMessageBox("before saving FEVolume", MessageBoxType_Information);
 			TriangleFEZoneNums[TriNum] = FEVolumes[TriNum].SaveAsTriFEZone("Gradient Bundle " + to_string(TriNum + 1) + " (Zone " + to_string(TecUtilDataSetGetNumZones() + 1) + ")", VarDataTypes, VarLocations, XYZVarNums);
+// 			if (TriNum < 3) TecUtilDialogMessageBox("after saving FEVolume", MessageBoxType_Information);
 
 			if (TriangleFEZoneNums[TriNum] > 0){
 				/*
@@ -1934,16 +1989,13 @@ void MainFunction(){
 		EntIndex_t NewNumZones = TecUtilDataSetGetNumZones() - NumZones;
 		for (EntIndex_t i = NumZones + 1; i <= NewNumZones && IsOk; ++i){
 			TecUtilDrawGraphics(TRUE);
-			SetPercent(i, NewNumZones, TmpString, AddOnID);
+			StatusUpdate(i, NewNumZones, TmpString, AddOnID);
 			TecUtilDrawGraphics(FALSE);
 			for (EntIndex_t j = 0; j < 3 && IsOk; ++j){
 				IsOk = TecUtilDataValueUnload(i, XYZVarNums[j]);
 			}
 		}
-		TecUtilDrawGraphics(TRUE);
-		TecUtilStatusSuspend(FALSE);
-		TecUtilStatusFinishPercentDone();
-		TecUtilDrawGraphics(FALSE);
+		StatusDrop(AddOnID);
 
 	}
 
@@ -1962,8 +2014,8 @@ void MainFunction(){
 
 	TecGUITabSetCurrentPage(TAB1_TB_D1, 3);
 
-	TecUtilDrawGraphics(TRUE);
-	TecUtilStatusSuspend(FALSE);
+// 	TecUtilDialogMessageBox("Finished making GBs", MessageBoxType_Information);
+
 	TecUtilLockFinish(AddOnID);
 	return;
 }
@@ -2017,19 +2069,18 @@ void GradPathTest(){
 	 *	Try at multiple resolutions for subcell sampling
 	 *	and save results and times in Out.txt.
 	 */
-	vector<FEVolume_c> VolumeList;
+	vector<FESurface_c> VolumeList;
 	VolumeList.reserve(NumZones);
 	string TmpString = "Atom 1";
 	for (int i = 1; i <= NumZones; ++i)
 		if (TecUtilZoneIsFiniteElement(i)
 			&& AuxDataZoneItemMatches(i, CSMAuxData.GBA.SphereCPName, TmpString))
 		{
-			VolumeList.push_back(FEVolume_c(i, VolZoneNum, XYZVarNums, IntVarList));
+			VolumeList.push_back(FESurface_c(i, VolZoneNum, XYZVarNums, IntVarList));
 		}
 
 
-	TecUtilStatusStartPercentDone("Integrating", TRUE, TRUE);
-	TecUtilStatusSuspend(TRUE);
+	StatusLaunch("Integrating", AddOnID, TRUE);
 
 	vector<int> ResList = { 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24 };
 	vector<double> TotalList;
@@ -2054,7 +2105,7 @@ void GradPathTest(){
 #pragma omp parallel for
 		for (int i = 0; i < VolumeList.size(); ++i){
 			if (omp_get_thread_num() == 0)
-				SetPercent(i * numCPU, static_cast<int>(VolumeList.size()), string(ProgressBase.str() + to_string(i * numCPU) + string(" of ") + to_string(VolumeList.size())), AddOnID);
+				StatusUpdate(i * numCPU, static_cast<int>(VolumeList.size()), string(ProgressBase.str() + to_string(i * numCPU) + string(" of ") + to_string(VolumeList.size())), AddOnID);
 			//if (VolumeList[i].GetZoneNum() == 132)
 // 			VolumeList[i].DoIntegration(ResList[ResNum], FALSE);
 		}
@@ -2071,8 +2122,7 @@ void GradPathTest(){
 		//TecUtilDialogMessageBox(to_string(Total * Ang3PerBohr3).c_str(), MessageBoxType_Information);
 	}
 
-	TecUtilStatusSuspend(FALSE);
-	TecUtilStatusFinishPercentDone();
+	StatusDrop(AddOnID);
 
 	OutFile.close();
 

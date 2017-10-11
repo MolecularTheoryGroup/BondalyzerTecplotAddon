@@ -148,9 +148,16 @@ const vector<string> ElementNameList = {
 
 double DistSqr(const vec & A, const vec & B);
 double Distance(const vec & A, const vec & B);
-const mat44		RotationMatrix(const double & Angle, vec3 Axis);
+double VectorAngle(const vec3 & A, const vec3 & B);
+const mat44	RotationMatrix(const double & Angle, vec3 Axis);
 const vec3 Rotate(const vec3 & Point, const double & Angle, vec3 Axis);
 const double TriangleArea(const vec3 & A, const vec3 & B, const vec3 & C);
+const double TetVolume(const vector<vec3> & V); 
+const double HexahedronInternalPointTetVolume(const vector<vec3> & V);
+const double ParallepipedVolume(const vector<vec3> & BV);
+const double ParallepipedVolume(const mat33 & BV);
+
+const bool ParallelpidedPointIsInternal(const mat33 & LV, const vec3 & Origin, const vec3 & Pt);
 
 typedef double ImportType_t;
 
@@ -178,7 +185,7 @@ struct MultiRootParams_s{
 	const FieldDataPointer_c * RhoPtr = NULL;
 	const vector<FieldDataPointer_c> * GradPtrs = NULL;
 	const vector<FieldDataPointer_c> * HessPtrs = NULL;
-	vector<vec3> * BasisVectors = NULL;
+	const mat33 * BasisVectors = NULL;
 	vec3 * Origin = NULL;
 	vec3 * EquilPos = NULL;
 	int Index = -1;

@@ -10,17 +10,17 @@
 using std::vector;
 
 
-class FEVolume_c
+class FESurface_c
 {
 public:
-	FEVolume_c();
+	FESurface_c();
 	/*
 	*	Constructor for making FEVolme_c from
 	*	existing FE volume zone. Can be FEQuad or FETriangle.
 	*	These are the FEVolume_c's that will integrate over them
 	*	selves.
 	*/
-	FEVolume_c(const int & InZoneNum,
+	FESurface_c(const int & InZoneNum,
 		const ZoneType_e & InZoneType,
 		const vector<FieldDataPointer_c> & InXYZPtrs,
 		const vec3 & InMaxXYZ,
@@ -32,7 +32,7 @@ public:
 	*	from an existing zone. The FEVolume_c gets all the
 	*	information it needs from Tec360.
 	*/
-	FEVolume_c(const int & ZoneNum,
+	FESurface_c(const int & ZoneNum,
 		const int & VolZoneNum,
 		const vector<int> & InXYZVarNums,
 		const vector<int> & InIntVarNums);
@@ -44,11 +44,23 @@ public:
 	*		with connectivity info and such.
 	*	This assumes the structure of the surfaces made by Bondalyzer
 	*/
-	FEVolume_c(const int & ZoneNum,
+	FESurface_c(const int & ZoneNum,
 		const vector<int> & InXYZVarNums);
 
+	/*
+	 *	Make FEVolume from lists of nodes (points) and elements (lists of point indices).
+	 */
+	FESurface_c(const vector<vec3> & Nodes, vector<vector<int> > & Elements);
 
-	~FEVolume_c();
+
+	~FESurface_c();
+
+	/*
+	 *	Operators
+	 */
+
+	FESurface_c & operator+=(const FESurface_c & rhs);
+	const FESurface_c operator+(const FESurface_c & rhs) const;
 
 	/*
 	*	Getters
@@ -87,17 +99,18 @@ public:
 	const vector<mat> GetIntegrationPointsWeights(const vec3 & StartPoint, const vector<vec> & stuW) const;
 	const vector<mat> GetIntegrationPointsWeights(const vector<vec> & stuW) const;
 
-	const Boolean_t Make(vector<GradPath_c*> GPs);
+	const Boolean_t MakeGradientBundle(vector<GradPath_c*> GPs);
+	const Boolean_t MakeFromGPs(vector<GradPath_c*> GPs, const bool ConnectBeginningAndEndGPs = false);
 
 	const Boolean_t Refine();
 	/*
 	*	Two methods to make the 3- and 4-sided
 	*	FE volumes from gradient paths.
 	*/
-	const Boolean_t Make(const GradPath_c & GP1,
+	const Boolean_t MakeGradientBundle(const GradPath_c & GP1,
 		const GradPath_c & GP2,
 		const GradPath_c & GP3);
-	const Boolean_t Make(const GradPath_c & GP1,
+	const Boolean_t MakeGradientBundle(const GradPath_c & GP1,
 		const GradPath_c & GP2,
 		const GradPath_c & GP3,
 		const GradPath_c & GP4);
@@ -105,16 +118,22 @@ public:
 	/*
 	*	Other
 	*/
+	static const int SetZoneStyle(const int ZoneNum,
+		const AssignOp_e ZoneActive = AssignOp_PlusEquals,
+		const Boolean_t ShowContour = TRUE,
+		const Boolean_t ShowMesh = TRUE,
+		const Boolean_t ShowScatter = FALSE,
+		const Boolean_t ShowShade = FALSE);
 	const int SaveAsTriFEZone(const vector<int> & XYZVarNums, string ZoneName = "");
 	const int SaveAsTriFEZone(const string & ZoneName, 
 		vector<FieldDataType_e> DataTypes,
 		const vector<ValueLocation_e> & DataLocations,
-		const vector<int> & XYZVarNums) const;
+		const vector<int> & XYZVarNums);
 	const int SaveAsFEZone(
 		vector<FieldDataType_e> DataTypes,
 		const vector<int> & XYZVarNums,
 		const int & RhoVarNum
-		) const;
+		);
 
 	friend class Domain_c;
 
@@ -141,7 +160,7 @@ private:
 		const Boolean_t & IntegrateVolume);
 	const vector<int> TriangleEdgeMidPointSubdivide(const int & TriNum);
 	void RefineTriElems(const vector<int> & TriNumList);
-	void TriPolyLines();
+	void TriPolyLines(const bool ConnectBeginningAndEndGPs = true);
 	void RemoveDupicateNodes();
 
 
@@ -199,9 +218,9 @@ class Domain_c
 {
 public:
 	Domain_c(){}
-	Domain_c(const vector<int> & V, FEVolume_c *Vol){ Setup(V, Vol); }
+	Domain_c(const vector<int> & V, FESurface_c *Vol){ Setup(V, Vol); }
 	~Domain_c(){ m_Vol = NULL; }
-	void Setup(const vector<int> & V, FEVolume_c *Vol);
+	void Setup(const vector<int> & V, FESurface_c *Vol);
 
 	const double Weight() const;
 protected:
@@ -213,7 +232,7 @@ private:
 
 	vector<int> m_V;
 	vector<vector<int> > m_E;
-	FEVolume_c *m_Vol = NULL;
+	FESurface_c *m_Vol = NULL;
 };
 
 

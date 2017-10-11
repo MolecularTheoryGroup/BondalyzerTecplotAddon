@@ -25,7 +25,7 @@ using std::to_string;
 
 
 
-Boolean_t SetPercent(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText){
+Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText){
 	unsigned int Percent = (int)((double)CurrentNum / (double)TotalNum * 100.);
 
 	std::stringstream ss;

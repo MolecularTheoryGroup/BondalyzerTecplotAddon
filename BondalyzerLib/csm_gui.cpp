@@ -26,12 +26,17 @@ const static int ListNumLines = 10;
 vector<GuiField_c> CSMGuiFields;
 
 AddOn_pa CSMGuiAddOnID;
+bool CSMGuiDialogUp = false;
 
 int CSMGuiMultiListID = BADDIALOGID;
 bool CSMGuiMultiListIsPointSelect;
 int CSMGuiPointSelectZoneNum = -1;
 const static string CSMGuiPointSelectDelim = ": ";
 vector<Text_ID> CSMGuiPointLabelIDs;
+Set_pa CSMGuiActiveZones = NULL;
+bool CSMGuiProbeFirstInstall = true;
+bool CSMGuiDeleteLabelsRunning = false;
+MouseButtonMode_e CSMGuiMouseMode = MouseButtonMode_Invalid;
 
 int CSMGuiDialogManager;
 bool CSMGuiSuccess;
@@ -39,17 +44,20 @@ CSMGuiReturnFunc_pf CurrentReturnFunc;
 
 const vector<GuiFieldType_e> 
 	IntTypes = {
-	Gui_ZoneSelect,
-	Gui_ZoneSelectInt,
-	Gui_VarSelect,
-	Gui_VarSelectInt,
-	Gui_ZonePointSelectMulti
-},
+		Gui_ZoneSelect,
+		Gui_ZoneSelectInt,
+		Gui_VarSelect,
+		Gui_VarSelectInt,
+		Gui_ZonePointSelectMulti,
+		Gui_Int
+	},
 	BoolTypes = {
 		Gui_Toggle,
 		Gui_ToggleEnable
 	},
-	StringTypes = {},
+	StringTypes = {
+		Gui_String
+	},
 	DoubleTypes = {
 		Gui_Double
 	},
@@ -57,7 +65,17 @@ const vector<GuiFieldType_e>
 		Gui_VarSelectMulti,
 		Gui_ZoneSelectMulti,
 		Gui_ZonePointSelectMulti
+	},
+	StringVecTypes = {
+		Gui_VarSelectMulti,
+		Gui_ZoneSelectMulti,
+		Gui_ZonePointSelectMulti
 	};
+
+
+/*
+ *	Begin GuiField_c methods
+ */
 
 GuiField_c::GuiField_c()
 {
@@ -65,11 +83,13 @@ GuiField_c::GuiField_c()
 
 GuiField_c::GuiField_c(const GuiFieldType_e & Type,
 	const string & Label,
-	const string & Val)
+	const string & Val,
+	const vector<void*> & CallbackFuntions)
 {
 	Type_m = Type;
 	Label_m = Label;
 	InputVal_m = Val;
+	CallbackFuntions_m = CallbackFuntions;
 }
 
 GuiField_c::~GuiField_c()
@@ -116,6 +136,14 @@ void GuiField_c::CheckIntVecType() const{
 #endif
 }
 
+void GuiField_c::CheckStringVecType() const{
+#ifdef _DEBUG
+	bool IsCorrect = false;
+	for (const auto & t : IntVecTypes) IsCorrect = (IsCorrect || Type_m == t);
+	if (!IsCorrect) TecUtilDialogErrMsg("Type integer vector requested from non-IntVec CSM gui field");
+#endif
+}
+
 
 const int GuiField_c::GetReturnInt() const{
 	CheckIntType();
@@ -140,6 +168,11 @@ const bool GuiField_c::GetReturnBool() const{
 const vector<int> GuiField_c::GetReturnIntVec() const{
 	CheckIntVecType();
 	return ValueIntVec_m;
+}
+
+const vector<string> GuiField_c::GetReturnStringVec() const{
+	CheckStringVecType();
+	return ValueStringVec_m;
 }
 
 
@@ -168,6 +201,15 @@ void GuiField_c::SetReturnIntVec(const vector<int> & Val){
 	ValueIntVec_m = Val;
 }
 
+void GuiField_c::SetReturnStringVec(const vector<string> & Val){
+	CheckStringVecType();
+	ValueStringVec_m = Val;
+}
+
+/*
+ *	End GuiField_c methods
+ */
+
 const vec3 GetPointCoordsFromListItem(const int & ItemIndex,
 	const int & PointZoneNum){
 	vec3 Out;
@@ -185,45 +227,190 @@ const vec3 GetPointCoordsFromListItem(const int & ItemIndex,
 	return Out;
 }
 
-void CSMGuiLabelSelectedPoints(){
-	LgIndex_t * SelectedItems;
-	LgIndex_t NumSelected;
-	TecGUIListGetSelectedItems(CSMGuiMultiListID, &SelectedItems, &NumSelected);
-	if (NumSelected > 0){
-		TecUtilDrawGraphics(FALSE);
-		TecUtilPickDeselectAll();
-		for (int i = 0; i < CSMGuiPointLabelIDs.size(); ++i){
-			TecUtilPickText(CSMGuiPointLabelIDs[i]);
+void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID);
+void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
+	if (AddOnID == NULL) AddOnID = &CSMGuiAddOnID;
+	TecUtilLockStart(*AddOnID);
+	if (CSMGuiMultiListID != BADDIALOGID){
+		LgIndex_t * SelectedItems;
+		LgIndex_t NumSelected;
+		TecGUIListGetSelectedItems(CSMGuiMultiListID, &SelectedItems, &NumSelected);
+		CSMGUIDeleteCPLabels();
+		if (NumSelected > 0){
+			TecUtilDrawGraphics(FALSE);
+
+			double TextOffset = 0.1;
+			for (int i = 0; i < NumSelected; ++i){
+				char* LabelStr = TecGUIListGetString(CSMGuiMultiListID, SelectedItems[i]);
+
+				vec3 Point = GetPointCoordsFromListItem(SelectedItems[i], CSMGuiPointSelectZoneNum);
+				vec3 XYZGrid;
+				TecUtilConvert3DPositionToGrid(Point[0], Point[1], Point[2], &XYZGrid[0], &XYZGrid[1], &XYZGrid[2]);
+
+				Text_ID LabelID = TecUtilTextCreate(CoordSys_Grid, XYZGrid[0] + TextOffset, XYZGrid[1] + TextOffset, Units_Frame, 1, LabelStr);
+				TecUtilTextBoxSetType(LabelID, TextBox_Filled);
+				TecUtilTextBoxSetFillColor(LabelID, White_C);
+
+				if (TecUtilTextIsValid(LabelID))
+					CSMGuiPointLabelIDs.push_back(LabelID);
+
+				TecUtilStringDealloc(&LabelStr);
+			}
+			TecUtilDrawGraphics(TRUE);
+			TecUtilRedraw(TRUE);
 		}
-		TecUtilPickClear();
-		CSMGuiPointLabelIDs.clear();
-
-		double TextOffset = 0.1;
-		for (int i = 0; i < NumSelected; ++i){
-			char* LabelStr = TecGUIListGetString(CSMGuiMultiListID, SelectedItems[i]);
-
-			vec3 Point = GetPointCoordsFromListItem(SelectedItems[i], CSMGuiPointSelectZoneNum);
-			vec3 XYZGrid;
-			TecUtilConvert3DPositionToGrid(Point[0], Point[1], Point[2], &XYZGrid[0], &XYZGrid[1], &XYZGrid[2]);
-
-			Text_ID LabelID = TecUtilTextCreate(CoordSys_Grid, XYZGrid[0] + TextOffset, XYZGrid[1] + TextOffset, Units_Frame, 2, LabelStr);
-			TecUtilTextBoxSetType(LabelID, TextBox_Filled);
-			TecUtilTextBoxSetFillColor(LabelID, White_C);
-
-			Boolean_t IsValid = TecUtilTextIsValid(LabelID);
-
-			CSMGuiPointLabelIDs.push_back(LabelID);
-
-			TecUtilStringDealloc(&LabelStr);
-		}
-		TecUtilDrawGraphics(TRUE);
+		TecUtilArrayDealloc((void **)&SelectedItems);
 	}
-	TecUtilArrayDealloc((void **)&SelectedItems);
+	TecUtilLockFinish(*AddOnID);
 }
 
 void CSMGuiPointSelectMultiListCallback(const LgIndex_t* Val){
 	TecUtilLockStart(CSMGuiAddOnID);
+	if (CSMGuiMultiListIsPointSelect)
+		CSMGuiLabelSelectedPoints();
+	TecUtilLockFinish(CSMGuiAddOnID);
+}
+
+void CSMGuiMultiListDeselectAll(){
+	vector<string> ListItems;
+	int NumItems = TecGUIListGetItemCount(CSMGuiMultiListID);
+	for (int i = 0; i < NumItems; ++i) ListItems.push_back(TecGUIListGetString(CSMGuiMultiListID, i + 1));
+	TecGUIListDeleteAllItems(CSMGuiMultiListID);
+	for (const auto & s : ListItems) TecGUIListAppendItem(CSMGuiMultiListID, s.c_str());
+}
+
+void CSMGuiPointSelectButtonCB();
+void STDCALL CSMGuiPointSelectProbeCB(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData){
+
+	if (!isNearestPoint){
+		TecUtilDialogErrMsg("You didn't hold the control key when you clicked...");
+		return;
+	}
+
+	EntIndex_t ZoneNum = TecUtilProbeFieldGetZone();
+	if (ZoneNum == TECUTILBADZONENUMBER){
+		TecUtilDialogErrMsg("Failed to get zone number!");
+		return;
+	}
+
+	EntIndex_t CPNum = TecUtilProbeGetPointIndex();
+
+	if (ZoneNum != CSMGuiPointSelectZoneNum){
+		bool PointFound = false;
+		int CPTypeInd = std::find(CSMAuxData.CC.CPSubTypes.begin(), CSMAuxData.CC.CPSubTypes.end(), AuxDataZoneGetItem(ZoneNum, CSMAuxData.CC.ZoneSubType)) - CSMAuxData.CC.CPSubTypes.begin();
+		string SearchString = CPNameList[CPTypeInd] + " " + to_string(CPNum);
+		int ItemCount = TecGUIListGetItemCount(CSMGuiMultiListID);
+		for (int i = 1; i <= ItemCount && !PointFound; ++i){
+			if (SearchString == TecGUIListGetString(CSMGuiMultiListID, i)){
+				CPNum = i;
+				PointFound = true;
+			}
+		}
+		if (!PointFound){
+			TecUtilDialogErrMsg("Select a point from the CP zone");
+			return;
+		}
+	}
+
+	TecUtilLockStart(CSMGuiAddOnID);
+
+	bool PointSelected = false;
+	int NumSelected;
+	int * SelectedNums;
+	TecGUIListGetSelectedItems(CSMGuiMultiListID, &SelectedNums, &NumSelected);
+
+	vector<int> NewSelectedNums;
+	NewSelectedNums.reserve(NumSelected + 1);
+
+	for (int i = 0; i < NumSelected; ++i){
+		if (!PointSelected && CPNum == SelectedNums[i]) PointSelected = true;
+		if (CPNum != SelectedNums[i]) NewSelectedNums.push_back(SelectedNums[i]);
+	}
+
+	if (!PointSelected){
+		NewSelectedNums.push_back(CPNum);
+// 		TecGUIListSetTopItemNum(CSMGuiMultiListID, CPNum);
+	}
+	CSMGuiMultiListDeselectAll();
+	if (NewSelectedNums.size() > 0){
+		TecGUIListSetSelectedItems(CSMGuiMultiListID, NewSelectedNums.data(), NewSelectedNums.size());
+	}
+	else{
+		// Need to just rebuild the list, since Tecplot won't let you deselect everything.
+	}
 	CSMGuiLabelSelectedPoints();
+	CSMGuiPointSelectButtonCB();
+	TecUtilRedraw(TRUE);
+
+
+	TecUtilLockFinish(CSMGuiAddOnID);
+}
+
+void CSMGuiPointSelectButtonCB()
+{
+	TecUtilLockStart(CSMGuiAddOnID);
+	if (TecUtilDataSetIsAvailable() && TecUtilFrameGetPlotType() != PlotType_Sketch){
+		if (CSMGuiProbeFirstInstall){
+// 			CSMGUIDeleteCPLabels();
+			CSMGuiProbeFirstInstall = false;
+			if (CSMGuiActiveZones != NULL)
+				TecUtilSetDealloc(&CSMGuiActiveZones);
+			TecUtilZoneGetActive(&CSMGuiActiveZones);
+			CSMGuiMouseMode = TecUtilMouseGetCurrentMode();
+
+			Set_pa ProbeZoneSet = TecUtilSetAlloc(FALSE);
+			SetIndex_t Zone;
+			TecUtilSetForEachMember(Zone, CSMGuiActiveZones)
+			{
+				if (AuxDataZoneItemMatches(Zone, CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeCPs))
+					TecUtilSetAddMember(ProbeZoneSet, Zone, FALSE);
+			}
+			if (TecUtilSetGetMemberCount(ProbeZoneSet) <= 0)
+				TecUtilSetAddMember(ProbeZoneSet, CSMGuiPointSelectZoneNum, FALSE);
+			TecUtilZoneSetActive(ProbeZoneSet, AssignOp_Equals);
+			TecUtilSetDealloc(&ProbeZoneSet);
+		}
+
+		ArgList_pa ProbeArgs = TecUtilArgListAlloc();
+		TecUtilArgListAppendFunction(ProbeArgs, SV_CALLBACKFUNCTION, CSMGuiPointSelectProbeCB);
+		TecUtilArgListAppendString(ProbeArgs, SV_STATUSLINETEXT, "Select CPs holding ctrl (or Command on Mac)");
+		// 		TecUtilArgListAppendArbParam(ProbeArgs, SV_CLIENTDATA, reinterpret_cast<ArbParam_t>(PlaneClientData));
+		if (!TecUtilProbeInstallCallbackX(ProbeArgs)){
+			TecUtilDialogErrMsg("Failed to install probe callback function!");
+		}
+		TecUtilArgListDealloc(&ProbeArgs);
+	}
+	else
+		TecUtilDialogErrMsg("To execute this add-on Tecplot must have\n"
+		"a data set and the frame must be in XY,\n"
+		"2D, or 3D.");
+	TecUtilLockFinish(CSMGuiAddOnID);
+}
+
+void CSMGuiMultiListInvertSelectionButtonCallBack(){
+	TecUtilLockStart(CSMGuiAddOnID);
+	LgIndex_t* SelectedNums;
+	LgIndex_t NumSelected, ItemCount = TecGUIListGetItemCount(CSMGuiMultiListID);
+	TecGUIListGetSelectedItems(CSMGuiMultiListID, &SelectedNums, &NumSelected);
+
+	vector<LgIndex_t> NewSelectedNums;
+	NewSelectedNums.reserve(ItemCount - NumSelected);
+	for (int i = 1; i <= ItemCount; ++i){
+		bool found = false;
+		for (int j = 0; j < NumSelected && !found; ++j) found = (SelectedNums[j] == i);
+		if (!found) NewSelectedNums.push_back(i);
+	}
+
+	CSMGuiMultiListDeselectAll();
+
+	if (NewSelectedNums.size() > 0)
+		TecGUIListSetSelectedItems(CSMGuiMultiListID, NewSelectedNums.data(), NewSelectedNums.size());
+
+	TecUtilArrayDealloc((void**)&SelectedNums);
+
+	CSMGuiPointSelectMultiListCallback(NULL);
 	TecUtilLockFinish(CSMGuiAddOnID);
 }
 
@@ -238,74 +425,120 @@ void CSMGuiMultiListSelectAllButtonCallBack(){
 		TecGUIListSelectAllItems(CSMGuiMultiListID);
 	}
 	else if (ItemCount > 0){
-		TecGUIListSetSelectedItem(CSMGuiMultiListID, 1);
+// 		TecGUIListSetSelectedItem(CSMGuiMultiListID, 1);
+		CSMGuiMultiListDeselectAll();
 	}
 
 	CSMGuiPointSelectMultiListCallback(NULL);
 	TecUtilLockFinish(CSMGuiAddOnID);
 }
 
-void CSMGUIDeleteCPLabels(){
-	TecUtilLockStart(CSMGuiAddOnID);
-	MouseButtonMode_e MouseMode = TecUtilMouseGetCurrentMode();
+void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID){
 	if (CSMGuiPointLabelIDs.size() > 0){
+// 		CSMGuiDeleteLabelsRunning = true;
+		if (AddOnID == NULL) AddOnID = &CSMGuiAddOnID;
+		TecUtilLockStart(*AddOnID);
+		MouseButtonMode_e MouseMode = TecUtilMouseGetCurrentMode();
 		TecUtilDrawGraphics(FALSE);
-		TecUtilPickDeselectAll();
-		for (int i = 0; i < CSMGuiPointLabelIDs.size(); ++i){
-			TecUtilPickText(CSMGuiPointLabelIDs[i]);
+		for (int i = 0; i < 2; ++i){
+			TecUtilPickDeselectAll();
+			for (const auto & l : CSMGuiPointLabelIDs) if (TecUtilTextIsValid(l)) TecUtilPickText(l);
+
+			if (TecUtilPickListGetCount() > 0){
+				TecUtilPickClear();
+			}
 		}
-		TecUtilPickClear();
-		CSMGuiPointLabelIDs.clear();
+// 		if (TecUtilPickListGetCount() > 0){
+// 			CSMGuiPointLabelIDs.clear();
+// 		}
 		TecUtilDrawGraphics(TRUE);
 		TecUtilRedraw(TRUE);
+		TecUtilMouseSetMode(MouseMode);
+		TecUtilLockFinish(*AddOnID);
+// 		CSMGuiDeleteLabelsRunning = false;
 	}
-	TecUtilMouseSetMode(MouseMode);
-	TecUtilLockFinish(CSMGuiAddOnID);
 }
 
 void DialogCloseButtonCB(){
 	TecUtilLockStart(CSMGuiAddOnID);
+	CSMGuiDialogUp = false;
 	CSMGuiSuccess = false;
-	CSMGUIDeleteCPLabels();
+	CSMGuiProbeFirstInstall = true;
+
+	if (CSMGuiActiveZones != NULL){
+		if (!TecUtilSetIsEmpty(CSMGuiActiveZones)){
+			SetValueReturnCode_e ReturnCode = TecUtilZoneSetActive(CSMGuiActiveZones, AssignOp_Equals);
+			TecUtilSetDealloc(&CSMGuiActiveZones);
+		}
+		CSMGuiActiveZones = NULL;
+	}
+	if (TecUtilMouseGetCurrentMode() == MouseButtonMode_Probe && CSMGuiMouseMode != MouseButtonMode_Invalid){
+		if (CSMGuiMouseMode == MouseButtonMode_Probe) TecUtilMouseSetMode(MouseButtonMode_RotateRollerBall);
+		TecUtilMouseSetMode(CSMGuiMouseMode);
+	}
 
 	CSMGuiMultiListID = BADDIALOGID;
 	CSMGuiPointSelectZoneNum = -1;
 
 	TecGUIDialogDrop(CSMGuiDialogManager);
+	CSMGUIDeleteCPLabels();
 	TecUtilLockFinish(CSMGuiAddOnID);
 }
 
 void DialogOKButtonCB(){
 
 	CSMGuiSuccess = true;
+	CSMGuiDialogUp = false;
+	CSMGuiProbeFirstInstall = true;
 
-	CSMGUIDeleteCPLabels();
+	TecUtilLockStart(CSMGuiAddOnID);
+
+	if (CSMGuiActiveZones != NULL){
+		if (!TecUtilSetIsEmpty(CSMGuiActiveZones)){
+			SetValueReturnCode_e ReturnCode = TecUtilZoneSetActive(CSMGuiActiveZones, AssignOp_Equals);
+			TecUtilSetDealloc(&CSMGuiActiveZones);
+		}
+		CSMGuiActiveZones = NULL;
+	}
+	if (TecUtilMouseGetCurrentMode() == MouseButtonMode_Probe && CSMGuiMouseMode != MouseButtonMode_Invalid){
+		if (CSMGuiMouseMode == MouseButtonMode_Probe) TecUtilMouseSetMode(MouseButtonMode_RotateRollerBall);
+		TecUtilMouseSetMode(CSMGuiMouseMode);
+	}
 
 	CSMGuiMultiListID = BADDIALOGID;
 	CSMGuiPointSelectZoneNum = -1;
 
 	TecGUIDialogDrop(CSMGuiDialogManager);
+	CSMGUIDeleteCPLabels();
 
 	for (auto & f : CSMGuiFields){
 		GuiFieldType_e t = f.GetType();
 
 		if (t <= Gui_VarSelect) f.SetReturnInt(TecGUIOptionMenuGet(f.GetID()));
-		else if (t <= Gui_VarSelectInt) f.SetReturnInt(atoi(TecGUITextFieldGetString(f.GetID())));
+		else if (t <= Gui_Int) f.SetReturnInt(atoi(TecGUITextFieldGetString(f.GetID())));
 		else if (t <= Gui_Double) f.SetReturnDouble(atof(TecGUITextFieldGetString(f.GetID())));
 		else if (t <= Gui_ToggleEnable) f.SetReturnBool(TecGUIToggleGet(f.GetID()));
 		else if (t <= Gui_ZonePointSelectMulti){
 			LgIndex_t* SelectedNums;
 			LgIndex_t NumSelected;
 			vector<int> IntVec;
+			vector<string> StringVec;
 
 			TecGUIListGetSelectedItems(f.GetID(), &SelectedNums, &NumSelected);
-			for (int i = 0; i < NumSelected; ++i) IntVec.push_back(SelectedNums[i]);
+			for (int i = 0; i < NumSelected; ++i){
+				IntVec.push_back(SelectedNums[i]);
+				StringVec.push_back(TecGUIListGetString(f.GetID(), SelectedNums[i]));
+			}
+			f.SetReturnStringVec(StringVec);
 			f.SetReturnIntVec(IntVec);
 			TecUtilArrayDealloc((void**)&SelectedNums);
 
 			if (t == Gui_ZonePointSelectMulti) f.SetReturnInt(TecGUIOptionMenuGet(f.GetID(1)));
 		}
+		else if (t <= Gui_String) f.SetReturnString(TecGUITextFieldGetString(f.GetID()));
 	}
+
+	TecUtilLockFinish(CSMGuiAddOnID);
 
 	CurrentReturnFunc(CSMGuiSuccess, CSMGuiFields);
 }
@@ -314,8 +547,9 @@ void CSMGuiPointSelectOptionCallback(const int* Val){
 	if (CSMGuiMultiListID == BADDIALOGID || CSMGuiPointSelectZoneNum == *Val || !AuxDataZoneItemMatches(*Val, CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeCPs)) return;
 
 	TecUtilLockStart(CSMGuiAddOnID);
-
 	CSMGuiPointSelectZoneNum = *Val;
+	CSMGUIDeleteCPLabels();
+
 	int IJK[3];
 	TecUtilZoneGetIJK(CSMGuiPointSelectZoneNum, &IJK[0], &IJK[1], &IJK[2]);
 	int NumPoints = IJK[0];
@@ -333,13 +567,14 @@ void CSMGuiPointSelectOptionCallback(const int* Val){
 	}
 
 	TecGUIListDeleteAllItems(CSMGuiMultiListID);
+	vector<int> CPTypeCounts(CPNameList.size(), 1);
 	for (int i = 0; i < NumPoints; ++i){
 		if (ZoneIsCP){
 			int CPType = TecUtilDataValueGetByRef(CPTypeRef, i + 1);
-			int CPInd = std::find(CPTypeList, CPTypeList + 6, CPType) - CPTypeList;
-			LabelBase = CPNameList[CPInd] + " ";
+			int CPInd = std::find(CPTypeList, std::end(CPTypeList), CPType) - CPTypeList;
+			LabelBase = CPNameList[CPInd] + " " + to_string(CPTypeCounts[CPInd]++);
 		}
-		TecGUIListAppendItem(CSMGuiMultiListID, string(LabelBase + to_string(i + 1)).c_str());
+		TecGUIListAppendItem(CSMGuiMultiListID, ZoneIsCP ? LabelBase.c_str() : to_string(i + 1).c_str());
 	}
 
 	TecUtilLockFinish(CSMGuiAddOnID);
@@ -417,7 +652,7 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 
 	int MaxLabelWidth = -1,
 		MaxOnlyLabelWidth = -1,
-		MaxZoneVarWidth = -1;
+		MaxZoneVarWidth = 15;
 
 	vector<vector<int> > FieldZoneVarNums(CSMGuiFields.size());
 
@@ -438,7 +673,7 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 			if ((i == 0 && TecUtilZoneGetName(j, &cStr)) || TecUtilVarGetName(j, &cStr)){
 				ZoneVarList[i].push_back(cStr);
 				MaxZoneVarWidth = MAX(MaxZoneVarWidth, int(ZoneVarList[i].back().length()));
-				ZoneVarCommaListValid[i] = (ZoneVarCommaListValid[i] && SplitString(ZoneVarList[i].back(), ',').size() == 1);
+				ZoneVarCommaListValid[i] = (ZoneVarCommaListValid[i] && SplitString(ZoneVarList[i].back(), ",").size() == 1);
 			}
 			TecUtilStringDealloc(&cStr);
 		}
@@ -453,12 +688,12 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 	for (int f = 0; f < CSMGuiFields.size(); ++f){
 		GuiFieldType_e t = CSMGuiFields[f].GetType();
 		if (t == Gui_ZoneSelect || t == Gui_ZoneSelectInt || t == Gui_ZoneSelectMulti || t == Gui_ZonePointSelectMulti){
-			for (const auto & s : SplitString(CSMGuiFields[f].GetSearchString(), ',')){
+			for (const auto & s : SplitString(CSMGuiFields[f].GetSearchString(), ",")){
 				FieldZoneVarNums[f].push_back(ZoneNumByName(s, false, true));
 			}
 		}
 		else if (t == Gui_VarSelect || t == Gui_VarSelectInt || t == Gui_VarSelectMulti){
-			for (const auto & s : SplitString(CSMGuiFields[f].GetSearchString(), ',')){
+			for (const auto & s : SplitString(CSMGuiFields[f].GetSearchString(), ",")){
 				FieldZoneVarNums[f].push_back(VarNumByName(s, true));
 			}
 		}
@@ -467,7 +702,11 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 	int  MultiListNumLines = ListNumLines;
 	if (CSMGuiFields.size() < 10) MultiListNumLines *= 2;
 
-	MaxLabelWidth = MAX(MaxLabelWidth, 15);
+	if (NumFields[int(Gui_ZonePointSelectMulti)])
+		MaxLabelWidth = MAX(MaxLabelWidth, 18);
+	else
+		MaxLabelWidth = MAX(MaxLabelWidth, 15);
+
 	int X = HorzSpacing, Y = LineHeight;
 	int W = CharWidth * MAX((MaxLabelWidth + MaxZoneVarWidth), MaxOnlyLabelWidth) + HorzSpacing;
 	int H = 2 * LineHeight + VertSpacing;
@@ -491,10 +730,12 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 			TecGUILabelAdd(CSMGuiDialogManager, X, Y + VertSpacing * 0.5, f.GetLabel().c_str());
 
 			if (t <= Gui_VarSelect){ // Gui Field is an option menu for selecting zone/variable
-				string TmpStr;
-				if (ZoneVarCommaListValid[int(t)]) TmpStr = ZoneVarCommaList[int(t)];
-				f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarCommaList[int(t)].c_str(), VoidCallbackDoNothing));
-				if (!ZoneVarCommaListValid[int(t)]) for (const auto & s : ZoneVarList[int(t)]) TecGUIOptionMenuAppendItem(f.GetID(), s.c_str());
+				if (ZoneVarCommaListValid[int(t)])
+					f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarCommaList[int(t)].c_str(), VoidCallbackDoNothing));
+				else{
+					f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarList[int(t)][0].c_str(), VoidCallbackDoNothing));
+					for (int i = 1; i < ZoneVarList[int(t)].size(); ++i) TecGUIOptionMenuAppendItem(f.GetID(), ZoneVarList[int(t)][i].c_str());
+				}
 				TecGUIOptionMenuSet(f.GetID(), MAX(1, FieldZoneVarNums[fNum].back()));
 			}
 			else if (t <= Gui_Double){ // Gui field is a text input box (maybe for selecting zone/variable)
@@ -505,7 +746,8 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 					default: fCB = TextCallbackDoNothing; break;
 				}
 				f.SetID(TecGUITextFieldAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, fCB));
-				if (t < Gui_Double) TecGUITextFieldSetLgIndex(f.GetID(), MAX(1, FieldZoneVarNums[fNum].back()), FALSE);
+				if (t < Gui_Int) TecGUITextFieldSetLgIndex(f.GetID(), MAX(1, FieldZoneVarNums[fNum].back()), FALSE);
+				else if (t < Gui_Double) TecGUITextFieldSetLgIndex(f.GetID(), stoi(f.GetSearchString()), FALSE);
 				else TecGUITextFieldSetDouble(f.GetID(), stof(f.GetSearchString()), "%f");
 			}
 			else if (t <= Gui_ToggleEnable){
@@ -516,10 +758,12 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 				vector<string> ListItems;
 				TecGUIIntCallback_pf fCB;
 				if (t == Gui_ZonePointSelectMulti){
-					string TmpStr;
-					if (ZoneVarCommaListValid[0]) TmpStr = ZoneVarCommaList[0];
-					f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarCommaList[0].c_str(), CSMGuiPointSelectOptionCallback), 1);
-					if (!ZoneVarCommaListValid[0]) for (const auto & s : ZoneVarList[0]) TecGUIOptionMenuAppendItem(f.GetID(1), s.c_str());
+					if (ZoneVarCommaListValid[0])
+						f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarCommaList[0].c_str(), CSMGuiPointSelectOptionCallback), 1);
+					else{
+						f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarList[0][0].c_str(), CSMGuiPointSelectOptionCallback), 1);
+						for (int i = 1; i < ZoneVarList[0].size(); ++i) TecGUIOptionMenuAppendItem(f.GetID(), ZoneVarList[0][i].c_str());
+					}
 					TecGUIOptionMenuSet(f.GetID(1), MAX(1, FieldZoneVarNums[fNum].back()));
 					fCB = CSMGuiPointSelectMultiListCallback;
 					CSMGuiMultiListIsPointSelect = true;
@@ -531,9 +775,15 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 					fCB = IntCallbackDoNothing;
 				}
 				f.SetID(TecGUIListAdd(CSMGuiDialogManager, xTmp, Y, wTmp, MultiListNumLines * LineHeight, TRUE, fCB));
-				Y += LineHeight;
-				TecGUIButtonAdd(CSMGuiDialogManager, X, Y, CharWidth * 10, LineHeight, "Toggle all", CSMGuiMultiListSelectAllButtonCallBack);
 				CSMGuiMultiListID = f.GetID();
+				Y += LineHeight;
+				if (t == Gui_ZonePointSelectMulti){
+					TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Select with mouse", CSMGuiPointSelectButtonCB);
+					Y += LineHeight * 1.5;
+				}
+				TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Invert selection", CSMGuiMultiListInvertSelectionButtonCallBack);
+				Y += LineHeight * 1.5;
+				TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Toggle all", CSMGuiMultiListSelectAllButtonCallBack);
 				if (t == Gui_ZonePointSelectMulti){
 					int Val = MAX(1, FieldZoneVarNums[fNum].back());
 					CSMGuiPointSelectOptionCallback(&Val);
@@ -552,6 +802,12 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 					}
 				}
 				Y += LineHeight * (MultiListNumLines - 2);
+				Y -= LineHeight * 1.5;
+				if (t == Gui_ZonePointSelectMulti) Y -= LineHeight * 1.5;
+			}
+			else if (t <= Gui_String){
+				f.SetID(TecGUITextFieldAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, TextCallbackDoNothing));
+				TecGUITextFieldSetString(f.GetID(), f.GetSearchString().c_str());
 			}
 
 			Y += LineHeight + VertSpacing;
@@ -563,14 +819,14 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 		fNum++;
 	}
 
-	int OkButton = TecGUIButtonAdd(CSMGuiDialogManager, X + HorzSpacing, Y, W - (4 * HorzSpacing), LineHeight, "OK", DialogOKButtonCB);
+	int OkButton = TecGUIButtonAdd(CSMGuiDialogManager, X + HorzSpacing, Y - LineHeight * 0.1, W - (4 * HorzSpacing), LineHeight * 1.2, "OK", DialogOKButtonCB);
 	TecGUIButtonSetDefault(CSMGuiDialogManager, OkButton);
 
 	// Now check that Gui_ToggleEnable fields are satisfied
 	if (NumFields[int(Gui_ToggleEnable)]){
 		for (const auto & f : CSMGuiFields){
 			if (f.GetType() == Gui_ToggleEnable){
-				vector<string> DependentFields = SplitString(f.GetSearchString(), ',');
+				vector<string> DependentFields = SplitString(f.GetSearchString(), ",");
 				bool IsEnabled = true;
 				for (int s = 0; s < DependentFields.size() && IsEnabled; ++s) if (StringIsInt(DependentFields[s])){
 					int fi = stoi(DependentFields[s]);
@@ -604,6 +860,7 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 
 	TecUtilPleaseWait("Loading dialog...", FALSE);
 
+	CSMGuiDialogUp = true;
 	TecGUIDialogLaunch(CSMGuiDialogManager);
 
 	// #ifdef MSWIN
@@ -622,4 +879,16 @@ void CSMGui(const string & Title, const vector<GuiField_c> & Fields, CSMGuiRetur
 	CurrentReturnFunc = ReturnFunc;
 	CSMGuiAddOnID = InputAddOnID;
 	CSMLaunchGui(Title, Fields);
+}
+
+void CSMGuiLock(){
+	TecUtilDrawGraphics(FALSE);
+	TecUtilInterfaceSuspend(TRUE);
+	TecUtilWorkAreaSuspend(TRUE);
+}
+
+void CSMGuiUnlock(){
+	TecUtilDrawGraphics(TRUE);
+	TecUtilInterfaceSuspend(FALSE);
+	TecUtilWorkAreaSuspend(FALSE);
 }

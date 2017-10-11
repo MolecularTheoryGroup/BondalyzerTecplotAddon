@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "CSM_CRIT_POINTS.h"
 #include "CSM_DATA_TYPES.h"
 
 #include <armadillo>
@@ -13,12 +14,11 @@ using namespace arma;
 
 using std::string;
 using std::vector;
+using std::to_string;
 
 const double DefaultRhoCutoff = 1e-3;
 
 const string T21Prefix = "T21.";
-
-const string CPTypeVarName = "CritPointType";
 
 /*
 *	These are the aux data tags and values (where applicable)
@@ -95,12 +95,23 @@ struct CSMAuxData_s{
 		ZoneTypeCPs = Prefix + "CriticalPoints",
 		ZoneTypeCPsAll = Prefix + "AllCPs",
 		ZoneTypeGP = Prefix + "GradientPath",
+		ZoneTypeSZFS = Prefix + "SpecialZeroFluxSurface",
+		ZoneSubTypeIAS = Prefix + "InteratomicSurface",
+		ZoneSubTypeRS = Prefix + "RingSurface",
+		ZoneSubTypeBBS = Prefix + "BondBundleSurface",
+		ZoneSubTypeRBS = Prefix + "RingBundleSurface",
 		ZoneSubTypeBondPath = Prefix + "BondPath",
-		ZoneSubTypeRingLine = Prefix + "RingLine";
+		ZoneSubTypeRingLine = Prefix + "RingLine",
+		GPEndNumList = Prefix + "BegEndCrtPtNums",
+		GPEndTypeList = Prefix + "BegEndCrtPtTypes",
+		ZFSCornerCPTypeList = Prefix + "CornerCrtPtTypes",
+		ZFSCornerCPNumList = Prefix + "CornerCrtPtNums";
 		vector<string> NumCPs,
 			CPSubTypes,
-			GPEndNums,
-			GPEndTypes;
+			GPEndNumStrs,
+			GPEndTypes,
+			ZFSCornerCPNumStrs,
+			ZFSCornerCPTypes;
 
 		CC_s(){
 			NumCPs = {
@@ -120,7 +131,7 @@ struct CSMAuxData_s{
 				Prefix + "CageFFCPs"
 			};
 			// For gradiant path zone
-			GPEndNums = {
+			GPEndNumStrs = {
 				Prefix + "BegCrtPtNum",
 				Prefix + "EndCrtPtNum"
 			};
@@ -128,6 +139,11 @@ struct CSMAuxData_s{
 				Prefix + "BegCrtPtType",
 				Prefix + "EndCrtPtType"
 			};
+			// for zero-flux surface zone
+			for (int i = 0; i < 3; ++i){
+				ZFSCornerCPNumStrs.push_back(Prefix + "CornerCrtPtNum" + to_string(i + 1));
+				ZFSCornerCPTypes.push_back(Prefix + "CornerCrtPtType" + to_string(i + 1));
+			}
 		}
 	}; 
 	const CC_s CC;
@@ -290,18 +306,77 @@ struct CSMVarName_s{
 const CSMVarName_s CSMVarName;
 
 
+/*
+*	Strings for variable names
+*/
+struct CSMZoneName_s{
+	const string Delim = "_",
+		FullVolume = "Full Volume Zone" + Delim,
+
+		CriticalPoints = "Critical Points",
+
+		GradientPath = "GP" + Delim,
+		SpecialGradientPath = "SGP" + Delim,
+		BondPath = "BP" + Delim,
+		RingLine = "RL" + Delim,
+
+		ZeroFluxSurface = "ZFS" + Delim,
+		SpecialZeroFluxSurface = "SZFS" + Delim,
+		InteratomicSurface = "IAS" + Delim,
+		RingSurface = "RS" + Delim,
+		
+		FESurface = "FE Volume";
+
+	vector<string> CPType = vector<string>({ "Nuclear", "Bond", "Ring", "Cage", "Ring FF", "Cage FF" });
+	CSMZoneName_s(){
+		for (string & i : CPType) i = CriticalPoints + Delim + i;
+	}
+};
+const CSMZoneName_s CSMZoneName;
+
+
 size_t getTotalSystemMemory();
 
+template <class T>
+const int VectorGetElementNum(const vector<T> & SearchVec, const T & Item){
+	int ElemNum;
+
+	vector<T>::const_iterator itr = std::find(SearchVec.cbegin(), SearchVec.cend(), Item);
+
+	if (itr == SearchVec.cend()) return -1;
+
+	ElemNum = itr - SearchVec.cbegin();
+	return ElemNum;
+}
 const int SearchVectorForString(const vector<string> & Vec, const string & SearchString, const bool & UseVectorStringLength = true);
-const vector<string> SplitString(const string &s, char delim);
+const vector<string> SplitString(const string &s, const string & delim);
+template <class T>
+const string VectorToString(const vector<T> & Items, const string & Delim = " "){
+	string OutStr;
+
+	for (int i = 0; i < Items.size(); ++i){
+		OutStr += Items[i];
+		if (i < Items.size() - 1) OutStr += Delim;
+	}
+
+	return OutStr;
+}
 const Boolean_t StringIsInt(const string & s);
 const Boolean_t StringIsFloat(const string & s);
+const string StringReplaceSubString(const string & InStr, const string & OldStr, const string & NewStr);
+
+void AuxDataCopy(const int & SourceNum, const int & DestNum, bool IsZone);
 
 const Boolean_t AuxDataZoneHasItem(const int & ZoneNum, const string & AuxDataName);
 const Boolean_t AuxDataZoneItemMatches(const int & ZoneNum, const string & AuxDataName, const string & AuxDataValue);
 const string AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataName);
 const Boolean_t AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataName, string & Value);
+const vector<string> AuxDataZoneGetList(const int & ZoneNum, const string & AuxDataName);
 const Boolean_t AuxDataZoneSetItem(const int & ZoneNum, const string & AuxDataName, const string & AuxDataValue);
+template <class T>
+const Boolean_t AuxDataZoneSetList(const int & ZoneNum, const string & AuxDataName, const vector<T> & AuxDataValueList){
+	AuxDataZoneSetItem(ZoneNum, AuxDataName, VectorToString(AuxDataValueList, ',,'));
+}
 const Boolean_t AuxDataZoneDeleteItemByName(const int & ZoneNum, const string & AuxDataName);
 
 const string AuxDataDataSetGetItem(const string & AuxDataName);
@@ -318,8 +393,11 @@ SmInteger_t ZoneNumByName(const string & ZoneName, const bool ActiveOnly = false
 const vec3 GetDelXYZ_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum);
 const vector<vec3> ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum);
 void ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum, vec3 & MinXYZ, vec3 & MaxXYZ);
+void ZoneXYZVarGetBasisVectors_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum, mat33 & BasisVectors, vec3 & BVExtent);
 
-const Boolean_t SetPercent(unsigned int CurrentNum, unsigned int TotalNum, const string & ProgresssText, const AddOn_pa & AddOnID);
+void StatusLaunch(const string & StatusStr, const AddOn_pa & AddOnID, const Boolean_t & ShowScale = TRUE, const Boolean_t & ShowButton = TRUE);
+void StatusDrop(const AddOn_pa & AddOnID);
+const Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const string & ProgresssText, const AddOn_pa & AddOnID);
 
 const LgIndex_t IndexFromIJK(const LgIndex_t & I,
 	const LgIndex_t & J,

@@ -125,6 +125,9 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 	Boolean_t IsOk = TRUE;
 
 
+	TecUtilDialogMessageBox("Before integration", MessageBoxType_Information);
+
+
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
 
@@ -188,11 +191,11 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 			for (int k = 0; k <= j; ++k)
 				TmpStr += VarNameAppends[k];
 			NewVarNames.push_back(TmpStr + ": " + IntVarNameList[i]);
-			NewVarNums.push_back(VarNumByName(NewVarNames[NewVarNames.size() - 1]));
+			NewVarNums.push_back(VarNumByName(NewVarNames.back()));
 			if (NewVarNums[i * 3 + j] < 0){
 				ArgList_pa ArgList = TecUtilArgListAlloc();
 
-				IsOk = TecUtilArgListAppendString(ArgList, SV_NAME, NewVarNames[NewVarNames.size() - 1].c_str());
+				IsOk = TecUtilArgListAppendString(ArgList, SV_NAME, NewVarNames.back().c_str());
 				if (IsOk)
 					IsOk = TecUtilArgListAppendArray(ArgList, SV_VARDATATYPE, ZoneDataTypes.data());
 				if (IsOk)
@@ -202,11 +205,11 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 					IsOk = TecUtilDataSetAddVarX(ArgList);
 
 				if (IsOk)
-					NewVarNums[NewVarNames.size() - 1] = TecUtilDataSetGetNumVars();
+					NewVarNums.back() = TecUtilDataSetGetNumVars();
 
 				if (IsOk){
 					Set_pa TmpSet = TecUtilSetAlloc(FALSE);
-					IsOk = TecUtilSetAddMember(TmpSet, NewVarNums[NewVarNames.size() - 1], FALSE);
+					IsOk = TecUtilSetAddMember(TmpSet, NewVarNums.back(), FALSE);
 					if (IsOk)
 						TecUtilStateChanged(StateChange_VarsAdded, (ArbParam_t)TmpSet);
 					TecUtilSetDealloc(&TmpSet);
@@ -222,11 +225,11 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 			for (int k = 0; k <= j; ++k)
 				TmpStr += VarNameAppends[k];
 			NewVarNames.push_back(TmpStr + ": Volume");
-			NewVarNums.push_back(VarNumByName(NewVarNames[NewVarNames.size() - 1]));
-			if (NewVarNums[NewVarNames.size() - 1] < 0){
+			NewVarNums.push_back(VarNumByName(NewVarNames.back()));
+			if (NewVarNums.back() < 0){
 				ArgList_pa ArgList = TecUtilArgListAlloc();
 
-				IsOk = TecUtilArgListAppendString(ArgList, SV_NAME, NewVarNames[NewVarNames.size() - 1].c_str());
+				IsOk = TecUtilArgListAppendString(ArgList, SV_NAME, NewVarNames.back().c_str());
 				if (IsOk)
 					IsOk = TecUtilArgListAppendArray(ArgList, SV_VARDATATYPE, ZoneDataTypes.data());
 				if (IsOk)
@@ -236,11 +239,11 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 					IsOk = TecUtilDataSetAddVarX(ArgList);
 
 				if (IsOk)
-					NewVarNums[NewVarNames.size() - 1] = TecUtilDataSetGetNumVars();
+					NewVarNums.back() = TecUtilDataSetGetNumVars();
 
 				if (IsOk){
 					Set_pa TmpSet = TecUtilSetAlloc(FALSE);
-					IsOk = TecUtilSetAddMember(TmpSet, NewVarNums[NewVarNames.size() - 1], FALSE);
+					IsOk = TecUtilSetAddMember(TmpSet, NewVarNums.back(), FALSE);
 					if (IsOk)
 						TecUtilStateChanged(StateChange_VarsAdded, (ArbParam_t)TmpSet);
 					TecUtilSetDealloc(&TmpSet);
@@ -297,13 +300,11 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 		ss << "Integrating " << AtomNum + 1;
 		if (AtomNameList.size() > 1)
 			ss << " of " << AtomNameList.size();
-		TecUtilStatusStartPercentDone(ss.str().c_str(), TRUE, TRUE);
-		TecUtilDrawGraphics(FALSE);
-		TecUtilStatusSuspend(TRUE);
+		StatusLaunch(ss.str(), AddOnID, TRUE);
 
 		TecUtilDataLoadBegin();
 
-		vector<FEVolume_c> VolumeList;
+		vector<FESurface_c> VolumeList;
 		vector<vector<int> > GPClosestPtNums;
 		
 		VolumeList.reserve(NumZones);
@@ -311,7 +312,7 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 			if (TecUtilZoneIsFiniteElement(i)
 				&& AuxDataZoneItemMatches(i, CSMAuxData.GBA.SphereCPName, AtomNameList[AtomNum]))
 			{
-				VolumeList.push_back(FEVolume_c(i, VolZoneNum, XYZVarNums, IntVarNumList));
+				VolumeList.push_back(FESurface_c(i, VolZoneNum, XYZVarNums, IntVarNumList));
 // 				GPClosestPtNums.push_back(vector<int>());
 // 				string ElemNumStr = AuxDataZoneGetItem(i, GBAElemNum);
 // 				if (ElemNumStr != "" ){
@@ -323,7 +324,7 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 // 							if (TecUtilZoneIsOrdered(k)){
 // 								if (AuxDataZoneGetItem(k, GBAGPElemNums, GPElemNums)){
 // 									if (SearchVectorForString(SplitString(GPElemNums, ','), ElemNumStr, false) >= 0 && AuxDataZoneItemMatches(k, GBAGPNodeNum, NodeNumStr)){
-// 										VolumeList[VolumeList.size() - 1].AddGP(GradPath_c(k, XYZRhoVarNums, AddOnID));
+// 										VolumeList.back().AddGP(GradPath_c(k, XYZRhoVarNums, AddOnID));
 // 										string PosStr;
 // 										if (AuxDataZoneGetItem(k , GBAGPClosestPtNumToCP, PosStr)){
 // 											GPClosestPtNums[VolumeList.size() - 1].push_back(stoi(PosStr));
@@ -372,11 +373,9 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 // 			for (int i = 0; i < NumVolumes; i += NumVolumes / 10){
 // #endif
 				if (omp_get_thread_num() == 0){
-					TecUtilDrawGraphics(TRUE);
-					UserQuit = !SetPercent(NumComplete, NumVolForPercentDone, ss.str(), AddOnID);
+					UserQuit = !StatusUpdate(NumComplete, NumVolForPercentDone, ss.str(), AddOnID);
 					NumComplete++;
 #pragma omp flush (UserQuit)
-					TecUtilDrawGraphics(FALSE);
 				}
 #pragma omp flush (UserQuit)
 				if (!UserQuit){
@@ -482,7 +481,7 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 // 						}
 // 					}
 					Ptrs[0][j].Write(i, SphereElemIntVals[i][j]);
-					for (int k = 0; k < Ptrs[i + 1][j].GetSize(); k++){
+					for (int k = 0; k < Ptrs[i + 1][j].Size(); k++){
 						Ptrs[i + 1][j].Write(k, SphereElemIntVals[i][j]);
 					}
 				}
@@ -609,9 +608,7 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 // 			
 		TecUtilSetDealloc(&ZoneSet);
 
-		TecUtilDrawGraphics(TRUE);
-		TecUtilStatusSuspend(FALSE);
-		TecUtilStatusFinishPercentDone();
+		StatusDrop(AddOnID);
 	}
 
 	if (DoTiming){

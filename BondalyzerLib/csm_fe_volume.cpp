@@ -35,17 +35,48 @@ using namespace arma;
 */
 
 /*
+ *	Operators
+ */
+
+FESurface_c & FESurface_c::operator+=(const FESurface_c & rhs){
+	int NodeCount = m_XYZList.size(),
+		ElemCount = m_ElemList.size();
+
+	// Copy nodes and elements from rhs
+	m_XYZList.insert(m_XYZList.end(), rhs.m_XYZList.cbegin(), rhs.m_XYZList.cend());
+	m_ElemList.insert(m_ElemList.end(), rhs.m_ElemList.cbegin(), rhs.m_ElemList.cend());
+
+	// Fix new element numbers
+	for (int e = ElemCount; e < m_ElemList.size(); ++e){
+		for (int & i : m_ElemList[e]){
+			i += NodeCount;
+		}
+	}
+
+	m_NumElems = m_ElemList.size();
+	m_NumNodes = m_XYZList.size();
+
+	m_FEVolumeMade = (m_NumNodes > 0 && m_NumElems > 0);
+
+	return *this;
+}
+
+const FESurface_c FESurface_c::operator+(const FESurface_c & rhs) const{
+	return FESurface_c(*this) += rhs;
+}
+
+/*
 *	Constructor/destructor
 */
 
-FEVolume_c::FEVolume_c()
+FESurface_c::FESurface_c()
 {
 	m_NumGPs = -1;
 	m_FEVolumeMade = FALSE;
 	m_IntegrationResultsReady = FALSE;
 }
 
-FEVolume_c::FEVolume_c(const int & InZoneNum,
+FESurface_c::FESurface_c(const int & InZoneNum,
 	const ZoneType_e & InZoneType,
 	const vector<FieldDataPointer_c> & InXYZPtrs,
 	const vec3 & InMaxXYZ,
@@ -83,7 +114,20 @@ FEVolume_c::FEVolume_c(const int & InZoneNum,
 	}
 }
 
-FEVolume_c::FEVolume_c(const int & InZoneNum,
+/*
+*	Make FEVolume from lists of nodes (points) and elements (lists of point indices).
+*/
+FESurface_c::FESurface_c(const vector<vec3> & Nodes, vector<vector<int> > & Elements)
+{
+	m_FEVolumeMade = (Nodes.size() >= 3 && Elements.size() >= 1);
+	if (m_FEVolumeMade){
+		m_XYZList.clear();
+		m_XYZList.insert(m_XYZList.begin(), Nodes.cbegin(), Nodes.cend());
+		m_ElemList.insert(m_ElemList.begin(), Elements.cbegin(), Elements.cend());
+	}
+}
+
+FESurface_c::FESurface_c(const int & InZoneNum,
 	const int & VolZoneNum,
 	const vector<int> & InXYZVarNums,
 	const vector<int> & InIntVarNums)
@@ -91,7 +135,7 @@ FEVolume_c::FEVolume_c(const int & InZoneNum,
 	Setup(InZoneNum, VolZoneNum, InXYZVarNums, InIntVarNums);
 }
 
-FEVolume_c::FEVolume_c(const int & InZoneNum,
+FESurface_c::FESurface_c(const int & InZoneNum,
 	const vector<int> & InXYZVarNums)
 {
 	Setup(InZoneNum, InXYZVarNums);
@@ -101,7 +145,7 @@ FEVolume_c::FEVolume_c(const int & InZoneNum,
 /*
 	Make FEVolume from vector of pointers to GradPath_c's
 */
-const Boolean_t FEVolume_c::Make(vector<GradPath_c*> GPs)
+const Boolean_t FESurface_c::MakeGradientBundle(vector<GradPath_c*> GPs)
 {
 	Boolean_t IsOk = TRUE;
 	for (int i = 0; i < GPs.size() && IsOk; ++i){
@@ -118,25 +162,12 @@ const Boolean_t FEVolume_c::Make(vector<GradPath_c*> GPs)
 		m_NumElems = 2 * (m_NumGPs - 2) + 2 * m_NumGPs * (m_NumGPPts - 1);
 
 		vector<vector<vec3>::const_iterator> XYZIt(m_NumGPs);
-// 		vector<vector<double>::const_iterator> RhoIt(m_NumGPs);
 		
 		for (int i = 0; i < GPs.size(); ++i){
 			XYZIt[i] = GPs[i]->m_XYZList.cbegin();
-// 			RhoIt[i] = GPs[i]->m_RhoList.cbegin();
 		}
 
 		m_XYZList.resize(m_NumGPs * m_NumGPPts);
-// 		m_RhoList.resize(m_NumGPs * m_NumGPPts);
-
-
-// 		for (int j = 0; j < m_NumGPPts; ++j){
-// 			for (int i = 0; i < m_NumGPs; ++i){
-// 				m_XYZList[i + m_NumGPs * j] = *XYZIt[i];
-// 				XYZIt[i]++;
-// // 				m_RhoList[i + m_NumGPs * j] = *RhoIt[i];
-// // 				RhoIt[i]++;
-// 			}
-// 		}
 
 		for (int i = 0; i < m_NumGPs; ++i){
 			for (int j = 0; j < m_NumGPPts; ++j){
@@ -147,7 +178,6 @@ const Boolean_t FEVolume_c::Make(vector<GradPath_c*> GPs)
 
 		/*
 		 * Generate triangle list.
-		 * First with the starting cap, then the sides, then the end cap.
 		 */
 
 		vector<int> V(m_NumGPs);
@@ -179,10 +209,62 @@ const Boolean_t FEVolume_c::Make(vector<GradPath_c*> GPs)
 }
 
 /*
+Make FEVolume from vector of pointers to GradPath_c's
+*/
+const Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, const bool ConnectBeginningAndEndGPs)
+{
+	Boolean_t IsOk = TRUE;
+	for (int i = 0; i < GPs.size() && IsOk; ++i){
+		IsOk = GPs[i]->IsMade();
+		if (IsOk && i > 0){
+			IsOk = (GPs[i]->GetCount() == GPs[i - 1]->GetCount());
+		}
+	}
+
+	if (IsOk){
+		m_NumGPs = GPs.size();
+		m_NumGPPts = GPs[0]->GetCount();
+		m_NumNodes = m_NumGPs * m_NumGPPts;
+		m_NumElems = 2 * (m_NumGPs - 2) + 2 * m_NumGPs * (m_NumGPPts - 1);
+
+		vector<vector<vec3>::const_iterator> XYZIt(m_NumGPs);
+
+		m_XYZList.clear();
+		for (GradPath_c* GP : GPs)
+			m_XYZList.insert(m_XYZList.begin(), GP->m_XYZList.cbegin(), GP->m_XYZList.cend());
+
+// 		for (int i = 0; i < GPs.size(); ++i){
+// 			XYZIt[i] = GPs[i]->m_XYZList.cbegin();
+// 		}
+// 
+// 		m_XYZList.resize(m_NumGPs * m_NumGPPts);
+// 
+// 		for (int i = 0; i < m_NumGPs; ++i){
+// 			for (int j = 0; j < m_NumGPPts; ++j){
+// 				m_XYZList[i * m_NumGPPts + j] = *XYZIt[i];
+// 				XYZIt[i]++;
+// 			}
+// 		}
+
+		/*
+		* Generate triangle list.
+		*/
+
+		TriPolyLines(ConnectBeginningAndEndGPs);
+
+		m_NumElems = m_ElemList.size();
+
+		m_FEVolumeMade = TRUE;
+	}
+
+	return IsOk;
+}
+
+/*
 *	Two constructors for the 3- and 4-sided
 *	FE volumes.
 */
-const Boolean_t FEVolume_c::Make(const GradPath_c & GP1,
+const Boolean_t FESurface_c::MakeGradientBundle(const GradPath_c & GP1,
 	const GradPath_c & GP2,
 	const GradPath_c & GP3)
 {
@@ -244,7 +326,7 @@ const Boolean_t FEVolume_c::Make(const GradPath_c & GP1,
 
 	return IsOk;
 }
-const Boolean_t FEVolume_c::Make(const GradPath_c & GP1,
+const Boolean_t FESurface_c::MakeGradientBundle(const GradPath_c & GP1,
 	const GradPath_c & GP2,
 	const GradPath_c & GP3,
 	const GradPath_c & GP4)
@@ -313,7 +395,7 @@ const Boolean_t FEVolume_c::Make(const GradPath_c & GP1,
 	return IsOk;
 }
 
-FEVolume_c::~FEVolume_c()
+FESurface_c::~FESurface_c()
 {
 }
 
@@ -321,7 +403,7 @@ FEVolume_c::~FEVolume_c()
 *	Getter methods
 */
 
-const vector<double> FEVolume_c::GetIntResults() const
+const vector<double> FESurface_c::GetIntResults() const
 {
 	if (m_IntegrationResultsReady){
 		return m_IntValues;
@@ -330,12 +412,34 @@ const vector<double> FEVolume_c::GetIntResults() const
 		return vector<double>(1, 0);
 }
 
+
+const int FESurface_c::SetZoneStyle(const int ZoneNum,
+	const AssignOp_e ZoneActive,
+	const Boolean_t ShowContour,
+	const Boolean_t ShowMesh,
+	const Boolean_t ShowScatter,
+	const Boolean_t ShowShade)
+{
+	if (ZoneNum > 0 && ZoneNum <= TecUtilDataSetGetNumZones()){
+		Set_pa ZoneSet = TecUtilSetAlloc(TRUE);
+		TecUtilSetAddMember(ZoneSet, ZoneNum, TRUE);
+
+		TecUtilZoneSetActive(ZoneSet, ZoneActive);
+		TecUtilZoneSetMesh(SV_SHOW, ZoneSet, 0.0, ShowMesh);
+		TecUtilZoneSetScatter(SV_SHOW, ZoneSet, 0.0, ShowScatter);
+		TecUtilZoneSetContour(SV_SHOW, ZoneSet, 0.0, ShowContour);
+		TecUtilZoneSetShade(SV_SHOW, ZoneSet, 0.0, ShowShade);
+	}
+	return ZoneNum;
+}
+
 /*
 	Save an FEVolume_c that has it's elements and nodal structure
 	already created.
 	Only Saves the XYZ values.
 */
-const int FEVolume_c::SaveAsTriFEZone(const vector<int> & XYZVarNums, string ZoneName)
+const int FESurface_c::SaveAsTriFEZone(const vector<int> & XYZVarNums, 
+	string ZoneName)
 {
 	Boolean_t IsOk = IsMade();
 	int ZoneNum = -1;
@@ -351,6 +455,7 @@ const int FEVolume_c::SaveAsTriFEZone(const vector<int> & XYZVarNums, string Zon
 
 	if (IsOk){
 		ZoneNum = TecUtilDataSetGetNumZones();
+		m_ZoneNum = ZoneNum;
 		TecUtilSetAddMember(TmpSet, ZoneNum, FALSE);
 		TecUtilZoneSetActive(TmpSet, AssignOp_MinusEquals);
 		TecUtilZoneSetScatter(SV_SHOW, TmpSet, 0.0, FALSE);
@@ -383,7 +488,7 @@ const int FEVolume_c::SaveAsTriFEZone(const vector<int> & XYZVarNums, string Zon
 	}
 	
 	if (IsOk){
-	NodeMap_pa NodeMap = TecUtilDataNodeGetWritableRef(ZoneNum);
+		NodeMap_pa NodeMap = TecUtilDataNodeGetWritableRef(ZoneNum);
 		IsOk = VALID_REF(NodeMap);
 		for (int ei = 0; ei < m_ElemList.size(); ++ei){
 			for (int i = 0; i < 3; ++i){
@@ -401,10 +506,10 @@ const int FEVolume_c::SaveAsTriFEZone(const vector<int> & XYZVarNums, string Zon
 /*
 	Save a FEVolume_c that was made from multiple GPs
 */
-const int FEVolume_c::SaveAsTriFEZone(const string & ZoneName, 
+const int FESurface_c::SaveAsTriFEZone(const string & ZoneName, 
 	vector<FieldDataType_e> DataTypes,
 	const vector<ValueLocation_e> & DataLocations,
-	const vector<int> & XYZVarNums) const
+	const vector<int> & XYZVarNums)
 {
 	Boolean_t IsOk = IsMade();
 	int ZoneNum = -1;
@@ -431,6 +536,7 @@ const int FEVolume_c::SaveAsTriFEZone(const string & ZoneName,
 
 	if (IsOk){
 		ZoneNum = TecUtilDataSetGetNumZones();
+		m_ZoneNum = ZoneNum;
 		TecUtilSetAddMember(TmpSet, ZoneNum, FALSE);
 		TecUtilZoneSetActive(TmpSet, AssignOp_MinusEquals);
 		TecUtilZoneSetScatter(SV_SHOW, TmpSet, 0.0, FALSE);
@@ -550,9 +656,9 @@ const int FEVolume_c::SaveAsTriFEZone(const string & ZoneName,
 }
 
 
-const int FEVolume_c::SaveAsFEZone(vector<FieldDataType_e> DataTypes,
+const int FESurface_c::SaveAsFEZone(vector<FieldDataType_e> DataTypes,
 	const vector<int> & XYZVarNums,
-	const int & RhoVarNum) const
+	const int & RhoVarNum)
 {
 	Boolean_t IsOk = IsMade();
 	int ZoneNum = -1;
@@ -563,13 +669,14 @@ const int FEVolume_c::SaveAsFEZone(vector<FieldDataType_e> DataTypes,
 
 		DataTypes[RhoVarNum - 1] = FieldDataType_Double;
 
-		IsOk = TecUtilDataSetAddZone("FE Volume", m_XYZList.size(), m_NumElems, 0, ZoneType_FEQuad, DataTypes.data());
+		IsOk = TecUtilDataSetAddZone(CSMZoneName.FESurface.c_str(), m_XYZList.size(), m_NumElems, 0, ZoneType_FEQuad, DataTypes.data());
 	}
 
 	Set_pa TmpSet = TecUtilSetAlloc(FALSE);
 
 	if (IsOk){
 		ZoneNum = TecUtilDataSetGetNumZones();
+		m_ZoneNum = ZoneNum;
 		TecUtilSetAddMember(TmpSet, ZoneNum, FALSE);
 		TecUtilZoneSetActive(TmpSet, AssignOp_MinusEquals);
 		TecUtilZoneSetScatter(SV_SHOW, TmpSet, 0.0, FALSE);
@@ -707,7 +814,7 @@ const int FEVolume_c::SaveAsFEZone(vector<FieldDataType_e> DataTypes,
 *	Setter methods
 */
 
-const Boolean_t FEVolume_c::Setup(const int & InZoneNum,
+const Boolean_t FESurface_c::Setup(const int & InZoneNum,
 	const int & VolZoneNum,
 	const vector<int> & InXYZVarNums,
 	const vector<int> & InIntVarNums,
@@ -805,7 +912,7 @@ const Boolean_t FEVolume_c::Setup(const int & InZoneNum,
  *		with connectivity info and such. 
  *	This assumes the structure of the surfaces made by Bondalyzer
  */
-const Boolean_t FEVolume_c::Setup(const int InZoneNum,
+const Boolean_t FESurface_c::Setup(const int InZoneNum,
 								const vector<int> & InXYZVarNums){
 	REQUIRE(1 <= InZoneNum && InZoneNum <= TecUtilDataSetGetNumZones());
 	REQUIRE(InXYZVarNums.size() == 3);
@@ -868,7 +975,7 @@ const Boolean_t FEVolume_c::Setup(const int InZoneNum,
  *	and revise element list to reflect the removal of
  *	the nodes.
  */
-void FEVolume_c::RemoveDupicateNodes(){
+void FESurface_c::RemoveDupicateNodes(){
 	vector<bool> NodeIsDuplicate(m_XYZList.size(), false);
 	vector<int> NodeNums(m_XYZList.size());
 	bool DupFound = false;
@@ -925,7 +1032,7 @@ void FEVolume_c::RemoveDupicateNodes(){
 }
 
 
-const Boolean_t FEVolume_c::Refine(){
+const Boolean_t FESurface_c::Refine(){
 	if (m_RefinedXYZList.size() == 0)
 		m_RefinedXYZList = m_XYZList;
 
@@ -949,7 +1056,7 @@ const Boolean_t FEVolume_c::Refine(){
 }
 
 
-const Boolean_t FEVolume_c::DoIntegration(const Boolean_t & IntegrateVolume,
+const Boolean_t FESurface_c::DoIntegration(const Boolean_t & IntegrateVolume,
 	const vector<vec> & stuW,
 	const vector<int> & SplitPtNums,
 	const vector<vec> & stuW2)
@@ -1226,7 +1333,7 @@ const Boolean_t FEVolume_c::DoIntegration(const Boolean_t & IntegrateVolume,
 // 	return IsOk;
 // }
 
-const Boolean_t FEVolume_c::DoIntegrationNew(const int & ResolutionScale, const Boolean_t & IntegrateVolume)
+const Boolean_t FESurface_c::DoIntegrationNew(const int & ResolutionScale, const Boolean_t & IntegrateVolume)
 {
 	Boolean_t IsOk = m_FEVolumeMade;
 
@@ -1469,7 +1576,7 @@ const Boolean_t FEVolume_c::DoIntegrationNew(const int & ResolutionScale, const 
 		vector<vector<vec3> > Vecs = { m_InteriorPts, m_CheckPts, m_InteriorSubPts, m_CheckSubPts };
 		vector<EntIndex_t> VarNums(3);
 		for (int i = 0; i < 3; ++i)
-			VarNums[i] = m_XYZPtrs[i].GetVarNum();
+			VarNums[i] = m_XYZPtrs[i].VarNum();
 		for (int i = 0; i < Vecs.size(); ++i)
 			SaveVec3VecAsScatterZone(Vecs[i], ZoneNames[i], Colors[i], VarNums);
 #endif
@@ -1483,7 +1590,7 @@ const Boolean_t FEVolume_c::DoIntegrationNew(const int & ResolutionScale, const 
 
 
 
-const Boolean_t FEVolume_c::CalcMaxNodeDistSqr(){
+const Boolean_t FESurface_c::CalcMaxNodeDistSqr(){
 	Boolean_t IsOk = m_XYZPtrs.size() == 3;
 
 	for (int i = 0; i < m_XYZPtrs.size() && IsOk; ++i){
@@ -1538,7 +1645,7 @@ const Boolean_t FEVolume_c::CalcMaxNodeDistSqr(){
 	return IsOk;
 }
 
-const vector<int> FEVolume_c::TriangleEdgeMidPointSubdivide(const int & TriNum){
+const vector<int> FESurface_c::TriangleEdgeMidPointSubdivide(const int & TriNum){
 	vector<LgIndex_t> NewNodes(3);
 	vector<int> NewTris(4);
 	NewTris[0] = TriNum;
@@ -1561,7 +1668,7 @@ const vector<int> FEVolume_c::TriangleEdgeMidPointSubdivide(const int & TriNum){
 	return NewTris;
 }
 
-void FEVolume_c::RefineTriElems(const vector<int> & TriNumList){
+void FESurface_c::RefineTriElems(const vector<int> & TriNumList){
 	for (const auto & t : TriNumList){
 		double MaxNodeDistSqr = 0.0;
 		for (int i = 0; i < 3; ++i){
@@ -1574,10 +1681,10 @@ void FEVolume_c::RefineTriElems(const vector<int> & TriNumList){
 }
 
 
-void FEVolume_c::TriPolyLines()
+void FESurface_c::TriPolyLines(const bool ConnectBeginningAndEndGPs)
 {
 	vec3 NewNode, EdgeVec;
-	for (int iGP = 0; iGP < m_NumGPs; ++iGP){
+	for (int iGP = 0; iGP < m_NumGPs - (ConnectBeginningAndEndGPs ? 0 : 1); ++iGP){
 		int lInd = iGP,
 			rInd = (iGP + 1) % m_NumGPs;
 		int li = lInd * m_NumGPPts,
@@ -1591,7 +1698,8 @@ void FEVolume_c::TriPolyLines()
 		EdgeLen = norm(EdgeVec);
 		EdgePtSpacing = norm(m_XYZList[li] - m_XYZList[li + 1]);
 		NumEdgePts = static_cast<int>(EdgeLen / EdgePtSpacing);
-		if (NumEdgePts > 2){
+		bool HasFarEdge = (NumEdgePts > 2);
+		if (HasFarEdge){
 			EdgePtSpacing = EdgeLen / static_cast<double>(NumEdgePts - 1);
 			EdgeVec = normalise(EdgeVec) * EdgePtSpacing;
 			MinNodeScore = DBL_MAX;
@@ -1614,13 +1722,13 @@ void FEVolume_c::TriPolyLines()
 		}
 		else
 			NewNode = (m_XYZList[li + m_NumGPPts - 1] + m_XYZList[ri + m_NumGPPts - 1]) / 2.0;
-		m_XYZList.push_back(NewNode);
+		if (HasFarEdge) m_XYZList.push_back(NewNode);
 		int NewNodeNum = m_XYZList.size() - 1;
 		while (lr[0] < (lInd + 1) * m_NumGPPts - 1 && lr[1] < (rInd + 1) * m_NumGPPts - 1){
 			int FarPoint, MinSide, MinFarPoint;
 			double MinLen = DBL_MAX, TmpLen;
 			for (int i = 0; i < 2; ++i){
-				for (int j = 0; j < 2; ++j){
+				for (int j = 0; j < 1 + int(HasFarEdge); ++j){
 					if (j == 0)
 						FarPoint = lr[(i + 1) % 2];
 					else
@@ -1633,7 +1741,7 @@ void FEVolume_c::TriPolyLines()
 					}
 				}
 			}
-			if (!MidFound[MinSide] && MinFarPoint == NewNodeNum){
+			if (HasFarEdge && !MidFound[MinSide] && MinFarPoint == NewNodeNum){
 				MidFound[MinSide] = true;
 				lrMid[MinSide] = lr[MinSide];
 			}
@@ -1646,7 +1754,7 @@ void FEVolume_c::TriPolyLines()
 				if (DistSqr(m_XYZList[lr[i] + 1], m_XYZList[lr[(i + 1) % 2]]) < DistSqr(m_XYZList[lr[i] + 1], m_XYZList[NewNodeNum])){
 					m_ElemList.push_back({ lr[i], lr[i] + 1, lr[(i + 1) % 2] });
 				}
-				else{
+				else if (HasFarEdge){
 					m_ElemList.push_back({ lr[i], lr[i] + 1, NewNodeNum });
 					if (!MidFound[i]){
 						MidFound[i] = true;
@@ -1662,7 +1770,7 @@ void FEVolume_c::TriPolyLines()
 	}
 }
 
-const Boolean_t FEVolume_c::DistSqrToSurfaceNodeWithinTolerance(const vec3 & CheckPt,
+const Boolean_t FESurface_c::DistSqrToSurfaceNodeWithinTolerance(const vec3 & CheckPt,
 																double & NewDistSqrUnderTol,
 																int & CloseNodeNum,
 																const double & DistSqrTol)
@@ -1701,7 +1809,7 @@ const Boolean_t FEVolume_c::DistSqrToSurfaceNodeWithinTolerance(const vec3 & Che
 // 	return IsFound;
 // }
 
-const Boolean_t FEVolume_c::SubDivideIntegrateCellAtPoint(const vec3 & Point,
+const Boolean_t FESurface_c::SubDivideIntegrateCellAtPoint(const vec3 & Point,
 														const vector<vec3> & FarPoints,
 														const vec3 & DelXYZ,
 														const double & MinDistSqrToSurfaceNode,
@@ -2088,7 +2196,7 @@ const vector<vec> GetWeightsPoints(const int & N){
 	return tetraquad(N, Verts);
 }
 
-const double FEVolume_c::IntVolume(const int & N, const vec3 & StartPoint) const{
+const double FESurface_c::IntVolume(const int & N, const vec3 & StartPoint) const{
 // 	vector<int> NumElemsList = { 80, 320, 1280, 5120 };
 
 	mat Verts;
@@ -2123,7 +2231,7 @@ const double FEVolume_c::IntVolume(const int & N, const vec3 & StartPoint) const
 	return 0;
 }
 
-const vector<mat> FEVolume_c::GetIntegrationPointsWeights(const vec3 & StartPoint, const vector<vec> & stuW) const{
+const vector<mat> FESurface_c::GetIntegrationPointsWeights(const vec3 & StartPoint, const vector<vec> & stuW) const{
 
 	if (stuW.size() == 4){
 
@@ -2149,7 +2257,7 @@ const vector<mat> FEVolume_c::GetIntegrationPointsWeights(const vec3 & StartPoin
 	return vector<mat>();
 }
 
-const vector<mat> FEVolume_c::GetIntegrationPointsWeights(const vector<vec> & stuW) const{
+const vector<mat> FESurface_c::GetIntegrationPointsWeights(const vector<vec> & stuW) const{
 
 	if (stuW.size() == 4){
 
@@ -2181,7 +2289,7 @@ const vector<mat> FEVolume_c::GetIntegrationPointsWeights(const vector<vec> & st
 *	Private member functions
 */
 
-const Boolean_t FEVolume_c::PointIsInterior(const vec3 & Point, const vector<vec3> & FarPoints) const{
+const Boolean_t FESurface_c::PointIsInterior(const vec3 & Point, const vector<vec3> & FarPoints) const{
 	/*
 	*	Check that Point is in bounding cube of FEVolume
 	*/
@@ -2220,7 +2328,7 @@ const Boolean_t FEVolume_c::PointIsInterior(const vec3 & Point, const vector<vec
 
 	return IsInterior;
 }
-const int FEVolume_c::TriangleIntersect(const vec3 & T_P0,
+const int FESurface_c::TriangleIntersect(const vec3 & T_P0,
 	const vec3 & T_P1,
 	const vec3 & T_P2,
 	const vec3 & R_P1,
@@ -2271,7 +2379,7 @@ const int FEVolume_c::TriangleIntersect(const vec3 & T_P0,
 }
 
 
-const vector<vector<double> > FEVolume_c::TriSphereIntValsByElem(vector<double> * SphereTriangleAreas) const
+const vector<vector<double> > FESurface_c::TriSphereIntValsByElem(vector<double> * SphereTriangleAreas) const
 {
 	Boolean_t IsOk = m_IntegrationResultsReady && m_NumNodesPerElem == 3;
 
@@ -2338,7 +2446,7 @@ const vector<vector<double> > FEVolume_c::TriSphereIntValsByElem(vector<double> 
  */
 
 
-void Domain_c::Setup(const vector<int> & V, FEVolume_c *Vol)
+void Domain_c::Setup(const vector<int> & V, FESurface_c *Vol)
 {
 	m_V = V;
 	m_Vol = Vol;

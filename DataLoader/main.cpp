@@ -356,52 +356,52 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		TecUtilArgListDealloc(&ArgList);
 	}
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Load data",
 		"Load ADF Tape41 File",
 		'\0',
 		LoadADFTape41MenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Load data",
 		"Load ADF Tape21 File",
 		'\0',
 		LoadADFTape21MenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Load data",
 		"Load BAND Tape41 File",
 		'\0',
 		LoadBANDTape41MenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Load data",
 		"Load ADF Tape41 ASCII File",
 		'\0',
 		LoadASCIIMenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Load data",
 		"Load VASP CHGCAR File",
 		'\0',
 		LoadCHGCARMenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Load data",
 		"Load VASP AECCAR# Files",
 		'\0',
 		LoadAECCARMenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Load data",
 		"Load Gaussian Cube File(s)",
 		'\0',
 		LoadGaussianCubeMenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Load data",
 		"Load TurboMole Cube File(s)",
 		'\0',
 		LoadTurboMoleCubeMenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Load data",
 		"Load TurboMole Binary PLT File(s)",
 		'\0',
 		LoadBinaryPLTFileDataMenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Utilities",
 		"Refine ADF Tecplot Zone Data",
 		'\0',
 		ImportZoneTape41FilesMenuCallback);

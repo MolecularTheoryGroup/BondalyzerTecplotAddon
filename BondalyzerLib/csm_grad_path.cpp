@@ -132,7 +132,7 @@ GradPathBase_c::GradPathBase_c(EntIndex_t ZoneNum,
 	}
 
 	vector<FieldDataPointer_c> RawPtrs(4);
-	for (int i = 0; i < 4; ++i){
+	for (int i = 0; i < XYZRhoVarNums.size(); ++i){
 		RawPtrs[i].GetReadPtr(ZoneNum, XYZRhoVarNums[i]);
 	}
 
@@ -144,8 +144,10 @@ GradPathBase_c::GradPathBase_c(EntIndex_t ZoneNum,
 		}
 		else{
 			m_RhoList.resize(MaxIJK[0]);
-			for (int j = 0; j < MaxIJK[0]; ++j)
-				m_RhoList[j] = RawPtrs[i][j];
+			if (RawPtrs[i].IsReady()){
+				for (int j = 0; j < MaxIJK[0]; ++j)
+					m_RhoList[j] = RawPtrs[i][j];
+			}
 		}
 	}
 
@@ -335,7 +337,8 @@ const Boolean_t GradPathBase_c::Resample(const int & NumPoints){
 
 	int OldCount = GetCount();
 
-	if (IsOk && NumPoints < OldCount){
+// 	if (IsOk && NumPoints < OldCount){
+	if (IsOk){
 		NewXYZList.resize(NumPoints);
 
 		NewRhoList.resize(NumPoints);
@@ -411,6 +414,8 @@ const Boolean_t GradPathBase_c::Resample(const int & NumPoints){
 
 			m_RhoList.swap(NewRhoList);
 		}
+
+		m_Length = -1;
 	}
 	else IsOk = FALSE;
 
@@ -613,6 +618,8 @@ void GradPathBase_c::PointAppend(const vec3 & Point, const double & Rho){
 
 	m_XYZList.push_back(Point);
 
+	if (m_Length >= 0) m_Length += Distance(m_XYZList[-1], m_XYZList[-2]);
+
 	m_RhoList.push_back(Rho);
 
 	m_NumGPPoints++;
@@ -622,6 +629,8 @@ void GradPathBase_c::PointAppend(const vec3 & Point, const double & Rho){
 void GradPathBase_c::PointPrepend(const vec3 & Point, const double & Rho){
 
 	m_XYZList.insert(m_XYZList.begin(), Point);
+
+	if (m_Length >= 0) m_Length += Distance(m_XYZList[0], m_XYZList[1]);
 
 	m_RhoList.insert(m_RhoList.begin(), Rho);
 
@@ -733,6 +742,12 @@ const Boolean_t GradPathBase_c::SaveAsCSV(const string & PathToFile, const Boole
 
 	return IsOk;
 }
+
+const vec3 GradPathBase_c::operator[](const int & i) const{
+	return m_XYZList[GetInd(i)];
+}
+
+const double GradPathBase_c::RhoAt(const int & i) const { return m_RhoList[GetInd(i)]; }
 
 
 
@@ -923,16 +938,16 @@ const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
 	const StreamDir_e & Direction,
 	const int & NumGPPoints,
 	const GPTerminate_e & HowTerminate,
-											vec3 * TermPoint,
-											const vector<FieldDataPointer_c> & CPXYZPtrs,
-											int * NumCPs,
-											double * TermPointRadius,
-											double * TermValue,
-											const vector<int> & MaxIJK,
-											const vec3 & MaxXYZ,
-											const vec3 & MinXYZ,
-											const vector<FieldDataPointer_c> & GradPtrs,
-											const FieldDataPointer_c & RhoPtr)
+	vec3 * TermPoint,
+	const vector<FieldDataPointer_c> & CPXYZPtrs,
+	int * NumCPs,
+	double * TermPointRadius,
+	double * TermValue,
+	const vector<int> & MaxIJK,
+	const vec3 & MaxXYZ,
+	const vec3 & MinXYZ,
+	const vector<FieldDataPointer_c> & GradPtrs,
+	const FieldDataPointer_c & RhoPtr)
 {
 	m_XYZList.swap(vector<vec3>());
 	m_RhoList.swap(vector<double>());
@@ -1132,6 +1147,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 		double StepSize, PlaneCPDist;
 		Boolean_t SGPFound = FALSE;
 		int PlaneCPFailIter = 0, PlaneCPIter = 0;
+		mat33 I = eye<mat>(3, 3);
 		if (m_GPType != GPType_Classic && m_GPType != GPType_Invalid){
 			Params.CalcType = m_GPType;
 			Params.HasHess = m_ODE_Data.HessPtrs.size() == 6;
@@ -1145,7 +1161,8 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 			Params.GradPtrs = &m_ODE_Data.GradPtrs;
 			for (int i = 0; i < 3 && Params.HasGrad; ++i)
 				Params.HasGrad = Params.GradPtrs->at(i).IsReady();
-			Params.BasisVectors = &BV;
+			Params.BasisVectors = &I;
+			Params.VolInfo->BasisVectors = I;
 			Params.Origin = &BV[0];
 
 			MR.Func = { &F2DGrad, &DF2DGrad, &FDF2DGrad, 2, &Params};
@@ -1191,7 +1208,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 					if (Step <= 1) StepSize = Distance(PtI, PtIm1);
 //   					}
 					if (m_GPType != GPType_Classic && m_GPType != GPType_Invalid && CPInNormalPlane(PtI, StepDir, MR)){
-						Params.BasisVectors = &BV;
+						Params.BasisVectors = &I;
 						PlaneCPIter = 0;
 						SGPFound = FALSE;
 						do 
@@ -1212,7 +1229,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 							StepDir = normalise((EigVecs.row(MaxDir)));
 
 							SGPFound = CPInNormalPlane(PtI, StepDir, MR);
-							Params.BasisVectors = &BV;
+							Params.BasisVectors = &I;
 							PlaneCPDist = Distance(PtI, TmpPt);
 						} while (SGPFound && PlaneCPDist >= 1e-4 && PlaneCPIter < 50);
 						if (PlaneCPIter < 50 && PlaneCPDist < 1e-4){
@@ -1228,7 +1245,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 					}
 // 					if (!SGPFound){
 					else{
-						Params.BasisVectors = &BV;
+						Params.BasisVectors = &I;
 						PlaneCPFailIter++;
 						if (PlaneCPFailIter > GP_PlaneCPMaxIter){
 							Status = GSL_EFAILED;
@@ -1338,7 +1355,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 				}
 				if (m_TermValue != -1.0 && Rho < m_TermValue){
 					double OldRho;
-					OldRho = m_RhoList[m_RhoList.size() - 1];
+					OldRho = m_RhoList.back();
 
 					NewPoint = PtIm1 + (PtI - PtIm1) * ((m_TermValue - OldRho) / (Rho - OldRho));
 
@@ -1349,15 +1366,17 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 				}
 
 				if (IsOk){
-					double NewPtDistSqr = DistSqr(PtI, (PtIm1));
-					if (NewPtDistSqr < GP_PointSqrDistTol){
-						NumStalledPoints++;
-						if (NumStalledPoints >= GP_StallPointCount && Status == GSL_SUCCESS){
-							Status = GSL_ENOPROG;
+					if (m_XYZList.size() >= GP_StallNumPointsToCheck - 1){
+						double NewPtDistSqr = Distance(PtI, m_XYZList[m_XYZList.size() - GP_StallNumPointsToCheck + 1]);
+						if (NewPtDistSqr < GP_StallPointDistTol){
+							NumStalledPoints++;
+							if (NumStalledPoints >= GP_StallPointCount && Status == GSL_SUCCESS){
+								Status = GSL_ENOPROG;
+							}
 						}
+						else
+							NumStalledPoints = 0;
 					}
-					else
-						NumStalledPoints = 0;
 
 					m_XYZList.push_back(PtI);
 					m_RhoList.push_back(Rho);
@@ -1370,6 +1389,30 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 		}
 
 		IsOk = (IsOk && Status == GSL_SUCCESS || Status == GSL_EDOM || Status == GSL_ENOPROG);
+
+		if (Status == GSL_ENOPROG && m_XYZList.size() > GP_StallPointCount){
+			/*
+			 *	Grad path stalled, so it was basically bouncing around the same point.
+			 *	The last point can then be approximated as the midpoint of the stalled points.
+			 */
+			vec3 Pt = zeros(3);
+			double PtRho = 0.0;
+			double PtCount = 0.0;
+			for (int i = MAX(0, m_XYZList.size() - GP_StallPointCount); i < m_XYZList.size(); ++i){
+				Pt += m_XYZList[i];
+				PtRho += m_RhoList[i];
+				PtCount += 1.0;
+			}
+
+			Pt /= PtCount;
+			PtRho /= PtCount;
+
+			m_XYZList.resize(MAX(0, m_XYZList.size() - GP_StallPointCount));
+			m_XYZList.back() = Pt;
+			m_RhoList.resize(MAX(0, m_RhoList.size() - GP_StallPointCount));
+			m_RhoList.back() = PtRho;
+			PtI = Pt;
+		}
 
 		gsl_odeiv2_driver_free(ODEDriver);
 
@@ -1402,7 +1445,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 			}
 		}
 
-		IsOk = m_GradPathMade = (IsOk && m_RhoList.size() > 0);
+		IsOk = m_GradPathMade = (IsOk && m_RhoList.size() > GP_StallPointCount);
 		if (IsOk && m_GPType)
 			m_SGPMade = TRUE;
 
@@ -1474,11 +1517,7 @@ int GP_ODE_GradFunction(double t, const double pos[], double dydt[], void* param
 			}
 		}
 		else{
-			vector<vec3> BV(3);
-			BV[0] << 1 << 0 << 0;
-			BV[1] << 0 << 1 << 0;
-			BV[2] << 0 << 0 << 1;
-			CalcGradForPoint(TmpVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, BV, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, NULL);
+			CalcGradForPoint(TmpVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisVectors, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, NULL);
 			TmpVec = TmpGrad;
 		}
 
@@ -1616,7 +1655,11 @@ const Boolean_t CPInNormalPlane(vec3 & StartPt, const vec3 & PlaneBasis, MultiRo
 	BV[0] = normalise( cross(PlaneBasis, BV[0]));
 	BV[1] = normalise( cross(BV[0], PlaneBasis));
 
-	Params->BasisVectors = &BV;
+	mat33 BV3;
+	BV3.col(0) = BV[0];
+	BV3.col(1) = BV[1];
+
+	Params->BasisVectors = &BV3;
 	Params->Origin = &StartPt;
 
 	for (int i = 0; i < 2; ++i)
@@ -1736,7 +1779,7 @@ NEBGradPath_c::NEBGradPath_c(const vec3 & StartPt,
 		m_XYZList.push_back(StartPt + (StepVec * StepNum));
 	}
 
-// 	m_XYZList[m_XYZList.size() - 1] = EndPt;
+// 	m_XYZList.back() = EndPt;
 
 	m_XYZList.push_back(EndPt);
 }

@@ -13,6 +13,6 @@ Boolean_t PopulateRadiusVar(EntIndex_t RadVarNum,
 	EntIndex_t FEZoneNum,
 	vec3 Origin,
 	vec3 Axis);
-Boolean_t SetPercent(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText);
+Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const char* ProgresssText);
 
 #endif

@@ -14,6 +14,7 @@
 #include "GUIDEFS.h"
 // #include "SETCHEMBONDSTYLE.h"
 #include "CSM_CALC_VARS.h"
+#include "CSM_GUI.h"
 #include "ENGINE.h"
 #include <string.h>
 #include <string>
@@ -110,7 +111,15 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
         case StateChange_ZonesDeleted:    /* set of deleted zones */
         case StateChange_ZonesAdded:      /* set of added zones */
         case StateChange_NodeMapsAltered: /* set of node maps altered */
-        case StateChange_MouseModeUpdate: /* the new mouse mode */
+		case StateChange_MouseModeUpdate: /* the new mouse mode */
+		{
+											  MouseButtonMode_e m = TecUtilMouseGetCurrentMode();
+											  if (m != MouseButtonMode_Invalid && m != MouseButtonMode_Select && m != MouseButtonMode_Probe){
+												  //CSMGUIDeleteCPLabels(&AddOnID);
+												  CSMGuiLabelSelectedPoints(&AddOnID);
+											  }
+		}
+			break;
         case StateChange_Style:           /* Style Parameters P1,P2,P3,P4,P5,P6 */
         case StateChange_View:            /* View action (View_e) */
         case StateChange_Streamtrace:     /* Streamtrace action (Streamtrace_e) */
@@ -230,12 +239,46 @@ static void STDCALL GaussianBlurMenuCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL ZoneNameFindReplaceMenuCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		ZoneNameFindReplaceGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL VarNameFindReplaceMenuCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		VarNameFindReplaceGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL MapVarsToZonesMenuCallback(void)
 {
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
+		CSMGuiLock();
+
 		MapAllVarsToAllZones(AddOnID);
+
+		CSMGuiUnlock();
 	}
 	else
 	{
@@ -250,7 +293,11 @@ static void STDCALL RefineActiveZonesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
+		CSMGuiLock();
+
 		RefineActiveZones();
+
+		CSMGuiUnlock();
 	}
 	else
 	{
@@ -264,7 +311,11 @@ static void STDCALL GetClosedIsoSurfaceFromPointsCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
+		CSMGuiLock();
+
 		GetClosedIsoSurfaceFromPoints();
+
+		CSMGuiUnlock();
 	}
 	else
 	{
@@ -278,7 +329,11 @@ static void STDCALL GetClosedIsoSurfaceFromNodesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
+		CSMGuiLock();
+
 		GetClosedIsoSurfaceFromNodes();
+
+		CSMGuiUnlock();
 	}
 	else
 	{
@@ -292,7 +347,29 @@ static void STDCALL GetAllClosedIsoSurfacesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
+		CSMGuiLock();
+
 		GetAllClosedIsoSurfaces();
+
+		CSMGuiUnlock();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL ConnectCPsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		CSMGuiLock();
+
+		ConnectCPsGetUserInfo();
+
+		CSMGuiUnlock();
 	}
 	else
 	{
@@ -321,6 +398,20 @@ static void STDCALL DeleteCritPointsCallback(void)
 	if (TecUtilDataSetIsAvailable())
 	{
 		DeleteCPsGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL ExtractCritPointsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		ExtractCPsGetUserInfo();
 	}
 	else
 	{
@@ -378,6 +469,61 @@ static void STDCALL FindRingSurfacesCallback(void)
 	if (TecUtilDataSetIsAvailable())
 	{
 		BondalyzerGetUserInfo(BondalyzerSteps_RingSurfaces);
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL DrawEigenvectorArrowsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		CSMGuiLock();
+
+		DrawEigenvectorArrowsGetUserInfo();
+
+		CSMGuiUnlock();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL TestFunctionCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		CSMGuiLock();
+
+		TestFunction();
+
+		CSMGuiUnlock();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+
+static void STDCALL ExtractRSIntersectionsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		CSMGuiLock();
+
+		ExtractRSIntersectionsGetUserInfo();
+
+		CSMGuiUnlock();
 	}
 	else
 	{
@@ -444,71 +590,106 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 
 	int MenuNum = 1;
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Calculate variables").c_str(),
 		'\0',
 		CalcVarsMenuCallback);
 
-// 	TecUtilMenuAddOption("Bondalyzer",
+// 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 		string(to_string(MenuNum++) + ". Gaussian blur").c_str(),
 // 		'\0',
 // 	GaussianBlurMenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Map volume zone variables to all zones").c_str(),
 		'\0',
 		MapVarsToZonesMenuCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Refine active zones").c_str(),
 		'\0',
 		RefineActiveZonesCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Get closed isosurface from points").c_str(),
 		'\0',
 		GetClosedIsoSurfaceFromPointsCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Get closed isosurface from nodes").c_str(),
 		'\0',
 		GetClosedIsoSurfaceFromNodesCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Get all closed isosurface").c_str(),
 		'\0',
 		GetAllClosedIsoSurfacesCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Connect CPs with lines").c_str(),
+		'\0',
+		ConnectCPsCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Draw arrows to indicate eigenvectors").c_str(),
+		'\0',
+		DrawEigenvectorArrowsCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Zone name: find and replace").c_str(),
+		'\0',
+		ZoneNameFindReplaceMenuCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Variable name: find and replace").c_str(),
+		'\0',
+		VarNameFindReplaceMenuCallback);
+
+	TecUtilMenuAddOption("MTG_Bondalyzer",
 		string("1. Find critical points").c_str(),
 		'\0',
 		FindCritPointsCallback);
 
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Bondalyzer",
 		string("1a. Delete critical point(s)").c_str(),
 		'\0',
 		DeleteCritPointsCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Bondalyzer",
+		string("1b. Extract critical point(s)").c_str(),
+		'\0',
+		ExtractCritPointsCallback);
+
+	TecUtilMenuAddOption("MTG_Bondalyzer",
 		string("2. Find bond paths").c_str(),
 		'\0',
 		FindBondPathsCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Bondalyzer",
 		string("3. Find ring lines").c_str(),
 		'\0',
 		FindRingLinesCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Bondalyzer",
 		string("4. Find interatomic surfaces").c_str(),
 		'\0',
 		FindBondSurfacesCallback);
 
-	TecUtilMenuAddOption("Bondalyzer",
+	TecUtilMenuAddOption("MTG_Bondalyzer",
 		string("5. Find ring surfaces").c_str(),
 		'\0',
 		FindRingSurfacesCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Extract surface/CP intersections").c_str(),
+		'\0',
+		ExtractRSIntersectionsCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Test function").c_str(),
+		'\0',
+		TestFunctionCallback);
 
 
     /*
