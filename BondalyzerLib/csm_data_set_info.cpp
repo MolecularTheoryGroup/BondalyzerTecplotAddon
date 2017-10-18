@@ -62,7 +62,8 @@ const vector<string> SplitString(const string &s, const string & delim) {
 		start = end + delim.length();
 		end = s.find(delim, start);
 	}
-	if (tokens.size() == 0) tokens.push_back(s);
+	tokens.push_back(s.substr(start, s.length() - start));
+// 	if (tokens.size() == 0) tokens.push_back(s);
 	return tokens;
 }
 

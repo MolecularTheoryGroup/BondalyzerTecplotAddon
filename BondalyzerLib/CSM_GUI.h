@@ -33,6 +33,8 @@ enum GuiFieldType_e{ // comment describes gui field and specifies what should be
 	
 	Gui_String,					// User-provided string
 
+	Gui_Radio,					// Radio box: comma-delimited list of up to 5 options (only first 5 will be used if > 5 provided)
+
 	Gui_VertSep,				// specify neither Label or Val
 
 	Gui_Invalid
@@ -93,9 +95,15 @@ private:
 	vector<void*> CallbackFuntions_m;
 };
 
-typedef void(*CSMGuiReturnFunc_pf)(const bool GuiSuccess, const vector<GuiField_c> & Fields);
+typedef void(*CSMGuiReturnFunc_pf)(const bool GuiSuccess, 
+	const vector<GuiField_c> & Fields,
+	const vector<GuiField_c> PassthroughFields);
 
-void CSMGui(const string & Title, const vector<GuiField_c> & Fields, CSMGuiReturnFunc_pf ReturnFunc, const AddOn_pa & InputAddOnID);
+void CSMGui(const string & Title, 
+	const vector<GuiField_c> & Fields, 
+	CSMGuiReturnFunc_pf ReturnFunc, 
+	const AddOn_pa & InputAddOnID,
+	const vector<GuiField_c> PassthroughFields = vector<GuiField_c>());
 
 void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID = NULL);
 void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID = NULL);

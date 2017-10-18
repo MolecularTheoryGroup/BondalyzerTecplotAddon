@@ -383,7 +383,7 @@ static void STDCALL FindCritPointsCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		BondalyzerGetUserInfo(BondalyzerSteps_CriticalPoints);
+		BondalyzerGetUserInfo(BondalyzerCalcType_CriticalPoints);
 	}
 	else
 	{
@@ -420,13 +420,26 @@ static void STDCALL ExtractCritPointsCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL CombineCritPointZonesCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		CombineCPZonesGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
 
 static void STDCALL FindBondPathsCallback(void)
 {
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		BondalyzerGetUserInfo(BondalyzerSteps_BondPaths);
+		BondalyzerGetUserInfo(BondalyzerCalcType_BondPaths);
 	}
 	else
 	{
@@ -440,7 +453,7 @@ static void STDCALL FindRingLinesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		BondalyzerGetUserInfo(BondalyzerSteps_RingLines);
+		BondalyzerGetUserInfo(BondalyzerCalcType_RingLines);
 	}
 	else
 	{
@@ -454,7 +467,7 @@ static void STDCALL FindBondSurfacesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		BondalyzerGetUserInfo(BondalyzerSteps_InteratomicSurfaces);
+		BondalyzerGetUserInfo(BondalyzerCalcType_InteratomicSurfaces);
 	}
 	else
 	{
@@ -468,7 +481,7 @@ static void STDCALL FindRingSurfacesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		BondalyzerGetUserInfo(BondalyzerSteps_RingSurfaces);
+		BondalyzerGetUserInfo(BondalyzerCalcType_RingSurfaces);
 	}
 	else
 	{
@@ -660,6 +673,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("1b. Extract critical point(s)").c_str(),
 		'\0',
 		ExtractCritPointsCallback);
+
+	TecUtilMenuAddOption("MTG_Bondalyzer",
+		string("1c. Combine critical point zones").c_str(),
+		'\0',
+		CombineCritPointZonesCallback);
 
 	TecUtilMenuAddOption("MTG_Bondalyzer",
 		string("2. Find bond paths").c_str(),

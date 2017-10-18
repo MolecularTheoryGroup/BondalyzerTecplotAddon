@@ -301,6 +301,38 @@ const Boolean_t CritPoints_c::FindMinCPDist(const vector<CPType_e> & CPTypes){
 	return IsOk;
 }
 
+void CritPoints_c::RemoveDuplicates(){
+	for (int t = 0; t < 6; ++t){
+		vector<bool> IsDup(m_XYZ[t].size(), false);
+		for (int i = 0; i < m_XYZ[t].size(); ++i){
+			for (int j = i + 1; j < m_XYZ[t].size(); ++j){
+				if (!IsDup[j] && sum(m_XYZ[t][i] == m_XYZ[t][j]) == 3){
+					IsDup[j] = true;
+				}
+			}
+		}
+
+		vector<vec3> NewXYZ, NewPD, NewEigVals;
+		vector<mat33> NewEigVecs;
+		vector<double> NewRho;
+		for (int i = 0; i < m_XYZ[t].size(); ++i){
+			if (!IsDup[i]){
+				NewXYZ.push_back(m_XYZ[t][i]);
+				if (i < m_PrincDir[t].size()) NewPD.push_back(m_PrincDir[t][i]);
+				if (i < m_EigVals[t].size()) NewEigVals.push_back(m_EigVals[t][i]);
+				if (i < m_EigVecs[t].size()) NewEigVecs.push_back(m_EigVecs[t][i]);
+				if (i < m_Rho[t].size()) NewRho.push_back(m_Rho[t][i]);
+			}
+		}
+
+		m_XYZ[t] = NewXYZ;
+		m_PrincDir[t] = NewPD;
+		m_EigVals[t] = NewEigVals;
+		m_EigVecs[t] = NewEigVecs;
+		m_Rho[t] = NewRho;
+	}
+}
+
 vector<int> CritPoints_c::GetTypeNumOffsetFromTotOffset(const int & TotOffset) const{
 	vector<int> TypeNumAndOffset = { -1, -1 };
 
@@ -401,7 +433,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 		TecUtilDialogErrMsg("Failed to get XYZ pointers for CP zone");
 		return{ -1 };
 	}
-	if (!RhoPtr.GetWritePtr(NewZoneNums.back(), RhoVarNum)){
+	if (RhoVarNum > 0 && !RhoPtr.GetWritePtr(NewZoneNums.back(), RhoVarNum)){
 		TecUtilDialogErrMsg("Failed to get rho pointer for CP zone");
 		return{ -1 };
 	}
@@ -453,7 +485,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 					return{ -1 };
 				}
 				RhoPtr.Close();
-				if (!RhoPtr.GetWritePtr(NewZoneNums.back(), RhoVarNum)){
+				if (RhoVarNum > 0 && !RhoPtr.GetWritePtr(NewZoneNums.back(), RhoVarNum)){
 					TecUtilDialogErrMsg("Failed to get rho pointer for CP type zone");
 					return{ -1 };
 				}

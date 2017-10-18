@@ -349,7 +349,7 @@ const int VectorGetElementNum(const vector<T> & SearchVec, const T & Item){
 	return ElemNum;
 }
 const int SearchVectorForString(const vector<string> & Vec, const string & SearchString, const bool & UseVectorStringLength = true);
-const vector<string> SplitString(const string &s, const string & delim);
+const vector<string> SplitString(const string &s, const string & delim = " ");
 template <class T>
 const string VectorToString(const vector<T> & Items, const string & Delim = " "){
 	string OutStr;

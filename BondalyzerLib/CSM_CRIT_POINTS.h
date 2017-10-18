@@ -129,8 +129,9 @@ public:
 		*/
 
 	const Boolean_t FindMinCPDist(const vector<CPType_e> & CPTypes);
+	void RemoveDuplicates();
 	
-	const vector<int> SaveAsOrderedZone(const vector<int> & XYZVarNum, const int & RhoVarNum, const Boolean_t & SaveCPTypeZones = FALSE);
+	const vector<int> SaveAsOrderedZone(const vector<int> & XYZVarNum, const int & RhoVarNum = -1, const Boolean_t & SaveCPTypeZones = FALSE);
 
 private:
 

@@ -15,20 +15,24 @@
 #include <vector>
 
 #include "CSM_CRIT_POINTS.h"
+#include "CSM_GRAD_PATH.h"
+#include "CSM_GUI.h"
 
 using std::vector;
 using std::string;
 
-enum BondalyzerSteps_e{
-	BondalyzerSteps_CriticalPoints,
-	BondalyzerSteps_BondPaths,
-	BondalyzerSteps_RingLines,
-	BondalyzerSteps_InteratomicSurfaces,
-	BondalyzerSteps_RingSurfaces,
-	BondalyzerSteps_BondBundleSurfaces,
-	BondalyzerSteps_RingBundleSurfaces,
+enum BondalyzerCalcType_e{
+	BondalyzerCalcType_CriticalPoints,
+	BondalyzerCalcType_BondPaths,
+	BondalyzerCalcType_RingLines,
+	BondalyzerCalcType_InteratomicSurfaces,
+	BondalyzerCalcType_RingSurfaces,
+	BondalyzerCalcType_BondBundleSurfaces,
+	BondalyzerCalcType_RingBundleSurfaces,
 
-	BondalyzerSteps_Invalid
+	BondalyzerCalcType_GBA,
+
+	BondalyzerCalcType_Invalid
 };
 
 const static vector<string> BondalyzerStepGUITitles = {
@@ -38,7 +42,8 @@ const static vector<string> BondalyzerStepGUITitles = {
 	"interatomic surfaces",
 	"ring surfaces",
 	"bond bundle surfaces",
-	"ring bundle surfaces"
+	"ring bundle surfaces",
+	"Gradient bundle analysis"
 };
 
 
@@ -51,7 +56,7 @@ void DrawEigenvectorArrowsGetUserInfo();
 class FieldDataPointer_c;
 void GetClosedIsoSurface(const int & IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
 
-void BondalyzerGetUserInfo(BondalyzerSteps_e CalcType);
+void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_c> PassthroughFields = vector<GuiField_c>());
 
 void VarNameFindReplaceGetUserInfo();
 void ZoneNameFindReplaceGetUserInfo();
@@ -66,9 +71,11 @@ const Boolean_t FindCritPoints(const int & VolZoneNum,
 
 void DeleteCPsGetUserInfo();
 void ExtractCPsGetUserInfo();
+void CombineCPZonesGetUserInfo();
 
 const Boolean_t FindBondRingLines(const int & VolZoneNum,
-	const int & AllCPsZoneNum,
+	const vector<int> & OtherCPZoneNums,
+	const int & SelectedCPZoneNum,
 	const vector<int> & SelectedCPNums,
 	const int & CPTypeVarNum,
 	const CPType_e & CPType,
@@ -79,7 +86,8 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	const Boolean_t & IsPeriodic);
 
 const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
-	const int & CPZoneNum,
+	const vector<int> & OtherCPZoneNums,
+	const int & SelectedCPZoneNum,
 	const vector<int> & SelectedCPNums,
 	const int & CPTypeVarNum,
 	const CPType_e & CPType,
@@ -96,6 +104,40 @@ void ExtractRadiusContourLinesToIOrderedPoints(const vector<int> & ZoneNums,
 	const vector<int> & XYZVarNums);
 
 void ExtractRSIntersectionsGetUserInfo();
+void ExtractSurfaceSphereIntersections(
+	const int & VolZoneNum,
+	const int & CPTypeVarNum,
+	const int & AllCPZoneNum,
+	const vector<int> & CPList,
+	const int & CPZoneNum,
+	const double & Radius,
+	const int & ResampleNumPoints,
+	const vector<int> & XYZVarNums,
+	vector<GradPath_c> & Intersections);
+
+const Boolean_t GBA_Generation(
+	const int & VolZoneNum,
+	const int & CPZoneNum,
+	const int & CPTypeVarNum,
+	const vector<int> & XYZVarNums,
+	const int & RhoVarNum,
+	const vector<int> & GradVarNums,
+	const vector<int> & HessVarNums,
+	const Boolean_t & IsPeriodic,
+	const vector<int> & SelectedCPNums,
+	const double & SphereRadius,
+	const int & RadiusMode,
+	const int & RefinementLevel,
+	const double & RhoCutoff,
+	const int & NumGBEdgePoints,
+	const int & GPNumPoints
+	);
+
+const Boolean_t CPNumbersMapBetweenZones(const int & AllCPsZoneNum,
+	const int & SelectedCPZoneNum,
+	const vector<int> & XYZVarNums,
+	const vector<int> & SelectedCPNums,
+	vector<int> & MappedCPNums);
 
 void TestFunction();
 

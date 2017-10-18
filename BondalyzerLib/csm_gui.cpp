@@ -21,9 +21,10 @@ const static int CharWidth = 110;
 const static int VertSpacing = 50;
 const static int HorzSpacing = 100;
 
-const static int ListNumLines = 10;
+const static int ListNumLines = 5;
 
 vector<GuiField_c> CSMGuiFields;
+vector<GuiField_c> CSMPassthroughFields;
 
 AddOn_pa CSMGuiAddOnID;
 bool CSMGuiDialogUp = false;
@@ -231,6 +232,7 @@ void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID);
 void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
 	if (AddOnID == NULL) AddOnID = &CSMGuiAddOnID;
 	TecUtilLockStart(*AddOnID);
+	CSMGuiLock();
 	if (CSMGuiMultiListID != BADDIALOGID){
 		LgIndex_t * SelectedItems;
 		LgIndex_t NumSelected;
@@ -261,13 +263,17 @@ void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
 		}
 		TecUtilArrayDealloc((void **)&SelectedItems);
 	}
+	CSMGuiUnlock();
 	TecUtilLockFinish(*AddOnID);
 }
 
 void CSMGuiPointSelectMultiListCallback(const LgIndex_t* Val){
 	TecUtilLockStart(CSMGuiAddOnID);
-	if (CSMGuiMultiListIsPointSelect)
+	if (CSMGuiMultiListIsPointSelect){
+		CSMGuiLock();
 		CSMGuiLabelSelectedPoints();
+		CSMGuiUnlock();
+	}
 	TecUtilLockFinish(CSMGuiAddOnID);
 }
 
@@ -316,6 +322,8 @@ void STDCALL CSMGuiPointSelectProbeCB(Boolean_t WasSuccessful,
 
 	TecUtilLockStart(CSMGuiAddOnID);
 
+	CSMGuiLock();
+
 	bool PointSelected = false;
 	int NumSelected;
 	int * SelectedNums;
@@ -343,6 +351,8 @@ void STDCALL CSMGuiPointSelectProbeCB(Boolean_t WasSuccessful,
 	CSMGuiLabelSelectedPoints();
 	CSMGuiPointSelectButtonCB();
 	TecUtilRedraw(TRUE);
+
+	CSMGuiLock();
 
 
 	TecUtilLockFinish(CSMGuiAddOnID);
@@ -536,11 +546,12 @@ void DialogOKButtonCB(){
 			if (t == Gui_ZonePointSelectMulti) f.SetReturnInt(TecGUIOptionMenuGet(f.GetID(1)));
 		}
 		else if (t <= Gui_String) f.SetReturnString(TecGUITextFieldGetString(f.GetID()));
+		else if (t <= Gui_Radio) f.SetReturnInt(TecGUIRadioBoxGetToggle(f.GetID()));
 	}
 
 	TecUtilLockFinish(CSMGuiAddOnID);
 
-	CurrentReturnFunc(CSMGuiSuccess, CSMGuiFields);
+	CurrentReturnFunc(CSMGuiSuccess, CSMGuiFields, CSMPassthroughFields);
 }
 
 void CSMGuiPointSelectOptionCallback(const int* Val){
@@ -627,7 +638,8 @@ static void VoidCallbackDoNothing(const int* iVal){
 }
 
 
-void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
+void CSMLaunchGui(const string & Title, 
+	const vector<GuiField_c> & Fields)
 {
 	TecUtilPleaseWait("Loading dialog...", TRUE);
 
@@ -657,7 +669,10 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 	vector<vector<int> > FieldZoneVarNums(CSMGuiFields.size());
 
 	for (const auto & f : CSMGuiFields) {
-		NumFields[int(f.GetType())]++;
+		if (f.GetType() == Gui_Radio){
+			NumFields[int(Gui_Radio)] += SplitString(f.GetSearchString(), ",").size();
+		}
+		else NumFields[int(f.GetType())]++;
 		if (f.GetType() < Gui_Toggle) MaxLabelWidth = MAX(MaxLabelWidth, int(f.GetLabel().length()));
 		else MaxOnlyLabelWidth = MAX(MaxOnlyLabelWidth, int(f.GetLabel().length()));
 	}
@@ -700,12 +715,12 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 	}
 
 	int  MultiListNumLines = ListNumLines;
-	if (CSMGuiFields.size() < 10) MultiListNumLines *= 2;
+	if (CSMGuiFields.size() < 8) MultiListNumLines *= 2;
 
 	if (NumFields[int(Gui_ZonePointSelectMulti)])
-		MaxLabelWidth = MAX(MaxLabelWidth, 18);
+		MaxLabelWidth = MAX(MaxLabelWidth, 20);
 	else
-		MaxLabelWidth = MAX(MaxLabelWidth, 15);
+		MaxLabelWidth = MAX(MaxLabelWidth, 18);
 
 	int X = HorzSpacing, Y = LineHeight;
 	int W = CharWidth * MAX((MaxLabelWidth + MaxZoneVarWidth), MaxOnlyLabelWidth) + HorzSpacing;
@@ -717,6 +732,7 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 	for (int t = 0; t < NumFields.size(); ++t){
 		if (GuiFieldType_e(t) <= Gui_Label) H += (LineHeight + VertSpacing) * NumFields[t];
 		else if (GuiFieldType_e(t) <= Gui_ZonePointSelectMulti) H += (LineHeight * (MultiListNumLines + 1.5)) * NumFields[t];
+		else if (GuiFieldType_e(t) == Gui_Radio) H += (LineHeight + VertSpacing) * NumFields[t];
 		else H += (2 * VertSpacing) * NumFields[t];
 	}
 
@@ -809,6 +825,15 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 				f.SetID(TecGUITextFieldAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, TextCallbackDoNothing));
 				TecGUITextFieldSetString(f.GetID(), f.GetSearchString().c_str());
 			}
+			else if (t <= Gui_Radio){
+				vector<string> Choices = SplitString(f.GetSearchString(), ",");
+				vector<const char*> ChoicesCStr(5);
+				for (int i = 0; i < 5; ++i) ChoicesCStr[i] = (i < Choices.size() ? Choices[i].c_str() : NULL);
+
+				f.SetID(TecGUIRadioBoxAdd(CSMGuiDialogManager, xTmp, Y, wTmp, (LineHeight + VertSpacing) * Choices.size(),
+					ChoicesCStr[0], ChoicesCStr[1], ChoicesCStr[2], ChoicesCStr[3], ChoicesCStr[4], IntCallbackDoNothing));
+				Y += (LineHeight + VertSpacing) * Choices.size();
+			}
 
 			Y += LineHeight + VertSpacing;
 		}
@@ -875,9 +900,15 @@ void CSMLaunchGui(const string & Title, const vector<GuiField_c> & Fields)
 	// #endif
 }
 
-void CSMGui(const string & Title, const vector<GuiField_c> & Fields, CSMGuiReturnFunc_pf ReturnFunc, const AddOn_pa & InputAddOnID){
+void CSMGui(const string & Title, 
+	const vector<GuiField_c> & Fields, 
+	CSMGuiReturnFunc_pf ReturnFunc, 
+	const AddOn_pa & InputAddOnID,
+	const vector<GuiField_c> PassthroughFields)
+{
 	CurrentReturnFunc = ReturnFunc;
 	CSMGuiAddOnID = InputAddOnID;
+	CSMPassthroughFields = PassthroughFields;
 	CSMLaunchGui(Title, Fields);
 }
 
