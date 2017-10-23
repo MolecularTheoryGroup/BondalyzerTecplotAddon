@@ -343,7 +343,7 @@ const Boolean_t GradPathBase_c::Resample(const int & NumPoints){
 
 		NewRhoList.resize(NumPoints);
 
-		double DelLength = GetLength() / static_cast<double>(NumPoints);
+		double DelLength = GetLength() / static_cast<double>(NumPoints - 1);
 
 		double ArcLength = 0.0,
 			ArcLengthI = 0.0,
@@ -1101,15 +1101,22 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 	Boolean_t IsOk = m_GradPathReady && !m_GradPathMade;
 
 	gsl_odeiv2_system ODESys = { &GP_ODE_GradFunction, NULL, m_ODE_NumDims, &m_ODE_Data };
-	gsl_odeiv2_driver * ODEDriver;
 
-	ODEDriver = gsl_odeiv2_driver_alloc_yp_new(&ODESys, gsl_odeiv2_step_rk2, 1e-3, 1e-2, 0);
-	gsl_odeiv2_driver_set_hmin(ODEDriver, 1e-8);
-	gsl_odeiv2_driver_set_hmax(ODEDriver, 1e-1);
+	const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk4;
+	gsl_odeiv2_step * s = gsl_odeiv2_step_alloc(T, m_ODE_NumDims);
+	gsl_odeiv2_control * c = gsl_odeiv2_control_y_new(1e-8, 1e-8);
+	gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc(m_ODE_NumDims);
+
+// 	gsl_odeiv2_driver * ODEDriver;
+// 	ODEDriver = gsl_odeiv2_driver_alloc_yp_new(&ODESys, gsl_odeiv2_step_rk2, 1e-3, 1e-2, 0);
+// 	gsl_odeiv2_driver_set_hmin(ODEDriver, 1e-8);
+// 	gsl_odeiv2_driver_set_hmax(ODEDriver, 1e-1);
 
 	if (IsOk){
 		double tInit = 0.0;
-		double tFinal = 10.0;
+		double tFinal = 1e12;
+
+		double h = 1;
 
 		double y[3] = { m_StartPoint[0], m_StartPoint[1], m_StartPoint[2] };
 
@@ -1174,7 +1181,8 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 		while (IsOk && Status == GSL_SUCCESS && Step < GP_MaxNumPoints){
 
 
-			Status = gsl_odeiv2_driver_apply(ODEDriver, &tInit, tInit + 1e-3, y);
+// 			Status = gsl_odeiv2_driver_apply(ODEDriver, &tInit, tInit + 1e-3, y);
+			Status = gsl_odeiv2_evolve_apply(e, c, s, &ODESys, &tInit, tFinal, &h, y);
 
 			if (Status == GSL_SUCCESS || Status == GSL_EDOM){
 				PtI = y;
@@ -1414,7 +1422,11 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 			PtI = Pt;
 		}
 
-		gsl_odeiv2_driver_free(ODEDriver);
+// 		gsl_odeiv2_driver_free(ODEDriver);
+
+		gsl_odeiv2_evolve_free(e);
+		gsl_odeiv2_control_free(c);
+		gsl_odeiv2_step_free(s);
 
 		if (m_GPType && MR.s != NULL)
 			gsl_multiroot_fdfsolver_free(MR.s);

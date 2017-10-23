@@ -3023,8 +3023,37 @@ void DrawEigenvectorArrowsGetUserInfo(){
 
 void TestFunction(){
 
-	TecUtilZoneSetActive(Set(1).getRef(), AssignOp_Equals);
-		
+	/*
+	 *	Quick test of tecplot toolbox set class
+	 */
+	// 	TecUtilZoneSetActive(Set(1).getRef(), AssignOp_Equals);
+
+	/*
+	 *	Grad path test for adaptive step size
+	 */
+	vec3 StartPoint;
+	StartPoint << 0.1 << 0.1 << 0.1;
+
+	VolExtentIndexWeights_s VolInfo;
+	GetVolInfo(1, { 1, 2, 3 }, FALSE, VolInfo);
+
+	vector<FieldDataPointer_c> GradPtrs(3), HessPtrs(6);
+	FieldDataPointer_c RhoPtr;
+
+	int VarNum = 4;
+
+	RhoPtr.GetReadPtr(1, VarNum++);
+
+	for (int i = 0; i < 3; ++i) GradPtrs[i].GetReadPtr(1, VarNum++);
+	for (int i = 0; i < 6; ++i) HessPtrs[i].GetReadPtr(1, VarNum++);
+
+	double RhoCutoff = 1e-3;
+	GradPath_c GP(StartPoint, StreamDir_Forward, 200, GPType_Classic, GPTerminate_AtRhoValue, NULL, NULL, NULL, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+
+	GP.Seed(true);
+
+	GP.SaveAsOrderedZone("test GP");
+
 }
 
 
