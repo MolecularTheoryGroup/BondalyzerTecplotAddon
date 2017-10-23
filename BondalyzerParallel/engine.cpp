@@ -1666,6 +1666,8 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 		AllCPs += CritPoints_c(z, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
 	}
 
+	AllCPs.RemoveDuplicates();
+
 	if (SelectedCPNums.size() > AllCPs.NumCPs(TypeInd) || SelectedCPNums.back() - 1 > AllCPs.NumCPs(TypeInd)){
 		TecUtilDialogErrMsg("Discrepancy between selected CPs and selected CP zone");
 		return FALSE;

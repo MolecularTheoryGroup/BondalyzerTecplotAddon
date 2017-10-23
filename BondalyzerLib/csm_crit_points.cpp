@@ -302,6 +302,8 @@ const Boolean_t CritPoints_c::FindMinCPDist(const vector<CPType_e> & CPTypes){
 }
 
 void CritPoints_c::RemoveDuplicates(){
+	m_TotNumCPs = 0;
+
 	for (int t = 0; t < 6; ++t){
 		vector<bool> IsDup(m_XYZ[t].size(), false);
 		for (int i = 0; i < m_XYZ[t].size(); ++i){
@@ -324,6 +326,9 @@ void CritPoints_c::RemoveDuplicates(){
 				if (i < m_Rho[t].size()) NewRho.push_back(m_Rho[t][i]);
 			}
 		}
+
+		m_NumCPs[t] = NewXYZ.size();
+		m_TotNumCPs += m_NumCPs[t];
 
 		m_XYZ[t] = NewXYZ;
 		m_PrincDir[t] = NewPD;
@@ -1216,6 +1221,22 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 							*RootParams[ThreadNum].HessPtrs, 
 							*RootParams[ThreadNum].GradPtrs, 
 							*RootParams[ThreadNum].RhoPtr);
+
+// 						const vector<FieldDataPointer_c> * junkPtrs = NULL;
+// 						GradPath_c GP(
+// 							CellMinXYZ[ThreadNum],
+// 							(StreamDir_e)s,
+// 							100,
+// 							GPType_Classic,
+// 							GPTerminate_AtRhoValue,
+// 							NULL,
+// 							&ThreadCPs[ThreadNum],
+// 							NULL,
+// 							&RhoCutoff,
+// 							*RootParams[ThreadNum].VolInfo,
+// 							*junkPtrs,
+// 							*junkPtrs,
+// 							*RootParams[ThreadNum].RhoPtr);
 
 						GP.Seed(false);
 
