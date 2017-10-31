@@ -510,14 +510,22 @@ void CalcGradForPoint(const vec3 & Point,
 		for (int i = 0; i < 5; ++i)
 			Points[i] = Point + DelXYZ % (DirVects.col(Dir) * static_cast<double>(i - 2));
 
-		if (!IsPeriodic && (sum(Points[0] < VolInfo.MinXYZ) > 0 || sum(Points[4] > VolInfo.MaxXYZ) > 0)){
-			if (sum(Points[0] < VolInfo.MinXYZ) > 0){
-				if (sum(Points[1] < VolInfo.MinXYZ) > 0){ // High accuracy forward divided difference
+		vec3 MinCheck = VolInfo.BasisInverse * VolInfo.MinXYZ,
+			MaxCheck = VolInfo.BasisInverse * VolInfo.MaxXYZ;
+
+		if (!IsPeriodic && (sum(VolInfo.BasisInverse * (Points[0] - VolInfo.MinXYZ) < MinCheck > 0)
+			|| sum(VolInfo.BasisInverse * (Points[4] - VolInfo.MinXYZ) > MaxCheck) > 0)){
+
+			if (sum(VolInfo.BasisInverse * (Points[0] - VolInfo.MinXYZ) < MinCheck) > 0){
+				if (sum(VolInfo.BasisInverse * (Points[1] - VolInfo.MinXYZ) < MinCheck) > 0){
+					// High accuracy forward divided difference
+					
 					Method = 2;
 				}
 			}
-			else if (sum(Points[4] > VolInfo.MaxXYZ) > 0){ // High accuracy backward divided difference
-				if (sum(Points[3] > VolInfo.MaxXYZ) > 0){
+			else if (sum(VolInfo.BasisInverse * (Points[4] - VolInfo.MinXYZ) > MaxCheck) > 0){
+				// High accuracy backward divided difference
+				if (sum(VolInfo.BasisInverse * (Points[3] - VolInfo.MinXYZ) > MaxCheck) > 0){
 					Method = 3;
 				}
 			}
@@ -528,12 +536,14 @@ void CalcGradForPoint(const vec3 & Point,
 		else{ // High accuracy centered divided difference
 			if (IsPeriodic){
 				for (int i = 0; i < 5; ++i){
+					vec3 tmpPt = VolInfo.BasisInverse * (Points[i] - VolInfo.MinXYZ);
 					for (int j = 0; j < 3; ++j){
-						if (Points[i][j] < VolInfo.MinXYZ[j])
-							Points[i][j] = VolInfo.MaxXYZ[j] - (VolInfo.MinXYZ[j] - Points[i][j]);
-						else if (Points[i][j] > VolInfo.MaxXYZ[j])
-							Points[i][j] = VolInfo.MinXYZ[j] + (Points[i][j] - VolInfo.MaxXYZ[j]);
+						if (tmpPt[j] < MinCheck[j])
+							tmpPt[j] = (MaxCheck[j] - (MinCheck[j] - tmpPt[j]));
+						else if (tmpPt[j] > MaxCheck[j])
+							tmpPt[j] = MinCheck[j] + (tmpPt[j] - MaxCheck[j]);
 					}
+					if (sum(tmpPt == Points[i]) == 0) Points[i] = VolInfo.BasisVectors * tmpPt + VolInfo.MinXYZ;
 				}
 			}
 		}
@@ -778,14 +788,22 @@ void CalcHessForPoint(const vec3 & Point,
 		for (int i = 0; i < 5; ++i)
 			Points[i] = Point + DelXYZ % DirVects.col(iDir) * static_cast<double>(i - 2);
 
-		if (!IsPeriodic && (sum(Points[0] < VolInfo.MinXYZ) > 0 || sum(Points[4] > VolInfo.MaxXYZ) > 0)){
-			if (sum(Points[0] < VolInfo.MinXYZ) > 0){
-				if (sum(Points[1] < VolInfo.MinXYZ) > 0){ // High accuracy forward divided difference
+		vec3 MinCheck = VolInfo.BasisInverse * VolInfo.MinXYZ,
+			MaxCheck = VolInfo.BasisInverse * VolInfo.MaxXYZ;
+
+		if (!IsPeriodic && (sum(VolInfo.BasisInverse * (Points[0] - VolInfo.MinXYZ) < MinCheck > 0)
+			|| sum(VolInfo.BasisInverse * (Points[4] - VolInfo.MinXYZ) > MaxCheck) > 0)){
+
+			if (sum(VolInfo.BasisInverse * (Points[0] - VolInfo.MinXYZ) < MinCheck) > 0){
+				if (sum(VolInfo.BasisInverse * (Points[1] - VolInfo.MinXYZ) < MinCheck) > 0){
+					// High accuracy forward divided difference
+
 					Method = 2;
 				}
 			}
-			else if (sum(Points[4] > VolInfo.MaxXYZ) > 0){ // High accuracy backward divided difference
-				if (sum(Points[3] > VolInfo.MaxXYZ) > 0){
+			else if (sum(VolInfo.BasisInverse * (Points[4] - VolInfo.MinXYZ) > MaxCheck) > 0){
+				// High accuracy backward divided difference
+				if (sum(VolInfo.BasisInverse * (Points[3] - VolInfo.MinXYZ) > MaxCheck) > 0){
 					Method = 3;
 				}
 			}
@@ -796,15 +814,45 @@ void CalcHessForPoint(const vec3 & Point,
 		else{ // High accuracy centered divided difference
 			if (IsPeriodic){
 				for (int i = 0; i < 5; ++i){
+					vec3 tmpPt = VolInfo.BasisInverse * (Points[i] - VolInfo.MinXYZ);
 					for (int j = 0; j < 3; ++j){
-						if (Points[i][j] < VolInfo.MinXYZ[j])
-							Points[i][j] = VolInfo.MaxXYZ[j] - (VolInfo.MinXYZ[j] - Points[i][j]);
-						else if (Points[i][j] > VolInfo.MaxXYZ[j])
-							Points[i][j] = VolInfo.MinXYZ[j] + (Points[i][j] - VolInfo.MaxXYZ[j]);
+						if (tmpPt[j] < MinCheck[j])
+							tmpPt[j] = (MaxCheck[j] - (MinCheck[j] - tmpPt[j]));
+						else if (tmpPt[j] > MaxCheck[j])
+							tmpPt[j] = MinCheck[j] + (tmpPt[j] - MaxCheck[j]);
 					}
+					if (sum(tmpPt == Points[i]) == 0) Points[i] = VolInfo.BasisVectors * tmpPt + VolInfo.MinXYZ;
 				}
 			}
 		}
+
+// 		if (!IsPeriodic && (sum(Points[0] < VolInfo.MinXYZ) > 0 || sum(Points[4] > VolInfo.MaxXYZ) > 0)){
+// 			if (sum(Points[0] < VolInfo.MinXYZ) > 0){
+// 				if (sum(Points[1] < VolInfo.MinXYZ) > 0){ // High accuracy forward divided difference
+// 					Method = 2;
+// 				}
+// 			}
+// 			else if (sum(Points[4] > VolInfo.MaxXYZ) > 0){ // High accuracy backward divided difference
+// 				if (sum(Points[3] > VolInfo.MaxXYZ) > 0){
+// 					Method = 3;
+// 				}
+// 			}
+// 			else{ // Centered divided difference
+// 				Method = 1;
+// 			}
+// 		}
+// 		else{ // High accuracy centered divided difference
+// 			if (IsPeriodic){
+// 				for (int i = 0; i < 5; ++i){
+// 					for (int j = 0; j < 3; ++j){
+// 						if (Points[i][j] < VolInfo.MinXYZ[j])
+// 							Points[i][j] = VolInfo.MaxXYZ[j] - (VolInfo.MinXYZ[j] - Points[i][j]);
+// 						else if (Points[i][j] > VolInfo.MaxXYZ[j])
+// 							Points[i][j] = VolInfo.MinXYZ[j] + (Points[i][j] - VolInfo.MaxXYZ[j]);
+// 					}
+// 				}
+// 			}
+// 		}
 
 		/*
 		*	Get the values for the current direction of the variable at the points found.
@@ -865,7 +913,7 @@ void CalcHessFor3DPoint(const vec3 & Point,
 		CalcGradForPoint(Point,
 			DelXYZ,
 			VolInfo,
-			*reinterpret_cast<MultiRootParams_s*>(Params)->BasisVectors,
+			VolInfo.BasisNormalized,
 			i,
 			IsPeriodic,
 			GradValues[i],
@@ -991,12 +1039,10 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		return;
 	}
 
-	mat33 I = eye<mat>(3, 3);
 	vector<MultiRootParams_s> TmpParams(numCPU);
 	for (int i = 0; i < numCPU; ++i){
 		TmpParams[i].CalcType = GPType_NormalPlaneEberlyCP;
-// 		TmpParams[i].BasisVectors = &VolInfo.BasisVectors;
-		TmpParams[i].BasisVectors = &I;
+		TmpParams[i].BasisVectors = &VolInfo.BasisNormalized;
 		TmpParams[i].HasHess = HasHess;
 		TmpParams[i].IsPeriodic = PeriodicBC;
 		TmpParams[i].RhoPtr = &RhoPtr;
@@ -1083,6 +1129,8 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 			}
 		}
 	}
+
+	for (auto & i : TmpParams) delete i.VolInfo;
 
 	StatusDrop(AddOnID);
 
@@ -1413,10 +1461,9 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	}
 
 	vector<MultiRootParams_s> TmpParams(numCPU);
-	mat33 I = eye<mat>(3, 3);
 	for (int i = 0; i < numCPU; ++i){
 		TmpParams[i].CalcType = GPType_NormalPlaneEberlyCP;
-		TmpParams[i].BasisVectors = &I;
+		TmpParams[i].BasisVectors = &VolInfo.BasisNormalized;
 		TmpParams[i].HasHess = HasHess;
 		TmpParams[i].IsPeriodic = PeriodicBC;
 		TmpParams[i].RhoPtr = &RhoPtr;
@@ -1515,6 +1562,8 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		}
 	}
 
+	for (auto & i : TmpParams) delete i.VolInfo;
+
 	StatusDrop(AddOnID);
 
 	TecUtilDataLoadEnd();
@@ -1612,10 +1661,9 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 	}
 
 	vector<MultiRootParams_s> TmpParams(numCPU);
-	mat33 I = eye<mat>(3, 3);
 	for (int i = 0; i < numCPU; ++i){
 		TmpParams[i].CalcType = GPType_NormalPlaneEberlyCP;
-		TmpParams[i].BasisVectors = &I;
+		TmpParams[i].BasisVectors = &VolInfo.BasisNormalized;
 		TmpParams[i].HasHess = HasHess;
 		TmpParams[i].IsPeriodic = PeriodicBC;
 		TmpParams[i].RhoPtr = &RhoPtr;
@@ -1695,6 +1743,8 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 			}
 		}
 	}
+
+	for (auto & i : TmpParams) delete i.VolInfo;
 
 	StatusDrop(AddOnID);
 
@@ -1940,10 +1990,9 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 	}
 
 	vector<MultiRootParams_s> TmpParams(numCPU);
-	mat33 I = eye<mat>(3, 3);
 	for (auto & i : TmpParams){
 		i.CalcType = GPType_NormalPlaneEberlyCP;
-		i.BasisVectors = &I;
+		i.BasisVectors = &VolInfo.BasisNormalized;
 		i.HasHess = HasHess;
 		i.IsPeriodic = PeriodicBC;
 		i.RhoPtr = &RhoPtr;
@@ -2076,6 +2125,8 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 				}
 			}
 		}
+
+		for (auto & i : TmpParams) delete i.VolInfo;
 
 		StatusDrop(AddOnID);
 	}
@@ -2403,9 +2454,10 @@ void CalcVars(CalcVarsOptions_s & Opt)
 
 	vector<MultiRootParams_s> Params(numCPU);
 	vector<VolExtentIndexWeights_s> VI(numCPU, VolInfo);
-	mat33 I = eye<mat>(3, 3);
+	mat33 I(fill::eye);
 	for (int i = 0; i < numCPU; ++i){
 		Params[i].BasisVectors = &I;
+// 		Params[i].BasisVectors = &VolInfo.BasisNormalized;
 		Params[i].CalcType = GPType_Invalid;
 		Params[i].IsPeriodic = Opt.IsPeriodic;
 		Params[i].VolInfo = &VI[i];
@@ -3168,14 +3220,14 @@ void CalcVars(CalcVarsOptions_s & Opt)
 													for (int j = 0; j < 3; ++j)
 														ThreadEigVecs[ThreadNum].at(i, j) = EigSysPtrs[3 * i + j][Params[ThreadNum].Index];
 											else{
-												if (IsVolZone)
-													CalcEigenSystemForNode(ii,
-													jj,
-													kk,
-													ThreadEigVals[ThreadNum],
-													ThreadEigVecs[ThreadNum],
-													Params[ThreadNum]);
-												else
+// 												if (IsVolZone)
+// 													CalcEigenSystemForNode(ii,
+// 													jj,
+// 													kk,
+// 													ThreadEigVals[ThreadNum],
+// 													ThreadEigVecs[ThreadNum],
+// 													Params[ThreadNum]);
+// 												else
 													CalcEigenSystemForPoint(ThreadCurPoint[ThreadNum],
 													ThreadEigVals[ThreadNum],
 													ThreadEigVecs[ThreadNum],
@@ -3186,20 +3238,20 @@ void CalcVars(CalcVarsOptions_s & Opt)
 												for (int i = 0; i < 3; ++i)
 													ThreadGrad[ThreadNum][i] = GradPtrs[i][Params[ThreadNum].Index];
 											else
-												if (IsVolZone)
-													CalcGradForNode(ii,
-													jj,
-													kk,
-													DelXYZx2,
-													DelXYZx12,
-													ThreadVals[ThreadNum],
-													ThreadDirInd[ThreadNum],
-													0,
-													VolInfo.MaxIJK,
-													VolInfo.IsPeriodic,
-													RhoPtr,
-													ThreadGrad[ThreadNum]);
-												else
+// 												if (IsVolZone)
+// 													CalcGradForNode(ii,
+// 													jj,
+// 													kk,
+// 													DelXYZx2,
+// 													DelXYZx12,
+// 													ThreadVals[ThreadNum],
+// 													ThreadDirInd[ThreadNum],
+// 													0,
+// 													VolInfo.MaxIJK,
+// 													VolInfo.IsPeriodic,
+// 													RhoPtr,
+// 													ThreadGrad[ThreadNum]);
+// 												else
 													CalcGradForPoint(ThreadCurPoint[ThreadNum],
 													VolInfo.DelXYZ,
 													*Params[ThreadNum].VolInfo,
@@ -3239,34 +3291,34 @@ void CalcVars(CalcVarsOptions_s & Opt)
 											ThreadEigVals[ThreadNum][i] = EigSysPtrs[9 + i][Params[ThreadNum].Index];
 									}
 									else if (*CalcVar > CalcHessian){
-										if (IsVolZone)
-											CalcEigenSystemForNode(ii,
-											jj,
-											kk,
-											ThreadEigVals[ThreadNum],
-											ThreadEigVecs[ThreadNum],
-											Params[ThreadNum]);
-										else
+// 										if (IsVolZone)
+// 											CalcEigenSystemForNode(ii,
+// 											jj,
+// 											kk,
+// 											ThreadEigVals[ThreadNum],
+// 											ThreadEigVecs[ThreadNum],
+// 											Params[ThreadNum]);
+// 										else
 											CalcEigenSystemForPoint(ThreadCurPoint[ThreadNum],
 											ThreadEigVals[ThreadNum],
 											ThreadEigVecs[ThreadNum],
 											Params[ThreadNum]);
 									}
 									else if (*CalcVar > CalcGradientMagnitude){
-										if (IsVolZone)
-											CalcHessForNode(ii,
-											jj,
-											kk,
-											DelXYZx2,
-											DelXYZx12,
-											ThreadVals[ThreadNum],
-											ThreadDirInd[ThreadNum],
-											VolInfo.MaxIJK,
-											VolInfo.IsPeriodic,
-											RhoPtr,
-											GradPtrs,
-											ThreadHess[ThreadNum]);
-										else{
+// 										if (IsVolZone)
+// 											CalcHessForNode(ii,
+// 											jj,
+// 											kk,
+// 											DelXYZx2,
+// 											DelXYZx12,
+// 											ThreadVals[ThreadNum],
+// 											ThreadDirInd[ThreadNum],
+// 											VolInfo.MaxIJK,
+// 											VolInfo.IsPeriodic,
+// 											RhoPtr,
+// 											GradPtrs,
+// 											ThreadHess[ThreadNum]);
+// 										else{
 											if (Opt.HasGrad)
 												CalcHessFor3DPoint(ThreadCurPoint[ThreadNum],
 												VolInfo.DelXYZ,
@@ -3286,27 +3338,27 @@ void CalcVars(CalcVarsOptions_s & Opt)
 												RhoPtr,
 												GPType_Invalid,
 												reinterpret_cast<void*>(&Params[ThreadNum]));
-										}
+// 										}
 									}
 									else if (*CalcVar > CalcGradientVectors && Opt.HasGrad){
 										for (int i = 0; i < 3; ++i)
 											ThreadGrad[ThreadNum][i] = GradPtrs[i][Params[ThreadNum].Index];
 									}
 									else if (IsOk && *CalcVar > CalcInvalidVar){
-										if (IsVolZone)
-											CalcGradForNode(ii,
-											jj,
-											kk,
-											DelXYZx2,
-											DelXYZx12,
-											ThreadVals[ThreadNum],
-											ThreadDirInd[ThreadNum],
-											0,
-											VolInfo.MaxIJK,
-											VolInfo.IsPeriodic,
-											RhoPtr,
-											ThreadGrad[ThreadNum]);
-										else
+// 										if (IsVolZone)
+// 											CalcGradForNode(ii,
+// 											jj,
+// 											kk,
+// 											DelXYZx2,
+// 											DelXYZx12,
+// 											ThreadVals[ThreadNum],
+// 											ThreadDirInd[ThreadNum],
+// 											0,
+// 											VolInfo.MaxIJK,
+// 											VolInfo.IsPeriodic,
+// 											RhoPtr,
+// 											ThreadGrad[ThreadNum]);
+// 										else
 											CalcGradForPoint(ThreadCurPoint[ThreadNum],
 											VolInfo.DelXYZ,
 											*Params[ThreadNum].VolInfo,
@@ -3324,20 +3376,20 @@ void CalcVars(CalcVarsOptions_s & Opt)
 											for (int i = 0; i < 3; ++i)
 												ThreadGrad[ThreadNum][i] = GradPtrs[i][Params[ThreadNum].Index];
 										else{
-											if (IsVolZone)
-												CalcGradForNode(ii,
-												jj,
-												kk,
-												DelXYZx2,
-												DelXYZx12,
-												ThreadVals[ThreadNum],
-												ThreadDirInd[ThreadNum],
-												0,
-												VolInfo.MaxIJK,
-												VolInfo.IsPeriodic,
-												RhoPtr,
-												ThreadGrad[ThreadNum]);
-											else
+// 											if (IsVolZone)
+// 												CalcGradForNode(ii,
+// 												jj,
+// 												kk,
+// 												DelXYZx2,
+// 												DelXYZx12,
+// 												ThreadVals[ThreadNum],
+// 												ThreadDirInd[ThreadNum],
+// 												0,
+// 												VolInfo.MaxIJK,
+// 												VolInfo.IsPeriodic,
+// 												RhoPtr,
+// 												ThreadGrad[ThreadNum]);
+// 											else
 												CalcGradForPoint(ThreadCurPoint[ThreadNum],
 												VolInfo.DelXYZ,
 												*Params[ThreadNum].VolInfo,

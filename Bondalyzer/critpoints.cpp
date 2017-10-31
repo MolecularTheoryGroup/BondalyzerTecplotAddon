@@ -2867,17 +2867,13 @@ Boolean_t CriticalPointInCell(EntIndex_t  ZoneNum,
 						 *	to get legit values, I'll just calculate the curvature and eigensystem again with
 						 *	my own functions
 						 */
-						vec3 Point(vector<double>({ *XCrtPt, *YCrtPt, *ZCrtPt }).data()), DelXYZ, EigVals, Grad;
+						vec3 Point(vector<double>({ *XCrtPt, *YCrtPt, *ZCrtPt }).data()), EigVals, Grad;
 						VolExtentIndexWeights_s VolInfo;
 						mat33 Hess, EigVecs;
 						FieldDataPointer_c RhoPtr;
 						vector<FieldDataPointer_c> VarReadPtrs(3);
 						GPType_e CalcType = GPType_Classic;
 						MultiRootParams_s Params;
-						vector<vec3> BV(3);
-						BV[0] << 1 << 0 << 0;
-						BV[1] << 0 << 1 << 0;
-						BV[2] << 0 << 0 << 1;
 
 						RhoPtr.GetReadPtr(ZoneNum, ChrgDensVarNum);
 						VarReadPtrs[0].GetReadPtr(ZoneNum, UVarNum);
@@ -2886,7 +2882,6 @@ Boolean_t CriticalPointInCell(EntIndex_t  ZoneNum,
 
 						VolInfo.AddOnID = AddOnID;
 						VolInfo.IsPeriodic = PeriodicBC;
-						TecUtilZoneGetIJK(ZoneNum, &VolInfo.MaxIJK[0], &VolInfo.MaxIJK[1], &VolInfo.MaxIJK[2]);
 						vector<EntIndex_t> XYZVarNums(3, -1);
 						TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
 						if (XYZVarNums[0] <= 0 || XYZVarNums[1] <= 0 || XYZVarNums[2] <= 0){
@@ -2908,11 +2903,11 @@ Boolean_t CriticalPointInCell(EntIndex_t  ZoneNum,
 						for (int i = 0; i < 3; ++i){
 							TecUtilVarGetMinMax(XYZVarNums[i], &VolInfo.MinXYZ[i], &VolInfo.MaxXYZ[i]);
 						}
-						DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, ZoneNum);
-						VolInfo.DelXYZ = DelXYZ;
+
+						GetVolInfo(ZoneNum, XYZVarNums, PeriodicBC, VolInfo);
 
 						Params.CalcType = GPType_Classic;
-						Params.BasisVectors = &BV;
+						Params.BasisVectors = &VolInfo.BasisNormalized;
 						Params.HasHess = FALSE;
 						Params.IsPeriodic = PeriodicBC;
 						Params.RhoPtr = &RhoPtr;
@@ -2921,8 +2916,8 @@ Boolean_t CriticalPointInCell(EntIndex_t  ZoneNum,
 						Params.VolInfo = new VolExtentIndexWeights_s;
 						*Params.VolInfo = VolInfo;
 
-						CalcGradForPoint(Point, DelXYZ, VolInfo, BV, 0, PeriodicBC, Grad, RhoPtr, CalcType, reinterpret_cast<void *>(&Params));
-						CalcHessFor3DPoint(Point, DelXYZ, VolInfo, PeriodicBC, Hess, VarReadPtrs, CalcType, reinterpret_cast<void *>(&Params));
+						CalcGradForPoint(Point, VolInfo.DelXYZ, VolInfo, Params.BasisVectors, 0, PeriodicBC, Grad, RhoPtr, CalcType, reinterpret_cast<void *>(&Params));
+						CalcHessFor3DPoint(Point, VolInfo.DelXYZ, VolInfo, PeriodicBC, Hess, VarReadPtrs, CalcType, reinterpret_cast<void *>(&Params));
 						CalcEigenSystemForPoint(Point, EigVals, EigVecs, Params);
 
 						switch (CritPointType){

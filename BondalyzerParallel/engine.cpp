@@ -1373,8 +1373,7 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	MR.RhoPtr = &RhoPtr;
 	MR.GradPtrs = &GradPtrs;
 	MR.HessPtrs = &HessPtrs;
-	mat33 I = eye<mat>(3, 3);
-	MR.BasisVectors = &I;
+	MR.BasisVectors = &VolInfo.BasisNormalized;
 
 
 	CritPoints_c AllCPs(SelectedCPZoneNum, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
@@ -1656,8 +1655,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 	MR.RhoPtr = &RhoPtr;
 	MR.GradPtrs = &GradPtrs;
 	MR.HessPtrs = &HessPtrs;
-	mat33 I = eye<mat>(3, 3);
-	MR.BasisVectors = &I;
+	MR.BasisVectors = &VolInfo.BasisNormalized;
 
 
 	CritPoints_c AllCPs(SelectedCPZoneNum, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
@@ -1666,7 +1664,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 		AllCPs += CritPoints_c(z, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
 	}
 
-	AllCPs.RemoveDuplicates();
+	AllCPs.RemoveSpuriousCPs();
 
 	if (SelectedCPNums.size() > AllCPs.NumCPs(TypeInd) || SelectedCPNums.back() - 1 > AllCPs.NumCPs(TypeInd)){
 		TecUtilDialogErrMsg("Discrepancy between selected CPs and selected CP zone");
@@ -1919,7 +1917,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 									if (GP.GetStartEndCPNum(1) == CPNumLower) GoLeft = false;
 									else if (GP.GetStartEndCPNum(1) == CPNumUpper) GoLeft = true;
 									else{
-										TecUtilDialogErrMsg(string("GP terminated at unexpected CP when performing binary search.\n\ngpNum = " + to_string(gpNum)).c_str());
+// 										TecUtilDialogErrMsg(string("GP terminated at unexpected CP when performing binary search.\n\ngpNum = " + to_string(gpNum)).c_str());
 										break;
 									}
 								}
@@ -1928,7 +1926,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 									if (dot(TmpTermVec, TermVecLower) > 0.9) GoLeft = false;
 									else if (dot(TmpTermVec, TermVecUpper) > 0.9) GoLeft = true;
 									else{
-										TecUtilDialogErrMsg("GP terminated not parallel to either bounding GPs when performing binary search.");
+// 										TecUtilDialogErrMsg("GP terminated not parallel to either bounding GPs when performing binary search.");
 										break;
 									}
 								}
@@ -2951,7 +2949,7 @@ void DrawEigenvectotArrorsReturnUserInfo(const bool GuiSuccess,
 	vector<vector<FESurface_c> > ArrowZones(NumSelectedZones, vector<FESurface_c>(3));
 
 #ifndef _DEBUG
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic)
 #endif
 	for (int z = 0; z < NumSelectedZones; ++z){
 		int NumPoints = EigValPtrs[z][0].Size();
@@ -3019,41 +3017,6 @@ void DrawEigenvectorArrowsGetUserInfo(){
 	for (const string & s : CSMVarName.EigVecs) Fields.push_back(GuiField_c(Gui_VarSelect, s, s));
 
 	CSMGui("Connect CPs with lines", Fields, DrawEigenvectotArrorsReturnUserInfo, AddOnID);
-}
-
-void TestFunction(){
-
-	/*
-	 *	Quick test of tecplot toolbox set class
-	 */
-	// 	TecUtilZoneSetActive(Set(1).getRef(), AssignOp_Equals);
-
-	/*
-	 *	Grad path test for adaptive step size
-	 */
-	vec3 StartPoint;
-	StartPoint << 0.1 << 0.1 << 0.1;
-
-	VolExtentIndexWeights_s VolInfo;
-	GetVolInfo(1, { 1, 2, 3 }, FALSE, VolInfo);
-
-	vector<FieldDataPointer_c> GradPtrs(3), HessPtrs(6);
-	FieldDataPointer_c RhoPtr;
-
-	int VarNum = 4;
-
-	RhoPtr.GetReadPtr(1, VarNum++);
-
-	for (int i = 0; i < 3; ++i) GradPtrs[i].GetReadPtr(1, VarNum++);
-	for (int i = 0; i < 6; ++i) HessPtrs[i].GetReadPtr(1, VarNum++);
-
-	double RhoCutoff = 1e-3;
-	GradPath_c GP(StartPoint, StreamDir_Forward, 200, GPType_Classic, GPTerminate_AtRhoValue, NULL, NULL, NULL, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
-
-	GP.Seed(true);
-
-	GP.SaveAsOrderedZone("test GP");
-
 }
 
 
@@ -3396,8 +3359,7 @@ const Boolean_t GBA_Generation(
 	MR.RhoPtr = &RhoPtr;
 	MR.GradPtrs = &GradPtrs;
 	MR.HessPtrs = &HessPtrs;
-	mat33 I = eye<mat>(3, 3);
-	MR.BasisVectors = &I;
+	MR.BasisVectors = &VolInfo.BasisNormalized;
 
 
 	CritPoints_c CPs(CPZoneNum, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
@@ -3485,7 +3447,7 @@ void CombineCPZonesReturnUserInfo(const bool GuiSuccess,
 
 	for (const int & z : ZoneNums) CPs += CritPoints_c(z, XYZVarNums, CPTypeVarNum);
 
-	CPs.RemoveDuplicates();
+	CPs.RemoveSpuriousCPs();
 
 	CPs.SaveAsOrderedZone(XYZVarNums, -1, TRUE);
 
@@ -3501,4 +3463,43 @@ void CombineCPZonesGetUserInfo(){
 	for (const string & i : { "X", "Y", "Z" }) Fields.push_back(GuiField_c(Gui_VarSelect, i, i));
 
 	CSMGui("Combine CP zones", Fields, CombineCPZonesReturnUserInfo, AddOnID);
+}
+
+
+
+
+
+
+void TestFunction(){
+
+	/*
+	*	Quick test of tecplot toolbox set class
+	*/
+	// 	TecUtilZoneSetActive(Set(1).getRef(), AssignOp_Equals);
+
+	/*
+	*	Grad path test for adaptive step size
+	*/
+// 	vec3 StartPoint;
+// 	StartPoint << 0.1 << 0.1 << 0.1;
+// 
+// 	VolExtentIndexWeights_s VolInfo;
+// 	GetVolInfo(1, { 1, 2, 3 }, FALSE, VolInfo);
+// 
+// 	vector<FieldDataPointer_c> GradPtrs(3), HessPtrs(6);
+// 	FieldDataPointer_c RhoPtr;
+// 
+// 	int VarNum = 4;
+// 
+// 	RhoPtr.GetReadPtr(1, VarNum++);
+// 
+// 	for (int i = 0; i < 3; ++i) GradPtrs[i].GetReadPtr(1, VarNum++);
+// 	for (int i = 0; i < 6; ++i) HessPtrs[i].GetReadPtr(1, VarNum++);
+// 
+// 	double RhoCutoff = 1e-3;
+// 	GradPath_c GP(StartPoint, StreamDir_Forward, 200, GPType_Classic, GPTerminate_AtRhoValue, NULL, NULL, NULL, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+// 
+// 	GP.Seed(true);
+// 
+// 	GP.SaveAsOrderedZone("test GP");
 }

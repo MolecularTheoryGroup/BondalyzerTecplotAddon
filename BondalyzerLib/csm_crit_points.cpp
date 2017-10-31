@@ -301,41 +301,141 @@ const Boolean_t CritPoints_c::FindMinCPDist(const vector<CPType_e> & CPTypes){
 	return IsOk;
 }
 
-void CritPoints_c::RemoveDuplicates(){
-	m_TotNumCPs = 0;
+void CritPoints_c::RemoveSpuriousCPs(const double & CheckDist){
+	double CheckDistSqr = CheckDist * CheckDist;
 
+
+	// Cycle through all CP types and use a distance (squared) criteria 
+	// to check for duplicates.
+	// CP types have priority according to type index, so if
+	// a bond is too close to a nuclear CP, the bond CP is removed.
+	// Duplicate CPs of same type will be replaced with a single CP
+	// with the average (midpoint) values of the duplicates.
+	// 
+	// Do one pass to fix the spurious groups within each CP type
 	for (int t = 0; t < 6; ++t){
-		vector<bool> IsDup(m_XYZ[t].size(), false);
-		for (int i = 0; i < m_XYZ[t].size(); ++i){
-			for (int j = i + 1; j < m_XYZ[t].size(); ++j){
-				if (!IsDup[j] && sum(m_XYZ[t][i] == m_XYZ[t][j]) == 3){
-					IsDup[j] = true;
+		if (m_XYZ[t].size() > 0){
+			// First do check within same type, replacing spurious 
+			// groups with the "central" point for that group.
+
+			// For maintaining a list of "groups" of spurious neighboring CPs that
+			vector<vector<int> > DuplicateNeighbors(m_XYZ[t].size());
+
+			// For marking each CP as duplicate or not
+			vector<bool> IsSpurious(m_XYZ[t].size(), false);
+
+			/*
+			 *	Each CP i gets checked against the [i+1, max].
+			 *	The first CP in a spurious neighbor group is the one that
+			 *	keeps the full list of CPs in the group.
+			 *	This is done by using the first position in DuplicateNeighbors[i]
+			 *	to point to the "parent" CP for that group, which for the first CP
+			 *	in the group is itself.
+			 *	All subsequent CPs in that group are then stored in the DuplicateNeighbors[]
+			 *	location indicated by its parent.
+			 */
+
+			for (int i = 0; i < m_XYZ[t].size(); ++i){
+				if (!IsSpurious[i]) DuplicateNeighbors[i].push_back(i);
+				for (int j = i + 1; j < m_XYZ[t].size(); ++j){
+					if (DistSqr(m_XYZ[t][i], m_XYZ[t][j]) <= CheckDistSqr){
+						IsSpurious[j] = true;
+						DuplicateNeighbors[DuplicateNeighbors[i][0]].push_back(j);
+						DuplicateNeighbors[j].push_back(DuplicateNeighbors[i][0]);
+					}
 				}
 			}
-		}
 
-		vector<vec3> NewXYZ, NewPD, NewEigVals;
-		vector<mat33> NewEigVecs;
-		vector<double> NewRho;
-		for (int i = 0; i < m_XYZ[t].size(); ++i){
-			if (!IsDup[i]){
-				NewXYZ.push_back(m_XYZ[t][i]);
-				if (i < m_PrincDir[t].size()) NewPD.push_back(m_PrincDir[t][i]);
-				if (i < m_EigVals[t].size()) NewEigVals.push_back(m_EigVals[t][i]);
-				if (i < m_EigVecs[t].size()) NewEigVecs.push_back(m_EigVecs[t][i]);
-				if (i < m_Rho[t].size()) NewRho.push_back(m_Rho[t][i]);
+			vector<vec3> NewXYZ, NewPD, NewEigVals;
+			vector<mat33> NewEigVecs;
+			vector<double> NewRho;
+			for (int i = 0; i < m_XYZ[t].size(); ++i){
+				if (!IsSpurious[i]){
+					NewXYZ.push_back(zeros(3));
+					if (i < m_PrincDir[t].size()) NewPD.push_back(zeros(3));
+					if (i < m_EigVals[t].size()) NewEigVals.push_back(zeros(3));
+					if (i < m_EigVecs[t].size()) NewEigVecs.push_back(zeros(3, 3));
+					if (i < m_Rho[t].size()) NewRho.push_back(0);
+
+					for (int & j : DuplicateNeighbors[i]){
+						NewXYZ.back() += m_XYZ[t][j];
+						if (j < m_PrincDir[t].size()) NewPD.back() += m_PrincDir[t][j];
+						if (j < m_EigVals[t].size()) NewEigVals.back() += m_EigVals[t][j];
+						if (j < m_EigVecs[t].size()) NewEigVecs.back() += m_EigVecs[t][j];
+						if (j < m_Rho[t].size()) NewRho.back() += m_Rho[t][j];
+					}
+
+					if (DuplicateNeighbors[i].size() > 1){
+						NewXYZ.back() /= (double)DuplicateNeighbors[i].size();
+						if (NewPD.size() > 0) NewPD.back() /= (double)DuplicateNeighbors[i].size();
+						if (NewEigVals.size() > 0) NewEigVals.back() /= (double)DuplicateNeighbors[i].size();
+						if (NewEigVecs.size() > 0) NewEigVecs.back() /= (double)DuplicateNeighbors[i].size();
+						if (NewRho.size() > 0) NewRho.back() /= (double)DuplicateNeighbors[i].size();
+					}
+				}
 			}
+
+			m_NumCPs[t] = NewXYZ.size();
+			m_TotNumCPs += m_NumCPs[t];
+
+			m_XYZ[t] = NewXYZ;
+			m_PrincDir[t] = NewPD;
+			m_EigVals[t] = NewEigVals;
+			m_EigVecs[t] = NewEigVecs;
+			m_Rho[t] = NewRho;
 		}
-
-		m_NumCPs[t] = NewXYZ.size();
-		m_TotNumCPs += m_NumCPs[t];
-
-		m_XYZ[t] = NewXYZ;
-		m_PrincDir[t] = NewPD;
-		m_EigVals[t] = NewEigVals;
-		m_EigVecs[t] = NewEigVecs;
-		m_Rho[t] = NewRho;
 	}
+
+	// Now do a second pass where CPs are checked against the CPs of other types
+
+	m_TotNumCPs = 0;
+	
+	// For marking each CP as duplicate or not
+	vector<vector<bool> > IsSpurious(6);
+	for (int t = 0; t < 6; ++t) IsSpurious[t].resize(m_XYZ[t].size(), false);
+	
+	for (int ti = 0; ti < 6; ++ti){
+		if (m_XYZ[ti].size() > 0){
+			for (int tj = ti + 1; tj < 6; ++tj){
+
+				for (int i = 0; i < m_XYZ[ti].size(); ++i){
+					if (!IsSpurious[ti][i]){
+						for (int j = 0; j < m_XYZ[tj].size(); ++j){
+							if (!IsSpurious[tj][j] && DistSqr(m_XYZ[ti][i], m_XYZ[tj][j]) <= CheckDistSqr){
+								// Spurious CP found. The j cp is always removed because i cp has higher priority
+								IsSpurious[tj][j] = true;
+							}
+						}
+					}
+				}
+			}
+
+			vector<vec3> NewXYZ, NewPD, NewEigVals;
+			vector<mat33> NewEigVecs;
+			vector<double> NewRho;
+			for (int i = 0; i < m_XYZ[ti].size(); ++i){
+				if (!IsSpurious[ti][i]){
+					NewXYZ.push_back(m_XYZ[ti][i]);
+					if (i < m_PrincDir[ti].size()) NewPD.push_back(m_PrincDir[ti][i]);
+					if (i < m_EigVals[ti].size()) NewEigVals.push_back(m_EigVals[ti][i]);
+					if (i < m_EigVecs[ti].size()) NewEigVecs.push_back(m_EigVecs[ti][i]);
+					if (i < m_Rho[ti].size()) NewRho.push_back(m_Rho[ti][i]);
+				}
+			}
+
+			m_NumCPs[ti] = NewXYZ.size();
+			m_TotNumCPs += m_NumCPs[ti];
+
+			m_XYZ[ti] = NewXYZ;
+			m_PrincDir[ti] = NewPD;
+			m_EigVals[ti] = NewEigVals;
+			m_EigVecs[ti] = NewEigVecs;
+			m_Rho[ti] = NewRho;
+		}
+	}
+
+
+
 }
 
 vector<int> CritPoints_c::GetTypeNumOffsetFromTotOffset(const int & TotOffset) const{
@@ -629,7 +729,7 @@ int F3D(const gsl_vector * pos, void * params, gsl_vector * GradValues){
 	}
 	else{
 		vec3 Grad;
-		CalcGradForPoint(Point, RootParams->VolInfo->DelXYZ, *RootParams->VolInfo, eye<mat>(3,3), 0, RootParams->IsPeriodic, Grad, *RootParams->RhoPtr, GPType_Invalid, params);
+		CalcGradForPoint(Point, RootParams->VolInfo->DelXYZ, *RootParams->VolInfo, *RootParams->BasisVectors, 0, RootParams->IsPeriodic, Grad, *RootParams->RhoPtr, GPType_Invalid, params);
 		for (int i = 0; i < 3; ++i){
 			gsl_vector_set(GradValues, i, Grad[i]);
 		}
@@ -693,7 +793,7 @@ int DF3D(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
 			CalcHessForPoint(Point,
 				RootParams->VolInfo->DelXYZ,
 				*RootParams->VolInfo,
-				eye<mat>(3,3),
+				*RootParams->BasisVectors,
 				RootParams->IsPeriodic,
 				Hess,
 				*RootParams->RhoPtr,
@@ -962,8 +1062,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 // 
 // 	TecUtilDialogMessageBox(string("FindCPs, RootParams.RhoPtr.IsReady() = " + to_string(RootParams.RhoPtr->IsReady())).c_str(), MessageBoxType_Information);
 
-	mat33 I = eye<mat>(3, 3);
-	RootParams.BasisVectors = &I;
+	RootParams.BasisVectors = &VolInfo.BasisNormalized;
 
 	RootParams.HasHess = HessPtrs.size() == 6;
 
@@ -1041,13 +1140,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 
 	vector<VolExtentIndexWeights_s> VolInfoList(NumThreads, VolInfo);
 
-// 	vector<vec3> BV(3);
-// 	BV[0] << 1 << 0 << 0;
-// 	BV[1] << 0 << 1 << 0;
-// 	BV[2] << 0 << 0 << 1;
-
 	vector<MultiRootParams_s> RootParams(NumThreads);
-	mat33 I = eye<mat>(3, 3);
 	for (int r = 0; r < NumThreads; ++r){
 		RootParams[r].CalcType = GPType_Classic;
 		RootParams[r].VolInfo = &VolInfoList[r];
@@ -1056,7 +1149,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 		RootParams[r].GradPtrs = &GradXYZPtrs;
 		RootParams[r].HessPtrs = &HessPtrs;
 
-		RootParams[r].BasisVectors = &I;
+		RootParams[r].BasisVectors = &VolInfo.BasisNormalized;
 
 		RootParams[r].HasGrad = GradXYZPtrs.size() == 3;
 		RootParams[r].HasHess = HessPtrs.size() == 6;
@@ -1088,20 +1181,27 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 	vector<int> NumPtsXYZ(3);
 	for (int d = 0; d < 3; ++d) NumPtsXYZ[d] = VolInfo.BasisExtent[d] / CellSpacing;
 
+	vector<int> StartPt(3, 0), EndPt = NumPtsXYZ;
+
+	if (!VolInfo.IsPeriodic){
+		for (auto & i : StartPt) i += 1;
+		for (auto & i : EndPt) i -= 1;
+	}
+
 	int NumThreadPts = NumPtsXYZ[2];
 #ifndef _DEBUG
 	NumThreadPts /= NumThreads;
 #endif
 	int ThreadPtNum = 0;
 
-	StatusLaunch(StatusStr.c_str(), VolInfo.AddOnID, TRUE);
+	StatusLaunch((StatusStr + " (Loading data...)").c_str(), VolInfo.AddOnID, TRUE);
 
-	mat33 LatticeVector = normalise(VolInfo.BasisVectors) * CellSpacing;
-	mat33 LatticeInverse = normalise(VolInfo.BasisInverse) * CellSpacing;
+	mat33 LatticeVector = VolInfo.BasisNormalized * CellSpacing;
+	mat33 LatticeInverse = VolInfo.BasisNormalized * CellSpacing;
 
 	cube RhoVals(NumPtsXYZ[0], NumPtsXYZ[1], NumPtsXYZ[2]);
 #ifndef _DEBUG
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for
 #endif
 	for (int zi = 0; zi < NumPtsXYZ[2]; ++zi){
 		int ThreadNum = omp_get_thread_num();
@@ -1116,10 +1216,13 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 		}
 	}
 
+	Boolean_t HasGradHess[] = { RootParams[0].HasGrad, RootParams[0].HasHess };
+
+
 #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
 #endif
-	for (int zi = 0; zi < NumPtsXYZ[2]; ++zi){
+	for (int zi = StartPt[2]; zi < EndPt[2]; ++zi){
 		int ThreadNum = omp_get_thread_num();
 		if (ThreadNum == 0 && !StatusUpdate(ThreadPtNum++, NumThreadPts, StatusStr, VolInfo.AddOnID)){
 			IsOk = FALSE;
@@ -1132,13 +1235,13 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 // 
 // 		CellMinXYZ[ThreadNum][1] = VolInfo.MinXYZ[1];
 
-		for (int yi = 0; yi < NumPtsXYZ[1] && IsOk; ++yi){
+		for (int yi = StartPt[1]; yi < EndPt[1] && IsOk; ++yi){
 // 			if (yi < NumPtsXYZ[1] - 1) CellMaxXYZ[ThreadNum][1] = CellMinXYZ[ThreadNum][1] + CellSpacing;
 // 			else CellMaxXYZ[ThreadNum][1] = VolInfo.MaxXYZ[1];
 // 
 // 			CellMinXYZ[ThreadNum][0] = VolInfo.MinXYZ[0];
 
-			for (int xi = 0; xi < NumPtsXYZ[0] && IsOk; ++xi){
+			for (int xi = StartPt[0]; xi < EndPt[0] && IsOk; ++xi){
 // 				if (xi < NumPtsXYZ[0] - 1) CellMaxXYZ[ThreadNum][0] = CellMinXYZ[ThreadNum][0] + CellSpacing;
 // 				else CellMaxXYZ[ThreadNum][0] = VolInfo.MaxXYZ[0];
 
@@ -1207,6 +1310,17 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 						}
 					}
 					if (IsMaxMin){
+
+						// turn off supplied grad/hess to force numerical derivatives,
+						// then do CP search in a supercell made of the 8 cells of which 
+						// node iXYZ is a part.
+						// Just need to move the cell min point back one lattice spacing to achive this.
+// 						for (int d = 0; d < 3; ++d) {
+// 							if (iXYZ[d] > 0){
+// 								for (int di = 0; di < 3; ++di) CellMinXYZ[ThreadNum][d] -= LatticeVector.at(d, di);
+// 							}
+// 						}
+
 						GradPath_c GP(
 							CellMinXYZ[ThreadNum],
 							(StreamDir_e)s, 
@@ -1221,22 +1335,6 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 							*RootParams[ThreadNum].HessPtrs, 
 							*RootParams[ThreadNum].GradPtrs, 
 							*RootParams[ThreadNum].RhoPtr);
-
-// 						const vector<FieldDataPointer_c> * junkPtrs = NULL;
-// 						GradPath_c GP(
-// 							CellMinXYZ[ThreadNum],
-// 							(StreamDir_e)s,
-// 							100,
-// 							GPType_Classic,
-// 							GPTerminate_AtRhoValue,
-// 							NULL,
-// 							&ThreadCPs[ThreadNum],
-// 							NULL,
-// 							&RhoCutoff,
-// 							*RootParams[ThreadNum].VolInfo,
-// 							*junkPtrs,
-// 							*junkPtrs,
-// 							*RootParams[ThreadNum].RhoPtr);
 
 						GP.Seed(false);
 
@@ -1264,13 +1362,20 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 
 							IsMaxMin = (Type == CPType_NuclearCP || Type == CPType_CageCP);
 
-							// 						if (IsMaxMin)
-							// 						ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, Type);
+// 							if (IsMaxMin){
+// 								ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, Type);
+// 
+// // 								RootParams[ThreadNum].HasGrad = FALSE;
+// // 								RootParams[ThreadNum].HasHess = FALSE;
+// // 								CellMinXYZ[ThreadNum] = CompPt - LatticeVector * ones(3);
+// // 								CellMaxXYZ[ThreadNum] = CompPt + LatticeVector * ones(3);
+// 							}
 							ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, (s == 0 ? CPType_NuclearCP : CPType_CageCP));
+
 						}
 
-						break;
 					}
+					break;
 				}
 				/*
 				 *	Rigorous check using Newton-Raphson method
@@ -1288,6 +1393,10 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 					ThreadCPs[ThreadNum].AddPoint(TmpRho[ThreadNum], TmpPoint[ThreadNum], PrincDir[ThreadNum], TmpType[ThreadNum]);
 				}
 
+// 				if (IsMaxMin){
+// 					RootParams[ThreadNum].HasGrad = HasGradHess[0];
+// 					RootParams[ThreadNum].HasHess = HasGradHess[1];
+// 				}
 // 				CellMinXYZ[ThreadNum][0] += CellSpacing;
 			}
 
@@ -1303,6 +1412,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 
 	if (IsOk){
 		CPs = CritPoints_c(ThreadCPs);
+		CPs.RemoveSpuriousCPs();
 	}
 
 	return IsOk;

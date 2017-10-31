@@ -21,6 +21,7 @@ struct VolExtentIndexWeights_s{
 	vec3 MinXYZ;
 	vec3 DelXYZ;
 	mat33 BasisVectors;
+	mat33 BasisNormalized;
 	mat33 BasisInverse;
 	vec3 BasisExtent;
 	Boolean_t IsPeriodic;

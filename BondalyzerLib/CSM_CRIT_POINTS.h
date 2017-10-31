@@ -18,9 +18,12 @@ using namespace arma;
 
 #define MaxCPIter 100
 #define CheckPosIter 5
-#define DefaultCellSpacing 0.05
+#define DefaultCellSpacing 0.2
 
 using std::vector;
+
+// 0.27 bohr is the value used in the BAND cp search, but then I went higher!
+const static double SpuriousCPCheckDistance = 0.35;
 
 enum CPType_e{
 	CPType_NuclearCP = -3,
@@ -129,7 +132,7 @@ public:
 		*/
 
 	const Boolean_t FindMinCPDist(const vector<CPType_e> & CPTypes);
-	void RemoveDuplicates();
+	void RemoveSpuriousCPs(const double & CheckDist = SpuriousCPCheckDistance);
 	
 	const vector<int> SaveAsOrderedZone(const vector<int> & XYZVarNum, const int & RhoVarNum = -1, const Boolean_t & SaveCPTypeZones = FALSE);
 

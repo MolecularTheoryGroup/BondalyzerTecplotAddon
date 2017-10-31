@@ -36,6 +36,7 @@ VolExtentIndexWeights_s & VolExtentIndexWeights_s::operator = (const VolExtentIn
 	MinXYZ = rhs.MinXYZ;
 	DelXYZ = rhs.DelXYZ;
 	BasisVectors = rhs.BasisVectors;
+	BasisNormalized = rhs.BasisNormalized;
 	BasisInverse = rhs.BasisInverse;
 	BasisExtent = rhs.BasisExtent;
 	IsPeriodic = rhs.IsPeriodic;
@@ -56,6 +57,7 @@ const Boolean_t VolExtentIndexWeights_s::operator == (const VolExtentIndexWeight
 		sum(DelXYZ == rhs.DelXYZ ) == 3 &&
 		sum(BasisExtent == rhs.BasisExtent) == 3 &&
 		sum(sum(BasisVectors == rhs.BasisVectors)) == 9 &&
+		sum(sum(BasisNormalized == rhs.BasisNormalized)) == 9 &&
 		sum(sum(BasisInverse == rhs.BasisInverse)) == 9 &&
 		IsPeriodic == rhs.IsPeriodic &&
 		AddOnID == rhs.AddOnID
@@ -85,6 +87,7 @@ const Boolean_t GetVolInfo(const int & VolZoneNum,
 	VolInfo.DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, VolZoneNum);
 	ZoneXYZVarGetBasisVectors_Ordered3DZone(XYZVarNums, VolZoneNum, VolInfo.BasisVectors, VolInfo.BasisExtent);
 	VolInfo.BasisInverse = mat33(VolInfo.BasisVectors.i());
+	VolInfo.BasisNormalized = mat33(normalise(VolInfo.BasisVectors));
 	VolInfo.IsPeriodic = IsPeriodic;
 
 	return TRUE;

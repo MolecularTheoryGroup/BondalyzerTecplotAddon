@@ -515,7 +515,6 @@ void ZoneXYZVarGetBasisVectors_Ordered3DZone(const vector<int> & XYZVarNums, con
 			BasisVectors.col(dir) = HighXYZ - LowXYZ;
 			BVExtent[dir] = norm(BasisVectors.col(dir));
 		}
-// 		BasisVectors = mat33(normalise(BasisVectors));
 	}
 
 	TecUtilDataLoadEnd();

@@ -3269,7 +3269,7 @@ void LoadBANDTape41Data(){
 		AuxDataDataSetSetItem(DLOrigin, ss.str());
 	}
 
-	CalcGradGradMagForDataset(TRUE, AddOnID);
+// 	CalcGradGradMagForDataset(TRUE, AddOnID);
 
 	if (IsOk && TotNumPoints > MaxPointsForShowVolumeZone){
 		Set_pa TempSet = TecUtilSetAlloc(FALSE);
