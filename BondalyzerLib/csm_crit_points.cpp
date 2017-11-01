@@ -22,8 +22,8 @@ using std::to_string;
 */
 
 /*
-	*	Constructors/destructors
-	*/
+*	Constructors/destructors
+*/
 
 CritPoints_c::CritPoints_c()
 {
@@ -64,10 +64,10 @@ CritPoints_c::CritPoints_c(const vector<CritPoints_c> & CPLists){
 	m_MinCPDistFound = FALSE;
 }
 
-CritPoints_c::CritPoints_c(const int & CPZoneNum, 
+CritPoints_c::CritPoints_c(const int & CPZoneNum,
 	const vector<int> & XYZVarNums,
 	const int & CPTypeVarNum,
-	const int & RhoVarNum, 
+	const int & RhoVarNum,
 	MultiRootParams_s *MR) : CritPoints_c()
 {
 	int NumZones = TecUtilDataSetGetNumZones();
@@ -133,8 +133,8 @@ CritPoints_c::~CritPoints_c()
 }
 
 /*
-	*	Operator overloads
-	*/
+*	Operator overloads
+*/
 
 CritPoints_c & CritPoints_c::operator+=(const CritPoints_c & rhs){
 	this->Append(rhs);
@@ -143,8 +143,8 @@ CritPoints_c & CritPoints_c::operator+=(const CritPoints_c & rhs){
 }
 
 /*
-	*	Getter methods
-	*/
+*	Getter methods
+*/
 
 const double CritPoints_c::GetMinCPDist(const vector<CPType_e> & CPTypes){
 	if (m_MinCPDistFound && CPTypes == m_MinDistCPTypes)
@@ -206,8 +206,8 @@ const Boolean_t CritPoints_c::IsValid() const{
 }
 
 /*
-	*	Setter methods
-	*/
+*	Setter methods
+*/
 
 const Boolean_t CritPoints_c::AddPoint(const double & Rho,
 	const vec3 & Pos,
@@ -243,8 +243,8 @@ void CritPoints_c::Append(const CritPoints_c & rhs)
 
 
 /*
-	*	Mutators and other methods
-	*/
+*	Mutators and other methods
+*/
 
 const Boolean_t CritPoints_c::FindMinCPDist(const vector<CPType_e> & CPTypes){
 	Boolean_t IsOk = (m_TotNumCPs > 0);
@@ -279,21 +279,21 @@ const Boolean_t CritPoints_c::FindMinCPDist(const vector<CPType_e> & CPTypes){
 		}
 		IsOk = (MinI >= 0 && MinJ >= 0 && MinII >= 0 && MinJJ >= 0);
 
-// 		for (int i = 0; i < m_TotNumCPs; ++i){
-// 			for (int j = i + 1; j < m_TotNumCPs; ++j){
-// 				TmpDbl = DistSqr(GetXYZ(i), GetXYZ(j));
-// 				if (TmpDbl < m_MinCPDist){
-// 					m_MinCPDist = TmpDbl;
-// 					MinI = i;
-// 					MinJ = j;
-// 				}
-// 			}
-// 		}
-// 		IsOk = (MinI >= 0 && MinJ >= 0);
+		// 		for (int i = 0; i < m_TotNumCPs; ++i){
+		// 			for (int j = i + 1; j < m_TotNumCPs; ++j){
+		// 				TmpDbl = DistSqr(GetXYZ(i), GetXYZ(j));
+		// 				if (TmpDbl < m_MinCPDist){
+		// 					m_MinCPDist = TmpDbl;
+		// 					MinI = i;
+		// 					MinJ = j;
+		// 				}
+		// 			}
+		// 		}
+		// 		IsOk = (MinI >= 0 && MinJ >= 0);
 	}
 
 	if (IsOk){
-// 		m_MinCPDist = Distance(GetXYZ(MinI), GetXYZ(MinJ));
+		// 		m_MinCPDist = Distance(GetXYZ(MinI), GetXYZ(MinJ));
 		m_MinCPDist = Distance(GetXYZ(TypeIndList[MinI], MinII), GetXYZ(TypeIndList[MinJ], MinJJ));
 		m_MinCPDistFound = TRUE;
 	}
@@ -325,15 +325,15 @@ void CritPoints_c::RemoveSpuriousCPs(const double & CheckDist){
 			vector<bool> IsSpurious(m_XYZ[t].size(), false);
 
 			/*
-			 *	Each CP i gets checked against the [i+1, max].
-			 *	The first CP in a spurious neighbor group is the one that
-			 *	keeps the full list of CPs in the group.
-			 *	This is done by using the first position in DuplicateNeighbors[i]
-			 *	to point to the "parent" CP for that group, which for the first CP
-			 *	in the group is itself.
-			 *	All subsequent CPs in that group are then stored in the DuplicateNeighbors[]
-			 *	location indicated by its parent.
-			 */
+			*	Each CP i gets checked against the [i+1, max].
+			*	The first CP in a spurious neighbor group is the one that
+			*	keeps the full list of CPs in the group.
+			*	This is done by using the first position in DuplicateNeighbors[i]
+			*	to point to the "parent" CP for that group, which for the first CP
+			*	in the group is itself.
+			*	All subsequent CPs in that group are then stored in the DuplicateNeighbors[]
+			*	location indicated by its parent.
+			*/
 
 			for (int i = 0; i < m_XYZ[t].size(); ++i){
 				if (!IsSpurious[i]) DuplicateNeighbors[i].push_back(i);
@@ -389,11 +389,11 @@ void CritPoints_c::RemoveSpuriousCPs(const double & CheckDist){
 	// Now do a second pass where CPs are checked against the CPs of other types
 
 	m_TotNumCPs = 0;
-	
+
 	// For marking each CP as duplicate or not
 	vector<vector<bool> > IsSpurious(6);
 	for (int t = 0; t < 6; ++t) IsSpurious[t].resize(m_XYZ[t].size(), false);
-	
+
 	for (int ti = 0; ti < 6; ++ti){
 		if (m_XYZ[ti].size() > 0){
 			for (int tj = ti + 1; tj < 6; ++tj){
@@ -480,29 +480,29 @@ const int CritPoints_c::GetTotOffsetFromTypeNumOffset(const int & TypeNum, const
 
 
 /*
-	*	Private methods
-	*/
+*	Private methods
+*/
 
 
 /*
- *	Mutators and other methods
- */
+*	Mutators and other methods
+*/
 
 const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum, const int & RhoVarNum, const Boolean_t & SaveCPTypeZones){
 	for (const auto & i : XYZVarNum) REQUIRE(i > 0 && i <= TecUtilDataSetGetNumVars());
 
 	vector<int> NewZoneNums;
 	/*
-	 *	Make CP type variable if it doesn't exist yet.
-	 */
+	*	Make CP type variable if it doesn't exist yet.
+	*/
 	int CPTypeVarNum = VarNumByName(CSMVarName.CritPointType);
 	FieldDataPointer_c CPTypePtr;
 	if (CPTypeVarNum <= 0){
 		/*
-		 *	There is no CP type variable yet, which means there are also
-		 *	no CP zones, so the data type for all current zones can be 
-		 *	bit for the CP type variable.
-		 */
+		*	There is no CP type variable yet, which means there are also
+		*	no CP zones, so the data type for all current zones can be
+		*	bit for the CP type variable.
+		*/
 		vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Bit);
 		if (!TecUtilDataSetAddVar(CSMVarName.CritPointType.c_str(), DataTypes.data())){
 			TecUtilDialogErrMsg("Failed to create CP type variable for CP zone");
@@ -566,7 +566,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 		Set_pa CPTypeZoneSet = TecUtilSetAlloc(TRUE);
 		for (int t = 0; t < 6; ++t){
 			if (NumCPs(t) > 0){
-// 				DataTypes.push_back(FieldDataType_Int16);
+				// 				DataTypes.push_back(FieldDataType_Int16);
 				if (!TecUtilDataSetAddZone(CSMZoneName.CPType[t].c_str(), NumCPs(t), 1, 1, ZoneType_Ordered, DataTypes.data())){
 					TecUtilDialogErrMsg("Failed to create CP type zone");
 					return{ -1 };
@@ -694,12 +694,12 @@ void SetCPZone(const int & ZoneNum){
 }
 
 /*
-	*	Functions for the GSL MultiRoots root finder
-	*/
+*	Functions for the GSL MultiRoots root finder
+*/
 
 /*
-	*	Function to return the actual function (gradient) value
-	*/
+*	Function to return the actual function (gradient) value
+*/
 
 
 
@@ -723,13 +723,13 @@ int F3D(const gsl_vector * pos, void * params, gsl_vector * GradValues){
 	// 			gsl_vector_set(GradValues, i, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams->VolInfo, RootParams->GradPtrs->at(i)));
 	// 	}
 	// 	else{
-	
+
 	if (RootParams->HasGrad) for (int i = 0; i < 3; ++i){
 		gsl_vector_set(GradValues, i, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams->VolInfo, RootParams->GradPtrs->at(i)));
 	}
 	else{
 		vec3 Grad;
-		CalcGradForPoint(Point, RootParams->VolInfo->DelXYZ, *RootParams->VolInfo, *RootParams->BasisVectors, 0, RootParams->IsPeriodic, Grad, *RootParams->RhoPtr, GPType_Invalid, params);
+		CalcGradForPoint(Point, RootParams->VolInfo->DelXYZ, *RootParams->VolInfo, eye<mat>(3, 3), 0, RootParams->IsPeriodic, Grad, *RootParams->RhoPtr, GPType_Invalid, params);
 		for (int i = 0; i < 3; ++i){
 			gsl_vector_set(GradValues, i, Grad[i]);
 		}
@@ -740,8 +740,8 @@ int F3D(const gsl_vector * pos, void * params, gsl_vector * GradValues){
 }
 
 /*
-	*	Function to return the derivatives (jacobian matrix of gradient, ie Hessian of rho)
-	*/
+*	Function to return the derivatives (jacobian matrix of gradient, ie Hessian of rho)
+*/
 
 int DF3D(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
 
@@ -754,8 +754,8 @@ int DF3D(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
 
 	if (RootParams->HasHess){
 		/*
-			*	Analytical Hessian available, so use that.
-			*/
+		*	Analytical Hessian available, so use that.
+		*/
 
 		int HessIndices[3][3] = {
 			{ 0, 1, 2 },
@@ -774,10 +774,10 @@ int DF3D(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
 	}
 	else{
 		/*
-			*	No analytical Hessian, so need to find derivative numerically.
-			*	Need to do it manually, since the GSL solver doesn't know not to
-			*	go beyond the bounds of the system.
-			*/
+		*	No analytical Hessian, so need to find derivative numerically.
+		*	Need to do it manually, since the GSL solver doesn't know not to
+		*	go beyond the bounds of the system.
+		*/
 		mat33 Hess;
 		if (RootParams->HasGrad){
 			CalcHessFor3DPoint(Point,
@@ -793,7 +793,7 @@ int DF3D(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
 			CalcHessForPoint(Point,
 				RootParams->VolInfo->DelXYZ,
 				*RootParams->VolInfo,
-				*RootParams->BasisVectors,
+				eye<mat>(3, 3),
 				RootParams->IsPeriodic,
 				Hess,
 				*RootParams->RhoPtr,
@@ -808,8 +808,8 @@ int DF3D(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
 }
 
 /*
-	*	Function to return both grad and dgrad (function and derivatives)
-	*/
+*	Function to return both grad and dgrad (function and derivatives)
+*/
 
 int FDF3D(const gsl_vector * pos, void * params, gsl_vector * GradValues, gsl_matrix * Jacobian){
 
@@ -945,7 +945,7 @@ const Boolean_t CritPointInCell(
 	for (int i = 0; i < 3; ++i) gsl_vector_set(MR.pos, i, Point[i]);
 
 	vec3 CheckPt;
-	vec3 CellMinCheck = RootParams.VolInfo->BasisInverse * (CellMinXYZ - RootParams.VolInfo->MinXYZ), 
+	vec3 CellMinCheck = RootParams.VolInfo->BasisInverse * (CellMinXYZ - RootParams.VolInfo->MinXYZ),
 		CellMaxCheck = RootParams.VolInfo->BasisInverse * (CellMaxXYZ - RootParams.VolInfo->MinXYZ);
 
 	// 	TecUtilDialogMessageBox("start point set", MessageBoxType_Information);
@@ -1058,11 +1058,12 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 	RootParams.GradPtrs = &GradXYZPtrs;
 	RootParams.HessPtrs = &HessPtrs;
 
-// 	TecUtilDialogMessageBox(string("FindCPs, RhoPtr.IsReady() = " + to_string(RhoPtr.IsReady())).c_str(), MessageBoxType_Information);
-// 
-// 	TecUtilDialogMessageBox(string("FindCPs, RootParams.RhoPtr.IsReady() = " + to_string(RootParams.RhoPtr->IsReady())).c_str(), MessageBoxType_Information);
+	// 	TecUtilDialogMessageBox(string("FindCPs, RhoPtr.IsReady() = " + to_string(RhoPtr.IsReady())).c_str(), MessageBoxType_Information);
+	// 
+	// 	TecUtilDialogMessageBox(string("FindCPs, RootParams.RhoPtr.IsReady() = " + to_string(RootParams.RhoPtr->IsReady())).c_str(), MessageBoxType_Information);
 
-	RootParams.BasisVectors = &VolInfo.BasisNormalized;
+	mat33 I = eye<mat>(3, 3);
+	RootParams.BasisVectors = &I;
 
 	RootParams.HasHess = HessPtrs.size() == 6;
 
@@ -1093,9 +1094,9 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 		}
 		for (IJK[1] = StartIJK[1]; IJK[1] <= EndIJK[1] && IsOk; ++IJK[1]){
 			for (IJK[0] = StartIJK[0]; IJK[0] <= EndIJK[0] && IsOk; ++IJK[0]){
-// 				string str = "{i,j,k} = {";
-// 				for (int i = 0; i < 3; ++i) str += to_string(IJK[i]) + ", ";
-// 				TecUtilDialogMessageBox(str.c_str(), MessageBoxType_Information);
+				// 				string str = "{i,j,k} = {";
+				// 				for (int i = 0; i < 3; ++i) str += to_string(IJK[i]) + ", ";
+				// 				TecUtilDialogMessageBox(str.c_str(), MessageBoxType_Information);
 				if (CritPointInCell(IJK, TmpPoint, PrincDir, TmpRho, CPs.GetRhoCutoff(), TmpType, RootParams, MR)
 					&& TmpType != 0)
 				{
@@ -1140,7 +1141,13 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 
 	vector<VolExtentIndexWeights_s> VolInfoList(NumThreads, VolInfo);
 
+	// 	vector<vec3> BV(3);
+	// 	BV[0] << 1 << 0 << 0;
+	// 	BV[1] << 0 << 1 << 0;
+	// 	BV[2] << 0 << 0 << 1;
+
 	vector<MultiRootParams_s> RootParams(NumThreads);
+	mat33 I = eye<mat>(3, 3);
 	for (int r = 0; r < NumThreads; ++r){
 		RootParams[r].CalcType = GPType_Classic;
 		RootParams[r].VolInfo = &VolInfoList[r];
@@ -1149,7 +1156,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 		RootParams[r].GradPtrs = &GradXYZPtrs;
 		RootParams[r].HessPtrs = &HessPtrs;
 
-		RootParams[r].BasisVectors = &VolInfo.BasisNormalized;
+		RootParams[r].BasisVectors = &I;
 
 		RootParams[r].HasGrad = GradXYZPtrs.size() == 3;
 		RootParams[r].HasHess = HessPtrs.size() == 6;
@@ -1201,7 +1208,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 
 	cube RhoVals(NumPtsXYZ[0], NumPtsXYZ[1], NumPtsXYZ[2]);
 #ifndef _DEBUG
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic)
 #endif
 	for (int zi = 0; zi < NumPtsXYZ[2]; ++zi){
 		int ThreadNum = omp_get_thread_num();
@@ -1216,9 +1223,6 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 		}
 	}
 
-	Boolean_t HasGradHess[] = { RootParams[0].HasGrad, RootParams[0].HasHess };
-
-
 #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
 #endif
@@ -1229,21 +1233,21 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 #pragma omp flush (IsOk)
 		}
 #pragma omp flush (IsOk)
-// 		CellMinXYZ[ThreadNum][2] = VolInfo.MinXYZ[2] + static_cast<double>(zi)* CellSpacing;
-// 		if (zi < NumPtsXYZ[2] - 1) CellMaxXYZ[ThreadNum][2] = CellMinXYZ[ThreadNum][2] + CellSpacing;
-// 		else CellMaxXYZ[ThreadNum][2] = VolInfo.MaxXYZ[2];
-// 
-// 		CellMinXYZ[ThreadNum][1] = VolInfo.MinXYZ[1];
+		// 		CellMinXYZ[ThreadNum][2] = VolInfo.MinXYZ[2] + static_cast<double>(zi)* CellSpacing;
+		// 		if (zi < NumPtsXYZ[2] - 1) CellMaxXYZ[ThreadNum][2] = CellMinXYZ[ThreadNum][2] + CellSpacing;
+		// 		else CellMaxXYZ[ThreadNum][2] = VolInfo.MaxXYZ[2];
+		// 
+		// 		CellMinXYZ[ThreadNum][1] = VolInfo.MinXYZ[1];
 
 		for (int yi = StartPt[1]; yi < EndPt[1] && IsOk; ++yi){
-// 			if (yi < NumPtsXYZ[1] - 1) CellMaxXYZ[ThreadNum][1] = CellMinXYZ[ThreadNum][1] + CellSpacing;
-// 			else CellMaxXYZ[ThreadNum][1] = VolInfo.MaxXYZ[1];
-// 
-// 			CellMinXYZ[ThreadNum][0] = VolInfo.MinXYZ[0];
+			// 			if (yi < NumPtsXYZ[1] - 1) CellMaxXYZ[ThreadNum][1] = CellMinXYZ[ThreadNum][1] + CellSpacing;
+			// 			else CellMaxXYZ[ThreadNum][1] = VolInfo.MaxXYZ[1];
+			// 
+			// 			CellMinXYZ[ThreadNum][0] = VolInfo.MinXYZ[0];
 
 			for (int xi = StartPt[0]; xi < EndPt[0] && IsOk; ++xi){
-// 				if (xi < NumPtsXYZ[0] - 1) CellMaxXYZ[ThreadNum][0] = CellMinXYZ[ThreadNum][0] + CellSpacing;
-// 				else CellMaxXYZ[ThreadNum][0] = VolInfo.MaxXYZ[0];
+				// 				if (xi < NumPtsXYZ[0] - 1) CellMaxXYZ[ThreadNum][0] = CellMinXYZ[ThreadNum][0] + CellSpacing;
+				// 				else CellMaxXYZ[ThreadNum][0] = VolInfo.MaxXYZ[0];
 
 				vec3 iXYZ;
 				iXYZ << xi << yi << zi;
@@ -1260,14 +1264,14 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 				}
 
 				/*
-				 *	Check for local Min/Max
-				 */
+				*	Check for local Min/Max
+				*/
 				bool IsMaxMin;
 				vector<double> Signs = { 1, -1 };
-// 				double CellRho = RhoPtr.At(CellMinXYZ[ThreadNum], *RootParams[ThreadNum].VolInfo);
+				// 				double CellRho = RhoPtr.At(CellMinXYZ[ThreadNum], *RootParams[ThreadNum].VolInfo);
 				double CellRho = RhoVals(xi, yi, zi);
 				for (int s = 0; s < 2; ++s){
-					IsMaxMin = true; 
+					IsMaxMin = true;
 					vec3 CompPt;
 					for (int xj = xi - 1; xj <= xi + 1 && IsMaxMin; ++xj){
 						int xk = xj;
@@ -1300,9 +1304,9 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 									else continue;
 								}
 								if (xi != xk || yi != yk || zi != zk){
-// 									iXYZ << xj << yj << zj;
-// 									CompPt = VolInfo.MinXYZ + LatticeVector * iXYZ;
-// 									double CompVal = RhoPtr.At(CompPt, *RootParams[ThreadNum].VolInfo);
+									// 									iXYZ << xj << yj << zj;
+									// 									CompPt = VolInfo.MinXYZ + LatticeVector * iXYZ;
+									// 									double CompVal = RhoPtr.At(CompPt, *RootParams[ThreadNum].VolInfo);
 									double CompVal = RhoVals(xk, yk, zk);
 									IsMaxMin = IsMaxMin && (Signs[s] * CellRho >= Signs[s] * CompVal);
 								}
@@ -1310,31 +1314,36 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 						}
 					}
 					if (IsMaxMin){
-
-						// turn off supplied grad/hess to force numerical derivatives,
-						// then do CP search in a supercell made of the 8 cells of which 
-						// node iXYZ is a part.
-						// Just need to move the cell min point back one lattice spacing to achive this.
-// 						for (int d = 0; d < 3; ++d) {
-// 							if (iXYZ[d] > 0){
-// 								for (int di = 0; di < 3; ++di) CellMinXYZ[ThreadNum][d] -= LatticeVector.at(d, di);
-// 							}
-// 						}
-
 						GradPath_c GP(
 							CellMinXYZ[ThreadNum],
-							(StreamDir_e)s, 
-							100, 
-							GPType_Classic, 
-							GPTerminate_AtRhoValue, 
-							NULL, 
-							&ThreadCPs[ThreadNum], 
-							NULL, 
-							&RhoCutoff, 
-							*RootParams[ThreadNum].VolInfo, 
-							*RootParams[ThreadNum].HessPtrs, 
-							*RootParams[ThreadNum].GradPtrs, 
+							(StreamDir_e)s,
+							100,
+							GPType_Classic,
+							GPTerminate_AtRhoValue,
+							NULL,
+							&ThreadCPs[ThreadNum],
+							NULL,
+							&RhoCutoff,
+							*RootParams[ThreadNum].VolInfo,
+							*RootParams[ThreadNum].HessPtrs,
+							*RootParams[ThreadNum].GradPtrs,
 							*RootParams[ThreadNum].RhoPtr);
+
+						// 						const vector<FieldDataPointer_c> * junkPtrs = NULL;
+						// 						GradPath_c GP(
+						// 							CellMinXYZ[ThreadNum],
+						// 							(StreamDir_e)s,
+						// 							100,
+						// 							GPType_Classic,
+						// 							GPTerminate_AtRhoValue,
+						// 							NULL,
+						// 							&ThreadCPs[ThreadNum],
+						// 							NULL,
+						// 							&RhoCutoff,
+						// 							*RootParams[ThreadNum].VolInfo,
+						// 							*junkPtrs,
+						// 							*junkPtrs,
+						// 							*RootParams[ThreadNum].RhoPtr);
 
 						GP.Seed(false);
 
@@ -1362,45 +1371,34 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 
 							IsMaxMin = (Type == CPType_NuclearCP || Type == CPType_CageCP);
 
-// 							if (IsMaxMin){
-// 								ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, Type);
-// 
-// // 								RootParams[ThreadNum].HasGrad = FALSE;
-// // 								RootParams[ThreadNum].HasHess = FALSE;
-// // 								CellMinXYZ[ThreadNum] = CompPt - LatticeVector * ones(3);
-// // 								CellMaxXYZ[ThreadNum] = CompPt + LatticeVector * ones(3);
-// 							}
+							// 						if (IsMaxMin)
+							// 						ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, Type);
 							ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, (s == 0 ? CPType_NuclearCP : CPType_CageCP));
-
 						}
 
+						break;
 					}
-					break;
 				}
 				/*
-				 *	Rigorous check using Newton-Raphson method
-				 */
-				if (!IsMaxMin && CritPointInCell(CellMinXYZ[ThreadNum], 
-					CellMaxXYZ[ThreadNum], 
-					TmpPoint[ThreadNum], 
+				*	Rigorous check using Newton-Raphson method
+				*/
+				if (!IsMaxMin && CritPointInCell(CellMinXYZ[ThreadNum],
+					CellMaxXYZ[ThreadNum],
+					TmpPoint[ThreadNum],
 					PrincDir[ThreadNum],
-					TmpRho[ThreadNum], 
-					RhoCutoff, 
-					TmpType[ThreadNum], 
+					TmpRho[ThreadNum],
+					RhoCutoff,
+					TmpType[ThreadNum],
 					RootParams[ThreadNum],
 					MR[ThreadNum]))
 				{
 					ThreadCPs[ThreadNum].AddPoint(TmpRho[ThreadNum], TmpPoint[ThreadNum], PrincDir[ThreadNum], TmpType[ThreadNum]);
 				}
 
-// 				if (IsMaxMin){
-// 					RootParams[ThreadNum].HasGrad = HasGradHess[0];
-// 					RootParams[ThreadNum].HasHess = HasGradHess[1];
-// 				}
-// 				CellMinXYZ[ThreadNum][0] += CellSpacing;
+				// 				CellMinXYZ[ThreadNum][0] += CellSpacing;
 			}
 
-// 			CellMinXYZ[ThreadNum][1] += CellSpacing;
+			// 			CellMinXYZ[ThreadNum][1] += CellSpacing;
 		}
 	}
 

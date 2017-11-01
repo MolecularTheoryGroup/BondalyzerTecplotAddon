@@ -29,8 +29,8 @@ using std::stringstream;
 
 
 /*
- *	These indices are used for second-order derivative calculations.
- */
+*	These indices are used for second-order derivative calculations.
+*/
 static const vector<vector<int> > ValInds = { { 0, 1, 3, 4 }, { 1, 3 }, { 2, 3, 4 }, { 0, 1, 2 } };
 
 
@@ -101,11 +101,11 @@ void CalcGradGradMagForDataset(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	*	Using this DelXYZ for the distance in the derivative approximations
 	*	assumes regular spacing in the data!!!
 	*/
-// 	for (int i = 0; i < 3; ++i){
-// 		double MinMax[2];
-// 		TecUtilVarGetMinMax(XYZVarNums[i], &MinMax[0], &MinMax[1]);
-// 		DelXYZ[i] = (MinMax[1] - MinMax[0]) / (MaxIJK[i] - 1);
-// 	}
+	// 	for (int i = 0; i < 3; ++i){
+	// 		double MinMax[2];
+	// 		TecUtilVarGetMinMax(XYZVarNums[i], &MinMax[0], &MinMax[1]);
+	// 		DelXYZ[i] = (MinMax[1] - MinMax[0]) / (MaxIJK[i] - 1);
+	// 	}
 	DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, ZoneNum);
 
 	vector<FieldDataPointer_c> GradXYZMagRawPtr(GradXYZMagVarNum.size());
@@ -510,22 +510,14 @@ void CalcGradForPoint(const vec3 & Point,
 		for (int i = 0; i < 5; ++i)
 			Points[i] = Point + DelXYZ % (DirVects.col(Dir) * static_cast<double>(i - 2));
 
-		vec3 MinCheck = VolInfo.BasisInverse * VolInfo.MinXYZ,
-			MaxCheck = VolInfo.BasisInverse * VolInfo.MaxXYZ;
-
-		if (!IsPeriodic && (sum(VolInfo.BasisInverse * (Points[0] - VolInfo.MinXYZ) < MinCheck > 0)
-			|| sum(VolInfo.BasisInverse * (Points[4] - VolInfo.MinXYZ) > MaxCheck) > 0)){
-
-			if (sum(VolInfo.BasisInverse * (Points[0] - VolInfo.MinXYZ) < MinCheck) > 0){
-				if (sum(VolInfo.BasisInverse * (Points[1] - VolInfo.MinXYZ) < MinCheck) > 0){
-					// High accuracy forward divided difference
-					
+		if (!IsPeriodic && (sum(Points[0] < VolInfo.MinXYZ) > 0 || sum(Points[4] > VolInfo.MaxXYZ) > 0)){
+			if (sum(Points[0] < VolInfo.MinXYZ) > 0){
+				if (sum(Points[1] < VolInfo.MinXYZ) > 0){ // High accuracy forward divided difference
 					Method = 2;
 				}
 			}
-			else if (sum(VolInfo.BasisInverse * (Points[4] - VolInfo.MinXYZ) > MaxCheck) > 0){
-				// High accuracy backward divided difference
-				if (sum(VolInfo.BasisInverse * (Points[3] - VolInfo.MinXYZ) > MaxCheck) > 0){
+			else if (sum(Points[4] > VolInfo.MaxXYZ) > 0){ // High accuracy backward divided difference
+				if (sum(Points[3] > VolInfo.MaxXYZ) > 0){
 					Method = 3;
 				}
 			}
@@ -536,14 +528,12 @@ void CalcGradForPoint(const vec3 & Point,
 		else{ // High accuracy centered divided difference
 			if (IsPeriodic){
 				for (int i = 0; i < 5; ++i){
-					vec3 tmpPt = VolInfo.BasisInverse * (Points[i] - VolInfo.MinXYZ);
 					for (int j = 0; j < 3; ++j){
-						if (tmpPt[j] < MinCheck[j])
-							tmpPt[j] = (MaxCheck[j] - (MinCheck[j] - tmpPt[j]));
-						else if (tmpPt[j] > MaxCheck[j])
-							tmpPt[j] = MinCheck[j] + (tmpPt[j] - MaxCheck[j]);
+						if (Points[i][j] < VolInfo.MinXYZ[j])
+							Points[i][j] = VolInfo.MaxXYZ[j] - (VolInfo.MinXYZ[j] - Points[i][j]);
+						else if (Points[i][j] > VolInfo.MaxXYZ[j])
+							Points[i][j] = VolInfo.MinXYZ[j] + (Points[i][j] - VolInfo.MaxXYZ[j]);
 					}
-					if (sum(tmpPt == Points[i]) == 0) Points[i] = VolInfo.BasisVectors * tmpPt + VolInfo.MinXYZ;
 				}
 			}
 		}
@@ -788,22 +778,14 @@ void CalcHessForPoint(const vec3 & Point,
 		for (int i = 0; i < 5; ++i)
 			Points[i] = Point + DelXYZ % DirVects.col(iDir) * static_cast<double>(i - 2);
 
-		vec3 MinCheck = VolInfo.BasisInverse * VolInfo.MinXYZ,
-			MaxCheck = VolInfo.BasisInverse * VolInfo.MaxXYZ;
-
-		if (!IsPeriodic && (sum(VolInfo.BasisInverse * (Points[0] - VolInfo.MinXYZ) < MinCheck > 0)
-			|| sum(VolInfo.BasisInverse * (Points[4] - VolInfo.MinXYZ) > MaxCheck) > 0)){
-
-			if (sum(VolInfo.BasisInverse * (Points[0] - VolInfo.MinXYZ) < MinCheck) > 0){
-				if (sum(VolInfo.BasisInverse * (Points[1] - VolInfo.MinXYZ) < MinCheck) > 0){
-					// High accuracy forward divided difference
-
+		if (!IsPeriodic && (sum(Points[0] < VolInfo.MinXYZ) > 0 || sum(Points[4] > VolInfo.MaxXYZ) > 0)){
+			if (sum(Points[0] < VolInfo.MinXYZ) > 0){
+				if (sum(Points[1] < VolInfo.MinXYZ) > 0){ // High accuracy forward divided difference
 					Method = 2;
 				}
 			}
-			else if (sum(VolInfo.BasisInverse * (Points[4] - VolInfo.MinXYZ) > MaxCheck) > 0){
-				// High accuracy backward divided difference
-				if (sum(VolInfo.BasisInverse * (Points[3] - VolInfo.MinXYZ) > MaxCheck) > 0){
+			else if (sum(Points[4] > VolInfo.MaxXYZ) > 0){ // High accuracy backward divided difference
+				if (sum(Points[3] > VolInfo.MaxXYZ) > 0){
 					Method = 3;
 				}
 			}
@@ -814,45 +796,15 @@ void CalcHessForPoint(const vec3 & Point,
 		else{ // High accuracy centered divided difference
 			if (IsPeriodic){
 				for (int i = 0; i < 5; ++i){
-					vec3 tmpPt = VolInfo.BasisInverse * (Points[i] - VolInfo.MinXYZ);
 					for (int j = 0; j < 3; ++j){
-						if (tmpPt[j] < MinCheck[j])
-							tmpPt[j] = (MaxCheck[j] - (MinCheck[j] - tmpPt[j]));
-						else if (tmpPt[j] > MaxCheck[j])
-							tmpPt[j] = MinCheck[j] + (tmpPt[j] - MaxCheck[j]);
+						if (Points[i][j] < VolInfo.MinXYZ[j])
+							Points[i][j] = VolInfo.MaxXYZ[j] - (VolInfo.MinXYZ[j] - Points[i][j]);
+						else if (Points[i][j] > VolInfo.MaxXYZ[j])
+							Points[i][j] = VolInfo.MinXYZ[j] + (Points[i][j] - VolInfo.MaxXYZ[j]);
 					}
-					if (sum(tmpPt == Points[i]) == 0) Points[i] = VolInfo.BasisVectors * tmpPt + VolInfo.MinXYZ;
 				}
 			}
 		}
-
-// 		if (!IsPeriodic && (sum(Points[0] < VolInfo.MinXYZ) > 0 || sum(Points[4] > VolInfo.MaxXYZ) > 0)){
-// 			if (sum(Points[0] < VolInfo.MinXYZ) > 0){
-// 				if (sum(Points[1] < VolInfo.MinXYZ) > 0){ // High accuracy forward divided difference
-// 					Method = 2;
-// 				}
-// 			}
-// 			else if (sum(Points[4] > VolInfo.MaxXYZ) > 0){ // High accuracy backward divided difference
-// 				if (sum(Points[3] > VolInfo.MaxXYZ) > 0){
-// 					Method = 3;
-// 				}
-// 			}
-// 			else{ // Centered divided difference
-// 				Method = 1;
-// 			}
-// 		}
-// 		else{ // High accuracy centered divided difference
-// 			if (IsPeriodic){
-// 				for (int i = 0; i < 5; ++i){
-// 					for (int j = 0; j < 3; ++j){
-// 						if (Points[i][j] < VolInfo.MinXYZ[j])
-// 							Points[i][j] = VolInfo.MaxXYZ[j] - (VolInfo.MinXYZ[j] - Points[i][j]);
-// 						else if (Points[i][j] > VolInfo.MaxXYZ[j])
-// 							Points[i][j] = VolInfo.MinXYZ[j] + (Points[i][j] - VolInfo.MaxXYZ[j]);
-// 					}
-// 				}
-// 			}
-// 		}
 
 		/*
 		*	Get the values for the current direction of the variable at the points found.
@@ -868,10 +820,10 @@ void CalcHessForPoint(const vec3 & Point,
 
 		for (int jDir = 0; jDir < Rank; ++jDir){
 			/*
-			 *	This if statement makes is so that the symmetrical elements of the
-			 *	hessian are simply copied from the top-right of the matrix rather
-			 *	than being recomputed.
-			 */
+			*	This if statement makes is so that the symmetrical elements of the
+			*	hessian are simply copied from the top-right of the matrix rather
+			*	than being recomputed.
+			*/
 			if (jDir >= iDir){
 				if (DelXYZ[iDir] != 0){
 					switch (Method){
@@ -913,7 +865,7 @@ void CalcHessFor3DPoint(const vec3 & Point,
 		CalcGradForPoint(Point,
 			DelXYZ,
 			VolInfo,
-			VolInfo.BasisNormalized,
+			*reinterpret_cast<MultiRootParams_s*>(Params)->BasisVectors,
 			i,
 			IsPeriodic,
 			GradValues[i],
@@ -935,8 +887,8 @@ void CalcHessFor3DPoint(const vec3 & Point,
 }
 
 void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
-	TecUtilLockStart(AddOnID); 
-	
+	TecUtilLockStart(AddOnID);
+
 	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
 	if (VolZoneNum < 0){
 		TecUtilDialogErrMsg("Failed to get volume zone");
@@ -958,7 +910,7 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	}
 
 	if (!HasGrad){
-		CalcGradGradMagForDataset(IsPeriodic, AddOnID); 
+		CalcGradGradMagForDataset(IsPeriodic, AddOnID);
 
 		for (int i = 0; i < 3; ++i){
 			GradVarNums[i] = VarNumByName(CSMVarName.DensGradVec[i]);
@@ -1039,10 +991,12 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		return;
 	}
 
+	mat33 I = eye<mat>(3, 3);
 	vector<MultiRootParams_s> TmpParams(numCPU);
 	for (int i = 0; i < numCPU; ++i){
 		TmpParams[i].CalcType = GPType_NormalPlaneEberlyCP;
-		TmpParams[i].BasisVectors = &VolInfo.BasisNormalized;
+		// 		TmpParams[i].BasisVectors = &VolInfo.BasisVectors;
+		TmpParams[i].BasisVectors = &I;
 		TmpParams[i].HasHess = HasHess;
 		TmpParams[i].IsPeriodic = PeriodicBC;
 		TmpParams[i].RhoPtr = &RhoPtr;
@@ -1053,8 +1007,8 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	}
 
 	/*
-	 *	Calculate the hessian for each point (node) in the system
-	 */
+	*	Calculate the hessian for each point (node) in the system
+	*/
 
 	EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 	vector<FieldDataType_e> DataType;
@@ -1113,12 +1067,12 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 			for (int i = 1; i <= VolInfo.MaxIJK[0]; ++i){
 				Ind = IndexFromIJK(i, j, k, VolInfo.MaxIJK[0], VolInfo.MaxIJK[1]) - 1;
 				Pos = VolInfo.MinXYZ + VolInfo.DelXYZ % vec3(vector<double>({ i - 1., j - 1., k - 1. }).data());
-				CalcHessFor3DPoint(Pos, 
+				CalcHessFor3DPoint(Pos,
 					VolInfo.DelXYZ,
 					*TmpParams[ThreadNum].VolInfo,
-					IsPeriodic, 
+					IsPeriodic,
 					TmpHess,
-					GradPtrs, 
+					GradPtrs,
 					GPType_Invalid,
 					reinterpret_cast<MultiRootParams_s*>(&TmpParams[ThreadNum]));
 				for (int ii = 0; ii < 3; ++ii){
@@ -1150,13 +1104,13 @@ const Boolean_t CalcEigenSystemForNode(const int & ii,
 
 	mat33 Hessian;
 
-// 	/*
-// 	*	Prepare gsl data structures for the Hessian and eigen vector matrices
-// 	*	and eigen value vector.
-// 	*/
-// 	gsl_matrix * Hess = gsl_matrix_alloc(3, 3);
-// 	gsl_matrix * EigVecs = gsl_matrix_alloc(3, 3);
-// 	gsl_vector * EigVals = gsl_vector_alloc(3);
+	// 	/*
+	// 	*	Prepare gsl data structures for the Hessian and eigen vector matrices
+	// 	*	and eigen value vector.
+	// 	*/
+	// 	gsl_matrix * Hess = gsl_matrix_alloc(3, 3);
+	// 	gsl_matrix * EigVecs = gsl_matrix_alloc(3, 3);
+	// 	gsl_vector * EigVals = gsl_vector_alloc(3);
 
 	/*
 	*	Populate the Hessian matrix.
@@ -1176,9 +1130,9 @@ const Boolean_t CalcEigenSystemForNode(const int & ii,
 		int Index = IndexFromIJK(ii, jj, kk, RootParams.VolInfo->MaxIJK[0], RootParams.VolInfo->MaxIJK[1], RootParams.VolInfo->MaxIJK[2], RootParams.IsPeriodic) - 1;
 
 		for (int i = 0; i < 3; ++i)
-			for (int j = 0; j < 3; ++j)
-				Hessian.at(i, j) = RootParams.HessPtrs->at(HessIndices[i][j])[Index];
-// 				gsl_matrix_set(Hess, i, j, RootParams.HessPtrs->at(HessIndices[i][j])[Index]);
+		for (int j = 0; j < 3; ++j)
+			Hessian.at(i, j) = RootParams.HessPtrs->at(HessIndices[i][j])[Index];
+		// 				gsl_matrix_set(Hess, i, j, RootParams.HessPtrs->at(HessIndices[i][j])[Index]);
 	}
 	else{
 		/*
@@ -1186,57 +1140,57 @@ const Boolean_t CalcEigenSystemForNode(const int & ii,
 		*	Need to do it manually, since the GSL solver doesn't know not to
 		*	go beyond the bounds of the system.
 		*/
-// 		mat33 OutHess;
+		// 		mat33 OutHess;
 		vector<double> Vals(5);
 		vector<int> DirInd(5);
 		CalcHessForNode(ii,
-			jj, 
-			kk, 
-			RootParams.VolInfo->DelXYZ * 2, 
-			RootParams.VolInfo->DelXYZ * 12, 
-			Vals, DirInd, 
-			RootParams.VolInfo->MaxIJK, 
-			RootParams.IsPeriodic, 
-			*RootParams.RhoPtr, 
-			*RootParams.GradPtrs, 
+			jj,
+			kk,
+			RootParams.VolInfo->DelXYZ * 2,
+			RootParams.VolInfo->DelXYZ * 12,
+			Vals, DirInd,
+			RootParams.VolInfo->MaxIJK,
+			RootParams.IsPeriodic,
+			*RootParams.RhoPtr,
+			*RootParams.GradPtrs,
 			Hessian);
 
-// 		for (int i = 0; i < 3; ++i)
-// 			for (int j = 0; j < 3; ++j)
-// 				gsl_matrix_set(Hess, i, j, OutHess[i][j]);
+		// 		for (int i = 0; i < 3; ++i)
+		// 			for (int j = 0; j < 3; ++j)
+		// 				gsl_matrix_set(Hess, i, j, OutHess[i][j]);
 	}
 
-// 	// Setup the GSL eigensystem workspace
-// 	gsl_eigen_symmv_workspace * w = gsl_eigen_symmv_alloc(3);
-// 
-// 	// Solve the eigensystem
-// 	gsl_eigen_symmv(Hess, EigVals, EigVecs, w);
-// 	/*
-// 	*	Simultaneously sort the eigen values and vectors in ascending order according
-// 	*	to the eigenvalues.
-// 	*/
-// 	gsl_eigen_symmv_sort(EigVals, EigVecs, GSL_EIGEN_SORT_VAL_ASC);
-// 
-// 	/*
-// 	*	Store the results in the CSM vector and matrix provided
-// 	*/
-// 	for (int i = 0; i < 3; ++i){
-// 		EigenValues[i] = gsl_vector_get(EigVals, i);
-// 		for (int j = 0; j < 3; ++j)
-// 			EigenVectors[j][i] = gsl_matrix_get(EigVecs, i, j);
-// 	}
-// 
-// 	/*
-// 	*	Clear the workspace
-// 	*/
-// 	gsl_eigen_symmv_free(w);
-// 	gsl_matrix_free(Hess);
-// 	gsl_matrix_free(EigVecs);
-// 	gsl_vector_free(EigVals);
-// 	
-	eig_sym( EigenValues, EigenVectors, Hessian);
+	// 	// Setup the GSL eigensystem workspace
+	// 	gsl_eigen_symmv_workspace * w = gsl_eigen_symmv_alloc(3);
+	// 
+	// 	// Solve the eigensystem
+	// 	gsl_eigen_symmv(Hess, EigVals, EigVecs, w);
+	// 	/*
+	// 	*	Simultaneously sort the eigen values and vectors in ascending order according
+	// 	*	to the eigenvalues.
+	// 	*/
+	// 	gsl_eigen_symmv_sort(EigVals, EigVecs, GSL_EIGEN_SORT_VAL_ASC);
+	// 
+	// 	/*
+	// 	*	Store the results in the CSM vector and matrix provided
+	// 	*/
+	// 	for (int i = 0; i < 3; ++i){
+	// 		EigenValues[i] = gsl_vector_get(EigVals, i);
+	// 		for (int j = 0; j < 3; ++j)
+	// 			EigenVectors[j][i] = gsl_matrix_get(EigVecs, i, j);
+	// 	}
+	// 
+	// 	/*
+	// 	*	Clear the workspace
+	// 	*/
+	// 	gsl_eigen_symmv_free(w);
+	// 	gsl_matrix_free(Hess);
+	// 	gsl_matrix_free(EigVecs);
+	// 	gsl_vector_free(EigVals);
+	// 	
+	eig_sym(EigenValues, EigenVectors, Hessian);
 
-// 	EigenVectors = mat33(EigenVectors.t());
+	// 	EigenVectors = mat33(EigenVectors.t());
 
 	return IsOk;
 }
@@ -1249,20 +1203,20 @@ const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 	Boolean_t IsOk = TRUE;
 
 	if (RootParams.Index < 0 && !SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo))
-// 	if (!SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo))
+		// 	if (!SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo))
 		return FALSE;
 
 	int NumDirs = sqrt(RootParams.BasisVectors->size());
 
 	mat33 Hessian;
 
-// 	/*
-// 	*	Prepare gsl data structures for the Hessian and eigen vector matrices
-// 	*	and eigen value vector.
-// 	*/
-// 	gsl_matrix * Hess = gsl_matrix_alloc(NumDirs, NumDirs);
-// 	gsl_matrix * EigVecs = gsl_matrix_alloc(NumDirs, NumDirs);
-// 	gsl_vector * EigVals = gsl_vector_alloc(NumDirs);
+	// 	/*
+	// 	*	Prepare gsl data structures for the Hessian and eigen vector matrices
+	// 	*	and eigen value vector.
+	// 	*/
+	// 	gsl_matrix * Hess = gsl_matrix_alloc(NumDirs, NumDirs);
+	// 	gsl_matrix * EigVecs = gsl_matrix_alloc(NumDirs, NumDirs);
+	// 	gsl_vector * EigVals = gsl_vector_alloc(NumDirs);
 
 	/*
 	*	Populate the Hessian matrix.
@@ -1279,14 +1233,14 @@ const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 			{ 2, 4, 5 }
 		};
 
- 		for (int i = 0; i < 3; ++i)
-			for (int j = 0; j < 3; ++j)
-				if (RootParams.Index >= 0)
-					Hessian.at(i, j) = RootParams.HessPtrs->at(HessIndices[i][j])[RootParams.Index];
-					// 					gsl_matrix_set(Hess, i, j, RootParams.HessPtrs->at(HessIndices[i][j])[RootParams.Index]);
-				else
-					Hessian.at(i, j) = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, RootParams.HessPtrs->at(HessIndices[i][j]));
-// 					gsl_matrix_set(Hess, i, j, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, RootParams.HessPtrs->at(HessIndices[i][j])));
+		for (int i = 0; i < 3; ++i)
+		for (int j = 0; j < 3; ++j)
+		if (RootParams.Index >= 0)
+			Hessian.at(i, j) = RootParams.HessPtrs->at(HessIndices[i][j])[RootParams.Index];
+		// 					gsl_matrix_set(Hess, i, j, RootParams.HessPtrs->at(HessIndices[i][j])[RootParams.Index]);
+		else
+			Hessian.at(i, j) = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, RootParams.HessPtrs->at(HessIndices[i][j]));
+		// 					gsl_matrix_set(Hess, i, j, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, RootParams.HessPtrs->at(HessIndices[i][j])));
 	}
 	else{
 		/*
@@ -1342,42 +1296,42 @@ const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 
 	}
 
-// 	// Setup the GSL eigensystem workspace
-// 	gsl_eigen_symmv_workspace * w = gsl_eigen_symmv_alloc(NumDirs);
-// 
-// 	// Solve the eigensystem
-// 	gsl_eigen_symmv(Hess, EigVals, EigVecs, w);
-// 	/*
-// 	*	Simultaneously sort the eigen values and vectors in ascending order according
-// 	*	to the eigenvalues.
-// 	*/
-// 	gsl_eigen_symmv_sort(EigVals, EigVecs, GSL_EIGEN_SORT_VAL_ASC);
-// 
-// 	/*
-// 	*	Store the results in the CSM vector and matrix provided
-// 	*/
-// 	for (int i = 0; i < NumDirs; ++i){
-// 		EigenValues[i] = gsl_vector_get(EigVals, i);
-// 		for (int j = 0; j < NumDirs; ++j)
-// 			EigenVectors[j][i] = gsl_matrix_get(EigVecs, i, j);
-// 	}
-// 
-// 	/*
-// 	*	Clear the workspace
-// 	*/
-// 	gsl_eigen_symmv_free(w);
-// 	gsl_matrix_free(Hess);
-// 	gsl_matrix_free(EigVecs);
-// 	gsl_vector_free(EigVals);
-// 	
-	eig_sym( EigenValues, EigenVectors, Hessian, "std");
+	// 	// Setup the GSL eigensystem workspace
+	// 	gsl_eigen_symmv_workspace * w = gsl_eigen_symmv_alloc(NumDirs);
+	// 
+	// 	// Solve the eigensystem
+	// 	gsl_eigen_symmv(Hess, EigVals, EigVecs, w);
+	// 	/*
+	// 	*	Simultaneously sort the eigen values and vectors in ascending order according
+	// 	*	to the eigenvalues.
+	// 	*/
+	// 	gsl_eigen_symmv_sort(EigVals, EigVecs, GSL_EIGEN_SORT_VAL_ASC);
+	// 
+	// 	/*
+	// 	*	Store the results in the CSM vector and matrix provided
+	// 	*/
+	// 	for (int i = 0; i < NumDirs; ++i){
+	// 		EigenValues[i] = gsl_vector_get(EigVals, i);
+	// 		for (int j = 0; j < NumDirs; ++j)
+	// 			EigenVectors[j][i] = gsl_matrix_get(EigVecs, i, j);
+	// 	}
+	// 
+	// 	/*
+	// 	*	Clear the workspace
+	// 	*/
+	// 	gsl_eigen_symmv_free(w);
+	// 	gsl_matrix_free(Hess);
+	// 	gsl_matrix_free(EigVecs);
+	// 	gsl_vector_free(EigVals);
+	// 	
+	eig_sym(EigenValues, EigenVectors, Hessian, "std");
 
 	return IsOk;
 }
 
 void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
-	TecUtilLockStart(AddOnID); 
-	
+	TecUtilLockStart(AddOnID);
+
 	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
 	if (VolZoneNum < 0){
 		TecUtilDialogErrMsg("Failed to get volume zone");
@@ -1461,9 +1415,10 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	}
 
 	vector<MultiRootParams_s> TmpParams(numCPU);
+	mat33 I = eye<mat>(3, 3);
 	for (int i = 0; i < numCPU; ++i){
 		TmpParams[i].CalcType = GPType_NormalPlaneEberlyCP;
-		TmpParams[i].BasisVectors = &VolInfo.BasisNormalized;
+		TmpParams[i].BasisVectors = &I;
 		TmpParams[i].HasHess = HasHess;
 		TmpParams[i].IsPeriodic = PeriodicBC;
 		TmpParams[i].RhoPtr = &RhoPtr;
@@ -1546,7 +1501,7 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 			for (int i = 1; i <= VolInfo.MaxIJK[0]; ++i){
 				Ind = IndexFromIJK(i, j, k, VolInfo.MaxIJK[0], VolInfo.MaxIJK[1]) - 1;
 				Pos = VolInfo.MinXYZ + VolInfo.DelXYZ % vec3(vector<double>({ i - 1., j - 1., k - 1. }).data());
-				CalcEigenSystemForPoint(Pos, 
+				CalcEigenSystemForPoint(Pos,
 					EigenValues,
 					EigenVectors,
 					TmpParams[ThreadNum]);
@@ -1572,11 +1527,11 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 }
 
 void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
-	const Boolean_t & NormalizeGrad, 
+	const Boolean_t & NormalizeGrad,
 	const AddOn_pa & AddOnID)
 {
-	TecUtilLockStart(AddOnID); 
-	
+	TecUtilLockStart(AddOnID);
+
 	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
 	if (VolZoneNum < 0){
 		TecUtilDialogErrMsg("Failed to get volume zone");
@@ -1661,9 +1616,10 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 	}
 
 	vector<MultiRootParams_s> TmpParams(numCPU);
+	mat33 I = eye<mat>(3, 3);
 	for (int i = 0; i < numCPU; ++i){
 		TmpParams[i].CalcType = GPType_NormalPlaneEberlyCP;
-		TmpParams[i].BasisVectors = &VolInfo.BasisNormalized;
+		TmpParams[i].BasisVectors = &I;
 		TmpParams[i].HasHess = HasHess;
 		TmpParams[i].IsPeriodic = PeriodicBC;
 		TmpParams[i].RhoPtr = &RhoPtr;
@@ -1796,21 +1752,21 @@ void CalcEigenvecDotGradForPoint(vec3 Point,
 }
 
 /*
- *	One Eberly definition for a point on a 1-ridge is a point such that
- *	two of the dot (inner) products of the Hessian's eigen vectors with 
- *	the gradient are zero, and dot product of the third eigen vector with
- *	the gradient is one.
- *	Because the eigen vector whose corresponding eigen value has the most 
- *	positive value (compared to the other two eigen values) is guaranteed to
- *	be the eigenvector pointing in the direction of the gradient, I only
- *	need to check the dot product of this eigen vector with the gradient.
- *	If the dot product is 1, then the other two dot products, of the other
- *	two eigen vectors with the gradient, are guaranteed to be zero, because
- *	the eigen vectors are orthonormal.
- *	This function is being used in a multidimensional root finder, so it will
- *	return 1 - x, where x is the dot product of the most positive eigen value's
- *	eigen vector with the gradient.
- */
+*	One Eberly definition for a point on a 1-ridge is a point such that
+*	two of the dot (inner) products of the Hessian's eigen vectors with
+*	the gradient are zero, and dot product of the third eigen vector with
+*	the gradient is one.
+*	Because the eigen vector whose corresponding eigen value has the most
+*	positive value (compared to the other two eigen values) is guaranteed to
+*	be the eigenvector pointing in the direction of the gradient, I only
+*	need to check the dot product of this eigen vector with the gradient.
+*	If the dot product is 1, then the other two dot products, of the other
+*	two eigen vectors with the gradient, are guaranteed to be zero, because
+*	the eigen vectors are orthonormal.
+*	This function is being used in a multidimensional root finder, so it will
+*	return 1 - x, where x is the dot product of the most positive eigen value's
+*	eigen vector with the gradient.
+*/
 const double Eberly1RidgeFunction(vec3 & Point,
 	const double & RhoCutoff,
 	const Boolean_t & NormalizeGrad,
@@ -1884,15 +1840,15 @@ const double NEBForceFunction(vec3 & Point,
 
 	CalcGradForPoint(Point, RootParams.VolInfo->DelXYZ,
 		*RootParams.VolInfo,
-		*RootParams.BasisVectors, 
-		0, 
-		RootParams.IsPeriodic, 
-		Grad, 
-		*RootParams.RhoPtr, 
-		GPType_NormalPlaneEberlyCP, 
+		*RootParams.BasisVectors,
+		0,
+		RootParams.IsPeriodic,
+		Grad,
+		*RootParams.RhoPtr,
+		GPType_NormalPlaneEberlyCP,
 		reinterpret_cast<void*>(&RootParams));
 
-	DispTerm = RootParams.KDisp *Distance( Point, (*RootParams.EquilPos));
+	DispTerm = RootParams.KDisp *Distance(Point, (*RootParams.EquilPos));
 	GradTerm = RootParams.KGrad * norm(Grad);
 
 	Val = DispTerm + GradTerm;
@@ -1901,8 +1857,8 @@ const double NEBForceFunction(vec3 & Point,
 }
 
 void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const double & RhoCutoff){
-	TecUtilLockStart(AddOnID); 
-	
+	TecUtilLockStart(AddOnID);
+
 	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
 	if (VolZoneNum < 0){
 		TecUtilDialogErrMsg("Failed to get volume zone");
@@ -1990,9 +1946,10 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 	}
 
 	vector<MultiRootParams_s> TmpParams(numCPU);
+	mat33 I = eye<mat>(3, 3);
 	for (auto & i : TmpParams){
 		i.CalcType = GPType_NormalPlaneEberlyCP;
-		i.BasisVectors = &VolInfo.BasisNormalized;
+		i.BasisVectors = &I;
 		i.HasHess = HasHess;
 		i.IsPeriodic = PeriodicBC;
 		i.RhoPtr = &RhoPtr;
@@ -2174,7 +2131,7 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 	VolInfo.AddOnID = AddOnID;
 	GetVolInfo(VolZoneNum, XYZVarNums, FALSE, VolInfo);
 	VolInfo.IsPeriodic = FALSE;
-	
+
 
 	vector<VolExtentIndexWeights_s> ThreadVolInfo(numCPU, VolInfo);
 
@@ -2197,8 +2154,8 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 	for (auto & ChkPtr : VolReadPtrs){
 		bool HasUniqueVals = false;
 
-		for (int i = 0; i < MIN(4,ChkPtr.Size()-1) && !HasUniqueVals; ++i){
-			for (int j = i + 1; j < MIN(5,ChkPtr.Size()) && !HasUniqueVals; ++j){
+		for (int i = 0; i < MIN(4, ChkPtr.Size() - 1) && !HasUniqueVals; ++i){
+			for (int j = i + 1; j < MIN(5, ChkPtr.Size()) && !HasUniqueVals; ++j){
 				HasUniqueVals = (ChkPtr[j] != ChkPtr[i]);
 			}
 		}
@@ -2213,8 +2170,8 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 		if (ZoneNum != VolZoneNum){
 			IsOk = StatusUpdate(ZoneNum, NumZones, StatusStr, AddOnID);
 			if (IsOk){
-// 				for (int i = 0; i < 3 && IsOk; ++i)
-// 					IsOk = XYZReadPtrs[i].GetReadPtr(ZoneNum, XYZVarNums[i]);
+				// 				for (int i = 0; i < 3 && IsOk; ++i)
+				// 					IsOk = XYZReadPtrs[i].GetReadPtr(ZoneNum, XYZVarNums[i]);
 				for (int i = 1; i <= NumVars && IsOk; ++i)
 					IsOk = ZoneWritePtrs[i - 1].GetWritePtr(ZoneNum, i);
 
@@ -2235,9 +2192,9 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 								Index = IndexFromIJK(ii, jj, kk, ZoneMaxIJK[0], ZoneMaxIJK[1]) - 1;
 
 								for (int Dir = 0; Dir < 3; ++Dir)
-// 									Point[Dir] = XYZReadPtrs[Dir][Index];
+									// 									Point[Dir] = XYZReadPtrs[Dir][Index];
 									Point[Dir] = ZoneWritePtrs[Dir][Index];
-// 									Point[Dir] = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[Dir], Index + 1);
+								// 									Point[Dir] = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[Dir], Index + 1);
 
 								SetIndexAndWeightsForPoint(Point, ThreadVolInfo[ThreadNum]);
 
@@ -2263,7 +2220,7 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 						double ReadVal, WriteVal;
 
 						for (int Dir = 0; Dir < 3; ++Dir)
-// 							Point[Dir] = XYZReadPtrs[Dir][ii - 1];
+							// 							Point[Dir] = XYZReadPtrs[Dir][ii - 1];
 							Point[Dir] = ZoneWritePtrs[Dir][ii - 1];
 
 						SetIndexAndWeightsForPoint(Point, ThreadVolInfo[ThreadNum]);
@@ -2301,8 +2258,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	TecUtilLockStart(Opt.AddOnID);
 
 	/*
-	 *	Get dataset info
-	 */
+	*	Get dataset info
+	*/
 	EntIndex_t NumZones, NumVars;
 	Boolean_t IsOk = TecUtilDataSetGetInfo(NULL, &NumZones, &NumVars);
 	if (!IsOk){
@@ -2316,8 +2273,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 
 
 	/*
-	 *	Get XYZ variable numbers
-	 */
+	*	Get XYZ variable numbers
+	*/
 	vector<EntIndex_t> XYZVarNums(3, -1);
 	TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
 	if (XYZVarNums[0] <= 0 || XYZVarNums[1] <= 0 || XYZVarNums[2] <= 0){
@@ -2367,8 +2324,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	}
 
 	/*
-	 *	Get system information
-	 */
+	*	Get system information
+	*/
 	VolExtentIndexWeights_s VolInfo;
 	GetVolInfo(VolZoneNum, XYZVarNums, Opt.IsPeriodic, VolInfo);
 	VolInfo.AddOnID = Opt.AddOnID;
@@ -2384,8 +2341,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	};
 
 	/*
-	 *	All necessary variable names
-	 */
+	*	All necessary variable names
+	*/
 	vector<string> GradVarNames = CSMVarName.DensGradVec,
 		HessVarNames = CSMVarName.DensHessTensor,
 		EigSysVarNames = CSMVarName.EigSys,
@@ -2402,8 +2359,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	}
 
 	/*
-	 *	For keeping track of which variables are already present in dataset
-	 */
+	*	For keeping track of which variables are already present in dataset
+	*/
 	Boolean_t HasGradMag = FALSE,
 		HasEigSys = FALSE,
 		HasLap = FALSE,
@@ -2422,8 +2379,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 		EberlyFuncVarNums(2, -1);
 
 	/*
-	 *	Raw pointers for all variables
-	 */
+	*	Raw pointers for all variables
+	*/
 	FieldDataPointer_c RhoPtr,
 		GradMagPtr,
 		LapPtr,
@@ -2437,9 +2394,9 @@ void CalcVars(CalcVarsOptions_s & Opt)
 		EberlyFuncPtrs(2);
 
 	/*
-	 *	Then make multiple copies of some workspace variables so that
-	 *	each thread gets its own copy
-	 */
+	*	Then make multiple copies of some workspace variables so that
+	*	each thread gets its own copy
+	*/
 	vector<vector<double> > ThreadVals(numCPU, vector<double>(5)),
 		ThreadDotPtds(numCPU, vector<double>(3));
 	vector<mat33> ThreadHessVec(numCPU);
@@ -2448,16 +2405,15 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	vector<vec3> ThreadGrad(numCPU),
 		ThreadEigVals(numCPU),
 		ThreadCurPoint(numCPU);
-	vector<mat33> ThreadHess(numCPU), 
+	vector<mat33> ThreadHess(numCPU),
 		ThreadEigVecs(numCPU);
 	vector<double> TmpVal(numCPU);
 
 	vector<MultiRootParams_s> Params(numCPU);
 	vector<VolExtentIndexWeights_s> VI(numCPU, VolInfo);
-	mat33 I(fill::eye);
+	mat33 I = eye<mat>(3, 3);
 	for (int i = 0; i < numCPU; ++i){
 		Params[i].BasisVectors = &I;
-// 		Params[i].BasisVectors = &VolInfo.BasisNormalized;
 		Params[i].CalcType = GPType_Invalid;
 		Params[i].IsPeriodic = Opt.IsPeriodic;
 		Params[i].VolInfo = &VI[i];
@@ -2466,16 +2422,16 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	Boolean_t ShowRequiredVarsMessage = TRUE;
 
 	/*
-	 *	Loop over each variable that needs to be calculated
-	 */
+	*	Loop over each variable that needs to be calculated
+	*/
 	int IterNum = 0;
 	for (auto CalcVar = Opt.CalcVarList.cbegin(), End = Opt.CalcVarList.cend(); CalcVar != End && IsOk; CalcVar++){
 		/*
-		 *	First, see if variables are already present in dataset.
-		 *  If present, they'll be overwritten if the user requested
-		 *  to calculate them, or they'll be used in the calculation
-		 *  of other variables if necessary.
-		 */
+		*	First, see if variables are already present in dataset.
+		*  If present, they'll be overwritten if the user requested
+		*  to calculate them, or they'll be used in the calculation
+		*  of other variables if necessary.
+		*/
 		if (*CalcVar >= CalcGradientVectors){
 			if (!Opt.HasGrad && IterNum > 0){
 				Opt.HasGrad = TRUE;
@@ -2600,16 +2556,16 @@ void CalcVars(CalcVarsOptions_s & Opt)
 			if (!HasRequiredVars && ShowRequiredVarsMessage){
 				TecUtilDialogMessageBox("Required variables are not present for non-volume zones, so calculation will only be for volume zones.", MessageBoxType_Information);
 				ShowRequiredVarsMessage = FALSE;
-// 				TecUtilDialogErrMsg("The selected variable(s) cannot be calculated for ridge zones because required source variable(s) are missing");
-// 				TecUtilLockFinish(Opt.AddOnID);
-// 				return;
+				// 				TecUtilDialogErrMsg("The selected variable(s) cannot be calculated for ridge zones because required source variable(s) are missing");
+				// 				TecUtilLockFinish(Opt.AddOnID);
+				// 				return;
 			}
 		}
 
 		/*
-		 *	Here we create variables if they're to be calculated and don't
-		 *	already exist in the dataset.
-		 */
+		*	Here we create variables if they're to be calculated and don't
+		*	already exist in the dataset.
+		*/
 		switch (*CalcVar){
 			case CalcGradientVectors:
 				for (int i = 0; i < 3; ++i){
@@ -2806,8 +2762,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 		}
 
 		/*
-		 *	Now actually start calculating variables
-		 */
+		*	Now actually start calculating variables
+		*/
 
 		vector<int> MaxIJK(3);
 		vec3 BlankPoint;
@@ -2816,14 +2772,14 @@ void CalcVars(CalcVarsOptions_s & Opt)
 		StatusLaunch(StatusStr.c_str(), VolInfo.AddOnID, TRUE);
 
 		/*
-		 *	Loop over every zone and calculate the necessary variables.
-		 *	If the user only wants the volume zone, then this loop will terminate after
-		 *	the first iteration.
-		 *	
-		 *	There are different functions used depending on if the calculation is for
-		 *	the full volume zone or not. The node-based functions are faster and 
-		 *	have less numerical error.
-		 */
+		*	Loop over every zone and calculate the necessary variables.
+		*	If the user only wants the volume zone, then this loop will terminate after
+		*	the first iteration.
+		*
+		*	There are different functions used depending on if the calculation is for
+		*	the full volume zone or not. The node-based functions are faster and
+		*	have less numerical error.
+		*/
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum){
 
 			Boolean_t IsVolZone = TecUtilZoneIsOrdered(ZoneNum);
@@ -2870,7 +2826,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
 									if (!Opt.HasGrad && TmpPtr[j] != 0.0)
-											Opt.HasGrad = TRUE;
+										Opt.HasGrad = TRUE;
 								}
 							}
 						}
@@ -2885,7 +2841,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
 								if (!HasGradMag && TmpPtr[j] != 0.0)
-										HasGradMag = TRUE;
+									HasGradMag = TRUE;
 							}
 						}
 					}
@@ -2902,7 +2858,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
 									if (!Opt.HasHess && TmpPtr[j] != 0.0)
-											Opt.HasHess = TRUE;
+										Opt.HasHess = TRUE;
 								}
 							}
 						}
@@ -2918,7 +2874,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
 									if (!HasEigSys && TmpPtr[j] != 0.0)
-											HasEigSys = TRUE;
+										HasEigSys = TRUE;
 								}
 							}
 						}
@@ -3065,11 +3021,11 @@ void CalcVars(CalcVarsOptions_s & Opt)
 				/*
 				*	Get all the read pointers
 				*/
-// 				if (*CalcVar > CalcEigVecDotGrad && HasEigVecDotGrad){
-// 					for (int i = 0; i < 3 && IsOk; ++i)
-// 						IsOk = EigVecDotGradPtrs[i].GetReadPtr(ZoneNum, EigVecDotGradVarNums[i]);
-// 				}
-// 				else 
+				// 				if (*CalcVar > CalcEigVecDotGrad && HasEigVecDotGrad){
+				// 					for (int i = 0; i < 3 && IsOk; ++i)
+				// 						IsOk = EigVecDotGradPtrs[i].GetReadPtr(ZoneNum, EigVecDotGradVarNums[i]);
+				// 				}
+				// 				else 
 				if (*CalcVar > CalcEigenSystem && HasEigSys){
 					for (int i = 0; i < 12 && IsOk; ++i)
 						IsOk = EigSysPtrs[i].GetReadPtr(ZoneNum, EigSysVarNums[i]);
@@ -3089,11 +3045,11 @@ void CalcVars(CalcVarsOptions_s & Opt)
 					if (IsOk)
 						IsOk = RhoPtr.GetReadPtr(ZoneNum, Opt.RhoVarNum);
 				}
-				
+
 				if (*CalcVar >= CalcEigenVectorsDotGradient){
 					if (Opt.HasGrad)
-						for (int i = 0; i < 3 && IsOk; ++i)
-							IsOk = GradPtrs[i].GetReadPtr(ZoneNum, Opt.GradVarNums[i]);
+					for (int i = 0; i < 3 && IsOk; ++i)
+						IsOk = GradPtrs[i].GetReadPtr(ZoneNum, Opt.GradVarNums[i]);
 					else if (IsOk)
 						IsOk = RhoPtr.GetReadPtr(ZoneNum, Opt.RhoVarNum);
 				}
@@ -3160,9 +3116,9 @@ void CalcVars(CalcVarsOptions_s & Opt)
 					Boolean_t IsOrdered = TecUtilZoneIsOrdered(ZoneNum);
 					if (!IsOrdered){
 						/*
-							*	For a FE zone, MaxIJK[0] is the actual number of points in the system.
-							*	Can still use the triple loop, but need to set MaxIJK[1] and MaxIJK[2] to 1
-							*/
+						*	For a FE zone, MaxIJK[0] is the actual number of points in the system.
+						*	Can still use the triple loop, but need to set MaxIJK[1] and MaxIJK[2] to 1
+						*/
 						MaxIJK[1] = MaxIJK[2] = 1;
 					}
 
@@ -3208,7 +3164,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 									*	Get necessary information for calculating the variable
 									*/
 									if (*CalcVar > CalcEigenVectorsDotGradient){
-										if (*CalcVar == CalcEigenRank 
+										if (*CalcVar == CalcEigenRank
 											|| (*CalcVar == CalcEberly1Ridge && (!Opt.EberlyUseCutoff[0] || RhoPtr[Params[ThreadNum].Index] >= Opt.EberlyCutoff[0]))
 											|| (*CalcVar == CalcEberly2Ridge && (!Opt.EberlyUseCutoff[1] || RhoPtr[Params[ThreadNum].Index] >= Opt.EberlyCutoff[1])))
 										{
@@ -3216,18 +3172,18 @@ void CalcVars(CalcVarsOptions_s & Opt)
 											// 											for (int i = 0; i < 3; ++i)
 											// 												ThreadDotPtds[ThreadNum][i] = abs(EigVecDotGradPtrs[i][Index]);
 											if (HasEigSys)
-												for (int i = 0; i < 3; ++i)
-													for (int j = 0; j < 3; ++j)
-														ThreadEigVecs[ThreadNum].at(i, j) = EigSysPtrs[3 * i + j][Params[ThreadNum].Index];
+											for (int i = 0; i < 3; ++i)
+											for (int j = 0; j < 3; ++j)
+												ThreadEigVecs[ThreadNum].at(i, j) = EigSysPtrs[3 * i + j][Params[ThreadNum].Index];
 											else{
-// 												if (IsVolZone)
-// 													CalcEigenSystemForNode(ii,
-// 													jj,
-// 													kk,
-// 													ThreadEigVals[ThreadNum],
-// 													ThreadEigVecs[ThreadNum],
-// 													Params[ThreadNum]);
-// 												else
+												if (IsVolZone)
+													CalcEigenSystemForNode(ii,
+													jj,
+													kk,
+													ThreadEigVals[ThreadNum],
+													ThreadEigVecs[ThreadNum],
+													Params[ThreadNum]);
+												else
 													CalcEigenSystemForPoint(ThreadCurPoint[ThreadNum],
 													ThreadEigVals[ThreadNum],
 													ThreadEigVecs[ThreadNum],
@@ -3235,44 +3191,44 @@ void CalcVars(CalcVarsOptions_s & Opt)
 											}
 
 											if (Opt.HasGrad)
-												for (int i = 0; i < 3; ++i)
-													ThreadGrad[ThreadNum][i] = GradPtrs[i][Params[ThreadNum].Index];
+											for (int i = 0; i < 3; ++i)
+												ThreadGrad[ThreadNum][i] = GradPtrs[i][Params[ThreadNum].Index];
 											else
-// 												if (IsVolZone)
-// 													CalcGradForNode(ii,
-// 													jj,
-// 													kk,
-// 													DelXYZx2,
-// 													DelXYZx12,
-// 													ThreadVals[ThreadNum],
-// 													ThreadDirInd[ThreadNum],
-// 													0,
-// 													VolInfo.MaxIJK,
-// 													VolInfo.IsPeriodic,
-// 													RhoPtr,
-// 													ThreadGrad[ThreadNum]);
-// 												else
-													CalcGradForPoint(ThreadCurPoint[ThreadNum],
-													VolInfo.DelXYZ,
-													*Params[ThreadNum].VolInfo,
-													*Params[ThreadNum].BasisVectors,
-													0,
-													Opt.IsPeriodic,
-													ThreadGrad[ThreadNum],
-													RhoPtr,
-													GPType_Invalid,
-													reinterpret_cast<void*>(&Params[ThreadNum]));
+											if (IsVolZone)
+												CalcGradForNode(ii,
+												jj,
+												kk,
+												DelXYZx2,
+												DelXYZx12,
+												ThreadVals[ThreadNum],
+												ThreadDirInd[ThreadNum],
+												0,
+												VolInfo.MaxIJK,
+												VolInfo.IsPeriodic,
+												RhoPtr,
+												ThreadGrad[ThreadNum]);
+											else
+												CalcGradForPoint(ThreadCurPoint[ThreadNum],
+												VolInfo.DelXYZ,
+												*Params[ThreadNum].VolInfo,
+												*Params[ThreadNum].BasisVectors,
+												0,
+												Opt.IsPeriodic,
+												ThreadGrad[ThreadNum],
+												RhoPtr,
+												GPType_Invalid,
+												reinterpret_cast<void*>(&Params[ThreadNum]));
 
-// 											double GradMag = norm(ThreadGrad[ThreadNum]);
-// 											if (GradMag < 0.01)
-// 												ThreadGrad[ThreadNum] /= GradMag;
-// 											if (0){
-// 												ThreadGrad[ThreadNum] = normalise(ThreadGrad[ThreadNum]);
-// 											}
-// 											else{
-// 												for (int i = 0; i < 3; ++i)
-// 													ThreadEigVecs[ThreadNum][i] *= ThreadEigVals[ThreadNum][i];
-// 											}
+											// 											double GradMag = norm(ThreadGrad[ThreadNum]);
+											// 											if (GradMag < 0.01)
+											// 												ThreadGrad[ThreadNum] /= GradMag;
+											// 											if (0){
+											// 												ThreadGrad[ThreadNum] = normalise(ThreadGrad[ThreadNum]);
+											// 											}
+											// 											else{
+											// 												for (int i = 0; i < 3; ++i)
+											// 													ThreadEigVecs[ThreadNum][i] *= ThreadEigVals[ThreadNum][i];
+											// 											}
 
 											for (int i = 0; i < 3; ++i)
 												ThreadDotPtds[ThreadNum][i] = abs(dot(ThreadEigVecs[ThreadNum].col(i), ThreadGrad[ThreadNum]));
@@ -3284,41 +3240,41 @@ void CalcVars(CalcVarsOptions_s & Opt)
 									}
 									else if (*CalcVar > CalcEigenSystem && HasEigSys){
 										for (int i = 0; i < 3; ++i)
-											for (int j = 0; j < 3; ++j)
-												ThreadEigVecs[ThreadNum].at(i, j) = EigSysPtrs[3 * i + j][Params[ThreadNum].Index];
+										for (int j = 0; j < 3; ++j)
+											ThreadEigVecs[ThreadNum].at(i, j) = EigSysPtrs[3 * i + j][Params[ThreadNum].Index];
 
 										for (int i = 0; i < 3; ++i)
 											ThreadEigVals[ThreadNum][i] = EigSysPtrs[9 + i][Params[ThreadNum].Index];
 									}
 									else if (*CalcVar > CalcHessian){
-// 										if (IsVolZone)
-// 											CalcEigenSystemForNode(ii,
-// 											jj,
-// 											kk,
-// 											ThreadEigVals[ThreadNum],
-// 											ThreadEigVecs[ThreadNum],
-// 											Params[ThreadNum]);
-// 										else
+										if (IsVolZone)
+											CalcEigenSystemForNode(ii,
+											jj,
+											kk,
+											ThreadEigVals[ThreadNum],
+											ThreadEigVecs[ThreadNum],
+											Params[ThreadNum]);
+										else
 											CalcEigenSystemForPoint(ThreadCurPoint[ThreadNum],
 											ThreadEigVals[ThreadNum],
 											ThreadEigVecs[ThreadNum],
 											Params[ThreadNum]);
 									}
 									else if (*CalcVar > CalcGradientMagnitude){
-// 										if (IsVolZone)
-// 											CalcHessForNode(ii,
-// 											jj,
-// 											kk,
-// 											DelXYZx2,
-// 											DelXYZx12,
-// 											ThreadVals[ThreadNum],
-// 											ThreadDirInd[ThreadNum],
-// 											VolInfo.MaxIJK,
-// 											VolInfo.IsPeriodic,
-// 											RhoPtr,
-// 											GradPtrs,
-// 											ThreadHess[ThreadNum]);
-// 										else{
+										if (IsVolZone)
+											CalcHessForNode(ii,
+											jj,
+											kk,
+											DelXYZx2,
+											DelXYZx12,
+											ThreadVals[ThreadNum],
+											ThreadDirInd[ThreadNum],
+											VolInfo.MaxIJK,
+											VolInfo.IsPeriodic,
+											RhoPtr,
+											GradPtrs,
+											ThreadHess[ThreadNum]);
+										else{
 											if (Opt.HasGrad)
 												CalcHessFor3DPoint(ThreadCurPoint[ThreadNum],
 												VolInfo.DelXYZ,
@@ -3338,27 +3294,27 @@ void CalcVars(CalcVarsOptions_s & Opt)
 												RhoPtr,
 												GPType_Invalid,
 												reinterpret_cast<void*>(&Params[ThreadNum]));
-// 										}
+										}
 									}
 									else if (*CalcVar > CalcGradientVectors && Opt.HasGrad){
 										for (int i = 0; i < 3; ++i)
 											ThreadGrad[ThreadNum][i] = GradPtrs[i][Params[ThreadNum].Index];
 									}
 									else if (IsOk && *CalcVar > CalcInvalidVar){
-// 										if (IsVolZone)
-// 											CalcGradForNode(ii,
-// 											jj,
-// 											kk,
-// 											DelXYZx2,
-// 											DelXYZx12,
-// 											ThreadVals[ThreadNum],
-// 											ThreadDirInd[ThreadNum],
-// 											0,
-// 											VolInfo.MaxIJK,
-// 											VolInfo.IsPeriodic,
-// 											RhoPtr,
-// 											ThreadGrad[ThreadNum]);
-// 										else
+										if (IsVolZone)
+											CalcGradForNode(ii,
+											jj,
+											kk,
+											DelXYZx2,
+											DelXYZx12,
+											ThreadVals[ThreadNum],
+											ThreadDirInd[ThreadNum],
+											0,
+											VolInfo.MaxIJK,
+											VolInfo.IsPeriodic,
+											RhoPtr,
+											ThreadGrad[ThreadNum]);
+										else
 											CalcGradForPoint(ThreadCurPoint[ThreadNum],
 											VolInfo.DelXYZ,
 											*Params[ThreadNum].VolInfo,
@@ -3373,23 +3329,23 @@ void CalcVars(CalcVarsOptions_s & Opt)
 
 									if (*CalcVar == CalcEigenVectorsDotGradient){
 										if (Opt.HasGrad)
-											for (int i = 0; i < 3; ++i)
-												ThreadGrad[ThreadNum][i] = GradPtrs[i][Params[ThreadNum].Index];
+										for (int i = 0; i < 3; ++i)
+											ThreadGrad[ThreadNum][i] = GradPtrs[i][Params[ThreadNum].Index];
 										else{
-// 											if (IsVolZone)
-// 												CalcGradForNode(ii,
-// 												jj,
-// 												kk,
-// 												DelXYZx2,
-// 												DelXYZx12,
-// 												ThreadVals[ThreadNum],
-// 												ThreadDirInd[ThreadNum],
-// 												0,
-// 												VolInfo.MaxIJK,
-// 												VolInfo.IsPeriodic,
-// 												RhoPtr,
-// 												ThreadGrad[ThreadNum]);
-// 											else
+											if (IsVolZone)
+												CalcGradForNode(ii,
+												jj,
+												kk,
+												DelXYZx2,
+												DelXYZx12,
+												ThreadVals[ThreadNum],
+												ThreadDirInd[ThreadNum],
+												0,
+												VolInfo.MaxIJK,
+												VolInfo.IsPeriodic,
+												RhoPtr,
+												ThreadGrad[ThreadNum]);
+											else
 												CalcGradForPoint(ThreadCurPoint[ThreadNum],
 												VolInfo.DelXYZ,
 												*Params[ThreadNum].VolInfo,
@@ -3416,13 +3372,13 @@ void CalcVars(CalcVarsOptions_s & Opt)
 											break;
 										case CalcHessian:
 											for (int i = 0; i < 3; ++i)
-												for (int j = i; j < 3; ++j)
-													HessPtrs[HessIndices[i][j]].Write(Params[ThreadNum].Index, ThreadHess[ThreadNum].at(i, j));
+											for (int j = i; j < 3; ++j)
+												HessPtrs[HessIndices[i][j]].Write(Params[ThreadNum].Index, ThreadHess[ThreadNum].at(i, j));
 											break;
 										case CalcEigenSystem:
 											for (int i = 0; i < 3; ++i)
-												for (int j = 0; j < 3; ++j)
-													EigSysPtrs[3 * i + j].Write(Params[ThreadNum].Index, ThreadEigVecs[ThreadNum].at(i, j));
+											for (int j = 0; j < 3; ++j)
+												EigSysPtrs[3 * i + j].Write(Params[ThreadNum].Index, ThreadEigVecs[ThreadNum].at(i, j));
 
 											for (int i = 0; i < 3; ++i)
 												EigSysPtrs[9 + i].Write(Params[ThreadNum].Index, ThreadEigVals[ThreadNum][i]);
@@ -3477,8 +3433,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 			}
 
 			/*
-			 *	Close all pointers
-			 */
+			*	Close all pointers
+			*/
 			RhoPtr.Close();
 			GradMagPtr.Close();
 			LapPtr.Close();
@@ -3492,39 +3448,39 @@ void CalcVars(CalcVarsOptions_s & Opt)
 			for (auto & i : EberlyFuncPtrs) i.Close();
 
 			/*
-			 *	If volume zone calculation, quit loop.
-			 */
+			*	If volume zone calculation, quit loop.
+			*/
 			if (ZoneNum == Opt.CalcZoneNum && !Opt.CalcForAllZones)
 				break;
 		}
 
 		StatusDrop(VolInfo.AddOnID);
-// 		TecUtilDialogDropPercentDone();
+		// 		TecUtilDialogDropPercentDone();
 
-// 		switch (*CalcVar){
-// 			case CalcGradVec:
-// 				break;
-// 			case CalcGradMag:
-// 				break;
-// 			case CalcHess:
-// 				break;
-// 			case CalcEigSys:
-// 				break;
-// 			case CalcLap:
-// 				break;
-// 			case CalcGaussianCurvature:
-// 				break;
-// 			case CalcEigVecDotGrad:
-// 				break;
-// 			case CalcEberly1Ridge:
-// 				break;
-// 			case CalcEberly2Ridge:
-// 				break;
-// 			case CalcEigenRank:
-// 				break;
-// 			default:
-// 				break;
-// 		}
+		// 		switch (*CalcVar){
+		// 			case CalcGradVec:
+		// 				break;
+		// 			case CalcGradMag:
+		// 				break;
+		// 			case CalcHess:
+		// 				break;
+		// 			case CalcEigSys:
+		// 				break;
+		// 			case CalcLap:
+		// 				break;
+		// 			case CalcGaussianCurvature:
+		// 				break;
+		// 			case CalcEigVecDotGrad:
+		// 				break;
+		// 			case CalcEberly1Ridge:
+		// 				break;
+		// 			case CalcEberly2Ridge:
+		// 				break;
+		// 			case CalcEigenRank:
+		// 				break;
+		// 			default:
+		// 				break;
+		// 		}
 
 		IterNum++;
 	}
@@ -3586,12 +3542,12 @@ const vector<double> LogLevels(double Min, double Max)
 	return LevelVector;
 }
 
-void GaussianBlur(const Boolean_t & IsPeriodic, 
-					const AddOn_pa & AddOnID, 
-					const EntIndex_t & ZoneNum, 
-					const EntIndex_t & VarNum, 
-					const string & NewVarName, 
-					const double & Sigma)
+void GaussianBlur(const Boolean_t & IsPeriodic,
+	const AddOn_pa & AddOnID,
+	const EntIndex_t & ZoneNum,
+	const EntIndex_t & VarNum,
+	const string & NewVarName,
+	const double & Sigma)
 {
 	FieldDataPointer_c Var;
 	Var.GetReadPtr(ZoneNum, VarNum);
@@ -3601,7 +3557,7 @@ void GaussianBlur(const Boolean_t & IsPeriodic,
 
 	vector<FieldDataType_e> FD(TecUtilDataSetGetNumZones());
 	for (int i = 0; i < FD.size(); ++i)
-		FD[i] = TecUtilDataValueGetType(i+1, VarNum);
+		FD[i] = TecUtilDataValueGetType(i + 1, VarNum);
 
 	if (VarNumByName(NewVarName) > 0){
 		Set_pa VarList = TecUtilSetAlloc(FALSE);
