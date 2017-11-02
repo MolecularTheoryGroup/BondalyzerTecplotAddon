@@ -1900,7 +1900,9 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 						AlphaLower = static_cast<double>(gpNum)* AngleStep;
 						AlphaUpper = static_cast<double>(gpNum + 1) * AngleStep;
 
-						while (TermCPNum < 0){
+						int Iter = 0;
+						while (TermCPNum < 0 && Iter < 100){
+							Iter++;
 							AlphaGuess = (AlphaLower + AlphaUpper) * 0.5;
 							StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, AlphaGuess, GPParams.RotAxis);
 							GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);

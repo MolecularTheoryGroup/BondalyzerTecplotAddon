@@ -1766,7 +1766,8 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 			"TAU",
 			"LDOS",
 			"ELF",
-			"ATOMIC"
+			"ATOMIC",
+			"FOO"
 		};
 		T41Var = {
 			"total_scf",
@@ -1775,8 +1776,12 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 			"agrad_total_scf",
 			"deformation_scf",
 			"density",
-			"coulombPot"
+			"coulombPot",
+			"rho"
 		};
+		for (int i = 1; i <= 3; ++i) T41Var.push_back("gradRho_" + to_string(i));
+		for (int i = 1; i <= 6; ++i) T41Var.push_back("secDerRho_" + to_string(i));
+
 		VarStrings = {
 			"Electron Density",
 			"Electron Density Fit",
@@ -1784,8 +1789,11 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 			"Norm of the Gradient of Electron Density",
 			"Fitted Deformation Density",
 			"Density of Startup Atoms",
-			"Coulomb Potential of Startup Atom Density"
+			"Coulomb Potential of Startup Atom Density",
+			"Electron Density"
 		};
+		for (const string & s : { "X", "Y", "Z" }) VarStrings.push_back(s + " Density Gradient");
+		for (const string & s : { "XX", "XY", "XZ", "YY", "YZ", "ZZ" }) VarStrings.push_back(s + " Density Hessian");
 		T41VarSuffices = { "" };
 	}
 
