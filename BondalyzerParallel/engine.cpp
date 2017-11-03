@@ -106,6 +106,7 @@ const static int DefaultRCSFuncConvergence = 32;
 const static int DefaultRCSSGPAngleCheck = 15; // If RCS-based SGP is less than this angle [degrees] from an existing SGP it is discarded
 const static double SmallAngleFactor = 0.5;
 const static int MaxIter_GPLengthInPlane = 100;
+const static double SurfRCSMinAngleCheck = 1e-6;
 
 //DEBUG
 #ifdef _DEBUG
@@ -1897,11 +1898,11 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 							TermVecUpper = GPs[(gpNum + 1) % NumCircleCheckGPs][-1] - GPs[(gpNum + 1) % NumCircleCheckGPs][-2];
 						}
 
-						AlphaLower = static_cast<double>(gpNum)* AngleStep;
+						AlphaLower = static_cast<double>(gpNum) * AngleStep;
 						AlphaUpper = static_cast<double>(gpNum + 1) * AngleStep;
 
 						int Iter = 0;
-						while (TermCPNum < 0 && Iter < 100){
+						while (TermCPNum < 0 && Iter < 15){
 							Iter++;
 							AlphaGuess = (AlphaLower + AlphaUpper) * 0.5;
 							StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, AlphaGuess, GPParams.RotAxis);
@@ -1912,6 +1913,9 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 								TermCPNum = GP.GetStartEndCPNum(1);
 								GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 								GPLen = GP.GetLength();
+
+// 								AlphaLower = (static_cast<double>(gpNum) * AngleStep + AlphaGuess) * 0.5;
+// 								AlphaUpper = (static_cast<double>(gpNum + 1) * AngleStep + AlphaGuess) * 0.5;
 							}
 							else{
 								bool GoLeft;
@@ -2032,10 +2036,13 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 							AlphaGuess = (AlphaLower + AlphaUpper) * 0.5; // guess is the midpoint between the two angles
 						}
 
-						MinFunc_AlphaLowMidHigh.push_back(vec3());
-						MinFunc_AlphaLowMidHigh.back() << AlphaLower << AlphaGuess << AlphaUpper;
+						if (AlphaUpper - AlphaLower >= SurfRCSMinAngleCheck){
 
-						TermCPNums.push_back(TermCPNum);
+							MinFunc_AlphaLowMidHigh.push_back(vec3());
+							MinFunc_AlphaLowMidHigh.back() << AlphaLower << AlphaGuess << AlphaUpper;
+
+							TermCPNums.push_back(TermCPNum);
+						}
 					}
 				}
 			}

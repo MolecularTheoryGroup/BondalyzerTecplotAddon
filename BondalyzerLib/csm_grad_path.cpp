@@ -1459,7 +1459,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 			}
 		}
 
-		IsOk = m_GradPathMade = (IsOk && m_RhoList.size() > GP_StallPointCount);
+		IsOk = m_GradPathMade = (IsOk);
 		if (IsOk && m_GPType)
 			m_SGPMade = TRUE;
 

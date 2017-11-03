@@ -17,7 +17,7 @@ using namespace arma;
 
 
 #define MaxCPIter 100
-#define CheckPosIter 5
+#define CheckPosIter 0
 #define DefaultCellSpacing 0.2
 
 using std::vector;
