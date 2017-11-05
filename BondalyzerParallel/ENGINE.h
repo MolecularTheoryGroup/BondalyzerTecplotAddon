@@ -25,6 +25,7 @@ enum BondalyzerCalcType_e{
 	BondalyzerCalcType_CriticalPoints,
 	BondalyzerCalcType_BondPaths,
 	BondalyzerCalcType_RingLines,
+	BondalyserCalcType_CageNuclearPaths,
 	BondalyzerCalcType_InteratomicSurfaces,
 	BondalyzerCalcType_RingSurfaces,
 	BondalyzerCalcType_BondBundleSurfaces,

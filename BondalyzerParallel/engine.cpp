@@ -622,7 +622,8 @@ void BondalyzerReturnUserInfo(const bool GuiSuccess,
 	VolZoneNum = Fields[fNum++].GetReturnInt();
 	IsPeriodic = Fields[fNum++].GetReturnBool();
 	fNum++;
-	for (int i = 0; i < 3; ++i) XYZVarNums[i] = Fields[fNum++].GetReturnInt();
+	for (int i = 0; i < 3; ++i) XYZVarNums[i] = i + Fields[fNum].GetReturnInt();
+	fNum++;
 	fNum++;
 	RhoVarNum = Fields[fNum++].GetReturnInt();
 	fNum++;
@@ -630,16 +631,20 @@ void BondalyzerReturnUserInfo(const bool GuiSuccess,
 
 	if (Fields[fNum++].GetReturnBool()){
 		GradVarNums.resize(3);
-		for (int i = 0; i < 3; ++i) GradVarNums[i] = Fields[fNum++].GetReturnInt();
+		for (int i = 0; i < 3; ++i) GradVarNums[i] = i + Fields[fNum].GetReturnInt();
+// 		for (int i = 0; i < 3; ++i) GradVarNums[i] = Fields[fNum++].GetReturnInt();
 	}
-	else fNum += 3;
+	fNum++;
+// 	else fNum += 3;
 	fNum++;
 
 	if (Fields[fNum++].GetReturnBool()){
 		HessVarNums.resize(6);
-		for (int i = 0; i < 6; ++i) HessVarNums[i] = Fields[fNum++].GetReturnInt();
+		for (int i = 0; i < 6; ++i) HessVarNums[i] = i + Fields[fNum].GetReturnInt();
+// 		for (int i = 0; i < 6; ++i) HessVarNums[i] = Fields[fNum++].GetReturnInt();
 	}
-	else fNum += 6;
+	fNum++;
+// 	else fNum += 6;
 
 	fNum++;
 
@@ -718,30 +723,35 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_
 		GuiField_c(Gui_VertSep)
 	};
 
-	vector<string> XYZStr = { "X", "Y", "Z" }, HessXYZStr = { "XX", "XY", "XZ", "YY", "YZ", "ZZ" };
+// 	vector<string> XYZStr = { "X", "Y", "Z" }, HessXYZStr = { "XX", "XY", "XZ", "YY", "YZ", "ZZ" };
 
-	for (int i = 0; i < 3; ++i) Fields.push_back(GuiField_c(Gui_VarSelect, XYZStr[i], XYZStr[i]));
+	Fields.push_back(GuiField_c(Gui_VarSelect, "X", "X"));
+// 	for (int i = 0; i < 3; ++i) Fields.push_back(GuiField_c(Gui_VarSelect, XYZStr[i], XYZStr[i]));
 	Fields.push_back(GuiField_c(Gui_VertSep));
 
-	Fields.push_back(GuiField_c(Gui_VarSelect, "Electron density", CSMVarName.Dens));
+	Fields.push_back(GuiField_c(Gui_VarSelect, "Electron Density", CSMVarName.Dens));
 	Fields.push_back(GuiField_c(Gui_VertSep));
 
 	int iTmp = Fields.size();
 	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density gradient vector variables present"));
-	for (int i = 0; i < 3; ++i){
-		Fields[iTmp].AppendSearchString(to_string(Fields.size()));
-		Fields.push_back(GuiField_c(Gui_VarSelect, XYZStr[i], CSMVarName.DensGradVec[i]));
-		if (i < 2) Fields[iTmp].AppendSearchString(",");
-	}
+// 	for (int i = 0; i < 3; ++i){
+// 		Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+// 		Fields.push_back(GuiField_c(Gui_VarSelect, XYZStr[i], CSMVarName.DensGradVec[i]));
+// 		if (i < 2) Fields[iTmp].AppendSearchString(",");
+// 	}
+	Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+	Fields.push_back(GuiField_c(Gui_VarSelect, CSMVarName.DensGradVec[0], CSMVarName.DensGradVec[0]));
 	Fields.push_back(GuiField_c(Gui_VertSep));
 
 	iTmp = Fields.size();
 	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density Hessian variables present"));
-	for (int i = 0; i < HessXYZStr.size(); ++i){
-		Fields[iTmp].AppendSearchString(to_string(Fields.size()));
-		Fields.push_back(GuiField_c(Gui_VarSelect, HessXYZStr[i], CSMVarName.DensHessTensor[i]));
-		if (i < 5) Fields[iTmp].AppendSearchString(",");
-	}
+// 	for (int i = 0; i < HessXYZStr.size(); ++i){
+// 		Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+// 		Fields.push_back(GuiField_c(Gui_VarSelect, HessXYZStr[i], CSMVarName.DensHessTensor[i]));
+// 		if (i < 5) Fields[iTmp].AppendSearchString(",");
+// 	}
+	Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+	Fields.push_back(GuiField_c(Gui_VarSelect, CSMVarName.DensHessTensor[0], CSMVarName.DensHessTensor[0]));
 
 // 	int VolZoneNum, RhoVarNum;
 // 	vector<int> XYZVarNums(3), GradVarNums, HessVarNums;
