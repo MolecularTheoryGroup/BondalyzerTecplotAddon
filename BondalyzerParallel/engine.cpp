@@ -854,7 +854,7 @@ void DeleteCPsReturnUserInfo(const bool GuiSuccess,
 	int ZoneNum = Fields[fNum++].GetReturnInt(),
 		CPTypeVarNum = Fields[fNum++].GetReturnInt();
 	bool DeleteFromOtherCPZones = Fields[fNum++].GetReturnBool();
-	vector<int> OtherCPZoneNums;
+	vector<int> OtherCPZoneNums, UserOtherCPZoneNums = Fields[fNum++].GetReturnIntVec();
 	vector<vector<int> > OtherCPNums;
 
 	if (DeleteFromOtherCPZones){
@@ -869,7 +869,9 @@ void DeleteCPsReturnUserInfo(const bool GuiSuccess,
 		for (int i = 0; i < 3; ++i) CPZoneXYZRefs.push_back(TecUtilDataValueGetReadableNativeRef(ZoneNum, XYZVarNums[i]));
 		CPZoneCPTypeRef = TecUtilDataValueGetReadableNativeRef(ZoneNum, CPTypeVarNum);
 
-		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) if (z != ZoneNum 
+// 		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z)
+		for (const int z : UserOtherCPZoneNums)
+		if (z != ZoneNum 
 			&& TecUtilZoneIsOrdered(z) 
 			&& AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeCPs))
 		{
@@ -978,7 +980,8 @@ void DeleteCPsGetUserInfo(){
 	vector<GuiField_c> Fields = {
 		GuiField_c(Gui_ZonePointSelectMulti, "Critical point(s)", CSMZoneName.CriticalPoints),
 		GuiField_c(Gui_VarSelect, "CP type", CSMVarName.CritPointType),
-		GuiField_c(Gui_Toggle, "Also delete from other CP zone(s)", "1")
+		GuiField_c(Gui_Toggle, "Also delete from other CP zone(s)", "0"),
+		GuiField_c(Gui_ZoneSelectMulti, "Other CP zone(s)", CSMZoneName.CriticalPoints)
 	};
 
 	CSMGui("Delete critical point(s)", Fields, DeleteCPsReturnUserInfo, AddOnID);
