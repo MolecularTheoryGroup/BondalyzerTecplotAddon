@@ -50,7 +50,8 @@ const vector<GuiFieldType_e>
 		Gui_VarSelect,
 		Gui_VarSelectInt,
 		Gui_ZonePointSelectMulti,
-		Gui_Int
+		Gui_Int,
+		Gui_Radio
 	},
 	BoolTypes = {
 		Gui_Toggle,
@@ -730,9 +731,13 @@ void CSMLaunchGui(const string & Title,
 	int wTmp = CharWidth * MaxZoneVarWidth;
 
 	for (int t = 0; t < NumFields.size(); ++t){
-		if (GuiFieldType_e(t) <= Gui_Label) H += (LineHeight + VertSpacing) * NumFields[t];
+		if (GuiFieldType_e(t) <= Gui_ToggleEnable || GuiFieldType_e(t) == Gui_Label) H += (LineHeight + VertSpacing) * NumFields[t];
 		else if (GuiFieldType_e(t) <= Gui_ZonePointSelectMulti) H += (LineHeight * (MultiListNumLines + 1.5)) * NumFields[t];
-		else if (GuiFieldType_e(t) == Gui_Radio) H += (LineHeight + VertSpacing) * NumFields[t];
+		else if (GuiFieldType_e(t) == Gui_Radio) H += LineHeight * NumFields[t];
+			// For radio selection, need to count the lines in each.
+// 			for (const auto f : CSMGuiFields)
+// 				if (f.GetType() == Gui_Radio) 
+// 					H += (LineHeight + VertSpacing) * SplitString(f.GetSearchString(), ",").size();
 		else H += (2 * VertSpacing) * NumFields[t];
 	}
 
@@ -791,10 +796,10 @@ void CSMLaunchGui(const string & Title,
 					fCB = IntCallbackDoNothing;
 				}
 				f.SetID(TecGUIListAdd(CSMGuiDialogManager, xTmp, Y, wTmp, MultiListNumLines * LineHeight, TRUE, fCB));
-				CSMGuiMultiListID = f.GetID();
 				Y += LineHeight;
 				if (t == Gui_ZonePointSelectMulti){
 					TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Select with mouse", CSMGuiPointSelectButtonCB);
+					CSMGuiMultiListID = f.GetID();
 					Y += LineHeight * 1.5;
 				}
 				TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Invert selection", CSMGuiMultiListInvertSelectionButtonCallBack);
@@ -832,7 +837,7 @@ void CSMLaunchGui(const string & Title,
 
 				f.SetID(TecGUIRadioBoxAdd(CSMGuiDialogManager, xTmp, Y, wTmp, (LineHeight + VertSpacing) * Choices.size(),
 					ChoicesCStr[0], ChoicesCStr[1], ChoicesCStr[2], ChoicesCStr[3], ChoicesCStr[4], IntCallbackDoNothing));
-				Y += (LineHeight + VertSpacing) * Choices.size();
+				Y += (LineHeight) * Choices.size();
 			}
 
 			Y += LineHeight + VertSpacing;

@@ -21,8 +21,6 @@ enum GuiFieldType_e{ // comment describes gui field and specifies what should be
 	Gui_Toggle,					// Toggle (checkbox): "1" for true (checked) or "0" for false (unchecked)
 	Gui_ToggleEnable,			// Toggle (checkbox): list of gui field numbers that must have their zone/var number(s) found successfully in order to autoenable the toggle
 
-	Gui_Label,					// specify Label but no Val
-
 	Gui_ZoneSelectMulti,		// Multi-select list to select zones: comma-delimited list of zone names
 	Gui_VarSelectMulti,			// Multi-select list to select vars: comma-delimited list of var names
 
@@ -36,6 +34,8 @@ enum GuiFieldType_e{ // comment describes gui field and specifies what should be
 	Gui_Radio,					// Radio box: comma-delimited list of up to 5 options (only first 5 will be used if > 5 provided)
 
 	Gui_VertSep,				// specify neither Label or Val
+
+	Gui_Label,					// specify Label but no Val
 
 	Gui_Invalid
 };

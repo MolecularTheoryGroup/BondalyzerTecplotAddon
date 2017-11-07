@@ -306,6 +306,20 @@ static void STDCALL RefineActiveZonesCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL MakeSliceFomeCPsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		MakeSliceFromPointSelectionGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL GetClosedIsoSurfaceFromPointsCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -622,6 +636,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Refine active zones").c_str(),
 		'\0',
 		RefineActiveZonesCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Create slice from CPs").c_str(),
+		'\0',
+		MakeSliceFomeCPsCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		string("Get closed isosurface from points").c_str(),

@@ -654,7 +654,7 @@ void BondalyzerReturnUserInfo(const bool GuiSuccess,
 	}
 	else if (CurrentCalcType >= BondalyzerCalcType_BondPaths && CurrentCalcType < BondalyzerCalcType_GBA){
 
-		int RidgeFuncVarNum;
+		int RidgeFuncVarNum = 0;
 
 		if (CurrentCalcType >= BondalyzerCalcType_InteratomicSurfaces){
 			if (Fields[fNum++].GetReturnBool())
@@ -3488,7 +3488,104 @@ void CombineCPZonesGetUserInfo(){
 }
 
 
+void MakeSliceFromPointSelectionReturnUserInfo(const bool GuiSuccess,
+	const vector<GuiField_c> & Fields,
+	const vector<GuiField_c> PassthroughFields){
+	if (!GuiSuccess) return;
 
+	TecUtilLockStart(AddOnID);
+
+	int fNum = 1;
+
+	vector<int> SelectedCPNums = Fields[fNum].GetReturnIntVec();
+	vector<string> SelectedCPNames = Fields[fNum].GetReturnStringVec();
+	int CPZoneNum = Fields[fNum++].GetReturnInt();
+	vector<int> VolumeZoneNums = Fields[fNum++].GetReturnIntVec();
+	int SelectedPlane = Fields[fNum++].GetReturnInt();
+
+	if (SelectedCPNums.size() < 1 || SelectedCPNums.size() > 3){
+		TecUtilDialogErrMsg("Select 1-3 points");
+		return;
+	}
+
+	CSMGuiLock();
+	TecUtilLockStart(AddOnID);
+
+	Set VolumeZones;
+	Set_pa ActiveZones = TecUtilSetAlloc(FALSE);
+	TecUtilZoneGetActive(&ActiveZones);
+	for (const int & z : VolumeZoneNums) VolumeZones += z;
+	TecUtilZoneSetActive(VolumeZones.getRef(), AssignOp_Equals);
+	
+
+	vector<int> XYZVarNums = { -1, -1, -1 };
+	TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
+	if (XYZVarNums[0] < 0 || XYZVarNums[1] < 0 || XYZVarNums[2] < 0) for (int i = 1; i <= 3; ++i) XYZVarNums[i - 1] = i;
+
+	FieldVecPointer_c XYZPtr;
+
+	TecUtilDataLoadBegin();
+
+	XYZPtr.GetReadPtr(CPZoneNum, XYZVarNums);
+
+	vec3 Pt = zeros<vec>(3);
+	string ZoneName = "Slc: ";
+	for (int i = 0; i < SelectedCPNames.size(); ++i){
+		ZoneName += SelectedCPNames[i][0];
+		ZoneName += SelectedCPNames[i].back();
+		if (i < SelectedCPNames.size() - 1) ZoneName += "-";
+	}
+	ZoneName += " (Zone " + to_string(CPZoneNum) + ")";
+
+	for (int & i : SelectedCPNums) Pt += XYZPtr[--i];
+	Pt /= (double)SelectedCPNums.size();
+
+	vec3 Normal = zeros<vec>(3);
+
+	if (SelectedCPNums.size() == 1){
+		Normal[SelectedPlane - 1] = 1;
+	}
+	else if (SelectedCPNums.size() == 2){
+		Normal = XYZPtr[SelectedCPNums[1]] - XYZPtr[SelectedCPNums[0]];
+	}
+	else if (SelectedCPNums.size() == 3){
+		Normal = cross(XYZPtr[SelectedCPNums[1]] - XYZPtr[SelectedCPNums[0]], XYZPtr[SelectedCPNums[2]] - XYZPtr[SelectedCPNums[0]]);
+	}
+
+	TecUtilDataLoadEnd();
+
+	TecUtilCreateSliceZoneFromPlane(SliceSource_VolumeZones,
+		Pt[0], Pt[1], Pt[2],
+		Normal[0], Normal[1], Normal[2]);
+
+	Set NewZone(TecUtilDataSetGetNumZones());
+	TecUtilZoneSetMesh(SV_SHOW, NewZone.getRef(), 0.0, FALSE);
+	TecUtilZoneSetScatter(SV_SHOW, NewZone.getRef(), 0.0, FALSE);
+	TecUtilZoneSetShade(SV_SHOW, NewZone.getRef(), 0.0, FALSE);
+	TecUtilZoneSetContour(SV_SHOW, NewZone.getRef(), 0.0, TRUE);
+
+	TecUtilZoneRename(TecUtilDataSetGetNumZones(), ZoneName.c_str());
+
+	TecUtilSetAddMember(ActiveZones, TecUtilDataSetGetNumZones(), FALSE);
+	TecUtilZoneSetActive(ActiveZones, AssignOp_Equals);
+
+	TecUtilSetDealloc(&ActiveZones);
+
+	TecUtilLockFinish(AddOnID);
+	CSMGuiUnlock();
+	TecUtilRedraw(TRUE);
+}
+
+void MakeSliceFromPointSelectionGetUserInfo(){
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_Label, "Define plane by 2 (midpoint) or more (avg. normal) points"),
+		GuiField_c(Gui_ZonePointSelectMulti, "Critical point(s)", CSMZoneName.CriticalPoints),
+		GuiField_c(Gui_ZoneSelectMulti, "Volume zone(s)", CSMZoneName.FullVolume.substr(0,10)),
+		GuiField_c(Gui_Radio, "Plane (if single point)", "X,Y,Z")
+	};
+
+	CSMGui("Make slice from selected points", Fields, MakeSliceFromPointSelectionReturnUserInfo, AddOnID);
+}
 
 
 

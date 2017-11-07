@@ -25,7 +25,7 @@ enum BondalyzerCalcType_e{
 	BondalyzerCalcType_CriticalPoints,
 	BondalyzerCalcType_BondPaths,
 	BondalyzerCalcType_RingLines,
-	BondalyserCalcType_CageNuclearPaths,
+// 	BondalyserCalcType_CageNuclearPaths,
 	BondalyzerCalcType_InteratomicSurfaces,
 	BondalyzerCalcType_RingSurfaces,
 	BondalyzerCalcType_BondBundleSurfaces,
@@ -56,6 +56,7 @@ void ConnectCPsGetUserInfo();
 void DrawEigenvectorArrowsGetUserInfo();
 class FieldDataPointer_c;
 void GetClosedIsoSurface(const int & IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
+void MakeSliceFromPointSelectionGetUserInfo();
 
 void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_c> PassthroughFields = vector<GuiField_c>());
 
