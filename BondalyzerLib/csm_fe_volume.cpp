@@ -836,10 +836,7 @@ const Boolean_t FESurface_c::Setup(const int & InZoneNum,
 	}
 
 	if (m_FEVolumeMade){
-		m_VolZoneInfo.MaxIJK.resize(3);
-		TecUtilZoneGetIJK(VolZoneNum, &m_VolZoneInfo.MaxIJK[0], &m_VolZoneInfo.MaxIJK[1], &m_VolZoneInfo.MaxIJK[2]);
-		ZoneXYZVarGetMinMax_Ordered3DZone(InXYZVarNums, VolZoneNum, m_VolZoneInfo.MinXYZ, m_VolZoneInfo.MaxXYZ);
-		m_VolZoneInfo.DelXYZ = GetDelXYZ_Ordered3DZone(InXYZVarNums, VolZoneNum);
+		GetVolInfo(VolZoneNum, InXYZVarNums, FALSE, m_VolZoneInfo);
 	}
 
 	/*
@@ -898,6 +895,16 @@ const Boolean_t FESurface_c::Setup(const int & InZoneNum,
 			for (int j = 0; j < m_NumNodesPerElem; ++j)
 				m_ElemList[i].push_back(m_ConnectivityListPtr[i * m_NumNodesPerElem + j]);
 		}
+		if (m_NumNodesPerElem == 4){
+			vector<vector<int> > NewElems;
+			for (const vector<int> & e : m_ElemList){
+				NewElems.push_back({ e[0], e[1], e[2] });
+				NewElems.push_back({ e[0], e[2], e[3] });
+			}
+			m_ElemList = NewElems;
+		}
+
+		RemoveDupicateNodes();
 	}
 
 	m_IntegrationResultsReady = FALSE;
@@ -949,10 +956,6 @@ const Boolean_t FESurface_c::Setup(const int InZoneNum,
 								Inds.push_back(IJK[0] * (j + jj) + (i + ii));
 							}
 						}
-// 						Inds[0] = Index + 1;
-// 						Inds[1] = Index + 1 + 1;
-// 						Inds[2] = IJK[0] * (j + 1) + i + 1;
-// 						Inds[3] = Inds[2] - 1 + 1;
 						m_ElemList.push_back(vector<LgIndex_t>({ Inds[0], Inds[1], Inds[3] }));
 						m_ElemList.push_back(vector<LgIndex_t>({ Inds[3], Inds[2], Inds[0] }));
 					}
@@ -961,9 +964,10 @@ const Boolean_t FESurface_c::Setup(const int InZoneNum,
 			m_NumNodes = m_XYZList.size();
 			m_NumElems = m_ElemList.size();
 			m_FEVolumeMade = TRUE;
+			RemoveDupicateNodes();
 			return TRUE;
 		}
-		else{
+		else if (!TecUtilZoneIsOrdered(m_ZoneNum)){
 			return Setup(InZoneNum, ZoneNumByName("Full Volume"), InXYZVarNums, vector<int>(), true);
 		}
 	}
@@ -984,11 +988,13 @@ void FESurface_c::RemoveDupicateNodes(){
 		NodeNums[i] = i;
 
 	for (int i = 0; i < m_XYZList.size() - 1; ++i){
-		for (int j = i + 1; j < m_XYZList.size(); ++j){
-			if (!NodeIsDuplicate[j] && sum(m_XYZList[i] == m_XYZList[j]) == 3){
-				NodeIsDuplicate[j] = true;
-				NodeNums[j] = NodeNums[i];
-				DupFound = true;
+		if (!NodeIsDuplicate[i]){
+			for (int j = i + 1; j < m_XYZList.size(); ++j){
+				if (!NodeIsDuplicate[j] && sum(m_XYZList[i] == m_XYZList[j]) == 3){
+					NodeIsDuplicate[j] = true;
+					NodeNums[j] = NodeNums[i];
+					DupFound = true;
+				}
 			}
 		}
 	}

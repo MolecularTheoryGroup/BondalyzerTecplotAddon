@@ -20,6 +20,15 @@ double VectorAngle(const vec3 & A, const vec3 & B){
 	return acos(dot(A, B) / (norm(A) * norm(B)));
 }
 
+const vec3 SphericalToCartesian(const double & r, const double & theta, const double & phi){
+	vec3 out;
+	double sinTheta = sin(theta);
+	out << sinTheta * cos(phi)
+		<< sinTheta * sin(phi)
+		<< cos(theta);
+	return out * r;
+}
+
 const mat44		RotationMatrix(const double & Angle, vec3 Axis){
 	double L = norm(Axis);
 	double LSqr = L * L;

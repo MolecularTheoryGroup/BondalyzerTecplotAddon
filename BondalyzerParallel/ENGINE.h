@@ -25,7 +25,7 @@ enum BondalyzerCalcType_e{
 	BondalyzerCalcType_CriticalPoints,
 	BondalyzerCalcType_BondPaths,
 	BondalyzerCalcType_RingLines,
-// 	BondalyserCalcType_CageNuclearPaths,
+	BondalyserCalcType_CageNuclearPaths,
 	BondalyzerCalcType_InteratomicSurfaces,
 	BondalyzerCalcType_RingSurfaces,
 	BondalyzerCalcType_BondBundleSurfaces,
@@ -40,6 +40,7 @@ const static vector<string> BondalyzerStepGUITitles = {
 	"critical points",
 	"bond paths",
 	"ring lines",
+	"cage-nuclear paths",
 	"interatomic surfaces",
 	"ring surfaces",
 	"bond bundle surfaces",
@@ -57,6 +58,8 @@ void DrawEigenvectorArrowsGetUserInfo();
 class FieldDataPointer_c;
 void GetClosedIsoSurface(const int & IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
 void MakeSliceFromPointSelectionGetUserInfo();
+
+void GradientPathsOnSphereGetUserInfo();
 
 void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_c> PassthroughFields = vector<GuiField_c>());
 
@@ -81,6 +84,17 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	const vector<int> & SelectedCPNums,
 	const int & CPTypeVarNum,
 	const CPType_e & CPType,
+	const vector<int> & XYZVarNums,
+	const int & RhoVarNum,
+	const vector<int> & GradVarNums,
+	const vector<int> & HessVarNums,
+	const Boolean_t & IsPeriodic);
+
+const Boolean_t FindCageNuclearPaths(const int & VolZoneNum,
+	const vector<int> & OtherCPZoneNums,
+	const int & SelectedCPZoneNum,
+	const vector<int> & SelectedCPNums,
+	const int & CPTypeVarNum,
 	const vector<int> & XYZVarNums,
 	const int & RhoVarNum,
 	const vector<int> & GradVarNums,

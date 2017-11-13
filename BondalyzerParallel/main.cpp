@@ -320,6 +320,21 @@ static void STDCALL MakeSliceFomeCPsCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL GradientPathsOnSphereMenuCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		GradientPathsOnSphereGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL GetClosedIsoSurfaceFromPointsCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -468,6 +483,20 @@ static void STDCALL FindRingLinesCallback(void)
 	if (TecUtilDataSetIsAvailable())
 	{
 		BondalyzerGetUserInfo(BondalyzerCalcType_RingLines);
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL FindCageNuclearPathsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		BondalyzerGetUserInfo(BondalyserCalcType_CageNuclearPaths);
 	}
 	else
 	{
@@ -638,6 +667,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		RefineActiveZonesCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
+		string("Gradient path shutgun around nuclear/cage CPs").c_str(),
+		'\0',
+		GradientPathsOnSphereMenuCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Create slice from CPs").c_str(),
 		'\0',
 		MakeSliceFomeCPsCallback);
@@ -709,12 +743,17 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		FindRingLinesCallback);
 
 	TecUtilMenuAddOption("MTG_Bondalyzer",
-		string("4. Find interatomic surfaces").c_str(),
+		string("4. Find cage-nuclear paths").c_str(),
+		'\0',
+		FindCageNuclearPathsCallback);
+
+	TecUtilMenuAddOption("MTG_Bondalyzer",
+		string("5. Find interatomic surfaces").c_str(),
 		'\0',
 		FindBondSurfacesCallback);
 
 	TecUtilMenuAddOption("MTG_Bondalyzer",
-		string("5. Find ring surfaces").c_str(),
+		string("6. Find ring surfaces").c_str(),
 		'\0',
 		FindRingSurfacesCallback);
 

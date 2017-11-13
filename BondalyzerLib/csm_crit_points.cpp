@@ -99,7 +99,7 @@ CritPoints_c::CritPoints_c(const int & CPZoneNum,
 
 	for (int iCP = 0; iCP < CPTypePtr.Size(); ++iCP){
 		int CPType = CPTypePtr[iCP];
-		int ind = std::find(CPTypeList, std::end(CPTypeList), CPType) - CPTypeList;
+		int ind = VectorGetElementNum(CPTypeList, (CPType_e)CPType);
 
 		m_Rho[ind].push_back(RhoPtr.IsReady() ? RhoPtr[iCP] : 0.0);
 		m_XYZ[ind].push_back(vec3());
@@ -153,6 +153,32 @@ const double CritPoints_c::GetMinCPDist(const vector<CPType_e> & CPTypes){
 		return m_MinCPDist;
 	else
 		return -1;
+}
+
+
+const double CritPoints_c::GetMinCPDist(const int & CPTypeInd, const int & CPOffset, const vector<CPType_e> & CPTypes){
+	double MinDistSqr = DBL_MAX;
+
+	vector<int> TypeIndList;
+	for (const auto & i : CPTypes) TypeIndList.push_back(VectorGetElementNum(CPTypeList, i));
+
+	for (const int & t : TypeIndList){
+		for (const vec3 & pt : m_XYZ[t]){
+			if (t != CPTypeInd || sum(GetXYZ(CPTypeInd, CPOffset) == pt) < 3){
+				double TmpDistSqr = DistSqr(GetXYZ(CPTypeInd, CPOffset), pt);
+				if (TmpDistSqr < MinDistSqr) MinDistSqr = TmpDistSqr;
+			}
+		}
+	}
+
+	if (MinDistSqr != DBL_MAX) return sqrt(MinDistSqr);
+	else return -1;
+}
+
+const double CritPoints_c::GetMinCPDist(const int & CPTotOffset, const vector<CPType_e> & CPTypes){
+	vector<int> TypeOffset = GetTypeNumOffsetFromTotOffset(CPTotOffset);
+
+	return GetMinCPDist(TypeOffset[0], TypeOffset[1], CPTypes);
 }
 
 vec3 CritPoints_c::GetXYZ(const int & TotOffset) const{
@@ -239,6 +265,8 @@ void CritPoints_c::Append(const CritPoints_c & rhs)
 		m_NumCPs[i] += rhs.m_NumCPs[i];
 	}
 	m_TotNumCPs += rhs.m_TotNumCPs;
+
+	RemoveSpuriousCPs();
 }
 
 
@@ -251,7 +279,7 @@ const Boolean_t CritPoints_c::FindMinCPDist(const vector<CPType_e> & CPTypes){
 
 	vector<int> TypeIndList;
 	m_MinDistCPTypes = CPTypes;
-	for (const auto & i : CPTypes) TypeIndList.push_back(std::find(CPTypeList, std::end(CPTypeList), i) - CPTypeList);
+	for (const auto & i : CPTypes) TypeIndList.push_back(VectorGetElementNum(CPTypeList, i));
 
 	int MinI = -1, MinJ = -1, MinII = -1, MinJJ = -1;
 	double TmpDbl;
@@ -979,7 +1007,7 @@ const Boolean_t CritPointInCell(
 
 			Point = MR.s->x->data;
 
-			Status = gsl_multiroot_test_residual(MR.s->f, 1e-7);
+			Status = gsl_multiroot_test_residual(MR.s->f, 1e-12);
 
 			if (Iter > CheckPosIter || Iter >= MaxCPIter){
 				CheckPt = RootParams.VolInfo->BasisInverse * (Point - RootParams.VolInfo->MinXYZ);
@@ -1348,6 +1376,8 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 						GP.Seed(false);
 
 						if (GP.IsMade()){
+							GP.SaveAsOrderedZone();
+
 							CompPt = GP[-1];
 							vec3 EigVals, PrincDir;
 							mat33 EigVecs;

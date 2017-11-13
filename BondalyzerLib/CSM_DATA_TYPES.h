@@ -149,6 +149,7 @@ const vector<string> ElementNameList = {
 double DistSqr(const vec & A, const vec & B);
 double Distance(const vec & A, const vec & B);
 double VectorAngle(const vec3 & A, const vec3 & B);
+const vec3 SphericalToCartesian(const double & r, const double & theta, const double & phi);
 const mat44	RotationMatrix(const double & Angle, vec3 Axis);
 const vec3 Rotate(const vec3 & Point, const double & Angle, vec3 Axis);
 const double TriangleArea(const vec3 & A, const vec3 & B, const vec3 & C);

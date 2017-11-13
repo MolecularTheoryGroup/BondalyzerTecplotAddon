@@ -170,6 +170,11 @@ GradPathBase_c & GradPathBase_c::operator=(const GradPathBase_c & rhs)
 
 	m_RhoList = rhs.m_RhoList;
 
+	if (m_XYZList.size() == 0){
+		m_XYZList.reserve(rhs.m_XYZList.capacity());
+		m_RhoList.reserve(rhs.m_RhoList.capacity());
+	}
+
 	for (int i = 0; i < 2; ++i)
 		m_StartEndCPNum[i] = rhs.m_StartEndCPNum[i];
 
@@ -212,9 +217,7 @@ const Boolean_t GradPathBase_c::operator==(const GradPathBase_c & rhs) const
 }
 GradPathBase_c & GradPathBase_c::operator+=(const GradPathBase_c & rhs)
 {
-	Boolean_t IsOk = (m_GradPathMade && rhs.IsMade());
-	if (IsOk){
-
+	if (m_XYZList.size() > 0 && rhs.GetCount() > 0){
 		double MinSqrDist = DistSqr(m_XYZList[GetCount() - 1], rhs[0]);
 		int MinPair = 1;
 		double TempSqrDist = DistSqr(m_XYZList[GetCount() - 1], rhs[-1]);
@@ -257,6 +260,12 @@ GradPathBase_c & GradPathBase_c::operator+=(const GradPathBase_c & rhs)
 				m_StartEndCPNum[1] = rhs.m_StartEndCPNum[0];
 				break;
 		}
+	}
+	else if (rhs.GetCount() > 0){
+		m_XYZList.insert(m_XYZList.end(), rhs.m_XYZList.cbegin(), rhs.m_XYZList.cend());
+		m_RhoList.insert(m_RhoList.end(), rhs.m_RhoList.cbegin(), rhs.m_RhoList.cend());
+		for (int i = 0; i < 2; ++i)
+			m_StartEndCPNum[i] = rhs.m_StartEndCPNum[i];
 	}
 	return *this;
 }
@@ -1008,6 +1017,9 @@ const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
 				}
 			}
 		}
+		int GPSize = GP_NumPointsBufferFactor * GP_MaxNumPoints;
+		m_XYZList.reserve(GPSize);
+		m_RhoList.reserve(GPSize);
 	}
 
 	m_StartEndCPNum[0] = m_StartEndCPNum[1] = -1;
@@ -1091,7 +1103,7 @@ const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
 	m_GradPathMade = FALSE;
 
 	if (m_GradPathReady){
-		int GPSize = GP_NumPointsBufferFactor * m_NumGPPoints;
+		int GPSize = GP_NumPointsBufferFactor * GP_MaxNumPoints;
 		m_XYZList.reserve(GPSize);
 		m_RhoList.reserve(GPSize);
 	}
@@ -1099,8 +1111,11 @@ const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
 	return m_GradPathReady;
 }
 
-const Boolean_t GradPath_c::Seed(const bool DoResample){
+const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 	Boolean_t IsOk = m_GradPathReady && !m_GradPathMade;
+
+	StreamDir_e OldDir = m_ODE_Data.Direction;
+	m_ODE_Data.Direction = Direction;
 
 	gsl_odeiv2_system ODESys = { &GP_ODE_GradFunction, NULL, m_ODE_NumDims, &m_ODE_Data };
 
@@ -1124,15 +1139,10 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 
 		vec3 NewPoint, PtIm1 = m_StartPoint, PtI;
 
-		int GPSize = GP_NumPointsBufferFactor * m_NumGPPoints;
-
 		IsOk = SetIndexAndWeightsForPoint(m_StartPoint, m_ODE_Data.VolZoneInfo);
 
 		if (IsOk){
-			// 			m_XYZList.reserve(GPSize);
 			m_XYZList.push_back(m_StartPoint);
-
-			// 			m_RhoList.reserve(GPSize);
 			m_RhoList.push_back(RhoByCurrentIndexAndWeights());
 		}
 
@@ -1400,29 +1410,29 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 
 		IsOk = (IsOk && Status == GSL_SUCCESS || Status == GSL_EDOM || Status == GSL_ENOPROG);
 
-// 		if (Status == GSL_ENOPROG && m_XYZList.size() > GP_StallPointCount){
-// 			/*
-// 			*	Grad path stalled, so it was basically bouncing around the same point.
-// 			*	The last point can then be approximated as the midpoint of the stalled points.
-// 			*/
-// 			vec3 Pt = zeros(3);
-// 			double PtRho = 0.0;
-// 			double PtCount = 0.0;
-// 			for (int i = MAX(0, m_XYZList.size() - GP_StallPointCount); i < m_XYZList.size(); ++i){
-// 				Pt += m_XYZList[i];
-// 				PtRho += m_RhoList[i];
-// 				PtCount += 1.0;
-// 			}
-// 
-// 			Pt /= PtCount;
-// 			PtRho /= PtCount;
-// 
-// 			m_XYZList.resize(MAX(0, m_XYZList.size() - GP_StallPointCount));
-// 			m_XYZList.back() = Pt;
-// 			m_RhoList.resize(MAX(0, m_RhoList.size() - GP_StallPointCount));
-// 			m_RhoList.back() = PtRho;
-// 			PtI = Pt;
-// 		}
+		// 		if (Status == GSL_ENOPROG && m_XYZList.size() > GP_StallPointCount){
+		// 			/*
+		// 			*	Grad path stalled, so it was basically bouncing around the same point.
+		// 			*	The last point can then be approximated as the midpoint of the stalled points.
+		// 			*/
+		// 			vec3 Pt = zeros(3);
+		// 			double PtRho = 0.0;
+		// 			double PtCount = 0.0;
+		// 			for (int i = MAX(0, m_XYZList.size() - GP_StallPointCount); i < m_XYZList.size(); ++i){
+		// 				Pt += m_XYZList[i];
+		// 				PtRho += m_RhoList[i];
+		// 				PtCount += 1.0;
+		// 			}
+		// 
+		// 			Pt /= PtCount;
+		// 			PtRho /= PtCount;
+		// 
+		// 			m_XYZList.resize(MAX(0, m_XYZList.size() - GP_StallPointCount));
+		// 			m_XYZList.back() = Pt;
+		// 			m_RhoList.resize(MAX(0, m_RhoList.size() - GP_StallPointCount));
+		// 			m_RhoList.back() = PtRho;
+		// 			PtI = Pt;
+		// 		}
 
 		// 		gsl_odeiv2_driver_free(ODEDriver);
 
@@ -1459,14 +1469,43 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 			}
 		}
 
-		IsOk = m_GradPathMade = (IsOk);
+		m_GradPathMade = IsOk;
 		if (IsOk && m_GPType)
 			m_SGPMade = TRUE;
+	}
+
+	m_ODE_Data.Direction = OldDir;
+
+	return IsOk;
+}
+
+const Boolean_t GradPath_c::Seed(const bool DoResample){
+	Boolean_t IsOk = m_GradPathReady && !m_GradPathMade;
 
 
-		if (IsOk && DoResample){
-			Resample(m_NumGPPoints);
+	if (m_ODE_Data.Direction != StreamDir_Both){
+		IsOk = SeedInDirection(m_ODE_Data.Direction);
+	}
+	else{
+		int StartCCPNum = m_StartEndCPNum[0];
+		vector<GradPath_c> GPs(2, *this);
+		vector<int> EndCPNums;
+		m_GradPathMade = TRUE;
+		for (int i = 0; i < 2 && IsOk; ++i){
+			GPs[i].SetStartEndCPNum(-1, 0);
+			IsOk = GPs[i].SeedInDirection((StreamDir_e)i);
+			for (int j = 0; j < 2; ++j)
+			if (GPs[i].m_StartEndCPNum[j] >= 0 && VectorGetElementNum(EndCPNums, GPs[i].m_StartEndCPNum[j]) < 0)
+				EndCPNums.push_back(GPs[i].m_StartEndCPNum[j]);
+			*this += GPs[i];
 		}
+		std::sort(EndCPNums.begin(), EndCPNums.end());
+		m_StartEndCPNum[0] = EndCPNums.size() > 1 ? EndCPNums[1] : -1;
+		m_StartEndCPNum[1] = EndCPNums[0];
+	}
+
+	if (IsOk && DoResample){
+		Resample(m_NumGPPoints);
 	}
 
 	return IsOk;

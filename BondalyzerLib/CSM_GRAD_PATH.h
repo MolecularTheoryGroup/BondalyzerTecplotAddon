@@ -15,7 +15,7 @@ using namespace arma;
 
 using std::vector;
 
-#define GP_NumPointsBufferFactor	5
+#define GP_NumPointsBufferFactor	0.1
 #define GP_StallPointCount			10
 #define GP_StallNumPointsToCheck	10
 #define GP_StallPointDistTol		1e-4
@@ -119,7 +119,7 @@ public:
 	void PointPrepend(const vec3 & Point, const double & Rho);
 
 	const LgIndex_t GetZoneNum() const { return m_ZoneNum; }
-	const Boolean_t SaveAsOrderedZone(const string & ZoneName, const ColorIndex_t MeshColor = Black_C);
+	const Boolean_t SaveAsOrderedZone(const string & ZoneName = "Gradient Path", const ColorIndex_t MeshColor = Black_C);
 	const EntIndex_t SaveAsOrderedZone(const string & ZoneName,
 		vector<FieldDataType_e> & VarDataTypes,
 		const vector<int> & XYZVarNums,
@@ -294,6 +294,7 @@ public:
 private:
 	//const Boolean_t SetIndexAndWeightsForPoint(vec3 & Point);
 	const double RhoByCurrentIndexAndWeights();
+	const Boolean_t SeedInDirection(const StreamDir_e & Direction);
 
 	/*
 		* Special gradient path algorithm functions

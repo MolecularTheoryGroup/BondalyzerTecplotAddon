@@ -583,7 +583,7 @@ void CSMGuiPointSelectOptionCallback(const int* Val){
 	for (int i = 0; i < NumPoints; ++i){
 		if (ZoneIsCP){
 			int CPType = TecUtilDataValueGetByRef(CPTypeRef, i + 1);
-			int CPInd = std::find(CPTypeList, std::end(CPTypeList), CPType) - CPTypeList;
+			int CPInd = VectorGetElementNum(CPTypeList, (CPType_e)CPType);
 			LabelBase = CPNameList[CPInd] + " " + to_string(CPTypeCounts[CPInd]++);
 		}
 		TecGUIListAppendItem(CSMGuiMultiListID, ZoneIsCP ? LabelBase.c_str() : to_string(i + 1).c_str());

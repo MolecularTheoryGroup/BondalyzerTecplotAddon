@@ -102,6 +102,7 @@ struct CSMAuxData_s{
 		ZoneSubTypeRBS = Prefix + "RingBundleSurface",
 		ZoneSubTypeBondPath = Prefix + "BondPath",
 		ZoneSubTypeRingLine = Prefix + "RingLine",
+		ZoneSubTypeCageNuclearPath = Prefix + "CageNuclearPath",
 		GPEndNumList = Prefix + "BegEndCrtPtNums",
 		GPEndTypeList = Prefix + "BegEndCrtPtTypes",
 		ZFSCornerCPTypeList = Prefix + "CornerCrtPtTypes",

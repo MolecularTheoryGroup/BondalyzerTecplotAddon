@@ -37,7 +37,7 @@ enum CPType_e{
 };
 
 // const static char CPTypeList[] = { -3, -1, 1, 3, 11, 13 };
-const static CPType_e CPTypeList[] = { CPType_NuclearCP, CPType_BondCP, CPType_RingCP, CPType_CageCP, CPType_RingCPFF, CPType_CageCPFF };
+const static vector<CPType_e> CPTypeList = { CPType_NuclearCP, CPType_BondCP, CPType_RingCP, CPType_CageCP, CPType_RingCPFF, CPType_CageCPFF };
 
 const static vector<string> CPNameList = { "Nuclear", "Bond", "Ring", "Cage", "Ring FF", "Cage FF" };
 
@@ -97,7 +97,9 @@ public:
 	const CPType_e GetTypeFromTotOffset(const int & TotOffset) const;
 	const int GetTotOffsetFromTypeNumOffset(const int & TypeNum, const int & TypeOffset) const;
 
-	const double GetMinCPDist(const vector<CPType_e> & CPTypes = vector<CPType_e>(CPTypeList, std::end(CPTypeList)));
+	const double GetMinCPDist(const vector<CPType_e> & CPTypes = CPTypeList);
+	const double GetMinCPDist(const int & CPTypeInd, const int & CPOffset, const vector<CPType_e> & CPTypes = CPTypeList);
+	const double GetMinCPDist(const int & CPTotOffset, const vector<CPType_e> & CPTypes = CPTypeList);
 
 	const double GetRho(const int & TypeNum, const int & Offset) const { return m_Rho[TypeNum][Offset]; }
 	const double GetRho(const int & TotOffset) const;

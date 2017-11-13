@@ -36,6 +36,8 @@
 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_min.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_multimin.h>
 
 #include "CSM_DATA_TYPES.h"
 #include "CSM_DATA_SET_INFO.h"
@@ -85,6 +87,28 @@ struct MinFuncParams_GPLengthInPlane{
 	vec3 StartPointOrigin;
 	vec3 RotVec;
 	vec3 RotAxis;
+	int StartCPNum = -1;
+	int EndCPNum = -1;
+};
+
+struct MinFuncParams_GPLengthSpherical{
+	StreamDir_e Direction = StreamDir_Invalid;
+	int NumGPPoints = -1;
+	GPType_e GPType = GPType_Invalid;
+	GPTerminate_e GPTerminate = GPTerminate_Invalid;
+	vec3 * TermPoint = NULL;
+	CritPoints_c * CPs = NULL;
+	double * TermPointRadius = NULL;
+	double * TermValue = NULL;
+	VolExtentIndexWeights_s * VolInfo = NULL;
+	const vector<FieldDataPointer_c> * HessPtrs = NULL;
+	const vector<FieldDataPointer_c> * GradPtrs = NULL;
+	const FieldDataPointer_c * RhoPtr = NULL;
+
+	GradPath_c GP;
+
+	vec3 StartPointOrigin;
+	double r;
 	int StartCPNum = -1;
 	int EndCPNum = -1;
 };
@@ -144,9 +168,7 @@ void RefineActiveZones(){
 
 	vector<FESurface_c> Vols;
 
-	TecUtilDrawGraphics(FALSE);
-	TecUtilInterfaceSuspend(TRUE);
-	TecUtilWorkAreaSuspend(TRUE);
+	CSMGuiLock();
 
 	StatusLaunch("Refining zones", AddOnID, TRUE);
 
@@ -188,9 +210,7 @@ void RefineActiveZones(){
 
 	StatusDrop(AddOnID);
 
-	TecUtilDrawGraphics(TRUE);
-	TecUtilInterfaceSuspend(FALSE);
-	TecUtilWorkAreaSuspend(FALSE);
+	CSMGuiUnlock();
 }
 
 const bool FEZoneDFS(const int & NodeNum,
@@ -673,6 +693,8 @@ void BondalyzerReturnUserInfo(const bool GuiSuccess,
 
 		if (CurrentCalcType == BondalyzerCalcType_BondPaths || CurrentCalcType == BondalyzerCalcType_RingLines)
 			FindBondRingLines(VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+		else if (CurrentCalcType == BondalyserCalcType_CageNuclearPaths)
+			FindCageNuclearPaths(VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
 		else if (CurrentCalcType == BondalyzerCalcType_InteratomicSurfaces || CurrentCalcType == BondalyzerCalcType_RingSurfaces)
 			FindBondRingSurfaces(VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, RidgeFuncVarNum, IsPeriodic);
 	}
@@ -773,9 +795,9 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_
 
 // 		Fields.push_back(GuiField_c(Gui_ZoneSelect, "Critical points zone", "Critical Points"));
 		Fields.push_back(GuiField_c(Gui_VarSelect, "CP type variable", CSMVarName.CritPointType));
-		string SearchString = CSMZoneName.CPType[0] + "," + CSMZoneName.CPType[3];
-		if (CalcType == BondalyzerCalcType_BondPaths || CalcType == BondalyzerCalcType_InteratomicSurfaces) SearchString += CSMZoneName.CPType[2];
-		else if (CalcType == BondalyzerCalcType_RingLines || CalcType == BondalyzerCalcType_RingSurfaces) SearchString += CSMZoneName.CPType[1];
+		string SearchString = CSMZoneName.CriticalPoints;
+// 		if (CalcType == BondalyzerCalcType_BondPaths || CalcType == BondalyzerCalcType_InteratomicSurfaces) SearchString += CSMZoneName.CPType[2];
+// 		else if (CalcType == BondalyzerCalcType_RingLines || CalcType == BondalyzerCalcType_RingSurfaces) SearchString += CSMZoneName.CPType[1];
 
 
 		Fields.push_back(GuiField_c(Gui_ZoneSelectMulti, "Other critical points zones", SearchString));
@@ -783,6 +805,7 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_
 		int CPTypeNum;
 		if (CalcType == BondalyzerCalcType_BondPaths || CalcType == BondalyzerCalcType_InteratomicSurfaces) CPTypeNum = 1;
 		else if (CalcType == BondalyzerCalcType_RingLines || CalcType == BondalyzerCalcType_RingSurfaces) CPTypeNum = 2;
+		else if (CalcType == BondalyserCalcType_CageNuclearPaths) CPTypeNum = 3;
 		int CPZoneNum = ZoneNumByName(CSMZoneName.CPType[CPTypeNum]);
 		if (CPZoneNum > 0) SearchString = CSMZoneName.CPType[CPTypeNum];
 		else SearchString = CSMZoneName.CriticalPoints;
@@ -1321,7 +1344,7 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	for (const auto & i : XYZVarNums) REQUIRE(i > 0 && i <= NumVars);
 	for (const auto & i : OtherCPZoneNums) REQUIRE(i > 0 && i <= NumZones);
 
-	int TypeInd = std::find(CPTypeList, std::end(CPTypeList), CPType) - CPTypeList;
+	int TypeInd = VectorGetElementNum(CPTypeList, CPType);
 	if (TypeInd >= 6){
 		TecUtilDialogErrMsg("Invalid CP type specified");
 		return FALSE;
@@ -1411,7 +1434,7 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 
 	vec3 StartPoint;
 
-	const double StartPointOffset = 0.05 * AllCPs.GetMinCPDist(MinDistTypes);
+	const double StartPointOffset = 0.1 * AllCPs.GetMinCPDist(MinDistTypes);
 	const int NumGPPts = 100;
 	double TermRadius = 0.2;
 	double RhoCutoff = DefaultRhoCutoff;
@@ -1514,6 +1537,704 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	return TRUE;
 }
 
+/*
+ *	Create N equidistributed points on a sphere using the algorithm 
+ *	described by Deserno at https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
+ *	Turns out that the number of points on the sphere is only (close to) the
+ *	specified number if r == 1.
+ */
+void EquidistributedSpherePoints(
+	const int & N, 
+	const double & r,
+	vector<vec3> & PointVec,
+	vector<double> & ThetaVec,
+	vector<double> & PhiVec)
+{
+	REQUIRE(N > 10 && r > 0);
+
+	PointVec.clear();
+	ThetaVec.clear();
+	PhiVec.clear();
+	PointVec.reserve(N);
+	ThetaVec.reserve(N);
+	PhiVec.reserve(N);
+
+// 	double a = 4. * PI * r * r / (double)N;
+	double a = 4. * PI / (double)N;
+	double d = sqrt(a);
+	double M_theta = round(PI / d);
+	double d_theta = PI / M_theta;
+	double d_phi = a / d_theta;
+
+	for (double m = 0; m < M_theta; ++m){
+		double theta = PI * (m + 0.5) / M_theta;
+		double M_phi = round(PI2 * sin(theta) / d_phi);
+		for (double n = 0; n < M_phi; ++n){
+			double phi = PI2 * n / M_phi;
+			PointVec.push_back(SphericalToCartesian(r, theta, phi));
+			ThetaVec.push_back(theta);
+			PhiVec.push_back(phi);
+		}
+	}
+}
+
+double MinFunc_GPLength_Spherical(const gsl_vector * ThetaPhi, void * params){
+	MinFuncParams_GPLengthSpherical * GPParams = reinterpret_cast<MinFuncParams_GPLengthSpherical*>(params);
+
+	GPParams->GP = GradPath_c(
+		GPParams->StartPointOrigin + SphericalToCartesian(GPParams->r, gsl_vector_get(ThetaPhi, 0), gsl_vector_get(ThetaPhi, 1)),
+		GPParams->Direction,
+		GPParams->NumGPPoints,
+		GPParams->GPType,
+		GPParams->GPTerminate,
+		GPParams->TermPoint,
+		GPParams->CPs,
+		GPParams->TermPointRadius,
+		GPParams->TermValue,
+		*GPParams->VolInfo,
+		*GPParams->HessPtrs,
+		*GPParams->GradPtrs,
+		*GPParams->RhoPtr);
+
+	GPParams->GP.SetStartEndCPNum(GPParams->StartCPNum, 0);
+
+	GPParams->GP.Seed(false);
+
+#ifdef _DEBUG
+	if (!GPParams->GP.IsMade())
+		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_Spherical failed");
+	if (GPParams->EndCPNum >= 0 && GPParams->GP.GetStartEndCPNum(1) != GPParams->EndCPNum)
+		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_Spherical terminated at wrong CP");
+#endif
+
+	if (GPParams->Direction != StreamDir_Both)
+		GPParams->GP.PointPrepend(GPParams->StartPointOrigin, 0);
+
+	return GPParams->GP.GetLength();
+}
+
+/*
+*	Create cage-nuclear paths from a source CP zone(s)
+*/
+const Boolean_t FindCageNuclearPaths(const int & VolZoneNum,
+	const vector<int> & OtherCPZoneNums,
+	const int & SelectedCPZoneNum,
+	const vector<int> & SelectedCPNums,
+	const int & CPTypeVarNum,
+	const vector<int> & XYZVarNums,
+	const int & RhoVarNum,
+	const vector<int> & GradVarNums,
+	const vector<int> & HessVarNums,
+	const Boolean_t & IsPeriodic)
+{
+	TecUtilLockStart(AddOnID);
+
+	int NumZones = TecUtilDataSetGetNumZones();
+	int NumVars = TecUtilDataSetGetNumVars();
+
+	REQUIRE(XYZVarNums.size() == 3);
+	for (const auto & i : XYZVarNums) REQUIRE(i > 0 && i <= NumVars);
+	for (const auto & i : OtherCPZoneNums) REQUIRE(i > 0 && i <= NumZones);
+
+	int TypeInd = 3;
+
+	if (CPTypeVarNum < 0){
+		TecUtilDialogErrMsg("Failed to find CP Type variable");
+		return FALSE;
+	}
+
+	FieldDataPointer_c RhoPtr;
+	vector<FieldDataPointer_c> GradPtrs, HessPtrs;
+
+	TecUtilDataLoadBegin();
+
+	if (!GetReadPtrsForZone(VolZoneNum,
+		RhoVarNum, GradVarNums, HessVarNums,
+		RhoPtr, GradPtrs, HessPtrs)){
+		TecUtilDialogErrMsg("Failed to get read pointer(s)");
+		return FALSE;
+	}
+
+	VolExtentIndexWeights_s VolInfo;
+	VolInfo.AddOnID = AddOnID;
+
+	if (!GetVolInfo(VolZoneNum, XYZVarNums, IsPeriodic, VolInfo)){
+		TecUtilDialogErrMsg("Failed to get volume zone info");
+		return FALSE;
+	}
+
+	vector<int> iJunk(2);
+	int NumCPs;
+	string CPZoneCheckString;
+
+	char* tmpName;
+	TecUtilZoneGetName(SelectedCPZoneNum, &tmpName);
+	CPZoneCheckString = tmpName;
+	TecUtilStringDealloc(&tmpName);
+
+	for (const int & z : OtherCPZoneNums){
+		TecUtilZoneGetIJK(z, &NumCPs, &iJunk[0], &iJunk[1]);
+		for (const auto & i : iJunk) if (i > 1){
+			TecUtilDialogErrMsg("CP zone is not i-ordered");
+			return FALSE;
+		}
+		TecUtilZoneGetName(z, &tmpName);
+		if (CPZoneCheckString == tmpName){
+			TecUtilDialogErrMsg(string("Duplicate CP zone specified: " + string(tmpName)).c_str());
+			return FALSE;
+		}
+		TecUtilStringDealloc(&tmpName);
+	}
+
+	vec3 EigVals;
+	mat33 EigVecs;
+
+	MultiRootParams_s MR;
+	MR.CalcType = GPType_Classic;
+	MR.VolInfo = &VolInfo;
+	MR.IsPeriodic = IsPeriodic;
+	MR.HasGrad = (GradPtrs.size() == 3);
+	MR.HasHess = (HessPtrs.size() == 6);
+	MR.RhoPtr = &RhoPtr;
+	MR.GradPtrs = &GradPtrs;
+	MR.HessPtrs = &HessPtrs;
+	MR.BasisVectors = &VolInfo.BasisNormalized;
+
+
+	CritPoints_c AllCPs(SelectedCPZoneNum, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
+
+	for (const int & z : OtherCPZoneNums){
+		AllCPs += CritPoints_c(z, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
+	}
+
+	int EndCPNumforName = 0;
+	StreamDir_e GPDir = StreamDir_Both;
+	ColorIndex_t PathColor = Red_C;
+	vector<CPType_e> MinDistTypes = { CPType_RingCP, CPType_NuclearCP }; //ring CPs are the closest to cage CPs, and don't want to seed past a neighboring ring CP, so use that distance.
+
+	CSMGuiLock();
+
+	vec3 StartPoint;
+
+	const int NumSpherePoints = 500;
+	const int NumGPPts = 100;
+	double TermRadius = 0.2;
+	double RhoCutoff = DefaultRhoCutoff;
+
+	for (int iCP = 0; iCP < SelectedCPNums.size(); ++iCP){
+		double StartPointOffset = 0.3 * AllCPs.GetMinCPDist(TypeInd, SelectedCPNums[iCP] - 1, MinDistTypes);
+
+		vector<GradPath_c> GPs;
+		vector<vec3> SeedPoints;
+		vector<double> SeedTheta, SeedPhi;
+
+		EquidistributedSpherePoints(NumSpherePoints, StartPointOffset, SeedPoints, SeedTheta, SeedPhi);
+
+		for (vec3 & Pt : SeedPoints){
+			Pt += AllCPs.GetXYZ(TypeInd, SelectedCPNums[iCP] - 1);
+			GPs.push_back(GradPath_c(Pt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.back().SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, SelectedCPNums[iCP] - 1), 0);
+		}
+
+		int NumGPs = GPs.size();
+		vector<double> GPLengths(NumGPs);
+		vector<CPType_e> GPEndCPTypes(NumGPs);
+		vector<int> GPEndCPNums(NumGPs);
+
+#ifndef _DEBUG
+#pragma omp parallel for schedule(dynamic)
+#endif
+		for (int iGP = 0; iGP < NumGPs; ++iGP){
+			GPs[iGP].Seed(false);
+// 			GPs[iGP].PointPrepend(AllCPs.GetXYZ(GPs[iGP].GetStartEndCPNum()[0]), AllCPs.GetRho(GPs[iGP].GetStartEndCPNum()[0]));
+			GPLengths[iGP] = GPs[iGP].GetLength();
+			GPEndCPNums[iGP] = GPs[iGP].GetStartEndCPNum(1);
+			GPEndCPTypes[iGP] = AllCPs.GetTypeFromTotOffset(GPEndCPNums[iGP]);
+		}
+
+		vector<bool> GPUsed(GPs.size(), false);
+		vector<int> EndCPNums;
+		vector<double> StartTheta, StartPhi;
+
+		for (int iGP = 0; iGP < NumGPs; ++iGP){
+			if (!GPUsed[iGP] && GPEndCPTypes[iGP] == CPType_NuclearCP){
+				int MinInd = iGP;
+				for (int jGP = iGP + 1; jGP < iGP + NumGPs - 1; ++jGP){
+					int ind = jGP % NumGPs;
+					if (!GPUsed[ind] && GPEndCPNums[ind] == GPEndCPNums[iGP]){
+						if (GPLengths[ind] < GPLengths[MinInd]) MinInd = ind;
+						GPUsed[ind] = true;
+					}
+				}
+				EndCPNums.push_back(GPEndCPNums[MinInd]);
+				StartTheta.push_back(SeedTheta[MinInd]);
+				StartPhi.push_back(SeedPhi[MinInd]);
+			}
+			GPUsed[iGP] = true;
+		}
+
+		int NumSGPs = EndCPNums.size();
+		vector<GradPath_c> SGPs(NumSGPs);
+
+#ifndef _DEBUG
+#pragma omp parallel for schedule(dynamic)
+#endif
+		for (int iGP = 0; iGP < NumSGPs; ++iGP){
+			MinFuncParams_GPLengthSpherical GPParams;
+			GPParams.Direction = GPDir;
+			GPParams.NumGPPoints = NumGPPts;
+			GPParams.GPType = GPType_Classic;
+			GPParams.GPTerminate = GPTerminate_AtCP;
+			GPParams.TermPoint = NULL;
+			GPParams.CPs = &AllCPs;
+			GPParams.TermPointRadius = &TermRadius;
+			GPParams.TermValue = &RhoCutoff;
+			GPParams.VolInfo = &VolInfo;
+			GPParams.HessPtrs = &HessPtrs;
+			GPParams.GradPtrs = &GradPtrs;
+			GPParams.RhoPtr = &RhoPtr;
+
+			GPParams.StartPointOrigin = AllCPs.GetXYZ(TypeInd, SelectedCPNums[iCP] - 1);
+			GPParams.r = StartPointOffset;
+			GPParams.StartCPNum = AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, SelectedCPNums[iCP] - 1);
+			GPParams.EndCPNum = EndCPNums[iGP];
+
+			const gsl_multimin_fminimizer_type *T = gsl_multimin_fminimizer_nmsimplex2;
+			gsl_multimin_fminimizer *s = NULL;
+			gsl_vector *ss, *x;
+			gsl_multimin_function minex_func;
+
+			size_t iter = 0;
+			int status;
+			double size;
+
+			/* Starting point */
+			x = gsl_vector_alloc(2);
+			gsl_vector_set(x, 0, StartTheta[iGP]);
+			gsl_vector_set(x, 1, StartPhi[iGP]);
+
+			/* Set initial step sizes to 0.5 degree (0.0087 radians) */
+			ss = gsl_vector_alloc(2);
+			gsl_vector_set_all(ss, 0.0087);
+
+			/* Initialize method and iterate */
+			minex_func.n = 2;
+			minex_func.f = MinFunc_GPLength_Spherical;
+			minex_func.params = reinterpret_cast<void*>(&GPParams);
+
+			s = gsl_multimin_fminimizer_alloc(T, 2);
+			gsl_multimin_fminimizer_set(s, &minex_func, x, ss);
+
+			do
+			{
+				iter++;
+				status = gsl_multimin_fminimizer_iterate(s);
+
+				if (status)
+					break;
+
+				size = gsl_multimin_fminimizer_size(s);
+				status = gsl_multimin_test_size(size, 1e-6);
+			} while (status == GSL_CONTINUE && iter < 100);
+
+			if (status == GSL_SUCCESS){
+				SGPs[iGP] = reinterpret_cast<MinFuncParams_GPLengthSpherical*>(minex_func.params)->GP;
+				SGPs[iGP].Resample(NumGPPts);
+			}
+
+			gsl_vector_free(x);
+			gsl_vector_free(ss);
+			gsl_multimin_fminimizer_free(s);
+		}
+
+		for (auto & GP : SGPs){
+			vector<int> StartEndCPNums = GP.GetStartEndCPNum();
+			vector<vector<int> > StartEndCPTypeAndOffset(2);
+			string Name = CSMZoneName.SpecialGradientPath;
+			for (int i = 0; i < 2; ++i){
+				if (StartEndCPNums[i] >= 0){
+					StartEndCPTypeAndOffset[i] = AllCPs.GetTypeNumOffsetFromTotOffset(StartEndCPNums[i]);
+					Name += CPNameList[StartEndCPTypeAndOffset[i][0]] + " " + to_string(StartEndCPTypeAndOffset[i][1] + 1);
+				}
+				else Name += "FF";
+
+				if (i == 0) Name += " to ";
+			}
+
+			GP.SaveAsOrderedZone(Name, vector<FieldDataType_e>(), XYZVarNums, RhoVarNum, FALSE, PathColor);
+			for (int i = 0; i < 2; ++i){
+				AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndNumStrs[i], to_string(StartEndCPNums[i] + 1));
+				if (StartEndCPNums[i] >= 0) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], CPNameList[StartEndCPTypeAndOffset[i][0]]);
+				else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
+			}
+			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeGP);
+			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeCageNuclearPath);
+		}
+	}
+
+// 	int NumGPs = GPs.size();
+// 
+// #ifndef _DEBUG
+// #pragma omp parallel for schedule(dynamic)
+// #endif
+// 	for (int iGP = 0; iGP < NumGPs; ++iGP){
+// 		GPs[iGP].Seed(false);
+// 		GPs[iGP].PointPrepend(AllCPs.GetXYZ(GPs[iGP].GetStartEndCPNum()[0]), AllCPs.GetRho(GPs[iGP].GetStartEndCPNum()[0]));
+// 		GPs[iGP].Resample(NumGPPts);
+// 		if (GPDir == StreamDir_Reverse) GPs[iGP].Reverse();
+// 	}
+// 
+// 	for (int iGP = 0; iGP < NumGPs; iGP += 2){
+// 		GradPath_c GP = GPs[iGP];
+// 		vector<int> CPNums;
+// 		CPNums.push_back(GP.GetStartEndCPNum()[EndCPNumforName]);
+// 		int OldStartCPNum = GP.GetStartEndCPNum()[EndCPNumforName];
+// 		GP += GPs[iGP + 1];
+// 		vector<int> StartEndCPNums = GP.GetStartEndCPNum();
+// 		vector<vector<int> > StartEndCPTypeAndOffset(2);
+// 		StartEndCPTypeAndOffset[0] = AllCPs.GetTypeNumOffsetFromTotOffset(OldStartCPNum);
+// 		string Name = (CPType == CPType_BondCP ? CSMZoneName.BondPath : CSMZoneName.RingLine) + CPNameList[StartEndCPTypeAndOffset[0][0]] + " " + to_string(StartEndCPTypeAndOffset[0][1] + 1);
+// 		Name += MakeStringFromCPNums(StartEndCPNums, AllCPs, StartEndCPTypeAndOffset);
+// 		// 		for (int i = 0; i < 2; ++i){
+// 		// 			if (StartEndCPNums[i] >= 0){
+// 		// 				StartEndCPTypeAndOffset[i] = CPs.GetTypeNumOffsetFromTotOffset(StartEndCPNums[i]);
+// 		// 				Name += CPNameList[StartEndCPTypeAndOffset[i][0]][0] + to_string(StartEndCPTypeAndOffset[i][1] + 1);
+// 		// 			}
+// 		// 			else Name += "FF";
+// 		// 
+// 		// 			if (i == 0) Name += "-";
+// 		// 		}
+// 		// 
+// 		// 		Name += ")";
+// 
+// 		if (StartEndCPNums[0] < 0){
+// 			int TmpInt = StartEndCPNums[0];
+// 			StartEndCPNums[0] = StartEndCPNums[1];
+// 			StartEndCPNums[1] = TmpInt;
+// 		}
+// 		GP.SaveAsOrderedZone(Name, vector<FieldDataType_e>(), XYZVarNums, RhoVarNum, TRUE, PathColor);
+// 		for (int i = 0; i < 2; ++i){
+// 			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndNumStrs[i], to_string(StartEndCPNums[i] + 1));
+// 			if (StartEndCPNums[i] >= 0) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], CPNameList[StartEndCPTypeAndOffset[i][0]]);
+// 			else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
+// 		}
+// 		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeGP);
+// 		if (CPType == CPType_RingCP) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
+// 		else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPath);
+// 	}
+// 
+	
+
+	TecUtilDataLoadEnd();
+
+
+	CSMGuiUnlock();
+	TecUtilLockFinish(AddOnID);
+
+	return TRUE;
+}
+
+/*
+*	Shotgun GPs around selected nuclear/cage CPs and save them as ordered zones.
+*/
+const Boolean_t GradientPathsOnSphere(const int & NumSphereGPs,
+	const int & VolZoneNum,
+	const vector<int> & OtherCPZoneNums,
+	const int & SelectedCPZoneNum,
+	const vector<int> & SelectedCPNums,
+	const int & CPTypeVarNum,
+	const vector<int> & XYZVarNums,
+	const int & RhoVarNum,
+	const vector<int> & GradVarNums,
+	const vector<int> & HessVarNums,
+	const Boolean_t & IsPeriodic)
+{
+	TecUtilLockStart(AddOnID);
+
+	int NumZones = TecUtilDataSetGetNumZones();
+	int NumVars = TecUtilDataSetGetNumVars();
+
+	REQUIRE(XYZVarNums.size() == 3);
+	for (const auto & i : XYZVarNums) REQUIRE(i > 0 && i <= NumVars);
+	for (const auto & i : OtherCPZoneNums) REQUIRE(i > 0 && i <= NumZones);
+
+	char *ZoneName;
+	TecUtilZoneGetName(SelectedCPZoneNum, &ZoneName);
+	int TypeInd = VectorGetElementNum(CSMZoneName.CPType, string(ZoneName));
+	if ((TypeInd >= 0 && TypeInd != 0 && TypeInd != 3) || (TypeInd < 0 && string(ZoneName) != CSMZoneName.CriticalPoints)){
+		TecUtilDialogErrMsg("Please select nuclear, cage, or \"Critical Points\" zone");
+		return FALSE;
+	}
+	TecUtilStringDealloc(&ZoneName);
+
+	if (CPTypeVarNum < 0){
+		TecUtilDialogErrMsg("Failed to find CP Type variable");
+		return FALSE;
+	}
+
+	FieldDataPointer_c RhoPtr;
+	vector<FieldDataPointer_c> GradPtrs, HessPtrs;
+
+	TecUtilDataLoadBegin();
+
+	if (!GetReadPtrsForZone(VolZoneNum,
+		RhoVarNum, GradVarNums, HessVarNums,
+		RhoPtr, GradPtrs, HessPtrs)){
+		TecUtilDialogErrMsg("Failed to get read pointer(s)");
+		return FALSE;
+	}
+
+	VolExtentIndexWeights_s VolInfo;
+	VolInfo.AddOnID = AddOnID;
+
+	if (!GetVolInfo(VolZoneNum, XYZVarNums, IsPeriodic, VolInfo)){
+		TecUtilDialogErrMsg("Failed to get volume zone info");
+		return FALSE;
+	}
+
+	vector<int> iJunk(2);
+	int NumCPs;
+	string CPZoneCheckString;
+
+	char* tmpName;
+	TecUtilZoneGetName(SelectedCPZoneNum, &tmpName);
+	CPZoneCheckString = tmpName;
+	TecUtilStringDealloc(&tmpName);
+
+	for (const int & z : OtherCPZoneNums){
+		TecUtilZoneGetIJK(z, &NumCPs, &iJunk[0], &iJunk[1]);
+		for (const auto & i : iJunk) if (i > 1){
+			TecUtilDialogErrMsg("CP zone is not i-ordered");
+			return FALSE;
+		}
+	}
+
+	vec3 EigVals;
+	mat33 EigVecs;
+
+	MultiRootParams_s MR;
+	MR.CalcType = GPType_Classic;
+	MR.VolInfo = &VolInfo;
+	MR.IsPeriodic = IsPeriodic;
+	MR.HasGrad = (GradPtrs.size() == 3);
+	MR.HasHess = (HessPtrs.size() == 6);
+	MR.RhoPtr = &RhoPtr;
+	MR.GradPtrs = &GradPtrs;
+	MR.HessPtrs = &HessPtrs;
+	MR.BasisVectors = &VolInfo.BasisNormalized;
+
+
+	CritPoints_c AllCPs(SelectedCPZoneNum, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
+
+	for (const int & z : OtherCPZoneNums){
+		AllCPs += CritPoints_c(z, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
+	}
+
+	int EndCPNumforName = 0;
+	StreamDir_e GPDir = StreamDir_Both;
+	ColorIndex_t PathColor = Red_C;
+	
+	CSMGuiLock();
+
+	vec3 StartPoint;
+
+	const int NumSpherePoints = NumSphereGPs;
+	const int NumGPPts = 100;
+	double TermRadius = 0.2;
+	double RhoCutoff = DefaultRhoCutoff;
+
+	Set NewZones;
+
+	for (int iCP = 0; iCP < SelectedCPNums.size(); ++iCP){
+		vector<int> CPTypeIndOffset;
+		if (TypeInd < 0) CPTypeIndOffset = AllCPs.GetTypeNumOffsetFromTotOffset(SelectedCPNums[iCP] - 1);
+		else CPTypeIndOffset = { TypeInd, SelectedCPNums[iCP] - 1 };
+		if (CPTypeIndOffset[0] != 0 && CPTypeIndOffset[0] != 3) continue;
+
+
+		double StartPointOffset = 0.3 * AllCPs.GetMinCPDist(CPTypeIndOffset[0], CPTypeIndOffset[1]);
+
+		vector<GradPath_c> GPs;
+		vector<vec3> SeedPoints;
+		vector<double> SeedTheta, SeedPhi;
+
+		EquidistributedSpherePoints(NumSpherePoints, StartPointOffset, SeedPoints, SeedTheta, SeedPhi);
+
+		for (vec3 & Pt : SeedPoints){
+			Pt += AllCPs.GetXYZ(CPTypeIndOffset[0], CPTypeIndOffset[1]);
+			GPs.push_back(GradPath_c(Pt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.back().SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(CPTypeIndOffset[0], CPTypeIndOffset[1]), (CPTypeIndOffset[0] == 0 ? 1 : 0));
+		}
+
+		int NumGPs = GPs.size();
+		vector<int> GPEndCPNums(NumGPs);
+
+#ifndef _DEBUG
+#pragma omp parallel for schedule(dynamic)
+#endif
+		for (int iGP = 0; iGP < NumGPs; ++iGP){
+			GPs[iGP].Seed(false);
+			GPEndCPNums[iGP] = (CPTypeIndOffset[0] == 0 ? GPs[iGP].GetStartEndCPNum(0) : GPs[iGP].GetStartEndCPNum(1));
+		}
+
+		vector<bool> GPUsed(GPs.size(), false);
+		vector<int> EndCPNums;
+
+		for (int iGP = 0; iGP < NumGPs; ++iGP){
+			if (!GPUsed[iGP]){
+				EndCPNums.push_back(GPEndCPNums[iGP]);
+				for (int jGP = iGP + 1; jGP < iGP + NumGPs - 1; ++jGP){
+					int ind = jGP % NumGPs;
+					if (!GPUsed[ind] && GPEndCPNums[ind] == GPEndCPNums[iGP]){
+						GPUsed[ind] = true;
+					}
+				}
+			}
+			GPUsed[iGP] = true;
+		}
+
+		std::sort(EndCPNums.begin(), EndCPNums.end());
+		if (EndCPNums.size() > 1 && EndCPNums[0] < 0){
+			vector<int> NewEndCPNums(EndCPNums.begin() + 1, EndCPNums.end());
+			NewEndCPNums.push_back(EndCPNums[0]);
+			EndCPNums = NewEndCPNums;
+		}
+
+		int iGP = 0;
+		for (int jCP = 0; jCP < EndCPNums.size(); ++jCP){
+			int ColorInd = jCP;
+			if ((ColorIndex_t)jCP >= White_C) ColorInd++;
+			ColorInd = ColorInd % 64;
+			for (int iGP = 0; iGP < GPs.size(); ++iGP){
+				if (GPEndCPNums[iGP] == EndCPNums[jCP]){
+					vector<int> StartEndCPNums = GPs[iGP].GetStartEndCPNum();
+					vector<vector<int> > StartEndCPTypeAndOffset(2);
+					string Name = CSMZoneName.SpecialGradientPath;
+					for (int i = 0; i < 2; ++i){
+						if (StartEndCPNums[i] >= 0){
+							StartEndCPTypeAndOffset[i] = AllCPs.GetTypeNumOffsetFromTotOffset(StartEndCPNums[i]);
+							Name += CPNameList[StartEndCPTypeAndOffset[i][0]] + " " + to_string(StartEndCPTypeAndOffset[i][1] + 1);
+						}
+						else Name += "FF";
+
+						if (i == 0) Name += " to ";
+					}
+
+					NewZones += GPs[iGP].SaveAsOrderedZone(Name, vector<FieldDataType_e>(), XYZVarNums, RhoVarNum, FALSE, (ColorIndex_t)ColorInd);
+					for (int i = 0; i < 2; ++i){
+						AuxDataZoneSetItem(GPs[iGP].GetZoneNum(), CSMAuxData.CC.GPEndNumStrs[i], to_string(StartEndCPNums[i] + 1));
+						if (StartEndCPNums[i] >= 0) AuxDataZoneSetItem(GPs[iGP].GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], CPNameList[StartEndCPTypeAndOffset[i][0]]);
+						else AuxDataZoneSetItem(GPs[iGP].GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
+					}
+					AuxDataZoneSetItem(GPs[iGP].GetZoneNum(), CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeGP);
+					AuxDataZoneSetItem(GPs[iGP].GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeCageNuclearPath);
+				}
+			}
+		}
+	}
+
+	TecUtilZoneSetActive(NewZones.getRef(), AssignOp_PlusEquals);
+
+	TecUtilDataLoadEnd();
+
+
+	CSMGuiUnlock();
+	TecUtilLockFinish(AddOnID);
+
+	return TRUE;
+}
+
+void GradientPathsOnSphereReturnUserInfo(const bool GuiSuccess,
+	const vector<GuiField_c> & Fields,
+	const vector<GuiField_c> PassthroughFields){
+	if (!GuiSuccess) return;
+
+	TecUtilLockStart(AddOnID);
+
+	int VolZoneNum, RhoVarNum;
+	vector<int> XYZVarNums(3), GradVarNums, HessVarNums;
+	Boolean_t IsPeriodic;
+
+	int fNum = 0;
+
+	VolZoneNum = Fields[fNum++].GetReturnInt();
+	IsPeriodic = Fields[fNum++].GetReturnBool();
+	fNum++;
+	for (int i = 0; i < 3; ++i) XYZVarNums[i] = i + Fields[fNum].GetReturnInt();
+	fNum++;
+	fNum++;
+	RhoVarNum = Fields[fNum++].GetReturnInt();
+	fNum++;
+
+
+	if (Fields[fNum++].GetReturnBool()){
+		GradVarNums.resize(3);
+		for (int i = 0; i < 3; ++i) GradVarNums[i] = i + Fields[fNum].GetReturnInt();
+	}
+	fNum++;
+	fNum++;
+
+	if (Fields[fNum++].GetReturnBool()){
+		HessVarNums.resize(6);
+		for (int i = 0; i < 6; ++i) HessVarNums[i] = i + Fields[fNum].GetReturnInt();
+	}
+	fNum += 2;
+
+	int CPTypeVarNum = Fields[fNum++].GetReturnInt();
+	vector<int> OtherCPZoneNums = Fields[fNum++].GetReturnIntVec();
+	int SelectCPsZoneNum = Fields[fNum].GetReturnInt();
+	vector<int> SelectedCPs = Fields[fNum++].GetReturnIntVec();
+	int NumGPs = Fields[fNum++].GetReturnInt();
+
+	GradientPathsOnSphere(NumGPs, VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+
+	TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void GradientPathsOnSphereGetUserInfo(){
+
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelect, "Volume zone", CSMZoneName.FullVolume.substr(0, 10)),
+		GuiField_c(Gui_Toggle, "Periodic system"),
+		GuiField_c(Gui_VertSep)
+	};
+
+	Fields.push_back(GuiField_c(Gui_VarSelect, "X", "X"));
+
+	Fields.push_back(GuiField_c(Gui_VertSep));
+
+	Fields.push_back(GuiField_c(Gui_VarSelect, "Electron Density", CSMVarName.Dens));
+	Fields.push_back(GuiField_c(Gui_VertSep));
+
+	int iTmp = Fields.size();
+	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density gradient vector variables present"));
+
+	Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+	Fields.push_back(GuiField_c(Gui_VarSelect, CSMVarName.DensGradVec[0], CSMVarName.DensGradVec[0]));
+	Fields.push_back(GuiField_c(Gui_VertSep));
+
+	iTmp = Fields.size();
+	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density Hessian variables present"));
+
+	Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+	Fields.push_back(GuiField_c(Gui_VarSelect, CSMVarName.DensHessTensor[0], CSMVarName.DensHessTensor[0]));
+
+	Fields.push_back(GuiField_c(Gui_VertSep));
+
+	Fields.push_back(GuiField_c(Gui_VarSelect, "CP type variable", CSMVarName.CritPointType));
+	string SearchString = CSMZoneName.CriticalPoints;
+
+	Fields.push_back(GuiField_c(Gui_ZoneSelectMulti, "Other critical points zones", SearchString));
+
+	Fields.push_back(GuiField_c(Gui_ZonePointSelectMulti, "Source critical point(s)", SearchString));
+ 
+	Fields.push_back(GuiField_c(Gui_Int, "Number of gradient paths", "2048"));
+
+	CSMGui("GPs around cage/nuclear CPs", Fields, GradientPathsOnSphereReturnUserInfo, AddOnID);
+}
+
 double MinFunc_GPLength_InPlane(double alpha, void * params){
 	MinFuncParams_GPLengthInPlane * GPParams = reinterpret_cast<MinFuncParams_GPLengthInPlane*>(params);
 
@@ -1543,7 +2264,9 @@ double MinFunc_GPLength_InPlane(double alpha, void * params){
 	if (GPParams->EndCPNum >= 0 && GPParams->GP.GetStartEndCPNum(1) != GPParams->EndCPNum)
 		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_InPlane terminated at wrong CP");
 
-	GPParams->GP.PointPrepend(GPParams->StartPointOrigin, 0);
+	if (GPParams->Direction != StreamDir_Both)
+		GPParams->GP.PointPrepend(GPParams->StartPointOrigin, 0);
+
 #ifdef _DEBUG
 	MinFunc_GPAngleLengths.push_back(vector<double>({ alpha, GPParams->GP.GetLength() }));
 #endif
@@ -1567,7 +2290,7 @@ const T PeriodicDistance1D(T a, T b, const T & low, const T & high){
 	}
 
 	T dist = a - b;
-	dist = dist > 0 ? dist : -dist;
+	if (dist < 0) dist *= -1.;
 
 	return dist;
 }
@@ -1598,7 +2321,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 	for (const auto & i : XYZVarNums) REQUIRE(i > 0 && i <= NumVars);
 	for (const auto & i : OtherCPZoneNums) REQUIRE(i > 0 && i <= NumZones);
 
-	int TypeInd = std::find(CPTypeList, std::end(CPTypeList), CPType) - CPTypeList;
+	int TypeInd = VectorGetElementNum(CPTypeList, CPType);
 	if (TypeInd >= 6){
 		TecUtilDialogErrMsg("Invalid CP type specified");
 		return FALSE;
@@ -1765,7 +2488,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 		GPParams.GradPtrs = &GradPtrs;
 		GPParams.RhoPtr = &RhoPtr;
 
-		StartPointOffset = 0.05 * AllCPs.GetMinCPDist(CPTypesForMinDistCheck);
+		StartPointOffset = 0.1 * AllCPs.GetMinCPDist(CPTypesForMinDistCheck);
 		vec3 StartVec = normalise(AllCPs.GetEigVecs(TypeInd, cpNum).col(1)) * StartPointOffset;
 
 		GPParams.StartPointOrigin = AllCPs.GetXYZ(TypeInd, cpNum);
@@ -3508,7 +4231,7 @@ void MakeSliceFromPointSelectionReturnUserInfo(const bool GuiSuccess,
 		return;
 	}
 
-	CSMGuiLock();
+// 	CSMGuiLock();
 	TecUtilLockStart(AddOnID);
 
 	Set VolumeZones;
@@ -3572,8 +4295,7 @@ void MakeSliceFromPointSelectionReturnUserInfo(const bool GuiSuccess,
 	TecUtilSetDealloc(&ActiveZones);
 
 	TecUtilLockFinish(AddOnID);
-	CSMGuiUnlock();
-	TecUtilRedraw(TRUE);
+// 	CSMGuiUnlock();
 }
 
 void MakeSliceFromPointSelectionGetUserInfo(){
