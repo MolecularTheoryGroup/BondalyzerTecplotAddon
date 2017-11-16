@@ -8,9 +8,19 @@
 #include <unistd.h>
 #endif
 
+// for profiling
+#include <chrono>
+#include <ctime>
+#include <ratio>
+
 #include "TECADDON.h"
 #include "CSM_DATA_SET_INFO.h"
 
+
+//for profiling
+using std::chrono::high_resolution_clock;
+using std::chrono::duration;
+using std::chrono::duration_cast;
 
 using std::stringstream;
 
@@ -640,9 +650,32 @@ void StatusDrop(const AddOn_pa & AddOnID){
 	TecUtilLockFinish(AddOnID);
 }
 
+const string PrintDuration(duration<double> dur){
+	using namespace std::chrono;
+	using day_t = duration<long, std::ratio<3600 * 24>>;
+	
+	auto d = duration_cast<day_t>(dur);
+	auto h = duration_cast<hours>(dur -= d);
+	auto m = duration_cast<minutes>(dur -= h);
+	auto s = duration_cast<seconds>(dur -= m);
+	auto ms = duration_cast<seconds>(dur -= s);
 
-const Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const string & ProgresssText, const AddOn_pa & AddOnID){
-	unsigned int Percent = MAX(0, MIN(static_cast<int>(static_cast<double>(CurrentNum) / static_cast<double>(TotalNum)* 100.), 100));
+	string str = 
+		(d.count() > 0 ? to_string(d.count()) + "-" : "")
+		+ (h.count() > 0 ? (h.count() > 9 ? "" : "0") + to_string(h.count()) + ":" : "")
+		+ (m.count() > 9 ? "" : "0") + to_string(m.count()) + ":"
+		+ (s.count() > 9 ? "" : "0") + to_string(s.count());
+
+	return str;
+}
+
+const Boolean_t StatusUpdate(unsigned int CurrentNum,
+	unsigned int TotalNum,
+	const string & ProgresssText,
+	const AddOn_pa & AddOnID,
+	high_resolution_clock::time_point StartTime)
+{
+	unsigned int Percent = MAX(0, MIN(static_cast<int>((static_cast<double>(CurrentNum) + 0.5) / static_cast<double>(TotalNum)* 100.), 100));
 
 	TecUtilLockStart(AddOnID);
 
@@ -651,6 +684,12 @@ const Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, con
 	if (ProgresssText != string("")){
 		stringstream ss;
 		ss << ProgresssText << "  (" << Percent << "% Complete)";
+		if (StartTime != high_resolution_clock::time_point() && CurrentNum > 0){
+			high_resolution_clock::time_point CurrentTime = high_resolution_clock::now();
+			duration<double> Elapsed = duration_cast<duration<double>>(CurrentTime - StartTime);
+			duration<double> Remaining = (Elapsed / (double)CurrentNum) * (double)(TotalNum - CurrentNum);
+			ss << " (Elapsed: " << PrintDuration(Elapsed) << ". Remaining: " << PrintDuration(Remaining) << ")";
+		}
 		TecUtilStatusSetPercentDoneText(ss.str().c_str());
 		// 		TecUtilDialogSetPercentDoneText(ss.str().c_str());
 	}

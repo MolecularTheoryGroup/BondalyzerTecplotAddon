@@ -125,9 +125,6 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 	Boolean_t IsOk = TRUE;
 
 
-	TecUtilDialogMessageBox("Before integration", MessageBoxType_Information);
-
-
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
 
@@ -358,12 +355,18 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 		if (FreshIntegration || TecUtilDialogMessageBox("Variables have already been integrated for this zone."
 			" Integrate again?", MessageBox_YesNo)){
 			int NumVolumes = static_cast<int>(VolumeList.size());
-			int NumVolForPercentDone = NumVolumes / numCPU;
+			int NumVolForPercentDone = NumVolumes;
+#ifndef _DEBUG
+			NumVolForPercentDone /= numCPU;
+#endif
 
 			int NumComplete = 0;
 
-// #ifndef _DEBUG
+			high_resolution_clock::time_point StatusStartTime = high_resolution_clock::now();
+
+#ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
+#endif
 			for (int i = 0; i < NumVolumes; ++i){
 // 			for (int i = 0; i < NumVolumes; i += NumVolumes / 10){
 // #else
@@ -373,7 +376,7 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 // 			for (int i = 0; i < NumVolumes; i += NumVolumes / 10){
 // #endif
 				if (omp_get_thread_num() == 0){
-					UserQuit = !StatusUpdate(NumComplete, NumVolForPercentDone, ss.str(), AddOnID);
+					UserQuit = !StatusUpdate(NumComplete, NumVolForPercentDone, ss.str(), AddOnID, StatusStartTime);
 					NumComplete++;
 #pragma omp flush (UserQuit)
 				}
@@ -590,8 +593,8 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 				OutFile << "Precision," << IntResolution << '\n'
 					<< "Wall time[s]," << TimeSpan.count();
 
-			AuxDataZoneSetItem(VolumeList[0].GetZoneNum(), CSMAuxData.GBA.IntPrecision, to_string(IntResolution));
-			AuxDataZoneSetItem(VolumeList[0].GetZoneNum(), CSMAuxData.GBA.IntWallTime, to_string(TimeSpan.count()));
+// 			AuxDataZoneSetItem(VolumeList[0].GetZoneNum(), CSMAuxData.GBA.IntPrecision, to_string(IntResolution));
+// 			AuxDataZoneSetItem(VolumeList[0].GetZoneNum(), CSMAuxData.GBA.IntWallTime, to_string(TimeSpan.count()));
 		}
 
 // 		Set_pa TmpSet = TecUtilSetAlloc(FALSE);

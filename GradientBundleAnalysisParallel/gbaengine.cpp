@@ -1071,8 +1071,7 @@ void MainFunction(){
 #endif
 		for (int PtNum = 0; PtNum < NumPoints; ++PtNum){
 			if (omp_get_thread_num() == 0){
-				UserQuit = !StatusUpdate(NumCompleted, TmpNumIterations, TmpString, AddOnID);
-				NumCompleted++;
+				UserQuit = !StatusUpdate(NumCompleted++, TmpNumIterations, TmpString, AddOnID);
 #pragma omp flush (UserQuit)
 			}
 #pragma omp flush (UserQuit)
@@ -1123,8 +1122,7 @@ void MainFunction(){
 #endif
 		for (int EdgeNum = 0; EdgeNum < NumEdges; ++EdgeNum){
 			if (omp_get_thread_num() == 0){
-				UserQuit = !StatusUpdate(NumCompleted, TmpNumIterations, TmpString, AddOnID);
-				NumCompleted++;
+				UserQuit = !StatusUpdate(NumCompleted++, TmpNumIterations, TmpString, AddOnID);
 #pragma omp flush (UserQuit)
 			}
 #pragma omp flush (UserQuit)
@@ -1622,8 +1620,7 @@ void MainFunction(){
 #endif
 		for (int TriNum = 0; TriNum < NumTriangles; ++TriNum){
 			if (omp_get_thread_num() == 0){
-				UserQuit = !StatusUpdate(NumCompleted, TmpNumIterations, TmpString, AddOnID);
-				NumCompleted++;
+				UserQuit = !StatusUpdate(NumCompleted++, TmpNumIterations, TmpString, AddOnID);
 #pragma omp flush (UserQuit)
 			}
 #pragma omp flush (UserQuit)

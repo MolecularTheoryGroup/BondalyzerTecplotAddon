@@ -248,7 +248,6 @@ const vector<int> GetIJKForPoint(vec3 & Point, VolExtentIndexWeights_s & VolZone
 	* 0         1                                                *
 	*/
 	if (IsOk){
-		LgIndex_t IJK[3];
 		for (int i = 0; i < 3; ++i){
 			// 			double TempCoord = 1.0 + static_cast<double>(VolZoneInfo.MaxIJK[i] - 1.0) * (Point[i] - VolZoneInfo.MinUVW[i]) / (VolZoneInfo.BasisExtent[i]);
 			double TempCoord = 1.0 + static_cast<double>(VolZoneInfo.MaxIJK[i] - 1) * Point[i];
@@ -260,6 +259,8 @@ const vector<int> GetIJKForPoint(vec3 & Point, VolExtentIndexWeights_s & VolZone
 			}
 		}
 	}
+
+	Point = VolZoneInfo.BasisVectors * Point + VolZoneInfo.MinXYZ;
 
 	return IJK;
 

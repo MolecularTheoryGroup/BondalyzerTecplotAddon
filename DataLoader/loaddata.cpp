@@ -1500,7 +1500,7 @@ const int LoadADFTape41ASCIIData(char* FileNameCStr)
 				}
 			}
 
-			if (!StatusUpdate(CurrentOverallPoint, TotalPoints, "", AddOnID)){
+			if (!StatusUpdate(CurrentOverallPoint-1, TotalPoints, "", AddOnID)){
 				StatusDrop(AddOnID);
 				TecUtilLockFinish(AddOnID);
 				return 0;

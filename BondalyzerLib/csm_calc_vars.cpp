@@ -238,7 +238,7 @@ const Boolean_t CalcGradForRegularVar(const vector<int> & IJKMax,
 #endif
 		for (LgIndex_t kk = 1; kk <= IJKMax[2]; ++kk){
 			int ThreadNum = omp_get_thread_num();
-			if (ThreadNum == 0 && !StatusUpdate(kk, StatusKMax, StatusStr, AddOnID)){
+			if (ThreadNum == 0 && !StatusUpdate(kk-1, StatusKMax, StatusStr, AddOnID)){
 				TaskQuit = TRUE;
 #pragma omp flush (TaskQuit)
 			}
@@ -287,7 +287,7 @@ const Boolean_t CalcMagForRegularVectorVar(const vector<int> & IJKMax,
 	if (!TaskQuit){
 #pragma omp parallel for
 		for (LgIndex_t kk = 1; kk <= IJKMax[2]; ++kk){
-			if (omp_get_thread_num() == 0 && !StatusUpdate(kk, StatusKMax, StatusStr, AddOnID)){
+			if (omp_get_thread_num() == 0 && !StatusUpdate(kk-1, StatusKMax, StatusStr, AddOnID)){
 				TaskQuit = TRUE;
 #pragma omp flush (TaskQuit)
 			};
@@ -2168,7 +2168,7 @@ void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
 
 	for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum){
 		if (ZoneNum != VolZoneNum){
-			IsOk = StatusUpdate(ZoneNum, NumZones, StatusStr, AddOnID);
+			IsOk = StatusUpdate(ZoneNum-1, NumZones, StatusStr, AddOnID);
 			if (IsOk){
 				// 				for (int i = 0; i < 3 && IsOk; ++i)
 				// 					IsOk = XYZReadPtrs[i].GetReadPtr(ZoneNum, XYZVarNums[i]);
@@ -3017,7 +3017,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 
 
 				if (Opt.CalcForAllZones)
-					IsOk = StatusUpdate(ZoneNum, NumZones, StatusStr, Opt.AddOnID);
+					IsOk = StatusUpdate(ZoneNum-1, NumZones, StatusStr, Opt.AddOnID);
 				/*
 				*	Get all the read pointers
 				*/

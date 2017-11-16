@@ -1117,7 +1117,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 
 	for (IJK[2] = StartIJK[2]; IJK[2] <= EndIJK[2] && IsOk; ++IJK[2]){
 		kNum++;
-		if (StartIJK[2] == 1 && !StatusUpdate(kNum, Range, StatusStr, VolInfo.AddOnID)){
+		if (StartIJK[2] == 1 && !StatusUpdate(kNum-1, Range, StatusStr, VolInfo.AddOnID)){
 			IsOk = FALSE;
 		}
 		for (IJK[1] = StartIJK[1]; IJK[1] <= EndIJK[1] && IsOk; ++IJK[1]){
@@ -1376,7 +1376,9 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 						GP.Seed(false);
 
 						if (GP.IsMade()){
+#ifdef _DEBUG
 							GP.SaveAsOrderedZone();
+#endif
 
 							CompPt = GP[-1];
 							vec3 EigVals, PrincDir;

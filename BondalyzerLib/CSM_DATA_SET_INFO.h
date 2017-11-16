@@ -8,9 +8,17 @@
 #include "CSM_CRIT_POINTS.h"
 #include "CSM_DATA_TYPES.h"
 
+
+// for profiling
+#include <chrono>
+#include <ctime>
+#include <ratio>
+
 #include <armadillo>
 using namespace arma;
 
+//for profiling
+using std::chrono::high_resolution_clock;
 
 using std::string;
 using std::vector;
@@ -398,7 +406,11 @@ void ZoneXYZVarGetBasisVectors_Ordered3DZone(const vector<int> & XYZVarNums, con
 
 void StatusLaunch(const string & StatusStr, const AddOn_pa & AddOnID, const Boolean_t & ShowScale = TRUE, const Boolean_t & ShowButton = TRUE);
 void StatusDrop(const AddOn_pa & AddOnID);
-const Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const string & ProgresssText, const AddOn_pa & AddOnID);
+const Boolean_t StatusUpdate(unsigned int CurrentNum, 
+	unsigned int TotalNum, 
+	const string & ProgresssText, 
+	const AddOn_pa & AddOnID, 
+	high_resolution_clock::time_point StartTime = high_resolution_clock::time_point());
 
 const LgIndex_t IndexFromIJK(const LgIndex_t & I,
 	const LgIndex_t & J,

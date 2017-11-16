@@ -88,6 +88,7 @@ struct MinFuncParams_GPLengthInPlane{
 	vec3 RotVec;
 	vec3 RotAxis;
 	int StartCPNum = -1;
+	int EndCPPosition = -1;
 	int EndCPNum = -1;
 };
 
@@ -188,11 +189,8 @@ void RefineActiveZones(){
 #endif
 	for (int i = 0; i < NumVols; ++i){
 		if (omp_get_thread_num() == 0){
-			UserQuit = !StatusUpdate(++VolNum, NumVols, "Refining zones", AddOnID);
+			UserQuit = !StatusUpdate(VolNum++, NumVols, "Refining zones", AddOnID);
 #pragma omp flush (UserQuit)
-		}
-		else{
-			++VolNum;
 		}
 #pragma omp flush (UserQuit)
 		if (!UserQuit){
@@ -2255,14 +2253,17 @@ double MinFunc_GPLength_InPlane(double alpha, void * params){
 		*GPParams->GradPtrs,
 		*GPParams->RhoPtr);
 
-	GPParams->GP.SetStartEndCPNum(GPParams->StartCPNum, 0);
+	if (GPParams->Direction != StreamDir_Both)
+		GPParams->GP.SetStartEndCPNum(GPParams->StartCPNum, 0);
 
 	GPParams->GP.Seed(false);
 
 	if (!GPParams->GP.IsMade())
 		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_InPlane failed");
-	if (GPParams->EndCPNum >= 0 && GPParams->GP.GetStartEndCPNum(1) != GPParams->EndCPNum)
+	if (GPParams->EndCPNum >= 0 && GPParams->EndCPPosition >= 0 && GPParams->GP.GetStartEndCPNum(GPParams->EndCPPosition) != GPParams->EndCPNum)
 		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_InPlane terminated at wrong CP");
+	if (GPParams->StartCPNum >= 0 && GPParams->EndCPPosition >= 0 && GPParams->GP.GetStartEndCPNum((GPParams->EndCPPosition + 1) % 2) != GPParams->StartCPNum)
+		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_InPlane originated at wrong CP");
 
 	if (GPParams->Direction != StreamDir_Both)
 		GPParams->GP.PointPrepend(GPParams->StartPointOrigin, 0);
@@ -2411,7 +2412,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 	CSMGuiLock();
 
 	vector<CPType_e> CPTypesForMinDistCheck;
-	int EndCPNumforName = 0;
+	int EndCPPosition = 0;
 	StreamDir_e GPDir = StreamDir_Reverse;
 	ColorIndex_t PathColor = Black_C;
 	CPType_e PrimaryTermType = CPType_CageCP,
@@ -2419,7 +2420,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 	if (CPType == CPType_RingCP){
 		GPDir = StreamDir_Forward;
 		PathColor = Green_C;
-		EndCPNumforName++;
+		EndCPPosition++;
 		PrimaryTermType = CPType_NuclearCP;
 		SecondaryTermType = CPType_BondCP;
 		CPTypesForMinDistCheck = { CPType_BondCP, CPType_RingCP };
@@ -2472,10 +2473,10 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 // #pragma omp parallel for schedule(dynamic)
 #endif
 	for (int iCP = 0; iCP < NumCPs; ++iCP){
-		if (!StatusUpdate(iCP + 1, NumCPs, StatusStr + ": (" + to_string(iCP+1) + " of " + to_string(NumCPs) + ")", AddOnID)) break;
+		if (!StatusUpdate(iCP, NumCPs, StatusStr + ": (" + to_string(iCP+1) + " of " + to_string(NumCPs) + ")", AddOnID)) break;
 		int cpNum = SelectedCPNums[iCP] - 1;
 		MinFuncParams_GPLengthInPlane GPParams;
-		GPParams.Direction = GPDir;
+		GPParams.Direction = StreamDir_Both;
 		GPParams.NumGPPoints = NumGPPts;
 		GPParams.GPType = GPType_Classic;
 		GPParams.GPTerminate = GPTerminate_AtCP;
@@ -2488,7 +2489,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 		GPParams.GradPtrs = &GradPtrs;
 		GPParams.RhoPtr = &RhoPtr;
 
-		StartPointOffset = 0.1 * AllCPs.GetMinCPDist(CPTypesForMinDistCheck);
+		StartPointOffset = 0.5 * AllCPs.GetMinCPDist(TypeInd, cpNum);
 		vec3 StartVec = normalise(AllCPs.GetEigVecs(TypeInd, cpNum).col(1)) * StartPointOffset;
 
 		GPParams.StartPointOrigin = AllCPs.GetXYZ(TypeInd, cpNum);
@@ -2512,8 +2513,8 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 
 			StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
 
-			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
-			GPs.back().SetStartEndCPNum(GPParams.StartCPNum, 0);
+			GPs.push_back(GradPath_c(StartPoint, StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+// 			GPs.back().SetStartEndCPNum(GPParams.StartCPNum, 0);
 		}
 
 #ifndef _DEBUG
@@ -2521,9 +2522,9 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 #endif
 		for (int gpNum = 0; gpNum < NumCircleCheckGPs; ++gpNum){
 			GPs[gpNum].Seed(false);
-			GPs[gpNum].PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+// 			GPs[gpNum].PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 			GPLengths[gpNum] = GPs[gpNum].GetLength();
-			GPEndCPNums[gpNum] = GPs[gpNum].GetStartEndCPNum(1);
+			GPEndCPNums[gpNum] = GPs[gpNum].GetStartEndCPNum(EndCPPosition);
 			GPEndCPTypes[gpNum] = AllCPs.GetTypeFromTotOffset(GPEndCPNums[gpNum]);
 		}
 
@@ -2596,11 +2597,13 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 						*	Found a GP terminating at a CP, so now get minimum length GP
 						*	terminating at the same CP
 						*/
-						TermCPNum = GPs[gpNum].GetStartEndCPNum(1);
+						TermCPNum = GPEndCPNums[gpNum];
+// 						TermCPNum = GPs[gpNum].GetStartEndCPNum(1);
 						MinGPNum = gpNum;
 						for (int i = gpNum; i < gpNum + NumCircleCheckGPs; ++i){
 							int ii = i % NumCircleCheckGPs;
-							if (!GPUsed[ii] && GPs[ii].GetStartEndCPNum(1) == TermCPNum){
+// 							if (!GPUsed[ii] && GPs[ii].GetStartEndCPNum(1) == TermCPNum){
+							if (!GPUsed[ii] && GPEndCPNums[ii] == TermCPNum){
 								GPUsed[ii] = true;
 								if (GPLengths[ii] < GPLengths[MinGPNum]){
 									MinGPNum = ii;
@@ -2642,12 +2645,12 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 							Iter++;
 							AlphaGuess = (AlphaLower + AlphaUpper) * 0.5;
 							StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, AlphaGuess, GPParams.RotAxis);
-							GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
-							GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
+							GradPath_c GP(StartPoint, StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+// 							GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 							GP.Seed(false);
-							if (AllCPs.GetTypeFromTotOffset(GP.GetStartEndCPNum(1)) == SecondaryTermType){
-								TermCPNum = GP.GetStartEndCPNum(1);
-								GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+							if (AllCPs.GetTypeFromTotOffset(GP.GetStartEndCPNum(EndCPPosition)) == SecondaryTermType){
+								TermCPNum = GP.GetStartEndCPNum(EndCPPosition);
+// 								GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 								GPLen = GP.GetLength();
 
 // 								AlphaLower = (static_cast<double>(gpNum) * AngleStep + AlphaGuess) * 0.5;
@@ -2656,8 +2659,8 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 							else{
 								bool GoLeft;
 								if (GPEndCPTypes[gpNum] == PrimaryTermType){
-									if (GP.GetStartEndCPNum(1) == CPNumLower) GoLeft = false;
-									else if (GP.GetStartEndCPNum(1) == CPNumUpper) GoLeft = true;
+									if (GP.GetStartEndCPNum(EndCPPosition) == CPNumLower) GoLeft = false;
+									else if (GP.GetStartEndCPNum(EndCPPosition) == CPNumUpper) GoLeft = true;
 									else{
 // 										TecUtilDialogErrMsg(string("GP terminated at unexpected CP when performing binary search.\n\ngpNum = " + to_string(gpNum)).c_str());
 										break;
@@ -2699,11 +2702,11 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 								Iter++;
 								RotAngle = AlphaGuess + (AngleStep * AngleFactor * SmallAngleFactor * static_cast<double>(MinGPDir));
 								StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
-								GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
-								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
+								GradPath_c GP(StartPoint, StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+// 								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 								GP.Seed(false);
-								if (GP.GetStartEndCPNum(1) == TermCPNum){
-									GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+								if (GP.GetStartEndCPNum(EndCPPosition) == TermCPNum){
+// 									GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 									GPDirLengths[i] = GP.GetLength();
 									break;
 								}
@@ -2741,14 +2744,16 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 							if (MinGPDir < 0) AlphaUpper = AlphaGuess;
 							else AlphaLower = AlphaGuess;
 							double RotAngle = AlphaGuess;
-							while (true){
+							int Iter = 0;
+							while (Iter < 50){
+								Iter++;
 								RotAngle += (AngleStep * AngleFactor * SmallAngleFactor * static_cast<double>(MinGPDir));
 								StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
-								GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
-								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
+								GradPath_c GP(StartPoint, StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+// 								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 								GP.Seed(false);
-								if (GP.GetStartEndCPNum(1) == TermCPNum){
-									GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+								if (GP.GetStartEndCPNum(EndCPPosition) == TermCPNum){
+// 									GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 									double TmpGPLen = GP.GetLength();
 									if (TmpGPLen > GPLen){
 										if (MinGPDir < 0){
@@ -2768,6 +2773,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 								}
 							}
 
+							if (Iter >= 50) AlphaLower = AlphaUpper;
 
 							AlphaGuess = (AlphaLower + AlphaUpper) * 0.5; // guess is the midpoint between the two angles
 						}
@@ -2827,14 +2833,14 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 			vector<vec3> TmpStartPoints(3);
 			for (int j = 0; j < 3; ++j){
 				TmpStartPoints[j] = GPParams.StartPointOrigin + Rotate(StartVec, MinFunc_AlphaLowMidHigh[i][j], GPParams.RotAxis);
-				GradPath_c GP(TmpStartPoints[j], GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+				GradPath_c GP(TmpStartPoints[j], StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 
-				GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
+// 				GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 				GP.Seed(false);
-				GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+// 				GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 
 				TmpLens[j] = GP.GetLength();
-				TmpEndCPNums[j] = GP.GetStartEndCPNum(1);
+				TmpEndCPNums[j] = GP.GetStartEndCPNum(EndCPPosition);
 			}
 #endif
 
@@ -3192,7 +3198,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 				if (SGPNumsNewToOld[i] < TermCPNums.size()) TermCPNum = TermCPNums[SGPNumsNewToOld[i]];
 				if (TermCPNum < 0 || AllCPs.GetTypeFromTotOffset(TermCPNum) == PrimaryTermType){
 					SurfaceGPs.back().push_back(SGPsPerCP[iCP][SGPNumsNewToOld[i]]);
-					SurfaceGPCPNums.back().push_back(SGPsPerCP[iCP][SGPNumsNewToOld[i]].GetStartEndCPNum(EndCPNumforName));
+					SurfaceGPCPNums.back().push_back(SGPsPerCP[iCP][SGPNumsNewToOld[i]].GetStartEndCPNum(EndCPPosition));
 				}
 				else{
 					GradPath_c GP = SGPsPerCP[iCP][SGPNumsNewToOld[i]];
@@ -3231,7 +3237,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 				if (SGPNumsNewToOld[(i + 1) % SGPNumsNewToOld.size()] < TermCPNums.size()) TermCPNum = TermCPNums[SGPNumsNewToOld[(i + 1) % SGPNumsNewToOld.size()]];
 				if (TermCPNum < 0 || AllCPs.GetTypeFromTotOffset(TermCPNum) == PrimaryTermType){
 					SurfaceGPs.back().push_back(SGPsPerCP[iCP][SGPNumsNewToOld[(i + 1) % SGPNumsNewToOld.size()]]);
-					SurfaceGPCPNums.back().push_back(SGPsPerCP[iCP][SGPNumsNewToOld[(i + 1) % SGPNumsNewToOld.size()]].GetStartEndCPNum(EndCPNumforName));
+					SurfaceGPCPNums.back().push_back(SGPsPerCP[iCP][SGPNumsNewToOld[(i + 1) % SGPNumsNewToOld.size()]].GetStartEndCPNum(EndCPPosition));
 				}
 				else{
 					GradPath_c GP = SGPsPerCP[iCP][SGPNumsNewToOld[(i + 1) % SGPNumsNewToOld.size()]];
@@ -3260,7 +3266,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 			AngleStep = PI2 / static_cast<double>(NumCircleGPs);
 			for (int iHalf = 0; iHalf < 2; ++iHalf){
 				SurfaceGPCPNums.push_back(vector<int>({ GPParams.StartCPNum }));
-				SurfaceGPCPNums.back().push_back(SGPsPerCP[iCP][0].GetStartEndCPNum(EndCPNumforName));
+				SurfaceGPCPNums.back().push_back(SGPsPerCP[iCP][0].GetStartEndCPNum(EndCPPosition));
 				SurfaceGPs.push_back(vector<GradPath_c>());
 
 				if (iHalf == 0){
