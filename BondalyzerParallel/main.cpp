@@ -183,6 +183,20 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
     } /* end switch */
 }
 
+static void STDCALL GradientPathToolCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		GradientPathToolGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 
 static void STDCALL CalcVarsMenuCallback(void)
 {
@@ -407,6 +421,20 @@ static void STDCALL ConnectCPsCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL BondalyzerBatchCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		BondalyzerGetUserInfo(BondalyzerCalcType_Batch);
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL FindCritPointsCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -496,7 +524,7 @@ static void STDCALL FindCageNuclearPathsCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		BondalyzerGetUserInfo(BondalyserCalcType_CageNuclearPaths);
+		BondalyzerGetUserInfo(BondalyzerCalcType_CageNuclearPaths);
 	}
 	else
 	{
@@ -651,6 +679,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		'\0',
 		CalcVarsMenuCallback);
 
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Gradient path tool").c_str(),
+		'\0',
+		GradientPathToolCallback);
+
 // 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 		string(to_string(MenuNum++) + ". Gaussian blur").c_str(),
 // 		'\0',
@@ -710,6 +743,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Variable name: find and replace").c_str(),
 		'\0',
 		VarNameFindReplaceMenuCallback);
+
+	TecUtilMenuAddOption("MTG_Bondalyzer",
+		string("Batch analysis").c_str(),
+		'\0',
+		BondalyzerBatchCallback);
 
 	TecUtilMenuAddOption("MTG_Bondalyzer",
 		string("1. Find critical points").c_str(),

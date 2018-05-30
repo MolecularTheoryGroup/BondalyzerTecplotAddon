@@ -24,6 +24,9 @@ using std::chrono::duration_cast;
 
 using std::stringstream;
 
+int StatusNumValues;
+int StatusMaxNumValues = 20;
+vector<duration<double> > StatusMeanList(StatusMaxNumValues, duration<double>(0));
 
 size_t getTotalSystemMemory()
 {
@@ -631,6 +634,9 @@ void StatusLaunch(const string & StatusStr, const AddOn_pa & AddOnID, const Bool
 // 	TecUtilDrawGraphics(TRUE);
 	TecUtilStatusSuspend(FALSE);
 
+	StatusNumValues = 0;
+	StatusMeanList.resize(StatusMaxNumValues, duration<double>(0));
+
 	TecUtilStatusStartPercentDone(StatusStr.c_str(), ShowButton, ShowScale);
 // 	TecUtilDialogLaunchPercentDone(StatusStr.c_str(), ShowScale);
 
@@ -684,11 +690,25 @@ const Boolean_t StatusUpdate(unsigned int CurrentNum,
 	if (ProgresssText != string("")){
 		stringstream ss;
 		ss << ProgresssText << "  (" << Percent << "% Complete)";
-		if (StartTime != high_resolution_clock::time_point() && CurrentNum > 0){
-			high_resolution_clock::time_point CurrentTime = high_resolution_clock::now();
-			duration<double> Elapsed = duration_cast<duration<double>>(CurrentTime - StartTime);
-			duration<double> Remaining = (Elapsed / (double)CurrentNum) * (double)(TotalNum - CurrentNum);
-			ss << " (Elapsed: " << PrintDuration(Elapsed) << ". Remaining: " << PrintDuration(Remaining) << ")";
+		if (StartTime != high_resolution_clock::time_point() && Percent > 0 && Percent < 100)
+		{
+			if (CurrentNum > (int)(0.04 * (double)TotalNum)){
+				high_resolution_clock::time_point CurrentTime = high_resolution_clock::now();
+				duration<double> Elapsed = duration_cast<duration<double>>(CurrentTime - StartTime);
+				// 			StatusMeanList[StatusNumValues % StatusMaxNumValues] = Elapsed / (StatusNumValues + 1.);
+				// 			StatusNumValues++;
+				// 			duration<double> Mean = duration<double>(0);
+				// 			for (int i = 0; i < MIN(StatusNumValues, StatusMaxNumValues); ++i){
+				// 				Mean += StatusMeanList[i];
+				// 			}
+				// 			Mean /= (double)MIN(StatusNumValues, StatusMaxNumValues);
+				// 			duration<double> Remaining = Mean * (double)(TotalNum - CurrentNum);
+				duration<double> Remaining = (Elapsed / (double)CurrentNum) * (double)(TotalNum - CurrentNum);
+				ss << " (Ela. " << PrintDuration(Elapsed) << ". Rem. " << PrintDuration(Remaining) << ". Est. Tot. " << PrintDuration(Elapsed + Remaining) << ")";
+			}
+			else{
+				ss << " Please wait";
+			}
 		}
 		TecUtilStatusSetPercentDoneText(ss.str().c_str());
 		// 		TecUtilDialogSetPercentDoneText(ss.str().c_str());

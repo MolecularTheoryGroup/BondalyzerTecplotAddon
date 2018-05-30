@@ -26,18 +26,18 @@ using std::vector;
 const static double SpuriousCPCheckDistance = 0.35;
 
 enum CPType_e{
-	CPType_NuclearCP = -3,
-	CPType_BondCP = -1,
-	CPType_RingCP = 1,
-	CPType_CageCP = 3,
-	CPType_RingCPFF = 11,
-	CPType_CageCPFF = 13,
+	CPType_Nuclear = -3,
+	CPType_Bond = -1,
+	CPType_Ring = 1,
+	CPType_Cage = 3,
+	CPType_RingFF = 11,
+	CPType_CageFF = 13,
 
 	CPType_Invalid = -99
 };
 
 // const static char CPTypeList[] = { -3, -1, 1, 3, 11, 13 };
-const static vector<CPType_e> CPTypeList = { CPType_NuclearCP, CPType_BondCP, CPType_RingCP, CPType_CageCP, CPType_RingCPFF, CPType_CageCPFF };
+const static vector<CPType_e> CPTypeList = { CPType_Nuclear, CPType_Bond, CPType_Ring, CPType_Cage, CPType_RingFF, CPType_CageFF };
 
 const static vector<string> CPNameList = { "Nuclear", "Bond", "Ring", "Cage", "Ring FF", "Cage FF" };
 

@@ -18,7 +18,7 @@ using std::vector;
 #define GP_NumPointsBufferFactor	0.1
 #define GP_StallPointCount			10
 #define GP_StallNumPointsToCheck	10
-#define GP_StallPointDistTol		1e-4
+#define GP_StallPointDistTol		1e-3
 #define GP_MaxNumPoints				10000
 #define GP_PlaneCPStallCount		30
 #define GP_PlaneCPMaxIter			100

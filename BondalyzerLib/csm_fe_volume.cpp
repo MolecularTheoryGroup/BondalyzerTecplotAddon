@@ -221,6 +221,21 @@ const Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, const bool Con
 		}
 	}
 
+	if (!IsOk){
+		int MinCount = INT_MAX;
+		Boolean_t AllMade = TRUE;
+		for (auto *g : GPs){
+			MinCount = MIN(MinCount, g->GetCount());
+			AllMade = AllMade && g->IsMade();
+		}
+		if (AllMade){
+			for (auto *g : GPs){
+				g->Resample(MinCount);
+			}
+			IsOk = TRUE;
+		}
+	}
+
 	if (IsOk){
 		m_NumGPs = GPs.size();
 		m_NumGPPts = GPs[0]->GetCount();
@@ -441,7 +456,7 @@ const int FESurface_c::SetZoneStyle(const int ZoneNum,
 const int FESurface_c::SaveAsTriFEZone(const vector<int> & XYZVarNums, 
 	string ZoneName)
 {
-	Boolean_t IsOk = IsMade();
+	Boolean_t IsOk = IsMade() && (m_XYZList.size() > 0 || m_RefinedXYZList.size() > 0);
 	int ZoneNum = -1;
 
 	if (ZoneName.length() == 0)
@@ -1344,19 +1359,37 @@ const Boolean_t FESurface_c::DoIntegrationNew(const int & ResolutionScale, const
 	Boolean_t IsOk = m_FEVolumeMade;
 
 	if (IsOk && !m_IntegrationResultsReady){
-		m_ZoneMinXYZ = m_VolZoneInfo.MaxXYZ;
-		m_ZoneMaxXYZ = m_VolZoneInfo.MinXYZ;
-		/*
-		*	Get FE zone's max and min XYZ values
-		*/
-		for (int i = 0; i < 3; ++i){
-			for (int j = 0; j < m_NumNodes; ++j){
-				if (m_XYZPtrs[i][j] < m_ZoneMinXYZ[i])
-					m_ZoneMinXYZ[i] = m_XYZPtrs[i][j];
-				else if (m_XYZPtrs[i][j] > m_ZoneMaxXYZ[i])
-					m_ZoneMaxXYZ[i] = m_XYZPtrs[i][j];
+// 		m_ZoneMinXYZ = m_VolZoneInfo.MaxXYZ;
+// 		m_ZoneMaxXYZ = m_VolZoneInfo.MinXYZ;
+// 		/*
+// 		*	Get FE zone's max and min XYZ values
+// 		*/
+// 		for (int i = 0; i < 3; ++i){
+// 			for (int j = 0; j < m_NumNodes; ++j){
+// 				if (m_XYZPtrs[i][j] < m_ZoneMinXYZ[i])
+// 					m_ZoneMinXYZ[i] = m_XYZPtrs[i][j];
+// 				else if (m_XYZPtrs[i][j] > m_ZoneMaxXYZ[i])
+// 					m_ZoneMaxXYZ[i] = m_XYZPtrs[i][j];
+// 			}
+// 		}
+
+		m_ZoneMinXYZ = ones<vec>(3);
+		m_ZoneMaxXYZ = zeros<vec>(3);
+
+		for (int n = 0; n < m_NumNodes; ++n){
+			vec3 tmpPt;
+			tmpPt << m_XYZPtrs[0][n] << m_XYZPtrs[1][n] << m_XYZPtrs[2][n];
+			tmpPt = m_VolZoneInfo.BasisInverse * (tmpPt - m_VolZoneInfo.MinXYZ);
+			for (int i = 0; i < 3; ++i){
+				if (tmpPt[i] < m_ZoneMinXYZ[i])
+					m_ZoneMinXYZ[i] = tmpPt[i];
+				else if (tmpPt[i] > m_ZoneMaxXYZ[i])
+					m_ZoneMaxXYZ[i] = tmpPt[i];
 			}
 		}
+
+		m_ZoneMinXYZ = m_VolZoneInfo.BasisVectors * m_ZoneMinXYZ + m_VolZoneInfo.MinXYZ;
+		m_ZoneMaxXYZ = m_VolZoneInfo.BasisVectors * m_ZoneMaxXYZ + m_VolZoneInfo.MinXYZ;
 
 		IsOk = sum(m_ZoneMaxXYZ > m_ZoneMinXYZ) == 3;
 	}
@@ -1367,6 +1400,7 @@ const Boolean_t FESurface_c::DoIntegrationNew(const int & ResolutionScale, const
 	/*
 	*	Get the IJK indices that correspond to the min and max XYZ for the zone
 	*/
+	int tmpZoneNum = m_XYZPtrs[0].ZoneNum();
 	if (IsOk){
 		ZoneMinIJK = GetIJKForPoint(m_ZoneMinXYZ, m_VolZoneInfo);
 		ZoneMaxIJK = GetIJKForPoint(m_ZoneMaxXYZ, m_VolZoneInfo);
@@ -1462,12 +1496,18 @@ const Boolean_t FESurface_c::DoIntegrationNew(const int & ResolutionScale, const
 
 
 		vec3 SubDelXYZ, TmpPoint, TmpSubPoint;
-		double CellVolume = 1.0;
 
-		for (int i = 0; i < 3; ++i){
-			// 			DelXYZ[i] = (m_VolZoneInfo.MaxXYZ[i] - m_VolZoneInfo.MinXYZ[i]) / static_cast<double>(m_VolZoneInfo.MaxIJK[i] - 1);
-			CellVolume *= m_VolZoneInfo.DelXYZ[i];
-		}
+		vector<vec3> uvwVec(3);
+		for (int i = 0; i < 3; ++i)
+			uvwVec[i] = m_VolZoneInfo.BasisVectors.col(i) / (double)m_VolZoneInfo.MaxIJK[i];
+		double CellVolume = ParallepipedVolume(uvwVec);
+
+// 		double CellVolume = 1.0;
+
+// 		for (int i = 0; i < 3; ++i){
+// 			// 			DelXYZ[i] = (m_VolZoneInfo.MaxXYZ[i] - m_VolZoneInfo.MinXYZ[i]) / static_cast<double>(m_VolZoneInfo.MaxIJK[i] - 1);
+// 			CellVolume *= m_VolZoneInfo.DelXYZ[i];
+// 		}
 
 		SubDelXYZ = m_VolZoneInfo.DelXYZ / static_cast<double>(ResolutionScale);
 		double SubDivideFactorUser = 1.0 / static_cast<double>(ResolutionScale * ResolutionScale * ResolutionScale);

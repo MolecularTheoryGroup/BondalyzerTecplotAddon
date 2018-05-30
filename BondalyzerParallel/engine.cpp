@@ -118,7 +118,7 @@ struct MinFuncParams_GPLengthSpherical{
 const string DS_ZoneName_Delim = "_-_";
 const string T41Ext = ".t41";
 
-const static int MinNumCircleCheckGPs = 360;
+const static int MinNumCircleCheckGPs = 1080;
 const static int MinNumCircleGPs = 120;
 const static int MinNumRCSFuncCircleCheckPts = 3600;
 const static int DefaultRCSNumCheckRadii = 128;
@@ -224,7 +224,6 @@ const bool FEZoneDFS(const int & NodeNum,
 		for (int n = 0; n < NumNodesPerElem && IsOk; ++n){
 			int ni = TecUtilDataNodeGetByRef(NodeMap, ei, n + 1) - 1;
 			if (!IsVisited[ni]){
-				IsVisited[ni] = true;
 				IsOk = FEZoneDFS(ni, NodeMap, NodeToElemMap, NumNodesPerElem, IsVisited);
 			}
 		}
@@ -454,6 +453,8 @@ void GetAllClosedIsoSurfaces(){
 		return;
 	}
 
+	TecUtilLockStart(AddOnID);
+
 	TecUtilDataLoadBegin();
 
 	vector<FieldDataPointer_c> IsoReadPtrs(TecUtilDataSetGetNumVars());
@@ -467,6 +468,8 @@ void GetAllClosedIsoSurfaces(){
 	GetClosedIsoSurface(IsoZoneNum, IsoReadPtrs, NodeNums);
 
 	TecUtilDataLoadEnd();
+
+	TecUtilLockFinish(AddOnID);
 }
 
 void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c> & IsoReadPtrs, vector<int> & NodeNums){
@@ -593,6 +596,9 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 			}
 		}
 
+		vector<int> NewZoneIJK(3);
+		TecUtilZoneGetIJK(NewZoneNum, &NewZoneIJK[0], &NewZoneIJK[1], &NewZoneIJK[2]);
+
 		for (int n = 0; n < NumNewNodes; ++n) for (int i = 0; i < IsoWritePtrs.size(); ++i) IsoWritePtrs[i].Write(n, IsoReadPtrs[i][NodeNumsNewToOld[n]]);
 
 		NodeMap_pa NewNodeMap = TecUtilDataNodeGetWritableRef(NewZoneNum);
@@ -602,8 +608,12 @@ void GetClosedIsoSurface(const int & IsoZoneNum, const vector<FieldDataPointer_c
 		}
 
 		for (int e = 0; e < NewElems.size(); ++e){
+			int e1 = e + 1;
 			for (int ei = 0; ei < IsoIJK[2]; ++ei){
-				TecUtilDataNodeSetByRef(NewNodeMap, e + 1, ei + 1, NewElems[e][ei] + 1);
+				int ei1 = ei + 1;
+				int n = NewElems[e][ei % NewElems[e].size()] + 1;
+				TecUtilDataNodeSetByZone((EntIndex_t)NewZoneNum, (LgIndex_t)e1, (LgIndex_t)ei1, (NodeMap_t)n);
+// 				TecUtilDataNodeSetByRef(NewNodeMap, e1, ei1, n);
 			}
 		}
 
@@ -686,12 +696,12 @@ void BondalyzerReturnUserInfo(const bool GuiSuccess,
 		vector<int> SelectedCPs = Fields[fNum++].GetReturnIntVec();
 
 		CPType_e CPType;
-		if (CurrentCalcType == BondalyzerCalcType_BondPaths || CurrentCalcType == BondalyzerCalcType_InteratomicSurfaces) CPType = CPType_BondCP;
-		else if (CurrentCalcType == BondalyzerCalcType_RingLines || CurrentCalcType == BondalyzerCalcType_RingSurfaces) CPType = CPType_RingCP;
+		if (CurrentCalcType == BondalyzerCalcType_BondPaths || CurrentCalcType == BondalyzerCalcType_InteratomicSurfaces) CPType = CPType_Bond;
+		else if (CurrentCalcType == BondalyzerCalcType_RingLines || CurrentCalcType == BondalyzerCalcType_RingSurfaces) CPType = CPType_Ring;
 
 		if (CurrentCalcType == BondalyzerCalcType_BondPaths || CurrentCalcType == BondalyzerCalcType_RingLines)
 			FindBondRingLines(VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
-		else if (CurrentCalcType == BondalyserCalcType_CageNuclearPaths)
+		else if (CurrentCalcType == BondalyzerCalcType_CageNuclearPaths)
 			FindCageNuclearPaths(VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
 		else if (CurrentCalcType == BondalyzerCalcType_InteratomicSurfaces || CurrentCalcType == BondalyzerCalcType_RingSurfaces)
 			FindBondRingSurfaces(VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, RidgeFuncVarNum, IsPeriodic);
@@ -725,6 +735,29 @@ void BondalyzerReturnUserInfo(const bool GuiSuccess,
 			RhoCutoff, 
 			NumGBEdgePoints, 
 			GPNumPoints);
+	}
+	else if (CurrentCalcType == BondalyzerCalcType_Batch){
+		bool UseCPZones = Fields[fNum++].GetReturnBool();
+		vector<int> CPZoneNums = Fields[fNum++].GetReturnIntVec();
+		int CPTypeVarNum = Fields[fNum++].GetReturnInt();
+		double CellSpacing = Fields[fNum++].GetReturnDouble();
+		int RidgeFuncVarNum = 0;
+		if (Fields[fNum++].GetReturnBool())
+			RidgeFuncVarNum = Fields[fNum++].GetReturnInt();
+		else fNum++;
+		fNum++;
+		vector<bool> DoCalcs;
+		for (int i = (int)BondalyzerCalcType_BondPaths; i <= (int)BondalyzerCalcType_RingSurfaces; ++i) DoCalcs.push_back(Fields[fNum++].GetReturnBool());
+
+		int NumZones = TecUtilDataSetGetNumZones();
+
+		if (!UseCPZones && FindCritPoints(VolZoneNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, CellSpacing)){
+			CPZoneNums.clear();
+			for (int i = NumZones + 1; i <= TecUtilDataSetGetNumZones(); ++i) CPZoneNums.push_back(i);
+			CPTypeVarNum = VarNumByName(CSMVarName.CritPointType);
+		}
+
+		BondalyzerBatch(VolZoneNum, CPZoneNums, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, RidgeFuncVarNum, DoCalcs);
 	}
 
 	TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
@@ -773,19 +806,15 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_
 	Fields[iTmp].AppendSearchString(to_string(Fields.size()));
 	Fields.push_back(GuiField_c(Gui_VarSelect, CSMVarName.DensHessTensor[0], CSMVarName.DensHessTensor[0]));
 
-// 	int VolZoneNum, RhoVarNum;
-// 	vector<int> XYZVarNums(3), GradVarNums, HessVarNums;
-// 	Boolean_t IsPeriodic;
+	Fields.push_back(GuiField_c(Gui_VertSep));
 
 	string Title = "Find " + BondalyzerStepGUITitles[CalcType];
 	if (CalcType == BondalyzerCalcType_GBA) Title = BondalyzerStepGUITitles[CalcType];
 
 	if (CalcType == BondalyzerCalcType_CriticalPoints){
-		Fields.push_back(GuiField_c(Gui_VertSep));
 		Fields.push_back(GuiField_c(Gui_Double, "CP search grid spacing", to_string(DefaultCellSpacing)));
 	}
 	else if (CalcType >= BondalyzerCalcType_BondPaths && CalcType < BondalyzerCalcType_GBA){
-		Fields.push_back(GuiField_c(Gui_VertSep));
 		if (CalcType >= BondalyzerCalcType_InteratomicSurfaces){
 			Fields.push_back(GuiField_c(Gui_ToggleEnable, "1-RCS function present", to_string(Fields.size() + 1)));
 			Fields.push_back(GuiField_c(Gui_VarSelect, "1-ridge function variable", CSMVarName.EberlyFunc[0]));
@@ -803,12 +832,25 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_
 		int CPTypeNum;
 		if (CalcType == BondalyzerCalcType_BondPaths || CalcType == BondalyzerCalcType_InteratomicSurfaces) CPTypeNum = 1;
 		else if (CalcType == BondalyzerCalcType_RingLines || CalcType == BondalyzerCalcType_RingSurfaces) CPTypeNum = 2;
-		else if (CalcType == BondalyserCalcType_CageNuclearPaths) CPTypeNum = 3;
+		else if (CalcType == BondalyzerCalcType_CageNuclearPaths) CPTypeNum = 3;
 		int CPZoneNum = ZoneNumByName(CSMZoneName.CPType[CPTypeNum]);
 		if (CPZoneNum > 0) SearchString = CSMZoneName.CPType[CPTypeNum];
 		else SearchString = CSMZoneName.CriticalPoints;
 
 		Fields.push_back(GuiField_c(Gui_ZonePointSelectMulti, "Source critical point(s)", SearchString));
+	}
+	else if (CalcType == BondalyzerCalcType_Batch){
+		int TogNum = Fields.size();
+		Fields.push_back(GuiField_c(Gui_ToggleEnable, "Use existing critical points zone(s)?"));
+		Fields[TogNum].AppendSearchString(to_string(Fields.size()));
+		Fields.push_back(GuiField_c(Gui_ZoneSelectMulti, "Critical points", CSMZoneName.CriticalPoints));
+		Fields[TogNum].AppendSearchString("," + to_string(Fields.size()));
+		Fields.push_back(GuiField_c(Gui_VarSelect, "CP type variable", CSMVarName.CritPointType));
+		Fields.push_back(GuiField_c(Gui_Double, "CP search grid spacing", to_string(DefaultCellSpacing)));
+		Fields.push_back(GuiField_c(Gui_ToggleEnable, "1-RCS function present", to_string(Fields.size() + 1)));
+		Fields.push_back(GuiField_c(Gui_VarSelect, "1-ridge function variable", CSMVarName.EberlyFunc[0]));
+		Fields.push_back(GuiField_c(Gui_Label, "Calculation steps"));
+		for (int i = (int)BondalyzerCalcType_BondPaths; i <= (int)BondalyzerCalcType_RingSurfaces; ++i) Fields.push_back(GuiField_c(Gui_Toggle, BondalyzerStepGUITitles[i], "1"));
 	}
 
 	CSMGui(Title, Fields, BondalyzerReturnUserInfo, AddOnID);
@@ -1324,7 +1366,7 @@ const string MakeStringFromCPNums(const vector<int> & CPNums, const CritPoints_c
 const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	const vector<int> & OtherCPZoneNums,
 	const int & SelectedCPZoneNum,
-	const vector<int> & SelectedCPNums,
+	vector<int> SelectedCPNums,
 	const int & CPTypeVarNum,
 	const CPType_e & CPType,
 	const vector<int> & XYZVarNums,
@@ -1388,12 +1430,12 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 			TecUtilDialogErrMsg("CP zone is not i-ordered");
 			return FALSE;
 		}
-		TecUtilZoneGetName(z, &tmpName);
-		if (CPZoneCheckString == tmpName){
-			TecUtilDialogErrMsg(string("Duplicate CP zone specified: " + string(tmpName)).c_str());
-			return FALSE;
-		}
-		TecUtilStringDealloc(&tmpName);
+// 		TecUtilZoneGetName(z, &tmpName);
+// 		if (CPZoneCheckString == tmpName){
+// 			TecUtilDialogErrMsg(string("Duplicate CP zone specified: " + string(tmpName)).c_str());
+// 			return FALSE;
+// 		}
+// 		TecUtilStringDealloc(&tmpName);
 	}
 
 	vec3 EigVals;
@@ -1420,12 +1462,16 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	int EndCPNumforName = 0;
 	StreamDir_e GPDir = StreamDir_Forward;
 	ColorIndex_t PathColor = Black_C;
-	vector<CPType_e> MinDistTypes = { CPType_NuclearCP, CPType_BondCP };
-	if (CPType == CPType_RingCP){
-		MinDistTypes = { CPType_NuclearCP, CPType_RingCP };
+	vector<CPType_e> MinDistTypes = { CPType_Nuclear, CPType_Bond };
+	if (CPType == CPType_Ring){
+		MinDistTypes = { CPType_Nuclear, CPType_Ring };
 		GPDir = StreamDir_Reverse;
 		PathColor = Green_C;
 		EndCPNumforName++;
+	}
+
+	if (SelectedCPNums.size() == 0){
+		for (int i = 0; i < AllCPs.NumCPs(TypeInd); ++i) SelectedCPNums.push_back(i+1);
 	}
 
 	CSMGuiLock();
@@ -1471,7 +1517,7 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 		vector<int> StartEndCPNums = GP.GetStartEndCPNum();
 		vector<vector<int> > StartEndCPTypeAndOffset(2);
 		StartEndCPTypeAndOffset[0] = AllCPs.GetTypeNumOffsetFromTotOffset(OldStartCPNum);
-		string Name = (CPType == CPType_BondCP ? CSMZoneName.BondPath : CSMZoneName.RingLine) + CPNameList[StartEndCPTypeAndOffset[0][0]] + " " + to_string(StartEndCPTypeAndOffset[0][1] + 1);
+		string Name = (CPType == CPType_Bond ? CSMZoneName.BondPath : CSMZoneName.RingLine) + CPNameList[StartEndCPTypeAndOffset[0][0]] + " " + to_string(StartEndCPTypeAndOffset[0][1] + 1);
 		Name += MakeStringFromCPNums(StartEndCPNums, AllCPs, StartEndCPTypeAndOffset);
 // 		for (int i = 0; i < 2; ++i){
 // 			if (StartEndCPNums[i] >= 0){
@@ -1497,7 +1543,7 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 			else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
 		}
 		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeGP);
-		if (CPType == CPType_RingCP) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
+		if (CPType == CPType_Ring) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
 		else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPath);
 	}
 
@@ -1522,7 +1568,7 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 			else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
 		}
 		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeGP);
-		if (CPType == CPType_RingCP) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
+		if (CPType == CPType_Ring) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
 		else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPath);
 	}
 
@@ -1601,8 +1647,8 @@ double MinFunc_GPLength_Spherical(const gsl_vector * ThetaPhi, void * params){
 #ifdef _DEBUG
 	if (!GPParams->GP.IsMade())
 		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_Spherical failed");
-	if (GPParams->EndCPNum >= 0 && GPParams->GP.GetStartEndCPNum(1) != GPParams->EndCPNum)
-		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_Spherical terminated at wrong CP");
+// 	if (GPParams->EndCPNum >= 0 && GPParams->GP.GetStartEndCPNum(1) != GPParams->EndCPNum)
+// 		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_Spherical terminated at wrong CP");
 #endif
 
 	if (GPParams->Direction != StreamDir_Both)
@@ -1617,7 +1663,7 @@ double MinFunc_GPLength_Spherical(const gsl_vector * ThetaPhi, void * params){
 const Boolean_t FindCageNuclearPaths(const int & VolZoneNum,
 	const vector<int> & OtherCPZoneNums,
 	const int & SelectedCPZoneNum,
-	const vector<int> & SelectedCPNums,
+	vector<int> SelectedCPNums,
 	const int & CPTypeVarNum,
 	const vector<int> & XYZVarNums,
 	const int & RhoVarNum,
@@ -1676,12 +1722,12 @@ const Boolean_t FindCageNuclearPaths(const int & VolZoneNum,
 			TecUtilDialogErrMsg("CP zone is not i-ordered");
 			return FALSE;
 		}
-		TecUtilZoneGetName(z, &tmpName);
-		if (CPZoneCheckString == tmpName){
-			TecUtilDialogErrMsg(string("Duplicate CP zone specified: " + string(tmpName)).c_str());
-			return FALSE;
-		}
-		TecUtilStringDealloc(&tmpName);
+// 		TecUtilZoneGetName(z, &tmpName);
+// 		if (CPZoneCheckString == tmpName){
+// 			TecUtilDialogErrMsg(string("Duplicate CP zone specified: " + string(tmpName)).c_str());
+// 			return FALSE;
+// 		}
+// 		TecUtilStringDealloc(&tmpName);
 	}
 
 	vec3 EigVals;
@@ -1708,13 +1754,17 @@ const Boolean_t FindCageNuclearPaths(const int & VolZoneNum,
 	int EndCPNumforName = 0;
 	StreamDir_e GPDir = StreamDir_Both;
 	ColorIndex_t PathColor = Red_C;
-	vector<CPType_e> MinDistTypes = { CPType_RingCP, CPType_NuclearCP }; //ring CPs are the closest to cage CPs, and don't want to seed past a neighboring ring CP, so use that distance.
+	vector<CPType_e> MinDistTypes = { CPType_Ring, CPType_Nuclear }; //ring CPs are the closest to cage CPs, and don't want to seed past a neighboring ring CP, so use that distance.
+
+	if (SelectedCPNums.size() == 0){
+		for (int i = 0; i < AllCPs.NumCPs(TypeInd); ++i) SelectedCPNums.push_back(i + 1);
+	}
 
 	CSMGuiLock();
 
 	vec3 StartPoint;
 
-	const int NumSpherePoints = 500;
+	const int NumSpherePoints = 5000;
 	const int NumGPPts = 100;
 	double TermRadius = 0.2;
 	double RhoCutoff = DefaultRhoCutoff;
@@ -1755,7 +1805,7 @@ const Boolean_t FindCageNuclearPaths(const int & VolZoneNum,
 		vector<double> StartTheta, StartPhi;
 
 		for (int iGP = 0; iGP < NumGPs; ++iGP){
-			if (!GPUsed[iGP] && GPEndCPTypes[iGP] == CPType_NuclearCP){
+			if (!GPUsed[iGP] && GPEndCPTypes[iGP] == CPType_Nuclear){
 				int MinInd = iGP;
 				for (int jGP = iGP + 1; jGP < iGP + NumGPs - 1; ++jGP){
 					int ind = jGP % NumGPs;
@@ -2260,10 +2310,10 @@ double MinFunc_GPLength_InPlane(double alpha, void * params){
 
 	if (!GPParams->GP.IsMade())
 		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_InPlane failed");
-	if (GPParams->EndCPNum >= 0 && GPParams->EndCPPosition >= 0 && GPParams->GP.GetStartEndCPNum(GPParams->EndCPPosition) != GPParams->EndCPNum)
-		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_InPlane terminated at wrong CP");
-	if (GPParams->StartCPNum >= 0 && GPParams->EndCPPosition >= 0 && GPParams->GP.GetStartEndCPNum((GPParams->EndCPPosition + 1) % 2) != GPParams->StartCPNum)
-		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_InPlane originated at wrong CP");
+// 	if (GPParams->EndCPNum >= 0 && GPParams->EndCPPosition >= 0 && GPParams->GP.GetStartEndCPNum(GPParams->EndCPPosition) != GPParams->EndCPNum)
+// 		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_InPlane terminated at wrong CP");
+// 	if (GPParams->StartCPNum >= 0 && GPParams->EndCPPosition >= 0 && GPParams->GP.GetStartEndCPNum((GPParams->EndCPPosition + 1) % 2) != GPParams->StartCPNum)
+// 		TecUtilDialogErrMsg("Gradient path in MinFunc_GPLength_InPlane originated at wrong CP");
 
 	if (GPParams->Direction != StreamDir_Both)
 		GPParams->GP.PointPrepend(GPParams->StartPointOrigin, 0);
@@ -2303,7 +2353,7 @@ const T PeriodicDistance1D(T a, T b, const T & low, const T & high){
 const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 	const vector<int> & OtherCPZoneNums,
 	const int & SelectedCPZoneNum,
-	const vector<int> & SelectedCPNums,
+	vector<int> SelectedCPNums,
 	const int & CPTypeVarNum,
 	const CPType_e & CPType,
 	const vector<int> & XYZVarNums,
@@ -2373,12 +2423,12 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 			TecUtilDialogErrMsg("CP zone is not i-ordered");
 			return FALSE;
 		}
-		TecUtilZoneGetName(z, &tmpName);
-		if (CPZoneCheckString == tmpName){
-			TecUtilDialogErrMsg(string("Duplicate CP zone specified: " + string(tmpName)).c_str());
-			return FALSE;
-		}
-		TecUtilStringDealloc(&tmpName);
+// 		TecUtilZoneGetName(z, &tmpName);
+// 		if (CPZoneCheckString == tmpName){
+// 			TecUtilDialogErrMsg(string("Duplicate CP zone specified: " + string(tmpName)).c_str());
+// 			return FALSE;
+// 		}
+// 		TecUtilStringDealloc(&tmpName);
 	}
 
 	vec3 EigVals;
@@ -2404,33 +2454,32 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 
 	AllCPs.RemoveSpuriousCPs();
 
-	if (SelectedCPNums.size() > AllCPs.NumCPs(TypeInd) || SelectedCPNums.back() - 1 > AllCPs.NumCPs(TypeInd)){
-		TecUtilDialogErrMsg("Discrepancy between selected CPs and selected CP zone");
-		return FALSE;
+	if (SelectedCPNums.size() == 0){
+		for (int i = 0; i < AllCPs.NumCPs(TypeInd); ++i) SelectedCPNums.push_back(i + 1);
 	}
 
 	CSMGuiLock();
 
 	vector<CPType_e> CPTypesForMinDistCheck;
-	int EndCPPosition = 0;
+	int EndCPPosition = 1;
 	StreamDir_e GPDir = StreamDir_Reverse;
 	ColorIndex_t PathColor = Black_C;
-	CPType_e PrimaryTermType = CPType_CageCP,
-		SecondaryTermType = CPType_RingCP;
-	if (CPType == CPType_RingCP){
+	CPType_e PrimaryTermType = CPType_Cage,
+		SecondaryTermType = CPType_Ring;
+	if (CPType == CPType_Ring){
 		GPDir = StreamDir_Forward;
 		PathColor = Green_C;
-		EndCPPosition++;
-		PrimaryTermType = CPType_NuclearCP;
-		SecondaryTermType = CPType_BondCP;
-		CPTypesForMinDistCheck = { CPType_BondCP, CPType_RingCP };
+// 		EndCPPosition++;
+		PrimaryTermType = CPType_Nuclear;
+		SecondaryTermType = CPType_Bond;
+		CPTypesForMinDistCheck = { CPType_Bond, CPType_Ring };
 	}
 	else{
-		if (AllCPs.NumBonds() <= 1) CPTypesForMinDistCheck.push_back(CPType_NuclearCP);
+		if (AllCPs.NumBonds() <= 1) CPTypesForMinDistCheck.push_back(CPType_Nuclear);
 		
-		CPTypesForMinDistCheck.push_back(CPType_BondCP);
+		CPTypesForMinDistCheck.push_back(CPType_Bond);
 
-		if (AllCPs.NumRings() > 0) CPTypesForMinDistCheck.push_back(CPType_RingCP);
+		if (AllCPs.NumRings() > 0) CPTypesForMinDistCheck.push_back(CPType_Ring);
 	}
 
 
@@ -2466,7 +2515,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 	double StartPointOffset;
 	double AngleStep;
 
-	string StatusStr = "Finding " + string(CPType == CPType_BondCP ? "interatomic" : "ring") + " surfaces";
+	string StatusStr = "Finding " + string(CPType == CPType_Bond ? "interatomic" : "ring") + " surfaces";
 	StatusLaunch(StatusStr, AddOnID, TRUE);
 
 #ifndef _DEBUG
@@ -2476,7 +2525,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 		if (!StatusUpdate(iCP, NumCPs, StatusStr + ": (" + to_string(iCP+1) + " of " + to_string(NumCPs) + ")", AddOnID)) break;
 		int cpNum = SelectedCPNums[iCP] - 1;
 		MinFuncParams_GPLengthInPlane GPParams;
-		GPParams.Direction = StreamDir_Both;
+		GPParams.Direction = GPDir;
 		GPParams.NumGPPoints = NumGPPts;
 		GPParams.GPType = GPType_Classic;
 		GPParams.GPTerminate = GPTerminate_AtCP;
@@ -2489,7 +2538,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 		GPParams.GradPtrs = &GradPtrs;
 		GPParams.RhoPtr = &RhoPtr;
 
-		StartPointOffset = 0.5 * AllCPs.GetMinCPDist(TypeInd, cpNum);
+		StartPointOffset = 0.1 * AllCPs.GetMinCPDist(TypeInd, cpNum);
 		vec3 StartVec = normalise(AllCPs.GetEigVecs(TypeInd, cpNum).col(1)) * StartPointOffset;
 
 		GPParams.StartPointOrigin = AllCPs.GetXYZ(TypeInd, cpNum);
@@ -2513,8 +2562,8 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 
 			StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
 
-			GPs.push_back(GradPath_c(StartPoint, StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
-// 			GPs.back().SetStartEndCPNum(GPParams.StartCPNum, 0);
+			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.back().SetStartEndCPNum(GPParams.StartCPNum, 0);
 		}
 
 #ifndef _DEBUG
@@ -2522,7 +2571,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 #endif
 		for (int gpNum = 0; gpNum < NumCircleCheckGPs; ++gpNum){
 			GPs[gpNum].Seed(false);
-// 			GPs[gpNum].PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+			if (GPDir != StreamDir_Both) GPs[gpNum].PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 			GPLengths[gpNum] = GPs[gpNum].GetLength();
 			GPEndCPNums[gpNum] = GPs[gpNum].GetStartEndCPNum(EndCPPosition);
 			GPEndCPTypes[gpNum] = AllCPs.GetTypeFromTotOffset(GPEndCPNums[gpNum]);
@@ -2645,12 +2694,12 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 							Iter++;
 							AlphaGuess = (AlphaLower + AlphaUpper) * 0.5;
 							StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, AlphaGuess, GPParams.RotAxis);
-							GradPath_c GP(StartPoint, StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
-// 							GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
+							GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+							GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 							GP.Seed(false);
 							if (AllCPs.GetTypeFromTotOffset(GP.GetStartEndCPNum(EndCPPosition)) == SecondaryTermType){
 								TermCPNum = GP.GetStartEndCPNum(EndCPPosition);
-// 								GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+								if (GPDir != StreamDir_Both) GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 								GPLen = GP.GetLength();
 
 // 								AlphaLower = (static_cast<double>(gpNum) * AngleStep + AlphaGuess) * 0.5;
@@ -2702,11 +2751,11 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 								Iter++;
 								RotAngle = AlphaGuess + (AngleStep * AngleFactor * SmallAngleFactor * static_cast<double>(MinGPDir));
 								StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
-								GradPath_c GP(StartPoint, StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
-// 								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
+								GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 								GP.Seed(false);
 								if (GP.GetStartEndCPNum(EndCPPosition) == TermCPNum){
-// 									GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+									if (GPDir != StreamDir_Both) GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 									GPDirLengths[i] = GP.GetLength();
 									break;
 								}
@@ -2749,11 +2798,11 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 								Iter++;
 								RotAngle += (AngleStep * AngleFactor * SmallAngleFactor * static_cast<double>(MinGPDir));
 								StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
-								GradPath_c GP(StartPoint, StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
-// 								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
+								GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 								GP.Seed(false);
 								if (GP.GetStartEndCPNum(EndCPPosition) == TermCPNum){
-// 									GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+									if (GPDir != StreamDir_Both) GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 									double TmpGPLen = GP.GetLength();
 									if (TmpGPLen > GPLen){
 										if (MinGPDir < 0){
@@ -2827,22 +2876,26 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 			s = gsl_min_fminimizer_alloc(T);
 
 			// DEBUG check the GP lengths that will be found using the low, guess, and high angle values
-#ifdef _DEBUG
+// #ifdef _DEBUG
 			vector<double> TmpLens(3);
 			vector<int> TmpEndCPNums(3);
 			vector<vec3> TmpStartPoints(3);
 			for (int j = 0; j < 3; ++j){
 				TmpStartPoints[j] = GPParams.StartPointOrigin + Rotate(StartVec, MinFunc_AlphaLowMidHigh[i][j], GPParams.RotAxis);
-				GradPath_c GP(TmpStartPoints[j], StreamDir_Both, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+				GradPath_c GP(TmpStartPoints[j], GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 
-// 				GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
+				GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 				GP.Seed(false);
-// 				GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+				if (GPDir != StreamDir_Both) GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 
 				TmpLens[j] = GP.GetLength();
 				TmpEndCPNums[j] = GP.GetStartEndCPNum(EndCPPosition);
 			}
-#endif
+			if (TmpLens[1] > TmpLens[0] || TmpLens[1] > TmpLens[2]){
+				// initial guess and bounds for 1-d minimization is wrong, so skip minimization and shrink SGP vectors as necessary
+				continue;
+			}
+// #endif
 
 			gsl_min_fminimizer_set(s, &F, MinFunc_AlphaLowMidHigh[i][1], MinFunc_AlphaLowMidHigh[i][0], MinFunc_AlphaLowMidHigh[i][2]);
 
@@ -2894,7 +2947,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 			SGPsPerCP[iCP][i].SetupGradPath(GPParams.StartPointOrigin + Rotate(StartVec, MinFunc_AlphaLowMidHigh[i][1], GPParams.RotAxis), GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 			SGPsPerCP[iCP][i].SetStartEndCPNum(GPParams.StartCPNum, 0);
 			SGPsPerCP[iCP][i].Seed(false);
-			SGPsPerCP[iCP][i].PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
+			if (GPDir != StreamDir_Both) SGPsPerCP[iCP][i].PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
 			SGPsPerCP[iCP][i].Resample(NumGPPts);
 
 			SGPSeedAngles[i] = MinFunc_AlphaLowMidHigh[i][1];
@@ -3118,12 +3171,14 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 							if (GPDir == StreamDir_Reverse) GP.Reverse();
 							bool GPFound = false;
 							for (int iSGP = 0; iSGP < SGPsPerCP[iCP].size() && !GPFound; ++iSGP){
-								double aSGP = SGPSeedAngles[iSGP];
-								if (PeriodicDistance1D(aSGP, aRCS, 0., PI2) < RCSSGPRadCheck){
-									GPFound = true;
-									if (GP.GetLength() < SGPsPerCP[iCP][iSGP].GetLength()){
-										SGPsPerCP[iCP][iSGP] = GP;
-										SGPSeedAngles[iSGP] = aRCS;
+								if (SGPsPerCP[iCP][iSGP].IsMade()){
+									double aSGP = SGPSeedAngles[iSGP];
+									if (PeriodicDistance1D(aSGP, aRCS, 0., PI2) < RCSSGPRadCheck){
+										GPFound = true;
+										if (GP.GetLength() < SGPsPerCP[iCP][iSGP].GetLength()){
+											SGPsPerCP[iCP][iSGP] = GP;
+											SGPSeedAngles[iSGP] = aRCS;
+										}
 									}
 								}
 							}
@@ -3143,6 +3198,12 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 
 		vector<vector<GradPath_c> > SurfaceGPs;
 		vector<vector<int> > SurfaceGPCPNums;
+
+		{
+			vector<GradPath_c> GoodSGPs;
+			for (auto & sgp : SGPsPerCP[iCP]) if (sgp.IsMade()) GoodSGPs.push_back(sgp);
+			SGPsPerCP[iCP] = GoodSGPs;
+		}
 		NumSGPs = SGPsPerCP[iCP].size();
 
 		if (NumSGPs > 1){
@@ -3370,7 +3431,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 		vector<vector<GradPath_c*> > SurfaceGPPtrs;
 		bool SingleSurface = (SurfaceGPs.size() == 1);
 		string ZoneNameBase = "SZFS_",
-			WholeSurfaceZoneNameBase = (CPType == CPType_BondCP ? "IAS_" : "RS_"),
+			WholeSurfaceZoneNameBase = (CPType == CPType_Bond ? "IAS_" : "RS_"),
 			CPNameBase = CPNameList[TypeInd] + " " + to_string(cpNum + 1);
 		if (SingleSurface) ZoneNameBase = WholeSurfaceZoneNameBase;
 
@@ -3419,7 +3480,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 					else AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.CC.ZFSCornerCPTypes[c], "FF");
 				}
 				AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeSZFS);
-				AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.CC.ZoneSubType, (CPType == CPType_RingCP ? CSMAuxData.CC.ZoneSubTypeRS : CSMAuxData.CC.ZoneSubTypeIAS));
+				AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.CC.ZoneSubType, (CPType == CPType_Ring ? CSMAuxData.CC.ZoneSubTypeRS : CSMAuxData.CC.ZoneSubTypeIAS));
 			}
 		}
 
@@ -3430,7 +3491,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 			AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.CC.ZFSCornerCPNumStrs[0], to_string(AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, cpNum) + 1));
 			AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.CC.ZFSCornerCPTypes[0], CPNameList[TypeInd]);
 			AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeSZFS);
-			AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.CC.ZoneSubType, (CPType == CPType_RingCP ? CSMAuxData.CC.ZoneSubTypeRS : CSMAuxData.CC.ZoneSubTypeIAS));
+			AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.CC.ZoneSubType, (CPType == CPType_Ring ? CSMAuxData.CC.ZoneSubTypeRS : CSMAuxData.CC.ZoneSubTypeIAS));
 		}
 	}
 
@@ -3510,7 +3571,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 		GPs[iGP].Seed(false);
 		GPs[iGP].PointPrepend(AllCPs.GetXYZ(GPs[iGP].GetStartEndCPNum()[0]), AllCPs.GetRho(GPs[iGP].GetStartEndCPNum()[0]));
 		GPs[iGP].Resample(NumGPPts);
-		if (CPType == CPType_BondCP) GPs[iGP].Reverse();
+		if (CPType == CPType_Bond) GPs[iGP].Reverse();
 	}
 
 	for (auto & GP : GPs){
@@ -3771,7 +3832,7 @@ void DrawEigenvectorArrowsGetUserInfo(){
 }
 
 
-const bool ExtractRadiusContourLinesToIOrderedPoints(const vector<int> & ZoneNums, 
+const bool ExtractRadiusContourLinesToIOrderedPoints(vector<int> & ZoneNums, 
 	const vec3 & Origin, const double & Radius, const vector<int> & XYZVarNums, vector<GradPath_c> & ContourLines)
 {
 	TecUtilLockStart(AddOnID);
@@ -3864,6 +3925,8 @@ const bool ExtractRadiusContourLinesToIOrderedPoints(const vector<int> & ZoneNum
 	// Now actually loop through zones to extract contour lines
 	ZoneSet.clear();
 
+	vector<int> IntZoneNums;
+
 	for (const int & z : ZoneNums){
 		TecUtilZoneSetActive(Set(z).getRef(), AssignOp_Equals);
 
@@ -3878,11 +3941,14 @@ const bool ExtractRadiusContourLinesToIOrderedPoints(const vector<int> & ZoneNum
 
 			ZoneSet += NewZoneNum;
 			NumZones = NewZoneNum;
+			IntZoneNums.push_back(z);
 		}
 	}
 
-	TecUtilDataSetDeleteVar(Set(TempVarNum).getRef());
-	TecUtilDataSetDeleteZone(ZoneSet.getRef());
+	ZoneNums = IntZoneNums;
+
+// 	TecUtilDataSetDeleteVar(Set(TempVarNum).getRef());
+// 	TecUtilDataSetDeleteZone(ZoneSet.getRef());
 	TecUtilFrameDeleteActive();
 
 	TecUtilLockFinish(AddOnID);
@@ -3948,15 +4014,15 @@ void ExtractSurfaceSphereIntersections(
 	for (const int & CPNum1 : CPList){
 		vector<int> TypeNumOffset = (CPZoneTypeInd < 0 ? CPs.GetTypeNumOffsetFromTotOffset(CPNum1 - 1) : vector<int>({ CPZoneTypeInd, CPNum1 - 1 }));
 		CPType_e CPType = CPTypeList[TypeNumOffset[0]];
-		if (CPType != CPType_NuclearCP && CPType != CPType_CageCP) continue;
+		if (CPType != CPType_Nuclear && CPType != CPType_Cage) continue;
 
 		int CPTotOffset = CPs.GetTotOffsetFromTypeNumOffset(TypeNumOffset[0], TypeNumOffset[1]) + 1;
 
 		// Get zone numbers of intersecting ring (interatomic) surfaces
-		string SurfaceSearchString = (CPType == CPType_NuclearCP ? CSMAuxData.CC.ZoneSubTypeRS : CSMAuxData.CC.ZoneSubTypeIAS);
+		string SurfaceSearchString = (CPType == CPType_Nuclear ? CSMAuxData.CC.ZoneSubTypeRS : CSMAuxData.CC.ZoneSubTypeIAS);
 		vector<int> IntersectingZoneNums;
 		for (int z = 1; z <= NumZones; ++z){
-			if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, SurfaceSearchStrings[CPType == CPType_NuclearCP ? 0 : 1])){
+			if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, SurfaceSearchStrings[CPType == CPType_Nuclear ? 0 : 1])){
 				for (const string & CornerStr : CSMAuxData.CC.ZFSCornerCPNumStrs){
 					int CornerNum = stoi(AuxDataZoneGetItem(z, CornerStr));
 					if (CornerNum == CPTotOffset){
@@ -3965,7 +4031,7 @@ void ExtractSurfaceSphereIntersections(
 					}
 				}
 			}
-			else if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, PathSearchStrings[CPType == CPType_NuclearCP ? 0 : 1])){
+			else if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, PathSearchStrings[CPType == CPType_Nuclear ? 0 : 1])){
 				for (const string & CornerStr : CSMAuxData.CC.GPEndNumStrs){
 					int CornerNum = stoi(AuxDataZoneGetItem(z, CornerStr));
 					if (CornerNum == CPTotOffset){
@@ -4181,6 +4247,37 @@ const Boolean_t CPNumbersMapBetweenZones(const int & AllCPsZoneNum,
 	return AllFound;
 }
 
+const Boolean_t BondalyzerBatch(const int & VolZoneNum,
+	const vector<int> & CPZoneNums,
+	const int & CPTypeVarNum,
+	const vector<int> & XYZVarNums,
+	const int & RhoVarNum,
+	const vector<int> & GradVarNums,
+	const vector<int> & HessVarNums,
+	const Boolean_t & IsPeriodic,
+	const int & RidgeFuncVarNum,
+	const vector<bool> & CalcSteps)
+{
+	// Check and run each calculation step. (minus 1 because critical points isn't included)
+	if (CalcSteps[(int)BondalyzerCalcType_BondPaths - 1]){
+		FindBondRingLines(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, CPType_Bond, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+	}
+	if (CalcSteps[(int)BondalyzerCalcType_RingLines - 1]){
+		FindBondRingLines(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, CPType_Ring, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+	}
+	if (CalcSteps[(int)BondalyzerCalcType_CageNuclearPaths - 1]){
+		FindCageNuclearPaths(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+	}
+	if (CalcSteps[(int)BondalyzerCalcType_InteratomicSurfaces - 1]){
+		FindBondRingSurfaces(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, CPType_Bond, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, RidgeFuncVarNum, IsPeriodic);
+	}
+	if (CalcSteps[(int)BondalyzerCalcType_RingSurfaces - 1]){
+		FindBondRingSurfaces(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, CPType_Ring, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, RidgeFuncVarNum, IsPeriodic);
+	}
+
+	return TRUE;
+}
+
 void CombineCPZonesReturnUserInfo(const bool GuiSuccess,
 	const vector<GuiField_c> & Fields,
 	const vector<GuiField_c> PassthroughFields)
@@ -4349,4 +4446,176 @@ void TestFunction(){
 // 	GP.Seed(true);
 // 
 // 	GP.SaveAsOrderedZone("test GP");
+// 	
+
+	/*
+	 *	Testing the creation and initialzation of a fe_quad zone, because this part is crashing in the isosurface extraction tool.
+	 *	This works, so wonder why it's crashing in the other function...
+	 */
+
+// 	FieldVecPointer_c XYZPtr;
+// 	vector<vec3> Nodes(4);
+// 	for (int i = 0; i < 2; ++i) for (int j = 0; j < 2; ++j) Nodes[i * 2 + j] << i << j << 0;
+// 	vector<int> Elems = { 1, 2, 4, 3 };
+// 
+// 	TecUtilDataSetAddZone("test zone", 4, 1, 4, ZoneType_FEQuad, NULL);
+// 	int ZoneNum = TecUtilDataSetGetNumZones();
+// 
+// 	TecUtilDataLoadBegin();
+// 
+// 	XYZPtr.GetWritePtr(ZoneNum, { 1, 2, 3 });
+// 
+// 	for (int i = 0; i < 4; ++i){
+// 		TecUtilDataNodeSetByZone(ZoneNum, 1, i + 1, Elems[i]);
+// 		XYZPtr.Write(i, Nodes[i]);
+// 	}
+// 	
+// 	TecUtilDataLoadEnd();
+// 	
+
+	/*
+	 *	Test rolling average-based time remaining on status
+	 */
+
+	TecUtilLockStart(AddOnID);
+
+	high_resolution_clock::time_point StartTime = high_resolution_clock::now();
+
+	StatusLaunch("test", AddOnID, TRUE, TRUE);
+
+	int N = 200;
+
+	for (int i = 0; i < N; ++i){
+		StatusUpdate(i, N, "test", AddOnID, StartTime);
+		Sleep(100 * (i % 5));
+	}
+
+	StatusDrop(AddOnID);
+
+	TecUtilLockFinish(AddOnID);
+}
+
+struct GradientPathToolData_s{
+	VolExtentIndexWeights_s VolInfo;
+	FieldDataPointer_c RhoPtr;
+	vector<FieldDataPointer_c> GradPtrs, HessPtrs;
+	StreamDir_e Dir;
+
+// 	GradientPathToolData_s(VolExtentIndexWeights_s &VolInfo_in,
+// 		FieldVecPointer_c & RhoPtr_in,
+// 		vector<FieldVecPointer_c> & GradPtrs_in, 
+// 		vector<FieldVecPointer_c> & HessPtrs_in)
+// 	{
+// 		VolInfo = VolInfo_in;
+// 		RhoPtr = RhoPtr_in;
+// 		GradPtrs = GradPtrs_in;
+// 		HessPtrs = HessPtrs_in;
+// 	}
+};
+
+GradientPathToolData_s GPToolData;
+
+void STDCALL GradientPathToolProbeCB(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData){
+
+// 	EntIndex_t ZoneNum = TecUtilProbeFieldGetZone();
+// 	if (ZoneNum == TECUTILBADZONENUMBER){
+// 		TecUtilDialogErrMsg("Failed to get zone number!");
+// 		return;
+// 	}
+
+// 	EntIndex_t ind = -1;
+// 	if (isNearestPoint) ind = TecUtilProbeGetPointIndex();
+
+// 	GradientPathToolData_s *GPToolData = reinterpret_cast<GradientPathToolData_s*>(ClientData);
+
+	vec3 Pt;
+	for (int i = 0; i < 3; ++i) Pt[i] = TecUtilProbeFieldGetValue(i+1);
+
+	TecUtilLockStart(AddOnID);
+
+	CSMGuiLock();
+
+	
+	double TermValue = 0;
+	GradPath_c GP(Pt, GPToolData.Dir, 1000, GPType_Classic, GPTerminate_AtRhoValue, NULL, NULL, NULL, &TermValue, GPToolData.VolInfo, GPToolData.HessPtrs, GPToolData.GradPtrs, GPToolData.RhoPtr);
+	GP.Seed(false);
+	GP.SaveAsOrderedZone();
+
+	TecUtilRedraw(TRUE);
+
+
+	CSMGuiUnlock();
+
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void GradientPathToolReturnUserInfo(const bool GuiSuccess,
+	const vector<GuiField_c> & Fields,
+	const vector<GuiField_c> PassthroughFields){
+	if (!GuiSuccess) return;
+
+	TecUtilLockStart(AddOnID);
+
+	int fNum = 0;
+	int VolZoneNum = Fields[fNum++].GetReturnInt();
+	StreamDir_e StreamDir = StreamDir_e(Fields[fNum++].GetReturnInt()-1);
+	int RhoVarNum = Fields[fNum++].GetReturnInt();
+	GPToolData.Dir = StreamDir;
+	GetVolInfo(VolZoneNum, { 1, 2, 3 }, FALSE, GPToolData.VolInfo);
+
+	Boolean_t IsOk = GPToolData.RhoPtr.GetReadPtr(VolZoneNum, RhoVarNum);
+
+	if (IsOk && Fields[fNum++].GetReturnBool()){
+		GPToolData.GradPtrs.resize(3);
+		for (int i = 0; i < 3; ++i){
+			if (!GPToolData.GradPtrs[i].GetReadPtr(VolZoneNum, Fields[fNum].GetReturnInt() + i)){
+				GPToolData.GradPtrs.clear();
+				break;
+			}
+		}
+	}
+	else GPToolData.GradPtrs.clear();
+	fNum++;
+	if (IsOk && Fields[fNum++].GetReturnBool()){
+		GPToolData.HessPtrs.resize(6);
+		for (int i = 0; i < 6; ++i){
+			if (!GPToolData.HessPtrs[i].GetReadPtr(VolZoneNum, Fields[fNum].GetReturnInt() + i)){
+				GPToolData.HessPtrs.clear();
+				break;
+			}
+		}
+	}
+	else GPToolData.HessPtrs.clear();
+
+	ArgList ProbeArgs;
+	ProbeArgs.appendFunction(SV_CALLBACKFUNCTION, GradientPathToolProbeCB);
+	ProbeArgs.appendString(SV_STATUSLINETEXT, "Select point at which to seed gradient path");
+// 	ProbeArgs.appendArbParam(SV_CLIENTDATA, reinterpret_cast<ArbParam_t>(&GPToolData));
+
+	TecUtilProbeInstallCallbackX(ProbeArgs.getRef());
+	TecUtilProbeAllowCOBs();
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void GradientPathToolGetUserInfo(){
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelect, "Full volume zone", CSMZoneName.FullVolume),
+		GuiField_c(Gui_Radio, "Gradient path direction", "Forward,Reverse,Both"),
+		GuiField_c(Gui_VarSelect, "Electron density variable number", CSMVarName.Dens)
+	};
+
+	int iTmp = Fields.size();
+	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density gradient vector variables present"));
+	Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+	Fields.push_back(GuiField_c(Gui_VarSelect, "X Gradient variable number", CSMVarName.DensGradX));
+	iTmp = Fields.size();
+	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density Hessian tensor variables present"));
+	Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+	Fields.push_back(GuiField_c(Gui_VarSelect, "XX Hessian variable number", CSMVarName.DensHessXX));
+
+	CSMGui("Gradient path tool", Fields, GradientPathToolReturnUserInfo, AddOnID);
 }

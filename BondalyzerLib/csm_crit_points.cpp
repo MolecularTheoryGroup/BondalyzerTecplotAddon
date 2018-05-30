@@ -539,9 +539,9 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 		CPTypeVarNum = TecUtilDataSetGetNumVars();
 	}
 	vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars());
-	for (int i = 0; i < DataTypes.size() - 1; ++i)
+	for (int i = 0; i < DataTypes.size(); ++i)
 		DataTypes[i] = TecUtilDataValueGetType(1, i + 1);
-	DataTypes.back() = FieldDataType_Int16;
+	DataTypes[CPTypeVarNum - 1] = FieldDataType_Int16;
 
 	if (!TecUtilDataSetAddZone(CSMZoneName.CriticalPoints.c_str(), NumCPs(), 1, 1, ZoneType_Ordered, DataTypes.data())){
 		TecUtilDialogErrMsg("Failed to create CP zone");
@@ -940,7 +940,7 @@ const Boolean_t CritPointInCell(const vector<int> & IJK,
 				else
 					Type--;
 			}
-			if (Type == CPType_NuclearCP || Type == CPType_RingCP)
+			if (Type == CPType_Nuclear || Type == CPType_Ring)
 				PrincDir = EigVecs.row(0).t();
 			else
 				PrincDir = EigVecs.row(2).t();
@@ -1044,7 +1044,7 @@ const Boolean_t CritPointInCell(
 				else
 					Type--;
 			}
-			if (Type == CPType_NuclearCP || Type == CPType_RingCP)
+			if (Type == CPType_Nuclear || Type == CPType_Ring)
 				PrincDir = EigVecs.row(0).t();
 			else
 				PrincDir = EigVecs.row(2).t();
@@ -1396,16 +1396,16 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 								else
 									Type--;
 							}
-							if (Type == CPType_NuclearCP || Type == CPType_RingCP)
+							if (Type == CPType_Nuclear || Type == CPType_Ring)
 								PrincDir = EigVecs.row(0).t();
 							else
 								PrincDir = EigVecs.row(2).t();
 
-							IsMaxMin = (Type == CPType_NuclearCP || Type == CPType_CageCP);
+							IsMaxMin = (Type == CPType_Nuclear || Type == CPType_Cage);
 
 							// 						if (IsMaxMin)
 							// 						ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, Type);
-							ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, (s == 0 ? CPType_NuclearCP : CPType_CageCP));
+							ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, (s == 0 ? CPType_Nuclear : CPType_Cage));
 						}
 
 						break;

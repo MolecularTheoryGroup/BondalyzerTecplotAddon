@@ -1190,6 +1190,9 @@ const Boolean_t CalcEigenSystemForNode(const int & ii,
 	// 	
 	eig_sym(EigenValues, EigenVectors, Hessian);
 
+	EigenVectors = mat33(normalise(EigenVectors, 2, 1));
+// 	EigenVectors = mat33(normalise(EigenVectors));
+
 	// 	EigenVectors = mat33(EigenVectors.t());
 
 	return IsOk;
@@ -1325,6 +1328,9 @@ const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 	// 	gsl_vector_free(EigVals);
 	// 	
 	eig_sym(EigenValues, EigenVectors, Hessian, "std");
+
+	EigenVectors = mat33(normalise(EigenVectors, 2, 1));
+// 	EigenVectors = mat33(normalise(EigenVectors));
 
 	return IsOk;
 }
@@ -3259,6 +3265,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 											ThreadEigVals[ThreadNum],
 											ThreadEigVecs[ThreadNum],
 											Params[ThreadNum]);
+
 									}
 									else if (*CalcVar > CalcGradientMagnitude){
 										if (IsVolZone)
@@ -3359,7 +3366,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 										}
 
 										for (int i = 0; i < 3; ++i)
-											ThreadDotPtds[ThreadNum][i] = dot(ThreadEigVecs[ThreadNum].col(i), ThreadGrad[ThreadNum]);
+// 											ThreadDotPtds[ThreadNum][i] = dot(ThreadEigVecs[ThreadNum].col(i), ThreadGrad[ThreadNum]);
+											ThreadDotPtds[ThreadNum][i] = dot(ThreadEigVecs[ThreadNum].row(i), ThreadGrad[ThreadNum]);
 									}
 
 									switch (*CalcVar){
@@ -3378,7 +3386,8 @@ void CalcVars(CalcVarsOptions_s & Opt)
 										case CalcEigenSystem:
 											for (int i = 0; i < 3; ++i)
 											for (int j = 0; j < 3; ++j)
-												EigSysPtrs[3 * i + j].Write(Params[ThreadNum].Index, ThreadEigVecs[ThreadNum].at(i, j));
+// 												EigSysPtrs[3 * i + j].Write(Params[ThreadNum].Index, ThreadEigVecs[ThreadNum].at(i, j));
+												EigSysPtrs[3 * j + i].Write(Params[ThreadNum].Index, ThreadEigVecs[ThreadNum].at(i, j));
 
 											for (int i = 0; i < 3; ++i)
 												EigSysPtrs[9 + i].Write(Params[ThreadNum].Index, ThreadEigVals[ThreadNum][i]);

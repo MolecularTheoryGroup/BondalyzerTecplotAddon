@@ -1446,27 +1446,37 @@ void MainFunction(){
 // 			}
 // 		}
 // 
-// 		for (int i = 0; i < GPsNonSaddle.size(); ++i){
-// 			if (GPsNonSaddle[i].IsMade()){
-// 				GPsNonSaddle[i].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(i + 1));
-// 				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBASphereCPName, CPName);
-// 				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
-// 				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBAGPNodeNum, to_string(i + 1));
-// 				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
-// 			}
-// 		}
-// 
-// 		for (int i = 0; i < GPsSaddle.size(); ++i){
-// 			for (int j = 0; j < GPsSaddle[i].size(); ++j){
-// 				if (GPsSaddle[i][j].IsMade()){
-// 					GPsSaddle[i][j].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(MovedPointNums[i] + 1) + "." + to_string(j + 1));
-// 					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBASphereCPName, CPName);
-// 					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
-// 					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBAGPNodeNum, to_string(MovedPointNums[i] + 1));
-// 					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
-// 				}
-// 			}
-// 		}
+		for (int i = 0; i < GPsNonSaddle.size(); ++i){
+			if (GPsNonSaddle[i].IsMade()){
+				GPsNonSaddle[i].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(i + 1));
+				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBASphereCPName, CPName);
+				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
+				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBAGPNodeNum, to_string(i + 1));
+				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
+			}
+		}
+
+		for (int i = 0; i < GPsSaddle.size(); ++i){
+			for (int j = 0; j < GPsSaddle[i].size(); ++j){
+				if (GPsSaddle[i][j].IsMade()){
+					GPsSaddle[i][j].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(MovedPointNums[i] + 1) + "." + to_string(j + 1));
+					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBASphereCPName, CPName);
+					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
+					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBAGPNodeNum, to_string(MovedPointNums[i] + 1));
+					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
+				}
+			}
+		}
+
+		for (int i = 0; i < GPsEdges.size(); ++i){
+			if (GPsEdges[i].IsMade()){
+				GPsEdges[i].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(i + 1));
+				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBASphereCPName, CPName);
+				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
+				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBAGPNodeNum, to_string(i + 1));
+				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
+			}
+		}
 
 
 		/*

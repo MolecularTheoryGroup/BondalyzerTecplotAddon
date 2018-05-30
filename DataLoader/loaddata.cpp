@@ -188,7 +188,7 @@ const Boolean_t GetCHGCARFileName(){
 	if (IsOk){
 
 		char* FileName = NULL;
-		TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, "VASP CHGCAR", NULL, "CHGCAR");
+		TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, "VASP CHGCAR", NULL, "*CHGCAR");
 		if (FileName != NULL){
 			FileNameStrs.push_back(FileName);
 			TecUtilStringDealloc(&FileName);
@@ -1122,7 +1122,7 @@ const Boolean_t LoadVASPData(){
 	 *	Calculate the gradient and gradient 
 	 *	magnitude of charge density.
 	 */
-	CalcGradGradMagForDataset(TRUE, AddOnID);
+// 	CalcGradGradMagForDataset(TRUE, AddOnID);
 
 	if (IsOk && TotNumPoints > MaxPointsForShowVolumeZone){
 		Set_pa TempSet = TecUtilSetAlloc(FALSE);
@@ -2668,7 +2668,7 @@ void LoadADFTape41Data(){
 
 	AuxDataDataSetSetItem(DLProgramName, "SCM ADF");
 
-	CalcGradGradMagForDataset(FALSE, AddOnID);
+// 	CalcGradGradMagForDataset(FALSE, AddOnID);
 
 	if (IsOk && TotNumPoints > MaxPointsForShowVolumeZone){
 		Set_pa TempSet = TecUtilSetAlloc(FALSE);
@@ -5442,6 +5442,7 @@ void LoadTurboMoleCubeFiles()
 			*	Line three of the header
 			*/
 			CubeFile >> NumAtoms;
+			NumAtoms = NumAtoms >= 0 ? NumAtoms : -NumAtoms;
 			/*
 			*	If the number of atoms < 0, then the cube file contains MO information.
 			*/
@@ -5457,6 +5458,8 @@ void LoadTurboMoleCubeFiles()
 			}
 			for (int i = 0; i < 3; ++i)
 				CubeFile >> Origin[i];
+
+			Origin = fliplr(Origin);
 
 			/*
 			*	There could be an extra value that I don't care about at the end of this line, so skip it.
@@ -5564,16 +5567,13 @@ void LoadTurboMoleCubeFiles()
 			string Slash = "/";
 #endif
 			string DataSetName = "TurboMole Data";
-			vector<FieldDataType_e> VarDataTypes;
 			EntIndex_t ZoneNum, VolZoneNum = -1;
 			if (IsOk){
 				if (ReplaceDataSet){
-					VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Double);
 					IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
 				}
 				else{
 					if (!TecUtilDataSetIsAvailable()){
-						VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Double);
 						IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
 					}
 // 					else{
@@ -5596,7 +5596,7 @@ void LoadTurboMoleCubeFiles()
 						VolZoneNum = ZoneNumByName("Full Volume");
 					}
 					if (VolZoneNum <= 0){
-						IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, VarDataTypes.data());
+						IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Double).data());
 						if (IsOk){
 							VolZoneNum = TecUtilDataSetGetNumZones();
 							IsOk = VolZoneNum > 0;
@@ -5621,11 +5621,11 @@ void LoadTurboMoleCubeFiles()
 			*	Make new variables where necessary and get pointers to variable data
 			*/
 			int VarNum;
-			FieldDataPointer_c Ptr;
+			FieldDataPointer_c VarPtr;
 			if (!ReplaceDataSet){
 				VarNum = VarNumByName(VarName);
 				if (VarNum <= 0){
-					IsOk = TecUtilDataSetAddVar(VarName.c_str(), ZoneDataTypes.data());
+					IsOk = TecUtilDataSetAddVar(VarName.c_str(), NULL);
 					if (IsOk){
 						VarNum = TecUtilDataSetGetNumVars();
 						IsOk = (VarNum > 0);
@@ -5636,7 +5636,7 @@ void LoadTurboMoleCubeFiles()
 				VarNum = 4;
 
 			if (IsOk)
-				IsOk = Ptr.GetWritePtr(VolZoneNum, VarNum);
+				IsOk = VarPtr.GetWritePtr(VolZoneNum, VarNum);
 
 
 			/*
@@ -5650,11 +5650,9 @@ void LoadTurboMoleCubeFiles()
 			// x is the innermost loop for how the data is organized
 			// 
 
-			vector<FieldDataPointer_c> XYZPtrs(3);
+			FieldVecPointer_c XYZPtr;
 			if (FirstFile){
-				for (int Dir = 0; Dir < 3; ++Dir){
-					XYZPtrs[Dir].GetWritePtr(1, Dir + 1);
-				}
+				XYZPtr.GetWritePtr(1, { 1, 2, 3 });
 			}
 
 			double Val;
@@ -5666,12 +5664,15 @@ void LoadTurboMoleCubeFiles()
 					TmpIJK[2] = 0;
 					for (int k = 0; k < IJK[2]; ++k){
 						int Index = IndexFromIJK(i + 1, j + 1, k + 1, IJK[0], IJK[1]) - 1;
-						for (int Dir = 0; Dir < 3 && FirstFile; ++Dir){
-							Val = Origin[2-Dir] + dot(TmpIJK, LatticeVector.col(Dir));
-							XYZPtrs[Dir].Write(Index, Val);
+						if (FirstFile){
+							XYZPtr.Write(Index, Origin + LatticeVector * TmpIJK);
 						}
+// 						for (int Dir = 0; Dir < 3 && FirstFile; ++Dir){
+// 							Val = Origin[2-Dir] + dot(TmpIJK, LatticeVector.col(Dir));
+// 							XYZPtr[Dir].Write(Index, Val);
+// 						}
 						Val = atof(TmpCStr);
-						Ptr.Write(Index, Val);
+						VarPtr.Write(Index, Val);
 						TmpCStr = strtok(NULL, " \n");
 
 						++TmpIJK[2];
@@ -5694,8 +5695,8 @@ void LoadTurboMoleCubeFiles()
 			}
 
 
-			Ptr.Close();
-			for (auto & i : XYZPtrs) i.Close();
+			VarPtr.Close();
+			XYZPtr.Close();
 
 			TecUtilDataLoadEnd();
 
@@ -5720,11 +5721,11 @@ void LoadTurboMoleCubeFiles()
 			TecUtilSetDealloc(&VolZoneSet);
 
 			/*
-			*	Now create zones for atomss
+			*	Now create zones for atoms
 			*/
 
 			if (IsOk && ReplaceDataSet || ImportAtoms){
-				IsOk = CreateAtomZonesFromAtomGroupList(AtomInfo, { "X", "Y", "Z" }, VarDataTypes, GroupIndex);
+				IsOk = CreateAtomZonesFromAtomGroupList(AtomInfo, { "X", "Y", "Z" }, vector<FieldDataType_e>(), GroupIndex);
 			}
 
 			/*

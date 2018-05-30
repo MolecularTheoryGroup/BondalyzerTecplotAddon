@@ -284,15 +284,15 @@ struct CSMVarName_s{
 			DensHessZZ
 		};
 		EigVecs = {
-			"Eigenvector 1-1",
-			"Eigenvector 1-2",
-			"Eigenvector 1-3",
-			"Eigenvector 2-1",
-			"Eigenvector 2-2",
-			"Eigenvector 2-3",
-			"Eigenvector 3-1",
-			"Eigenvector 3-2",
-			"Eigenvector 3-3"
+			"Eigenvector 1x",
+			"Eigenvector 1y",
+			"Eigenvector 1z",
+			"Eigenvector 2x",
+			"Eigenvector 2y",
+			"Eigenvector 2z",
+			"Eigenvector 3x",
+			"Eigenvector 3y",
+			"Eigenvector 3z"
 		};
 		EigVals = {
 			"Eigenvalue 1",

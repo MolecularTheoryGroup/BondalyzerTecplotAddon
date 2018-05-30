@@ -25,13 +25,15 @@ enum BondalyzerCalcType_e{
 	BondalyzerCalcType_CriticalPoints,
 	BondalyzerCalcType_BondPaths,
 	BondalyzerCalcType_RingLines,
-	BondalyserCalcType_CageNuclearPaths,
+	BondalyzerCalcType_CageNuclearPaths,
 	BondalyzerCalcType_InteratomicSurfaces,
 	BondalyzerCalcType_RingSurfaces,
 	BondalyzerCalcType_BondBundleSurfaces,
 	BondalyzerCalcType_RingBundleSurfaces,
 
 	BondalyzerCalcType_GBA,
+
+	BondalyzerCalcType_Batch,
 
 	BondalyzerCalcType_Invalid
 };
@@ -45,7 +47,8 @@ const static vector<string> BondalyzerStepGUITitles = {
 	"ring surfaces",
 	"bond bundle surfaces",
 	"ring bundle surfaces",
-	"Gradient bundle analysis"
+	"gradient bundle analysis",
+	"batch analysis"
 };
 
 
@@ -66,6 +69,8 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_
 void VarNameFindReplaceGetUserInfo();
 void ZoneNameFindReplaceGetUserInfo();
 
+void GradientPathToolGetUserInfo();
+
 const Boolean_t FindCritPoints(const int & VolZoneNum,
 	const vector<int> & XYZVarNums,
 	const int & RhoVarNum,
@@ -78,10 +83,21 @@ void DeleteCPsGetUserInfo();
 void ExtractCPsGetUserInfo();
 void CombineCPZonesGetUserInfo();
 
+const Boolean_t BondalyzerBatch(const int & VolZoneNum,
+	const vector<int> & CPZoneNums,
+	const int & CPTypeVarNum,
+	const vector<int> & XYZVarNums,
+	const int & RhoVarNum,
+	const vector<int> & GradVarNums,
+	const vector<int> & HessVarNums,
+	const Boolean_t & IsPeriodic,
+	const int & RidgeFuncVarNum,
+	const vector<bool> & CalcSteps);
+
 const Boolean_t FindBondRingLines(const int & VolZoneNum,
 	const vector<int> & OtherCPZoneNums,
 	const int & SelectedCPZoneNum,
-	const vector<int> & SelectedCPNums,
+	vector<int> SelectedCPNums,
 	const int & CPTypeVarNum,
 	const CPType_e & CPType,
 	const vector<int> & XYZVarNums,
@@ -93,7 +109,7 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 const Boolean_t FindCageNuclearPaths(const int & VolZoneNum,
 	const vector<int> & OtherCPZoneNums,
 	const int & SelectedCPZoneNum,
-	const vector<int> & SelectedCPNums,
+	vector<int> SelectedCPNums,
 	const int & CPTypeVarNum,
 	const vector<int> & XYZVarNums,
 	const int & RhoVarNum,
@@ -104,7 +120,7 @@ const Boolean_t FindCageNuclearPaths(const int & VolZoneNum,
 const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 	const vector<int> & OtherCPZoneNums,
 	const int & SelectedCPZoneNum,
-	const vector<int> & SelectedCPNums,
+	vector<int> SelectedCPNums,
 	const int & CPTypeVarNum,
 	const CPType_e & CPType,
 	const vector<int> & XYZVarNums,

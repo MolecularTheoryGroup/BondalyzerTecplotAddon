@@ -148,8 +148,7 @@ void GBAResultViewerSelectSphere(){
 				if (AuxDataZoneItemMatches(ZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
 					&& AuxDataZoneItemMatches(ZoneNum, TmpStr2, SphereNameStr))
 				{
-					TmpStr4 = AuxDataZoneGetItem(ZoneNum, TmpStr3);
-					if (TmpStr4 != ""){
+					if (AuxDataZoneGetItem(ZoneNum, TmpStr3, TmpStr4)){
 						GBFullCPNames.push_back(TmpStr4);
 						GBVolIsActive.push_back(TecUtilZoneIsActive(ZoneNum));
 					}
@@ -160,11 +159,7 @@ void GBAResultViewerSelectSphere(){
 			*	Get unique name list
 			*/
 			for (const string & it1 : GBFullCPNames){
-				Boolean_t IsFound = FALSE;
-				for (const string & it2 : GBUniqueCPNames){
-					IsFound = (it1 == it2);
-				}
-				if (!IsFound)
+				if (VectorGetElementNum(GBUniqueCPNames, it1) < 0)
 					GBUniqueCPNames.push_back(it1);
 			}
 			SortCPNameList(GBUniqueCPNames);

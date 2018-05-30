@@ -359,7 +359,7 @@ const Boolean_t CreateAtomZonesFromAtomGroupList(const vector<AtomGroup_s> & Ato
 	Boolean_t IsOk = (AtomGroupList.size() > 0 && XYZVarNames.size() == 3);
 
 	for (int GroupNum = 0; GroupNum < AtomGroupList.size() && IsOk; ++GroupNum){
-		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, VarDataTypes.data());
+		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : NULL);
 
 		if (IsOk){
 			EntIndex_t ZoneNum = TecUtilDataSetGetNumZones();

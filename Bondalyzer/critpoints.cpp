@@ -2916,7 +2916,7 @@ Boolean_t CriticalPointInCell(EntIndex_t  ZoneNum,
 						Params.VolInfo = new VolExtentIndexWeights_s;
 						*Params.VolInfo = VolInfo;
 
-						CalcGradForPoint(Point, VolInfo.DelXYZ, VolInfo, Params.BasisVectors, 0, PeriodicBC, Grad, RhoPtr, CalcType, reinterpret_cast<void *>(&Params));
+						CalcGradForPoint(Point, VolInfo.DelXYZ, VolInfo, *Params.BasisVectors, 0, PeriodicBC, Grad, RhoPtr, CalcType, reinterpret_cast<void *>(&Params));
 						CalcHessFor3DPoint(Point, VolInfo.DelXYZ, VolInfo, PeriodicBC, Hess, VarReadPtrs, CalcType, reinterpret_cast<void *>(&Params));
 						CalcEigenSystemForPoint(Point, EigVals, EigVecs, Params);
 

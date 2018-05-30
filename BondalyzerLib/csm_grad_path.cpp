@@ -346,8 +346,8 @@ const Boolean_t GradPathBase_c::Resample(const int & NumPoints){
 
 	int OldCount = GetCount();
 
-	// 	if (IsOk && NumPoints < OldCount){
-	if (IsOk){
+	if (IsOk && NumPoints < OldCount){
+// 	if (IsOk){
 		NewXYZList.resize(NumPoints);
 
 		NewRhoList.resize(NumPoints);
@@ -1121,7 +1121,7 @@ const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 
 	const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk4;
 	gsl_odeiv2_step * s = gsl_odeiv2_step_alloc(T, m_ODE_NumDims);
-	gsl_odeiv2_control * c = gsl_odeiv2_control_y_new(1e-8, 1e-8);
+	gsl_odeiv2_control * c = gsl_odeiv2_control_y_new(1e-12, 1e-12);
 	gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc(m_ODE_NumDims);
 
 	// 	gsl_odeiv2_driver * ODEDriver;
@@ -1500,6 +1500,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 			*this += GPs[i];
 		}
 		std::sort(EndCPNums.begin(), EndCPNums.end());
+		for (int i = 0; i < 2 - EndCPNums.size(); ++i) EndCPNums.push_back(-1);
 		m_StartEndCPNum[0] = EndCPNums.size() > 1 ? EndCPNums[1] : -1;
 		m_StartEndCPNum[1] = EndCPNums[0];
 	}
@@ -1570,7 +1571,7 @@ int GP_ODE_GradFunction(double t, const double pos[], double dydt[], void* param
 			}
 		}
 		else{
-			CalcGradForPoint(TmpVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisVectors, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, NULL);
+			CalcGradForPoint(TmpVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, NULL);
 			TmpVec = TmpGrad;
 		}
 
