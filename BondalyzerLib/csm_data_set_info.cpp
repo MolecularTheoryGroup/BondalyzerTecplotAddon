@@ -685,6 +685,7 @@ const Boolean_t StatusUpdate(unsigned int CurrentNum,
 
 	TecUtilLockStart(AddOnID);
 
+
 // 	TecUtilDrawGraphics(TRUE);
 	TecUtilStatusSuspend(FALSE);
 	if (ProgresssText != string("")){
