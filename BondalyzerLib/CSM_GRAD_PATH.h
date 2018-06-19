@@ -15,9 +15,9 @@ using namespace arma;
 
 using std::vector;
 
-#define GP_NumPointsBufferFactor	0.1
-#define GP_StallPointCount			10
-#define GP_StallNumPointsToCheck	10
+#define GP_NumPointsBufferFactor	0.2
+#define GP_StallPointCount			50
+#define GP_StallNumPointsToCheck	50
 #define GP_StallPointDistTol		1e-3
 #define GP_MaxNumPoints				10000
 #define GP_PlaneCPStallCount		30
@@ -58,12 +58,7 @@ struct GradPathParams_s{
 };
 
 
-/*
-*	Function for GSL ODE solver.
-*	This is not a member function because it's a pain to use
-*	member function with GSL.
-*/
-int GP_ODE_GradFunction(double t, const double pos[], double dydt[], void* params);
+
 
 
 class GradPathBase_c

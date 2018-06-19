@@ -887,376 +887,15 @@ $!PAGE
 ### Frame Number 1 ###
 $!FRAMELAYOUT 
   SHOWHEADER = NO
-  BACKGROUNDCOLOR = CYAN
-  HEADERCOLOR = GREEN
-  XYPOS
-    {
-    X = 2.5576
-    Y = 0.50845
-    }
-  WIDTH = 2.3
-  HEIGHT = 7.5
-$!THREEDAXIS 
-  ASPECTRATIOLIMIT = 25
-  BOXASPECTRATIOLIMIT = 25
-$!FRAMENAME  = 'ID=2 TITLE="Integrate" SIDEBAR=T'
-$!GLOBALTIME 
-  SOLUTIONTIME = 0
-$!SKETCHAXIS 
-  DEPXTOYRATIO = 1
-$!SKETCHAXIS 
-  XDETAIL
-    {
-    RANGEMIN = 0
-    RANGEMAX = 1.0001
-    GRSPACING = 0.2
-    }
-$!SKETCHAXIS 
-  YDETAIL
-    {
-    RANGEMIN = 0
-    RANGEMAX = 3.2611956521739129
-    GRSPACING = 0.5
-    }
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 12.41790901682571
-    Y = 24.79290996743447
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TGLIntVolInt Type=Toggle'
-  TEXT = '<math>7</math>   Integrate Volume'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 13.9518719140981
-    Y = 30.99718240842779
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=MLIntSelVar Type=MultiList'
-  TEXT = 'MLST:                  \n\n\n\n\n\n\n\n'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 7.432529600690287
-    Y = 95.39507533994819
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=BTNExitInt Type=PushButton'
-  TEXT = 'Exit Results Viewer'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 13.54336200883515
-    Y = 67.91404238463061
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=MLIntSelSphere Type=MultiList'
-  TEXT = 'MLST:                   \n\n\n\n\n\n'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 8.707277377354084
-    Y = 5.622103386809996
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=BTNIntegrate Type=PushButton'
-  TEXT = 'Integrate                  '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 34.00372006510138
-    Y = 19.6541889483066
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBL6 Type=Label'
-  TEXT = 'Precision'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 6.475238316670517
-    Y = 10.64171122994686
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 25
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=SCIntPrecise Type=Scale SHOWLABEL=F'
-  TEXT = 'SC:                             '
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 4.674991611140412
-    Y = 64.82895561752757
-    }
-  MACROFUNCTIONCOMMAND = ' CP Sphere '
-  RAWDATA
-95.3250110149 26.92040205 
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 5.058482335458512
-    Y = 22.76552737963941
-    }
-  MACROFUNCTIONCOMMAND = ' Variables '
-  RAWDATA
-94.0283298492 37.5836074352 
-### Frame Number 2 ###
-$!CREATENEWFRAME 
-$!FRAMELAYOUT 
-  SHOWHEADER = NO
-  BACKGROUNDCOLOR = CYAN
-  HEADERCOLOR = GREEN
-  XYPOS
-    {
-    X = 0.16185
-    Y = 0.49989
-    }
-  WIDTH = 2.3
-  HEIGHT = 7.5
-$!THREEDAXIS 
-  ASPECTRATIOLIMIT = 25
-  BOXASPECTRATIOLIMIT = 25
-$!FRAMENAME  = 'ID=1 TITLE="View Results" SIDEBAR=T'
-$!GLOBALTIME 
-  SOLUTIONTIME = 0
-$!SKETCHAXIS 
-  DEPXTOYRATIO = 1
-$!SKETCHAXIS 
-  XDETAIL
-    {
-    RANGEMIN = 0
-    RANGEMAX = 1.0001
-    GRSPACING = 0.2
-    }
-$!SKETCHAXIS 
-  YDETAIL
-    {
-    RANGEMIN = 0
-    RANGEMAX = 3.2611956521739129
-    GRSPACING = 0.5
-    }
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 13.95187191409808
-    Y = 71.05108416023482
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=SLSelSphere Type=SingleList'
-  TEXT = 'SLST:                   \n\n\n\n\n'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 12.41790901682568
-    Y = 65.40610069827227
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TGLSphereVis Type=Toggle'
-  TEXT = '<math>7</math>   Visible'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 13.9518719140981
-    Y = 36.92310833435375
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=MLSelGB Type=MultiList'
-  TEXT = 'MLST:                  \n\n\n\n\n\n'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 14.7188533627343
-    Y = 25.53840499816201
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=BTNTogMode Type=PushButton'
-  TEXT = '      Toggle Mode'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 7.432529600690287
-    Y = 95.39507533994819
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=BTNExitRes Type=PushButton'
-  TEXT = 'Exit Results Viewer'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 61.12123100522506
-    Y = 65.75891216464531
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=BTNSphereDel Type=PushButton'
-  TEXT = 'Delete'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 14.33536263841618
-    Y = 31.30099228224916
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=BTNAllGB Type=PushButton'
-  TEXT = '         Activate All'
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 4.674991611140412
-    Y = 63.57405365674327
-    }
-  MACROFUNCTIONCOMMAND = ' CP Sphere '
-  RAWDATA
-95.3250110149 28.17530334 
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 5.058482335458512
-    Y = 22.76552737963941
-    }
-  MACROFUNCTIONCOMMAND = ' Gradient Bundles '
-  RAWDATA
-94.0283298492 37.5836074352 
-### Frame Number 3 ###
-$!CREATENEWFRAME 
-$!FRAMELAYOUT 
-  SHOWHEADER = NO
   BACKGROUNDCOLOR = CUSTOM2
-  HEADERCOLOR = RED
+  HEADERCOLOR = BLUE
   XYPOS
     {
-    X = 3.0356
-    Y = 0.37761
+    X = -0.16904
+    Y = 7.3743
     }
-  WIDTH = 8.1344
-  HEIGHT = 7.6
+  WIDTH = 10.832
+  HEIGHT = 7.9751
 $!THREEDAXIS 
   ASPECTRATIOLIMIT = 25
   BOXASPECTRATIOLIMIT = 25
@@ -1268,22 +907,22 @@ $!SKETCHAXIS
 $!SKETCHAXIS 
   XDETAIL
     {
-    RANGEMIN = -0.51538171348575401
-    RANGEMAX = 1.4848182865142459
+    RANGEMIN = 0
+    RANGEMAX = 1.0001
     GRSPACING = 0.2
     }
 $!SKETCHAXIS 
   YDETAIL
     {
-    RANGEMIN = -0.70875922257529178
-    RANGEMAX = 1.1600350339156602
+    RANGEMIN = 0
+    RANGEMAX = 0.73632731813146213
     GRSPACING = 0.2
     }
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 4.555443932606131
-    Y = 62.24906888517688
+    X = 1.362979158585118
+    Y = 1.97845790802702
     }
   TEXTSHAPE
     {
@@ -1295,29 +934,64 @@ $!ATTACHTEXT
     MARGIN = 45
     FILLCOLOR = CUSTOM2
     }
-  MACROFUNCTIONCOMMAND = 'VarName=MLSelCPs Type=MultiList'
-  TEXT = 'MLST:                          \n\n\n\n\n\n\n\n\n\n'
+  MACROFUNCTIONCOMMAND = 'VarName=TAB1 Type=Tab'
+  TEXT = 'TAB:Group=1                                                                                                                                                       \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 25
+    Y = 25
+    }
+  MACROFUNCTIONCOMMAND = 'New Frame'
+  RAWDATA
+25 25 
+### Frame Number 2 ###
+$!CREATENEWFRAME 
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  BACKGROUNDCOLOR = CUSTOM26
+  HEADERCOLOR = CYAN
+  XYPOS
+    {
+    X = -0.83484
+    Y = 0.08123
+    }
+  WIDTH = 10.737
+  HEIGHT = 7.4622
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!FRAMENAME  = 'TABPAGE=T ID=1 POS=1 TITLE="Setup"'
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!SKETCHAXIS 
+  DEPXTOYRATIO = 1
+$!SKETCHAXIS 
+  XDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 1.2102273936170211
+    GRSPACING = 0.2
+    }
+$!SKETCHAXIS 
+  YDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 0.84110634782983473
+    GRSPACING = 0.2
+    }
+$!LINKING 
+  BETWEENFRAMES
+    {
+    LINKFRAMESIZEANDPOSITION = YES
+    }
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 39.99085374698088
-    Y = 91.49313875556683
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TGLInt Type=Toggle'
-  TEXT = '<math>7</math>   Integrate'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 40.12183064519585
-    Y = 62.40863765334679
+    X = 83.07520823422823
+    Y = 9.442935349089133
     }
   TEXTSHAPE
     {
@@ -1329,13 +1003,13 @@ $!ATTACHTEXT
     MARGIN = 45
     FILLCOLOR = CUSTOM2
     }
-  MACROFUNCTIONCOMMAND = 'VarName=MLSelVars Type=MultiList'
-  TEXT = 'MLST:                                                               \n\n\n\n\n\n\n\n'
+  MACROFUNCTIONCOMMAND = 'VarName=BTNRun Type=PushButton'
+  TEXT = '       Run\n'
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 5.513690071315569
-    Y = 51.43339592552956
+    X = 85.33401607468522
+    Y = 21.11607785845692
     }
   TEXTSHAPE
     {
@@ -1343,15 +1017,17 @@ $!ATTACHTEXT
     }
   BOX
     {
+    BOXTYPE = FILLED
+    MARGIN = 45
     FILLCOLOR = CUSTOM2
     }
-  MACROFUNCTIONCOMMAND = 'VarName=TGLOpenSys Type=Toggle'
-  TEXT = '<math>7</math>   Open System'
+  MACROFUNCTIONCOMMAND = 'VarName=TFSTPts Type=TextField'
+  TEXT = 'TF:    '
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 57.50553780275731
-    Y = 52.24966804196723
+    X = 58.6201188767563
+    Y = 21.58030347210514
     }
   TEXTSHAPE
     {
@@ -1362,13 +1038,84 @@ $!ATTACHTEXT
     MARGIN = 0.2
     FILLCOLOR = CUSTOM2
     }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLCutoff Type=Label'
-  TEXT = 'System Rho Cutoff:'
+  MACROFUNCTIONCOMMAND = 'VarName=LBL19 Type=Label'
+  TEXT = '# Gradient path points:'
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 78.82009067388347
-    Y = 51.58852935543739
+    X = 33.68861780435025
+    Y = 19.05534116101473
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLGPperGB Type=Label'
+  TEXT = 'Label'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 33.51601058534855
+    Y = 22.28836521881908
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCNumEdgeGPs Type=Scale SHOWLABEL=F'
+  TEXT = 'SC:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 3.913872526576878
+    Y = 19.2720164946947
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL20 Type=Label'
+  TEXT = '# Gadient paths \nper gradient bundle:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 95.84982544487913
+    Y = 39.06164225689579
+    }
+  TEXTSHAPE
+    {
+    ISITALIC = YES
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  ANCHOR = RIGHT
+  MACROFUNCTIONCOMMAND = 'VarName=LBLNumTri Type=Label'
+  TEXT = '--> Num Triangles'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 60.43685124521618
+    Y = 38.40133641984846
     }
   TEXTSHAPE
     {
@@ -1380,25 +1127,8 @@ $!ATTACHTEXT
     MARGIN = 45
     FILLCOLOR = CUSTOM2
     }
-  MACROFUNCTIONCOMMAND = 'VarName=TFCutoff Type=TextField'
-  TEXT = 'TF:             '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 3.57168427863687
-    Y = 37.22179862220404
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLRad Type=Label'
-  TEXT = 'Radius:'
+  MACROFUNCTIONCOMMAND = 'VarName=TFLevel Type=Spin'
+  TEXT = 'TFS:'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -1420,8 +1150,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 44.23940442276754
-    Y = 40.58743432115365
+    X = 3.57168427863687
+    Y = 37.22179862220404
     }
   TEXTSHAPE
     {
@@ -1432,205 +1162,8 @@ $!ATTACHTEXT
     MARGIN = 0.2
     FILLCOLOR = CUSTOM2
     }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLLevel Type=Label'
-  TEXT = 'Refinement:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 58.79708266470111
-    Y = 39.92712848410629
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TFLevel Type=Spin'
-  TEXT = 'TFS:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 95.84982544487956
-    Y = 40.58743432115364
-    }
-  TEXTSHAPE
-    {
-    ISITALIC = YES
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  ANCHOR = RIGHT
-  MACROFUNCTIONCOMMAND = 'VarName=LBLNumTri Type=Label'
-  TEXT = '--> Num Triangles'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 3.549458330722594
-    Y = 20.88676830278653
-    }
-  TEXTSHAPE
-    {
-    ISITALIC = YES
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLIB2 Type=Label'
-  TEXT = 'Two adjacent gradient paths are considered to terminate in the same IB if:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 4.730086940259406
-    Y = 12.78273376937678
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  ANCHOR = MIDLEFT
-  MACROFUNCTIONCOMMAND = 'VarName=LBLIBDist Type=Label'
-  TEXT = '1) Terminal points are separated by a distance of less then:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 5.101460495197317
-    Y = 7.527003049508652
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  ANCHOR = MIDLEFT
-  MACROFUNCTIONCOMMAND = 'VarName=LBLIBAng Type=Label'
-  TEXT = 'or 2) if angle of terminal ends differ by less than:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 67.3855381618656
-    Y = 11.05404715796788
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TFIBDist Type=TextField'
-  TEXT = 'TF:       '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 67.27710622323806
-    Y = 5.570078020681779
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TFIBAng Type=TextField'
-  TEXT = 'TF:       '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 78.71254768274704
-    Y = 6.532851002725004
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLIBDeg Type=Label'
-  TEXT = 'deg.'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 83.07520823422823
-    Y = 12.49121517501928
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=BTNRun Type=PushButton'
-  TEXT = '       Run\n'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 51.45691928819054
-    Y = 33.40393431207566
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBL19 Type=Label'
-  TEXT = '# Gradient path points:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 78.17081648611946
-    Y = 32.93970869842743
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TFSTPts Type=TextField'
-  TEXT = 'TF:    '
+  MACROFUNCTIONCOMMAND = 'VarName=LBLRad Type=Label'
+  TEXT = 'Radius:'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -1650,12 +1183,81 @@ $!ATTACHTEXT
     }
   LINESPACING = 1.5
   MACROFUNCTIONCOMMAND = 'VarName=RBRadMode Type=RadioBox'
-  TEXT = '<math>7</math>  Abs.\n<math>7</math>  % of min CP dist.'
+  TEXT = '<math>7</math>  Absolute\n<math>7</math>  Fraction of min CP dist.'
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 81.90906871147786
-    Y = 90.74661620110145
+    X = 78.82009067388347
+    Y = 51.58852935543739
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFCutoff Type=TextField'
+  TEXT = 'TF:             '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 57.50553780275731
+    Y = 52.24966804196723
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLCutoff Type=Label'
+  TEXT = 'System Rho Cutoff:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 5.513690071315569
+    Y = 51.43339592552956
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLOpenSys Type=Toggle'
+  TEXT = '<math>7</math>   Open System'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 26.46099925817084
+    Y = 62.1233091580234
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLSelVars Type=MultiList'
+  TEXT = 'MLST:                                                                                                                \n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 67.6221158858809
+    Y = 90.97832260131273
     }
   TEXTSHAPE
     {
@@ -1672,8 +1274,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 70.19366184156284
-    Y = 92.48307440974912
+    X = 55.90670901596588
+    Y = 92.56497408174096
     }
   TEXTSHAPE
     {
@@ -1689,8 +1291,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 56.16600361574451
-    Y = 91.49313875556683
+    X = 41.87905079014754
+    Y = 91.57503842755864
     }
   TEXTSHAPE
     {
@@ -1702,39 +1304,85 @@ $!ATTACHTEXT
     }
   MACROFUNCTIONCOMMAND = 'VarName=TGLVolInt Type=Toggle'
   TEXT = '<math>7</math>   Volume'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 25.70390092138391
+    Y = 91.57503842755864
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLInt Type=Toggle'
+  TEXT = '<math>7</math>   Integrate'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 3.018600401565815
+    Y = 62.2490688851769
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLSelCPs Type=MultiList'
+  TEXT = 'MLST:                      \n\n\n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 45.87917300328254
+    Y = 39.06164225689579
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLLevel Type=Label'
+  TEXT = 'Refinement:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.00150275594761
+    Y = 91.94672174668624
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLPrecise Type=Label'
+  TEXT = 'Label'
 $!ATTACHGEOM 
   GEOMTYPE = RECTANGLE
   POSITIONCOORDSYS = FRAME
   ANCHORPOS
     {
-    X = 1.354090532868157
-    Y = 60.19386700623923
+    X = 1.809835433959928
+    Y = 16.44737191582387
     }
-  MACROFUNCTIONCOMMAND = ' Select CP(s) '
+  MACROFUNCTIONCOMMAND = 'Gradient Bundle Parameters'
   RAWDATA
-34.5718294382 37.1880352497 
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 37.68369486595385
-    Y = 60.21608558948497
-    }
-  MACROFUNCTIONCOMMAND = ' Integration Variables '
-  RAWDATA
-59.7523272038 37.2440069914 
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 1.809835433959961
-    Y = 48.77761249386817
-    }
-  MACROFUNCTIONCOMMAND = ' System Boundary Parameters '
-  RAWDATA
-95.6077635288 8.70201587677 
+95.6077635288 11.2884350121 
 $!ATTACHGEOM 
   GEOMTYPE = RECTANGLE
   POSITIONCOORDSYS = FRAME
@@ -1751,12 +1399,683 @@ $!ATTACHGEOM
   POSITIONCOORDSYS = FRAME
   ANCHORPOS
     {
-    X = 1.822790922259796
-    Y = 2.027895998507279
+    X = 1.809835433959961
+    Y = 48.77761249386817
     }
-  MACROFUNCTIONCOMMAND = ' Irreducible Bundle Detection Parameters '
+  MACROFUNCTIONCOMMAND = ' System Boundary Parameters '
   RAWDATA
-94.9951708317 25.116610527 
+95.6077635288 8.70201587677 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 24.76282517905937
+    Y = 60.21608558948497
+    }
+  MACROFUNCTIONCOMMAND = ' Integration Variables '
+  RAWDATA
+72.6731956005 37.2440069914 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 1.354090532868157
+    Y = 60.19386700623923
+    }
+  MACROFUNCTIONCOMMAND = ' Select CP(s) '
+  RAWDATA
+22.2770810127 37.1880352497 
+### Frame Number 3 ###
+$!CREATENEWFRAME 
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  BACKGROUNDCOLOR = CUSTOM26
+  HEADERCOLOR = YELLOW
+  XYPOS
+    {
+    X = -0.83484
+    Y = 0.08123
+    }
+  WIDTH = 10.737
+  HEIGHT = 7.4622
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!FRAMENAME  = 'TABPAGE=T ID=2 POS=2 TITLE="Integrate"'
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!SKETCHAXIS 
+  DEPXTOYRATIO = 1
+$!SKETCHAXIS 
+  XDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 1.2102401860538103
+    GRSPACING = 0.2
+    }
+$!SKETCHAXIS 
+  YDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 0.84111523855553172
+    GRSPACING = 0.2
+    }
+$!LINKING 
+  BETWEENFRAMES
+    {
+    LINKFRAMESIZEANDPOSITION = YES
+    }
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 3.05634777506439
+    Y = 7.682168992612937
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLIntSelSphere Type=MultiList'
+  TEXT = 'MLST:                       \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 27.40260756176076
+    Y = 7.514515484225825
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLIntSelVar Type=MultiList'
+  TEXT = 'MLST:                                                            \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 72.80509046296916
+    Y = 73.53452723399032
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLIntVolInt Type=Toggle'
+  TEXT = '<math>7</math>   Integrate Volume'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 79.82741269527377
+    Y = 93.8095083308842
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL6 Type=Label'
+  TEXT = 'Precision'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 70.36640003647811
+    Y = 85.57665016353452
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCIntPrecise Type=Scale SHOWLABEL=F'
+  TEXT = 'SC:                             '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 73.82593017138362
+    Y = 18.82912968685308
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNIntegrate Type=PushButton'
+  TEXT = 'Integrate                  '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 92.10294384581241
+    Y = 85.50017293087973
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLIntPrecise Type=Label'
+  TEXT = 'Label'
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 1.369302341799622
+    Y = 3.284092627287949
+    }
+  MACROFUNCTIONCOMMAND = ' CP Sphere '
+  RAWDATA
+23.0549320579 93.3615624905 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 25.74753759012589
+    Y = 3.226894078385101
+    }
+  MACROFUNCTIONCOMMAND = ' Variables '
+  RAWDATA
+43.53107512 93.3706879616 
+### Frame Number 4 ###
+$!CREATENEWFRAME 
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  BACKGROUNDCOLOR = CUSTOM26
+  HEADERCOLOR = PURPLE
+  XYPOS
+    {
+    X = -0.83484
+    Y = 0.08123
+    }
+  WIDTH = 10.737
+  HEIGHT = 7.4622
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!FRAMENAME  = 'TABPAGE=T ID=3 POS=3 TITLE="Results"'
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!SKETCHAXIS 
+  DEPXTOYRATIO = 1
+$!SKETCHAXIS 
+  XDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 1.2102273936170218
+    GRSPACING = 0.2
+    }
+$!SKETCHAXIS 
+  YDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 0.84110634782983518
+    GRSPACING = 0.2
+    }
+$!LINKING 
+  BETWEENFRAMES
+    {
+    LINKFRAMESIZEANDPOSITION = YES
+    }
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 5.060707672422836
+    Y = 68.54694812528442
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SLSelSphere Type=SingleList'
+  TEXT = 'SLST:                   \n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 4.552648341497587
+    Y = 60.39238951053081
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLSphereVis Type=Toggle'
+  TEXT = '<math>7</math>   Visible'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 15.52551694535203
+    Y = 60.58725567470452
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNSphereDel Type=PushButton'
+  TEXT = 'Delete'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 28.04366523762172
+    Y = 37.41559214140436
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SLSelVar Type=SingleList'
+  TEXT = 'SLST:                                                                                          \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 5.316892416990028
+    Y = 26.65138711180908
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLSelGB Type=MultiList'
+  TEXT = 'MLST:                   \n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 5.700383141308098
+    Y = 21.02927105970452
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNAllGB Type=PushButton'
+  TEXT = '         Activate All'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 6.083873865626215
+    Y = 15.26668377561735
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNTogMode Type=PushButton'
+  TEXT = '      Toggle Mode'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 4.119887262821841
+    Y = 6.637249631224296
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFNumContours Type=TextField'
+  TEXT = 'TF:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 16.68672527349138
+    Y = 7.136925123108573
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL9 Type=Label'
+  TEXT = 'Number of contours'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 39.44088167150841
+    Y = 4.863323790489282
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = HOLLOW
+    MARGIN = 55
+    COLOR = WHITE
+    FILLCOLOR = CUSTOM2
+    }
+  LINESPACING = 1.5
+  MACROFUNCTIONCOMMAND = 'VarName=RBLogLin Type=RadioBox'
+  TEXT = '<math>7</math>  log\n<math>7</math>  linear'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 74.72102866563532
+    Y = 11.24882888436093
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = HOLLOW
+    MARGIN = 55
+    COLOR = WHITE
+    FILLCOLOR = CUSTOM2
+    }
+  ANCHOR = HEADLEFT
+  LINESPACING = 1.5
+  MACROFUNCTIONCOMMAND = 'VarName=RBCntSrc Type=RadioBox'
+  TEXT = '<math>7</math>  selected\n<math>7</math>  all'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 50.32650415218755
+    Y = 7.388539467810551
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLCntSrc Type=Label'
+  TEXT = 'Make contour values from'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.47883847101426
+    Y = 7.388539467810484
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL13 Type=Label'
+  TEXT = 'sphere(s)'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 63.0247026682087
+    Y = 16.71527646600027
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNExport Type=PushButton'
+  TEXT = 'Export to CSV'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 60.9407676680342
+    Y = 26.89872831325709
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLExGBs Type=Toggle'
+  TEXT = '<math>7</math>   Active gradient bundles only'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 60.9407676680342
+    Y = 22.95418729212593
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLExInt Type=Toggle'
+  TEXT = '<math>7</math>   Export integration data'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 4.696425986087316
+    Y = 55.7395711607663
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLShowMesh Type=Toggle'
+  TEXT = '<math>7</math>   Show Mesh'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 42.59244819587126
+    Y = 17.35173179802953
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNSelGB Type=PushButton'
+  TEXT = 'Select GB'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 34.71705101463968
+    Y = 17.35173179802953
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFGrpNum Type=TextField'
+  TEXT = 'TF:   '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 26.37380845630519
+    Y = 17.35173179802952
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL20 Type=Label'
+  TEXT = 'Group #'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 26.37380845630519
+    Y = 25.4809026468423
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL21 Type=Label'
+  TEXT = '1. Activate boundary w/ toggle mode\n2. Select GB within boundary'
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 3.250125546769381
+    Y = 53.23234994530054
+    }
+  MACROFUNCTIONCOMMAND = ' CP Sphere '
+  RAWDATA
+21.4895114303 39.745503664 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 3.713533631481177
+    Y = 12.85001058379847
+    }
+  MACROFUNCTIONCOMMAND = ' Gradient Bundles '
+  RAWDATA
+21.1047902703 38.2241487503 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 26.10318725421293
+    Y = 34.48602517707138
+    }
+  MACROFUNCTIONCOMMAND = ' Variables '
+  RAWDATA
+60.6250107288 58.3016574383 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 59.30866098754364
+    Y = 13.44408376356371
+    }
+  MACROFUNCTIONCOMMAND = ' Export '
+  RAWDATA
+27.6511251926 19.0537512302 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 25.77974229517144
+    Y = 13.44408376356375
+    }
+  MACROFUNCTIONCOMMAND = ' GB Region '
+  RAWDATA
+32.0176810026 18.9415574074 
 $!FRAMECONTROL ACTIVATEBYNUMBER
-  FRAME = 3
+  FRAME = 4
 $!SETSTYLEBASE CONFIG

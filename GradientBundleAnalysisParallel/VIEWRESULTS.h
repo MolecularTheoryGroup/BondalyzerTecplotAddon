@@ -25,5 +25,8 @@ void ToggleFEVolumesProbeInstallCB();
 void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 	Boolean_t isNearestPoint,
 	ArbParam_t ClientData);
+void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData);
 
 #endif

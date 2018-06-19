@@ -3449,7 +3449,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 // 			}
 
 			Surfaces.push_back(FESurface_c());
-			Surfaces.back().MakeFromGPs(SurfaceGPPtrs.back(), SingleSurface);
+			Surfaces.back().MakeFromGPs(SurfaceGPPtrs.back(), SingleSurface, false);
 
 			//DEBUG
 // 			if (i == 2){

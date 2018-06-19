@@ -158,7 +158,8 @@ EntIndex_t CritPointsCreateTPZone(CritPoints_pa CritPoints,
                                   EntIndex_t    TypeVarNum,
                                   EntIndex_t    UVarNum,
                                   EntIndex_t    VVarNum,
-                                  EntIndex_t    WVarNum);
+								  EntIndex_t    WVarNum,
+								  const Boolean_t IsSurfCPs = FALSE);
 
 CritPoints_pa CritPointsGetFromTPZone(EntIndex_t TPZoneNum,
                                       EntIndex_t    ChrgDensVarNum,

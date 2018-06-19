@@ -2800,9 +2800,9 @@ void LoadBANDTape41Data(){
 	 *	the full lattice vector (containing direction and magnitude information) back.
 	 *	And convert to bohr from angstroms.
 	 */
-	for (int i = 0; i < 3; ++i)
-		for (int j = 0; j < 3; ++j)
-			LatticeVector.at(i, j) *= static_cast<double>(MaxIJK[i]) / BorhToAngstrom;
+// 	for (int i = 0; i < 3; ++i)
+// 		for (int j = 0; j < 3; ++j)
+// 			LatticeVector.at(i, j) *= static_cast<double>(MaxIJK[i]) / BorhToAngstrom;
 
 // 	vector<double> Mags(3);
 // 	for (int i = 0; i < 3; ++i)

@@ -37,6 +37,14 @@ int DF2DGrad(const gsl_vector * pos, void * params, gsl_matrix * Jacobian);
 int FDF2DGrad(const gsl_vector * pos, void * params, gsl_vector * GradValues, gsl_matrix * Jacobian);
 
 /*
+*	Functions for GSL ODE solver.
+*	These are not a member functions because it's a pain to do
+*	member function with GSL.
+*/
+int GP_ODE_Gradient(double t, const double pos[], double dydt[], void* params);
+int GP_ODE_Jacobian(double t, const double pos[], double *dfdy, double dydt[], void* params);
+
+/*
 *	GradPathParams_s methods
 */
 GradPathParams_s & GradPathParams_s::operator=(const GradPathParams_s & rhs)
@@ -1117,9 +1125,11 @@ const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 	StreamDir_e OldDir = m_ODE_Data.Direction;
 	m_ODE_Data.Direction = Direction;
 
-	gsl_odeiv2_system ODESys = { &GP_ODE_GradFunction, NULL, m_ODE_NumDims, &m_ODE_Data };
+	gsl_odeiv2_system ODESys = { &GP_ODE_Gradient, &GP_ODE_Jacobian, m_ODE_NumDims, &m_ODE_Data };
 
-	const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk4;
+// 	const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk4;
+	const gsl_odeiv2_step_type * T = gsl_odeiv2_step_bsimp;
+// 	const gsl_odeiv2_step_type * T = gsl_odeiv2_step_msbdf;
 	gsl_odeiv2_step * s = gsl_odeiv2_step_alloc(T, m_ODE_NumDims);
 	gsl_odeiv2_control * c = gsl_odeiv2_control_y_new(1e-12, 1e-12);
 	gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc(m_ODE_NumDims);
@@ -1133,7 +1143,7 @@ const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 		double tInit = 0.0;
 		double tFinal = 1e12;
 
-		double h = 1;
+		double h = 0.01;
 
 		double y[3] = { m_StartPoint[0], m_StartPoint[1], m_StartPoint[2] };
 
@@ -1341,6 +1351,31 @@ const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 						}
 					}
 					else{
+// 						for (int TotCPNum = 0; TotCPNum < m_CPs->NumCPs() && !PointFound; ++TotCPNum){
+// 							if (TotCPNum != m_StartEndCPNum[0]){
+// 								NewPoint = m_CPs->GetXYZ(TotCPNum);
+// 								double PointRadiusSqr = DistSqr(PtI, NewPoint);
+// 								if (PointRadiusSqr <= m_TermPointRadiusSqr){
+// 									if (m_HowTerminate == GPTerminate_AtCPRadius){
+// 										double OldRadius = Distance(PtIm1, NewPoint);
+// 
+// 										NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (sqrt(PointRadiusSqr) - OldRadius));
+// 									}
+// 
+// 									IsOk = SetIndexAndWeightsForPoint(NewPoint, m_ODE_Data.VolZoneInfo);
+// 									if (IsOk){
+// 										Rho = RhoByCurrentIndexAndWeights();
+// 
+// 										m_XYZList.push_back(NewPoint);
+// 										m_RhoList.push_back(Rho);
+// 
+// 										m_StartEndCPNum[1] = TotCPNum;
+// 									}
+// 
+// 									PointFound = TRUE;
+// 								}
+// 							}
+// 						}
 						for (const auto & SaddleTypeNum : CPSaddleTypeNums){
 							for (int SaddleCPNum = 0; SaddleCPNum < m_CPs->NumCPs(SaddleTypeNum) && !PointFound; ++SaddleCPNum){
 								int TotCPNum = m_CPs->GetTotOffsetFromTypeNumOffset(SaddleTypeNum, SaddleCPNum);
@@ -1526,7 +1561,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 *	dY/dt = Grad(Y),
 *	dZ/dt = Grad(Z)
 *
-*	Of course, I need to provide the interpolation so
+*	I need to provide the interpolation so
 *	that arbitrary XYZ values can be queried, and to check
 *	that they're in the bounds of the system.
 *
@@ -1538,7 +1573,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 *	degrades performance, or to use template function-style casting,
 *	which is scary and still uses static.
 */
-int GP_ODE_GradFunction(double t, const double pos[], double dydt[], void* params)
+int GP_ODE_Gradient(double t, const double pos[], double dydt[], void* params)
 {
 	GradPathParams_s *ODE_Data = reinterpret_cast<GradPathParams_s*>(params);
 
@@ -1567,21 +1602,20 @@ int GP_ODE_GradFunction(double t, const double pos[], double dydt[], void* param
 		vec3 TmpGrad;
 		if (ODE_Data->HasGrad){
 			for (int i = 0; i < 3; ++i){
-				TmpVec[i] = ValByCurrentIndexAndWeightsFromRawPtr(ODE_Data->VolZoneInfo, ODE_Data->GradPtrs[i]);
+				TmpGrad[i] = ValByCurrentIndexAndWeightsFromRawPtr(ODE_Data->VolZoneInfo, ODE_Data->GradPtrs[i]);
 			}
 		}
 		else{
 			CalcGradForPoint(TmpVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, NULL);
-			TmpVec = TmpGrad;
 		}
 
 		if (ODE_Data->Direction == StreamDir_Reverse)
-			TmpVec *= -1.0;
+			TmpGrad *= -1.0;
 
-		TmpVec = normalise(TmpVec);
+// 		TmpVec = normalise(TmpVec);
 
 		for (int i = 0; i < 3; ++i)
-			dydt[i] = TmpVec[i];
+			dydt[i] = TmpGrad[i];
 	}
 	else
 		Status = GSL_ESANITY;
@@ -1590,6 +1624,64 @@ int GP_ODE_GradFunction(double t, const double pos[], double dydt[], void* param
 
 	return Status;
 } //	int GP_ODE_GradFunction()
+
+/*
+*	Jacobian for GSL ODE solver to use.
+*/
+int GP_ODE_Jacobian(double t, const double pos[], double *dfdy, double dydt[], void* params)
+{
+	GradPathParams_s *ODE_Data = reinterpret_cast<GradPathParams_s*>(params);
+
+	int Status = GSL_SUCCESS;
+	Boolean_t IsOk = TRUE;
+
+	vec3 PosVec = pos;
+	mat33 JacMat;
+
+	/*
+	*	Check that current position is in system bounds
+	*/
+	for (int i = 0; i < 3; ++i){
+		if (PosVec[i] < ODE_Data->VolZoneInfo.MinXYZ[i] || PosVec[i] > ODE_Data->VolZoneInfo.MaxXYZ[i]){
+			PosVec[i] = MIN(ODE_Data->VolZoneInfo.MaxXYZ[i], MAX(PosVec[i], ODE_Data->VolZoneInfo.MinXYZ[i]));
+			Status = GSL_EDOM;
+		}
+	}
+
+	IsOk = SetIndexAndWeightsForPoint(PosVec, ODE_Data->VolZoneInfo);
+
+	/*
+	*	Get gradient values at the actual position
+	*/
+	if (IsOk){
+		vec3 TmpGrad;
+		if (ODE_Data->HasGrad){
+			for (int i = 0; i < 3; ++i){
+				TmpGrad[i] = ValByCurrentIndexAndWeightsFromRawPtr(ODE_Data->VolZoneInfo, ODE_Data->GradPtrs[i]);
+			}
+		}
+		else{
+			CalcGradForPoint(PosVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, NULL);
+		}
+
+		CalcHessForPoint(PosVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, ODE_Data->VolZoneInfo.IsPeriodic, JacMat, ODE_Data->RhoPtr, GPType_Classic, NULL);
+
+		for (int i = 0; i < 3; ++i)
+			dydt[i] = TmpGrad[i];
+
+		gsl_matrix_view dfdy_mat = gsl_matrix_view_array(dfdy, 3, 3);
+		gsl_matrix * m = &dfdy_mat.matrix;
+		for (int i = 0; i < 3; ++i) for (int j = 0; j < 3; ++j)
+			gsl_matrix_set(m, i, j, JacMat.at(i, j));
+// 			dfdy[i * 3 + j] = JacMat.at(i, j);
+	}
+	else
+		Status = GSL_ESANITY;
+
+	params = reinterpret_cast<void*>(ODE_Data);
+
+	return Status;
+} //	int GP_ODE_Jacobian()
 
 
 const double GradPath_c::RhoByCurrentIndexAndWeights(){

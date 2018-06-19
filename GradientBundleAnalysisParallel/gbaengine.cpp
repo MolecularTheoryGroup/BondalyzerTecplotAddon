@@ -782,47 +782,56 @@ void MainFunction(){
 			*	Add triangle finite element zone for sphere
 			*/
 
-			if (IsOk){
-				ArgList_pa ArgList = TecUtilArgListAlloc();
-				TecUtilArgListAppendString(ArgList, SV_NAME, string("Sphere (" + CPString + ")").c_str());
-				TecUtilArgListAppendInt(ArgList, SV_ZONETYPE, ZoneType_FETriangle);
-				TecUtilArgListAppendInt(ArgList, SV_IMAX, NumPoints);
-				TecUtilArgListAppendInt(ArgList, SV_JMAX, NumTriangles);
-				TecUtilArgListAppendArray(ArgList, SV_VALUELOCATION, VarLocations.data());
-				TecUtilArgListAppendArray(ArgList, SV_VARDATATYPE, VarDataTypes.data());
-				IsOk = TecUtilDataSetAddZoneX(ArgList);
-				TecUtilArgListDealloc(&ArgList);
-			}
+			vector<vec3> P(NumPoints);
+			for (int i = 0; i < NumPoints; ++i) for (int j = 0; j < 3; ++j) P[i][j] = p[i][j];
+			vector<vector<int> > T(NumTriangles, vector<int>(3));
+			for (int i = 0; i < NumTriangles; ++i) for (int j = 0; j < 3; ++j) T[i][j] = t[i][j];
 
-// 			IsOk = TecUtilDataSetAddZone("Sphere", NumPoints, NumTriangles, 0, ZoneType_FETriangle, NULL);
-			EntIndex_t SurfZoneNum = TecUtilDataSetGetNumZones();
-			FieldData_pa SurfXYZPtrs[3];
+			FESurface_c Sphere;
+			Sphere.MakeFromNodeElemList(P, T);
+			EntIndex_t SurfZoneNum = Sphere.SaveAsTriFEZone(XYZVarNums, "Sphere (" + CPString + ")");
 
-			for (int i = 0; i < 3 && IsOk; ++i){
-				SurfXYZPtrs[i] = TecUtilDataValueGetWritableRef(SurfZoneNum, XYZVarNums[i]);
-				IsOk = VALID_REF(SurfXYZPtrs[i]);
-			}
-
-			if (IsOk){
-				NodeMap_pa NodeMap;
-				NodeMap = TecUtilDataNodeGetWritableRef(SurfZoneNum);
-				IsOk = VALID_REF(NodeMap);
-
-
-				TecUtilDataLoadBegin();
-				for (LgIndex_t NodeNum = 0; NodeNum < NumPoints; ++NodeNum){
-					for (int i = 0; i < 3; ++i){
-						TecUtilDataValueSetByRef(SurfXYZPtrs[i], NodeNum + 1, p[NodeNum][i]);
-					}
-				}
-				for (LgIndex_t TriNum = 0; TriNum < NumTriangles; ++TriNum){
-					for (int i = 0; i < 3; ++i){
-						TecUtilDataNodeSetByRef(NodeMap, TriNum + 1, i + 1, t[TriNum][i] + 1);
-					}
-				}
-				TecUtilDataLoadEnd();
-
-			}
+// 			if (IsOk){
+// 				ArgList_pa ArgList = TecUtilArgListAlloc();
+// 				TecUtilArgListAppendString(ArgList, SV_NAME, string("Sphere (" + CPString + ")").c_str());
+// 				TecUtilArgListAppendInt(ArgList, SV_ZONETYPE, ZoneType_FETriangle);
+// 				TecUtilArgListAppendInt(ArgList, SV_IMAX, NumPoints);
+// 				TecUtilArgListAppendInt(ArgList, SV_JMAX, NumTriangles);
+// 				TecUtilArgListAppendArray(ArgList, SV_VALUELOCATION, VarLocations.data());
+// 				TecUtilArgListAppendArray(ArgList, SV_VARDATATYPE, VarDataTypes.data());
+// 				IsOk = TecUtilDataSetAddZoneX(ArgList);
+// 				TecUtilArgListDealloc(&ArgList);
+// 			}
+// 
+// // 			IsOk = TecUtilDataSetAddZone("Sphere", NumPoints, NumTriangles, 0, ZoneType_FETriangle, NULL);
+// 			EntIndex_t SurfZoneNum = TecUtilDataSetGetNumZones();
+// 			FieldData_pa SurfXYZPtrs[3];
+// 
+// 			for (int i = 0; i < 3 && IsOk; ++i){
+// 				SurfXYZPtrs[i] = TecUtilDataValueGetWritableRef(SurfZoneNum, XYZVarNums[i]);
+// 				IsOk = VALID_REF(SurfXYZPtrs[i]);
+// 			}
+// 
+// 			if (IsOk){
+// 				NodeMap_pa NodeMap;
+// 				NodeMap = TecUtilDataNodeGetWritableRef(SurfZoneNum);
+// 				IsOk = VALID_REF(NodeMap);
+// 
+// 
+// 				TecUtilDataLoadBegin();
+// 				for (LgIndex_t NodeNum = 0; NodeNum < NumPoints; ++NodeNum){
+// 					for (int i = 0; i < 3; ++i){
+// 						TecUtilDataValueSetByRef(SurfXYZPtrs[i], NodeNum + 1, p[NodeNum][i]);
+// 					}
+// 				}
+// 				for (LgIndex_t TriNum = 0; TriNum < NumTriangles; ++TriNum){
+// 					for (int i = 0; i < 3; ++i){
+// 						TecUtilDataNodeSetByRef(NodeMap, TriNum + 1, i + 1, t[TriNum][i] + 1);
+// 					}
+// 				}
+// 				TecUtilDataLoadEnd();
+// 
+// 			}
 			if (IsOk){
 				Set_pa TmpSet = TecUtilSetAlloc(FALSE);
 				TecUtilSetAddMember(TmpSet, SurfZoneNum, FALSE);
@@ -1446,37 +1455,37 @@ void MainFunction(){
 // 			}
 // 		}
 // 
-		for (int i = 0; i < GPsNonSaddle.size(); ++i){
-			if (GPsNonSaddle[i].IsMade()){
-				GPsNonSaddle[i].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(i + 1));
-				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBASphereCPName, CPName);
-				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
-				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBAGPNodeNum, to_string(i + 1));
-				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
-			}
-		}
-
-		for (int i = 0; i < GPsSaddle.size(); ++i){
-			for (int j = 0; j < GPsSaddle[i].size(); ++j){
-				if (GPsSaddle[i][j].IsMade()){
-					GPsSaddle[i][j].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(MovedPointNums[i] + 1) + "." + to_string(j + 1));
-					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBASphereCPName, CPName);
-					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
-					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBAGPNodeNum, to_string(MovedPointNums[i] + 1));
-					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
-				}
-			}
-		}
-
-		for (int i = 0; i < GPsEdges.size(); ++i){
-			if (GPsEdges[i].IsMade()){
-				GPsEdges[i].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(i + 1));
-				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBASphereCPName, CPName);
-				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
-				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBAGPNodeNum, to_string(i + 1));
-				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
-			}
-		}
+// 		for (int i = 0; i < GPsNonSaddle.size(); ++i){
+// 			if (GPsNonSaddle[i].IsMade()){
+// 				GPsNonSaddle[i].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(i + 1));
+// 				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBASphereCPName, CPName);
+// 				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
+// 				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBAGPNodeNum, to_string(i + 1));
+// 				AuxDataZoneSetItem(GPsNonSaddle[i].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
+// 			}
+// 		}
+// 
+// 		for (int i = 0; i < GPsSaddle.size(); ++i){
+// 			for (int j = 0; j < GPsSaddle[i].size(); ++j){
+// 				if (GPsSaddle[i][j].IsMade()){
+// 					GPsSaddle[i][j].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(MovedPointNums[i] + 1) + "." + to_string(j + 1));
+// 					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBASphereCPName, CPName);
+// 					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
+// 					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBAGPNodeNum, to_string(MovedPointNums[i] + 1));
+// 					AuxDataZoneSetItem(GPsSaddle[i][j].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
+// 				}
+// 			}
+// 		}
+// 
+// 		for (int i = 0; i < GPsEdges.size(); ++i){
+// 			if (GPsEdges[i].IsMade()){
+// 				GPsEdges[i].SaveAsOrderedZone("GP " + CPName + " " + "Node " + to_string(i + 1));
+// 				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBASphereCPName, CPName);
+// 				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBASphereCPNum, to_string(CPNum));
+// 				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBAGPNodeNum, to_string(i + 1));
+// 				AuxDataZoneSetItem(GPsEdges[i].GetZoneNum(), GBAZoneType, GBAZoneTypeGradPath);
+// 			}
+// 		}
 
 
 		/*
@@ -1637,7 +1646,7 @@ void MainFunction(){
 			if (!UserQuit){
 				vector<GradPath_c*> GPPtrs;
 				if (TriangleHasSaddleCP[TriNum]){
-					GPPtrs.reserve(3 + 3 * NumEdgeGPs + 1);
+					GPPtrs.reserve(4 + 4 * NumEdgeGPs);
 					/*
 					 *	Need to find which GPs to use
 					 *	for the FE volume.
@@ -1789,7 +1798,7 @@ void MainFunction(){
 				}
 				if (IsOk){
 // 					if (TriNum < 3) TecUtilDialogMessageBox("Before making FEVolume", MessageBoxType_Information);
-					IsOk = FEVolumes[TriNum].MakeGradientBundle(GPPtrs);
+					IsOk = FEVolumes[TriNum].MakeFromGPs(GPPtrs, true, true);
 // 					if (TriNum < 3) TecUtilDialogMessageBox("After making FEVolume", MessageBoxType_Information);
 				}
 			}

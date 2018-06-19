@@ -99,21 +99,23 @@ public:
 	const vector<mat> GetIntegrationPointsWeights(const vec3 & StartPoint, const vector<vec> & stuW) const;
 	const vector<mat> GetIntegrationPointsWeights(const vector<vec> & stuW) const;
 
-	const Boolean_t MakeGradientBundle(vector<GradPath_c*> GPs);
-	const Boolean_t MakeFromGPs(vector<GradPath_c*> GPs, const bool ConnectBeginningAndEndGPs = false);
+// 	const Boolean_t MakeGradientBundle(vector<GradPath_c*> GPs);
+	const Boolean_t MakeFromGPs(vector<GradPath_c*> GPs, const bool ConnectBeginningAndEndGPs = false, const bool AddCap = false);
+
+	const Boolean_t MakeFromNodeElemList(const vector<vec3> & P, const vector<vector<int> > & T);
 
 	const Boolean_t Refine();
 	/*
 	*	Two methods to make the 3- and 4-sided
 	*	FE volumes from gradient paths.
 	*/
-	const Boolean_t MakeGradientBundle(const GradPath_c & GP1,
-		const GradPath_c & GP2,
-		const GradPath_c & GP3);
-	const Boolean_t MakeGradientBundle(const GradPath_c & GP1,
-		const GradPath_c & GP2,
-		const GradPath_c & GP3,
-		const GradPath_c & GP4);
+// 	const Boolean_t MakeGradientBundle(const GradPath_c & GP1,
+// 		const GradPath_c & GP2,
+// 		const GradPath_c & GP3);
+// 	const Boolean_t MakeGradientBundle(const GradPath_c & GP1,
+// 		const GradPath_c & GP2,
+// 		const GradPath_c & GP3,
+// 		const GradPath_c & GP4);
 
 	/*
 	*	Other
@@ -129,11 +131,11 @@ public:
 		vector<FieldDataType_e> DataTypes,
 		const vector<ValueLocation_e> & DataLocations,
 		const vector<int> & XYZVarNums);
-	const int SaveAsFEZone(
-		vector<FieldDataType_e> DataTypes,
-		const vector<int> & XYZVarNums,
-		const int & RhoVarNum
-		);
+// 	const int SaveAsFEZone(
+// 		vector<FieldDataType_e> DataTypes,
+// 		const vector<int> & XYZVarNums,
+// 		const int & RhoVarNum
+// 		);
 
 	friend class Domain_c;
 
@@ -160,8 +162,25 @@ private:
 		const Boolean_t & IntegrateVolume);
 	const vector<int> TriangleEdgeMidPointSubdivide(const int & TriNum);
 	void RefineTriElems(const vector<int> & TriNumList);
-	void TriPolyLines(const bool ConnectBeginningAndEndGPs = true);
+// 	void TriPolyLines(const bool ConnectBeginningAndEndGPs = true);
 	void RemoveDupicateNodes();
+
+	/*
+	 *	Redo of path stitching algorithm, formally TryPolyLines
+	 */
+	void StitchPaths(
+		const vector<int> &     L,       // indices of points in P
+		const vector<int> &     R,
+		const vector<vec3> &     P,
+		vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
+		);
+	void StitchCapPaths(
+		const vector<int> &     L,       // indices of points in P
+		const vector<int> &     R,
+		const vector<int> &		C,       // indices of points in the cap, C
+		const vector<vec3> &     P,
+		vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
+		);
 
 
 	vector<GradPath_c> m_GPList;
@@ -194,8 +213,8 @@ private:
 	vector<int> m_IntVarNums;
 	int m_NumIntVars;
 
-	int m_NumGPs;
-	int m_NumGPPts;
+// 	int m_NumGPs;
+// 	int m_NumGPPts;
 	int m_NumNodes;
 	int m_NumElems;
 

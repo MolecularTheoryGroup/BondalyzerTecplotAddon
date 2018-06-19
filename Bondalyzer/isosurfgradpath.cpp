@@ -988,7 +988,7 @@ Boolean_t IsoSurfGradPathAdd(const ZoneVarInfo_pa  VolZoneVarInfo,
             if (IsOk)
             {
                 SurfCPZoneNum = CritPointsCreateTPZone(SurfCritPoints, ChrgDensVarNum, TypeVarNum,
-                                                       UVarNum, VVarNum, WVarNum);
+                                                       UVarNum, VVarNum, WVarNum, TRUE);
                 // if (SurfCPZoneNum > 0) NumZones++;
                 CHECK(SurfCPZoneNum > 0);
             }

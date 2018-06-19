@@ -71,7 +71,7 @@ const FESurface_c FESurface_c::operator+(const FESurface_c & rhs) const{
 
 FESurface_c::FESurface_c()
 {
-	m_NumGPs = -1;
+// 	m_NumGPs = -1;
 	m_FEVolumeMade = FALSE;
 	m_IntegrationResultsReady = FALSE;
 }
@@ -145,109 +145,39 @@ FESurface_c::FESurface_c(const int & InZoneNum,
 /*
 	Make FEVolume from vector of pointers to GradPath_c's
 */
-const Boolean_t FESurface_c::MakeGradientBundle(vector<GradPath_c*> GPs)
-{
-	Boolean_t IsOk = TRUE;
-	for (int i = 0; i < GPs.size() && IsOk; ++i){
-		IsOk = GPs[i]->IsMade();
-		if (IsOk && i > 0){
-			IsOk = (GPs[i]->GetCount() == GPs[i-1]->GetCount());
-		}
-	}
-	
-	if (IsOk){
-		m_NumGPs = GPs.size();
-		m_NumGPPts = GPs[0]->GetCount();
-		m_NumNodes = m_NumGPs * m_NumGPPts;
-		m_NumElems = 2 * (m_NumGPs - 2) + 2 * m_NumGPs * (m_NumGPPts - 1);
-
-		vector<vector<vec3>::const_iterator> XYZIt(m_NumGPs);
-		
-		for (int i = 0; i < GPs.size(); ++i){
-			XYZIt[i] = GPs[i]->m_XYZList.cbegin();
-		}
-
-		m_XYZList.resize(m_NumGPs * m_NumGPPts);
-
-		for (int i = 0; i < m_NumGPs; ++i){
-			for (int j = 0; j < m_NumGPPts; ++j){
-				m_XYZList[i * m_NumGPPts + j] = *XYZIt[i];
-				XYZIt[i]++;
-			}
-		}
-
-		/*
-		 * Generate triangle list.
-		 */
-
-		vector<int> V(m_NumGPs);
-		for (int i = 0; i < m_NumGPs; ++i){
-			V[i] = i * m_NumGPPts;
-		}
- 
-		Domain_c D(V, this);
-		D.Weight();
- 
-		TriPolyLines();
- 
-		V = vector<int>();
-		V.reserve(m_NumGPs * 2);
-		int OldNumNodes = m_XYZList.size() - m_NumGPs;
-		for (int i = 0; i < m_NumGPs; ++i){
-			V.push_back((i + 1) * m_NumGPPts - 1);
-			V.push_back(OldNumNodes + i);
-		}
-		D.Setup(V, this);
-		D.Weight();
-
-		m_NumElems = m_ElemList.size();
-
-		m_FEVolumeMade = TRUE;
-	}
-
-	return IsOk;
-}
-
-/*
-Make FEVolume from vector of pointers to GradPath_c's
-*/
-const Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, const bool ConnectBeginningAndEndGPs)
-{
-	Boolean_t IsOk = TRUE;
-	for (int i = 0; i < GPs.size() && IsOk; ++i){
-		IsOk = GPs[i]->IsMade();
-		if (IsOk && i > 0){
-			IsOk = (GPs[i]->GetCount() == GPs[i - 1]->GetCount());
-		}
-	}
-
-	if (!IsOk){
-		int MinCount = INT_MAX;
-		Boolean_t AllMade = TRUE;
-		for (auto *g : GPs){
-			MinCount = MIN(MinCount, g->GetCount());
-			AllMade = AllMade && g->IsMade();
-		}
-		if (AllMade){
-			for (auto *g : GPs){
-				g->Resample(MinCount);
-			}
-			IsOk = TRUE;
-		}
-	}
-
-	if (IsOk){
-		m_NumGPs = GPs.size();
-		m_NumGPPts = GPs[0]->GetCount();
-		m_NumNodes = m_NumGPs * m_NumGPPts;
-		m_NumElems = 2 * (m_NumGPs - 2) + 2 * m_NumGPs * (m_NumGPPts - 1);
-
-		vector<vector<vec3>::const_iterator> XYZIt(m_NumGPs);
-
-		m_XYZList.clear();
-		for (GradPath_c* GP : GPs)
-			m_XYZList.insert(m_XYZList.begin(), GP->m_XYZList.cbegin(), GP->m_XYZList.cend());
-
+// const Boolean_t FESurface_c::MakeGradientBundle(vector<GradPath_c*> GPs)
+// {
+// 	Boolean_t IsOk = TRUE;
+// 	for (int i = 0; i < GPs.size() && IsOk; ++i){
+// 		IsOk = GPs[i]->IsMade();
+// 		if (IsOk && i > 0){
+// 			IsOk = (GPs[i]->GetCount() == GPs[i-1]->GetCount());
+// 		}
+// 	}
+// 	
+// 	if (!IsOk){
+// 		int MinCount = INT_MAX;
+// 		Boolean_t AllMade = TRUE;
+// 		for (auto *g : GPs){
+// 			MinCount = MIN(MinCount, g->GetCount());
+// 			AllMade = AllMade && g->IsMade();
+// 		}
+// 		if (AllMade){
+// 			for (auto *g : GPs){
+// 				g->Resample(MinCount);
+// 			}
+// 			IsOk = TRUE;
+// 		}
+// 	}
+// 
+// 	if (IsOk){
+// 		m_NumGPs = GPs.size();
+// 		m_NumGPPts = GPs[0]->GetCount();
+// 		m_NumNodes = m_NumGPs * m_NumGPPts;
+// 		m_NumElems = 2 * (m_NumGPs - 2) + 2 * m_NumGPs * (m_NumGPPts - 1);
+// 
+// 		vector<vector<vec3>::const_iterator> XYZIt(m_NumGPs);
+// 		
 // 		for (int i = 0; i < GPs.size(); ++i){
 // 			XYZIt[i] = GPs[i]->m_XYZList.cbegin();
 // 		}
@@ -260,15 +190,338 @@ const Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, const bool Con
 // 				XYZIt[i]++;
 // 			}
 // 		}
+// 
+// 		/*
+// 		 * Generate triangle list.
+// 		 */
+// 
+// // 		vector<int> V(m_NumGPs);
+// // 		for (int i = 0; i < m_NumGPs; ++i){
+// // 			V[i] = i * m_NumGPPts;
+// // 		}
+// //  
+// // 		Domain_c D(V, this);
+// // 		D.Weight();
+//  
+// 		TriPolyLines();
+//  
+// // 		V = vector<int>();
+// // 		V.reserve(m_NumGPs * 2);
+// // 		int OldNumNodes = m_XYZList.size() - m_NumGPs;
+// // 		for (int i = 0; i < m_NumGPs; ++i){
+// // 			V.push_back((i + 1) * m_NumGPPts - 1);
+// // 			V.push_back(OldNumNodes + i);
+// // 		}
+// // 		D.Setup(V, this);
+// // 		D.Weight();
+// 
+// 		m_NumElems = m_ElemList.size();
+// 
+// 		m_FEVolumeMade = TRUE;
+// 	}
+// 
+// 	return IsOk;
+// }
+
+/*
+Make FEVolume from vector of pointers to GradPath_c's
+*/
+const Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, const bool ConnectBeginningAndEndGPs, const bool AddCap)
+{
+	Boolean_t IsOk = TRUE;
+
+	for (int i = 0; i < GPs.size() && IsOk; ++i){
+	 	IsOk = GPs[i]->IsMade() && GPs[i]->GetCount() > 0;
+	}
+
+
+
+	
+	if (IsOk){
+		
+		/*
+		*	Get total number of points in all GPs
+		*/
+		m_NumNodes = 0;
+		for (int i = 0; i < GPs.size(); ++i){
+			m_NumNodes += GPs[i]->GetCount();
+		}
 
 		/*
-		* Generate triangle list.
-		*/
+		 *	Save GP points to m_XYZList and save each GP's points'
+		 *	indices to a 2d int vector
+		 */
+		m_XYZList.clear();
+		m_XYZList.resize(m_NumNodes);
+		vector<vector<int> > IndList;
+		int ni = 0;
+		for (auto * g : GPs){
+			IndList.push_back(vector<int>(g->GetCount()));
+			int gi = 0;
+			for (auto p : g->m_XYZList){
+				m_XYZList[ni] = p;
+				IndList.back()[gi++] = ni++;
+			}
+		}
 
-		TriPolyLines(ConnectBeginningAndEndGPs);
+		/*
+		 * If connecting beginning and end paths, need to copy the first indList to the end of indList
+		 */
+		if (ConnectBeginningAndEndGPs) IndList.push_back(IndList[0]);
+		/*
+			*	Now need to generate the "cap" points that will be used to linearly
+			*	fill in any excess space between the endpoints of neighboring GPs.
+			*/
 
+		/*
+			* First, get the average spacing between GP points to come up with a decent
+			*	spacing for the cap points (this seems expensive, so maybe think of a better
+			*	way in the future).
+			*/
+		double AvgCapSpacing = 0;
+		int Denom = 0;
+		for (auto * g : GPs){
+			for (int i = 0; i < g->GetCount() - 1; ++i){
+				AvgCapSpacing += Distance(g->XYZAt(i), g->XYZAt(i + 1));
+				Denom++;
+			}
+		}
+		AvgCapSpacing /= double(Denom);
+
+		/*
+			*	Now check to see if each neighboring pair of paths needs a cap.
+			*	If a cap is necessary (i.e. the end points of the paths are spaced
+			*	farther apart than CapSpacing) then use the CapSpacing as a starting
+			*	point to find the number of equidistant cap points, saving the points
+			*	themselves to m_XYZList and the corresponding incides of the cap points
+			*	to CapIndList.
+			*/
+		vector<vector<int> > CapIndList(IndList.size() - 1);
+		// size - 1 because there are IndList.size() - 1 pairs
+
+		for (int i = 0; i < IndList.size() - 1; ++i){
+			double CapDist = Distance(m_XYZList[IndList[i].back()], m_XYZList[IndList[i + 1].back()]);
+			if (CapDist > AvgCapSpacing){
+				/*
+					*	Cap points needed, so find NumCapPoints necessary
+					*	and then make equidistant points.
+					*/
+				int NumCapPoints = CapDist / AvgCapSpacing;
+				/*
+					*	Always want an odd number of cap points to ensure that one
+					*	is at the midpoint between the path end points.
+					*/
+				if (NumCapPoints > 0 && NumCapPoints % 2 == 1) NumCapPoints--;
+
+				/*
+					*	Now make the cap points, starting from the "left" path,
+					*	saving the index of each new point to CapIndList.
+					*/
+				vec3 CapVec = (m_XYZList[IndList[i + 1].back()] - m_XYZList[IndList[i].back()]) / double(NumCapPoints);
+				for (int j = 0; j < NumCapPoints; ++j){
+					m_XYZList.push_back(m_XYZList[IndList[i].back()] + CapVec * double(j));
+					CapIndList[i].push_back(ni++);
+				}
+			}
+		}
+
+		/*
+		 * Now all the GP points, cap points, and their respective indices have been
+		 * generated.
+		 * Next call the path stitching function on each pair.
+		 */
+		m_ElemList.clear();
+		for (int i = 0; i < IndList.size() - 1; ++i){
+			StitchCapPaths(IndList[i], IndList[i + 1], CapIndList[i], m_XYZList, m_ElemList);
+		}
+
+
+
+		if (AddCap){
+			/*
+			 *	GB edges have been connected into surfaces.
+			 *	Now need to create surfaces for the initial and terminal 3d caps
+			 *	to close off the GB.
+			 *	The initial 2d cap is guaranteed to be a triangle since it coincides
+			 *	with one of the triangular elements on the sphere.
+			 *	The terminal 2d cap can be stitched by finding the pair of GP end
+			 *	points of greatest separation and dividing all end points into
+			 *	two paths and then stitching those.
+			 */
+
+			/*
+			*	There are two kinds of GBs:
+			*	One for "normal" GBs and another for GBs that have a bond
+			*	path as an edge.
+			*
+			*	The normal GBs have a triangle of points at their base with
+			*	e edge points, so 3e+3 total points.
+			*
+			*	Bond path GBs are similar, but have multiple points at one of
+			*	the triangular vertices because of the e+2 paths on the far
+			*	side of the bond path (that is, along the interatomic surface).
+			*	So they have 4e+4 total points. The first 2e+2 and the last e+1 GPs of a bond path
+			*	GB (and the (2e+3)-th GP) describe the full set of points along
+			*	the triangular element, and the set [2e+3,3e+3] all originate
+			*	from the same point as the (3e+4)-th GP.
+			*/
+
+
+			int NumEdgePointsNormal = (GPs.size() - 3) / 3,
+				NumEdgePointsSaddle = (GPs.size() - 4) / 4;
+			int TotNumPointsNormal = 3 * NumEdgePointsNormal + 3,
+				TotNumPointsSaddle = 4 * NumEdgePointsSaddle + 4;
+
+			/*
+			 *	If TotNumPoints == GPs.size() then it's a normal GB, if not it's
+			 *	a bond path GB.
+			 */
+			// 		vector<int> InitialCapInd;
+
+			if (TotNumPointsSaddle == GPs.size()){
+				// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
+				// 			InitialCapInd.back()++;
+				m_ElemList.push_back({ IndList[0][0],
+					IndList[NumEdgePointsSaddle + 1][0],
+					IndList[(NumEdgePointsSaddle)* 2 + 2][0] });
+			}
+			else if (TotNumPointsNormal == GPs.size()){
+				// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
+				m_ElemList.push_back({ IndList[0][0],
+					IndList[NumEdgePointsNormal + 1][0],
+					IndList[(NumEdgePointsNormal + 1) * 2][0] });
+			}
+			else
+				TecUtilDialogMessageBox("Incorrect number of GPs for GB", MessageBoxType_Error);
+			// 		m_ElemList.push_back(InitialCapInd);
+
+
+			/*
+			 *	Find the GP end points of maximum separation.
+			 *	We can neglect the presence of 1d cap points in CapIndList because
+			 *	they are guaranteed to be straight lines, so by including the
+			 *	GP endpoints we'll necessarily end up with triangular elements
+			 *	in the resulting 2d cap that coincide with the existing 1d cap points.
+			 */
+
+			double MaxDistSqr = -1;
+			int MaxDistsGPNums[2] = { -1, -1 };
+
+			for (int i = 0; i < IndList.size() - (ConnectBeginningAndEndGPs ? 2 : 1); ++i){
+				for (int j = i + 1; j < GPs.size(); ++j){
+					double TmpDistSqr = DistSqr(GPs[i]->XYZAt(-1), GPs[j]->XYZAt(-1));
+					if (TmpDistSqr > MaxDistSqr){
+						MaxDistSqr = TmpDistSqr;
+						MaxDistsGPNums[0] = i;
+						MaxDistsGPNums[1] = j;
+					}
+				}
+			}
+
+
+			if (MaxDistSqr > 0){
+				vector<int> LVec, RVec;
+				for (int i = MaxDistsGPNums[0]; i < MaxDistsGPNums[1]; ++i)
+					LVec.push_back(IndList[i].back());
+				for (int i = 0; i < GPs.size() - (MaxDistsGPNums[1] - MaxDistsGPNums[0]); ++i)
+					RVec.push_back(IndList[(MaxDistsGPNums[1] + i) % GPs.size()].back());
+				std::reverse(RVec.begin(), RVec.end());
+
+				/*
+				 *	Now stitch these two "paths" and add to the element list
+				 */
+				StitchPaths(LVec, RVec, m_XYZList, m_ElemList);
+			}
+			else
+				IsOk = FALSE;
+		}
+	}
+
+	if (IsOk){
+		m_NumNodes = m_XYZList.size();
 		m_NumElems = m_ElemList.size();
 
+		m_FEVolumeMade = TRUE;
+	}
+
+	return IsOk;
+
+
+	/*
+	 *	Old implementation that resampled paths to ensure they all had the same number of points,
+	 *	which was stupid
+	 */
+// 	for (int i = 0; i < GPs.size() && IsOk; ++i){
+// 		IsOk = GPs[i]->IsMade();
+// 		if (IsOk && i > 0){
+// 			IsOk = (GPs[i]->GetCount() == GPs[i - 1]->GetCount());
+// 		}
+// 	}
+// 
+// 	if (!IsOk){
+// 		int MinCount = INT_MAX;
+// 		Boolean_t AllMade = TRUE;
+// 		for (auto *g : GPs){
+// 			MinCount = MIN(MinCount, g->GetCount());
+// 			AllMade = AllMade && g->IsMade();
+// 		}
+// 		if (AllMade){
+// 			for (auto *g : GPs){
+// 				g->Resample(MinCount);
+// 			}
+// 			IsOk = TRUE;
+// 		}
+// 	}
+// 
+// 	if (IsOk){
+// 		m_NumGPs = GPs.size();
+// 		m_NumGPPts = GPs[0]->GetCount();
+// 		m_NumNodes = m_NumGPs * m_NumGPPts;
+// 		m_NumElems = 2 * (m_NumGPs - 2) + 2 * m_NumGPs * (m_NumGPPts - 1);
+// 
+// 		vector<vector<vec3>::const_iterator> XYZIt(m_NumGPs);
+// 
+// 		m_XYZList.clear();
+// 		for (GradPath_c* GP : GPs)
+// 			m_XYZList.insert(m_XYZList.begin(), GP->m_XYZList.cbegin(), GP->m_XYZList.cend());
+// 
+// // 		for (int i = 0; i < GPs.size(); ++i){
+// // 			XYZIt[i] = GPs[i]->m_XYZList.cbegin();
+// // 		}
+// // 
+// // 		m_XYZList.resize(m_NumGPs * m_NumGPPts);
+// // 
+// // 		for (int i = 0; i < m_NumGPs; ++i){
+// // 			for (int j = 0; j < m_NumGPPts; ++j){
+// // 				m_XYZList[i * m_NumGPPts + j] = *XYZIt[i];
+// // 				XYZIt[i]++;
+// // 			}
+// // 		}
+// 
+// 		/*
+// 		* Generate triangle list.
+// 		*/
+// 
+// 		TriPolyLines(ConnectBeginningAndEndGPs);
+// 
+// 		m_NumElems = m_ElemList.size();
+// 
+// 		m_FEVolumeMade = TRUE;
+// 	}
+// 
+// 	return IsOk;
+}
+
+const Boolean_t FESurface_c::MakeFromNodeElemList(const vector<vec3> & P, const vector<vector<int> > & T)
+{
+	Boolean_t IsOk = P.size() >= 3 && T.size() >= 1;
+
+	if (IsOk){
+		m_XYZList = P;
+		m_ElemList = T;
+
+		m_NumElems = m_ElemList.size();
+		m_NumNodes = m_XYZList.size();
 		m_FEVolumeMade = TRUE;
 	}
 
@@ -279,136 +532,136 @@ const Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, const bool Con
 *	Two constructors for the 3- and 4-sided
 *	FE volumes.
 */
-const Boolean_t FESurface_c::MakeGradientBundle(const GradPath_c & GP1,
-	const GradPath_c & GP2,
-	const GradPath_c & GP3)
-{
-	Boolean_t IsOk = (GP1.IsMade()
-		&& GP2.IsMade()
-		&& GP3.IsMade()
-		&& GP1.GetCount() == GP2.GetCount()
-		&& GP1.GetCount() == GP3.GetCount());
-
-
-	if (IsOk){
-		m_GPList = { GP1, GP2, GP3 };
-
-		m_NumGPs = 3;
-		m_NumGPPts = GP1.GetCount();
-		m_NumNodes = 3 * m_NumGPPts;
-		m_NumElems = 3 * (m_NumGPPts - 1) + 2;
-
-		vector<vec3>::const_iterator XYZIt[3];
-		vector<double>::const_iterator RhoIt[3];
-
-		int GPNum = 0;
-		XYZIt[GPNum] = GP1.m_XYZList.cbegin();
-
-		RhoIt[GPNum] = GP1.m_RhoList.cbegin();
-		GPNum++;
-
-
-		XYZIt[GPNum] = GP2.m_XYZList.cbegin();
-
-		RhoIt[GPNum] = GP2.m_RhoList.cbegin();
-		GPNum++;
-
-
-		XYZIt[GPNum] = GP3.m_XYZList.cbegin();
-
-		RhoIt[GPNum] = GP3.m_RhoList.cbegin();
-
-		m_XYZList.resize(3 * m_NumGPPts);
-
-		for (int j = 0; j < m_NumGPPts; ++j){
-			for (int i = 0; i < 3; ++i){
-				m_XYZList[i + 3 * j] = *XYZIt[i];
-				XYZIt[i]++;
-			}
-		}
-
-		m_RhoList.resize(3 * m_NumGPPts);
-
-		for (int j = 0; j < m_NumGPPts; ++j){
-			for (int i = 0; i < 3; ++i){
-				m_RhoList[i + 3 * j] = *RhoIt[i];
-				RhoIt[i]++;
-			}
-		}
-
-		m_FEVolumeMade = TRUE;
-	}
-
-	return IsOk;
-}
-const Boolean_t FESurface_c::MakeGradientBundle(const GradPath_c & GP1,
-	const GradPath_c & GP2,
-	const GradPath_c & GP3,
-	const GradPath_c & GP4)
-{
-	Boolean_t IsOk = (GP1.IsMade()
-		&& GP2.IsMade()
-		&& GP3.IsMade()
-		&& GP4.IsMade()
-		&& GP1.GetCount() == GP2.GetCount()
-		&& GP1.GetCount() == GP3.GetCount()
-		&& GP1.GetCount() == GP4.GetCount());
-
-
-	if (IsOk){
-		m_GPList = { GP1, GP2, GP3, GP4 };
-
-		m_NumGPs = 4;
-		m_NumGPPts = GP1.GetCount();
-		m_NumNodes = 4 * m_NumGPPts;
-		m_NumElems = 4 * (m_NumGPPts - 1) + 2;
-
-		vector<vec3>::const_iterator XYZIt[4];
-		vector<double>::const_iterator RhoIt[4];
-
-		int GPNum = 0;
-		XYZIt[GPNum] = GP1.m_XYZList.cbegin();
-
-		RhoIt[GPNum] = GP1.m_RhoList.cbegin();
-		GPNum++;
-
-		XYZIt[GPNum] = GP2.m_XYZList.cbegin();
-
-		RhoIt[GPNum] = GP2.m_RhoList.cbegin();
-		GPNum++;
-
-		XYZIt[GPNum] = GP3.m_XYZList.cbegin();
-
-		RhoIt[GPNum] = GP3.m_RhoList.cbegin();
-		GPNum++;
-
-		XYZIt[GPNum] = GP4.m_XYZList.cbegin();
-
-		RhoIt[GPNum] = GP4.m_RhoList.cbegin();
-
-		m_XYZList.resize(4 * m_NumGPPts);
-
-		for (int j = 0; j < m_NumGPPts; ++j){
-			for (int i = 0; i < 4; ++i){
-				m_XYZList[i + 4 * j] = *XYZIt[i];
-				XYZIt[i]++;
-			}
-		}
-
-		m_RhoList.resize(4 * m_NumGPPts);
-
-		for (int j = 0; j < m_NumGPPts; ++j){
-			for (int i = 0; i < 4; ++i){
-				m_RhoList[i + 3 * j] = *RhoIt[i];
-				RhoIt[i]++;
-			}
-		}
-
-		m_FEVolumeMade = TRUE;
-	}
-
-	return IsOk;
-}
+// const Boolean_t FESurface_c::MakeGradientBundle(const GradPath_c & GP1,
+// 	const GradPath_c & GP2,
+// 	const GradPath_c & GP3)
+// {
+// 	Boolean_t IsOk = (GP1.IsMade()
+// 		&& GP2.IsMade()
+// 		&& GP3.IsMade()
+// 		&& GP1.GetCount() == GP2.GetCount()
+// 		&& GP1.GetCount() == GP3.GetCount());
+// 
+// 
+// 	if (IsOk){
+// 		m_GPList = { GP1, GP2, GP3 };
+// 
+// 		m_NumGPs = 3;
+// 		m_NumGPPts = GP1.GetCount();
+// 		m_NumNodes = 3 * m_NumGPPts;
+// 		m_NumElems = 3 * (m_NumGPPts - 1) + 2;
+// 
+// 		vector<vec3>::const_iterator XYZIt[3];
+// 		vector<double>::const_iterator RhoIt[3];
+// 
+// 		int GPNum = 0;
+// 		XYZIt[GPNum] = GP1.m_XYZList.cbegin();
+// 
+// 		RhoIt[GPNum] = GP1.m_RhoList.cbegin();
+// 		GPNum++;
+// 
+// 
+// 		XYZIt[GPNum] = GP2.m_XYZList.cbegin();
+// 
+// 		RhoIt[GPNum] = GP2.m_RhoList.cbegin();
+// 		GPNum++;
+// 
+// 
+// 		XYZIt[GPNum] = GP3.m_XYZList.cbegin();
+// 
+// 		RhoIt[GPNum] = GP3.m_RhoList.cbegin();
+// 
+// 		m_XYZList.resize(3 * m_NumGPPts);
+// 
+// 		for (int j = 0; j < m_NumGPPts; ++j){
+// 			for (int i = 0; i < 3; ++i){
+// 				m_XYZList[i + 3 * j] = *XYZIt[i];
+// 				XYZIt[i]++;
+// 			}
+// 		}
+// 
+// 		m_RhoList.resize(3 * m_NumGPPts);
+// 
+// 		for (int j = 0; j < m_NumGPPts; ++j){
+// 			for (int i = 0; i < 3; ++i){
+// 				m_RhoList[i + 3 * j] = *RhoIt[i];
+// 				RhoIt[i]++;
+// 			}
+// 		}
+// 
+// 		m_FEVolumeMade = TRUE;
+// 	}
+// 
+// 	return IsOk;
+// }
+// const Boolean_t FESurface_c::MakeGradientBundle(const GradPath_c & GP1,
+// 	const GradPath_c & GP2,
+// 	const GradPath_c & GP3,
+// 	const GradPath_c & GP4)
+// {
+// 	Boolean_t IsOk = (GP1.IsMade()
+// 		&& GP2.IsMade()
+// 		&& GP3.IsMade()
+// 		&& GP4.IsMade()
+// 		&& GP1.GetCount() == GP2.GetCount()
+// 		&& GP1.GetCount() == GP3.GetCount()
+// 		&& GP1.GetCount() == GP4.GetCount());
+// 
+// 
+// 	if (IsOk){
+// 		m_GPList = { GP1, GP2, GP3, GP4 };
+// 
+// 		m_NumGPs = 4;
+// 		m_NumGPPts = GP1.GetCount();
+// 		m_NumNodes = 4 * m_NumGPPts;
+// 		m_NumElems = 4 * (m_NumGPPts - 1) + 2;
+// 
+// 		vector<vec3>::const_iterator XYZIt[4];
+// 		vector<double>::const_iterator RhoIt[4];
+// 
+// 		int GPNum = 0;
+// 		XYZIt[GPNum] = GP1.m_XYZList.cbegin();
+// 
+// 		RhoIt[GPNum] = GP1.m_RhoList.cbegin();
+// 		GPNum++;
+// 
+// 		XYZIt[GPNum] = GP2.m_XYZList.cbegin();
+// 
+// 		RhoIt[GPNum] = GP2.m_RhoList.cbegin();
+// 		GPNum++;
+// 
+// 		XYZIt[GPNum] = GP3.m_XYZList.cbegin();
+// 
+// 		RhoIt[GPNum] = GP3.m_RhoList.cbegin();
+// 		GPNum++;
+// 
+// 		XYZIt[GPNum] = GP4.m_XYZList.cbegin();
+// 
+// 		RhoIt[GPNum] = GP4.m_RhoList.cbegin();
+// 
+// 		m_XYZList.resize(4 * m_NumGPPts);
+// 
+// 		for (int j = 0; j < m_NumGPPts; ++j){
+// 			for (int i = 0; i < 4; ++i){
+// 				m_XYZList[i + 4 * j] = *XYZIt[i];
+// 				XYZIt[i]++;
+// 			}
+// 		}
+// 
+// 		m_RhoList.resize(4 * m_NumGPPts);
+// 
+// 		for (int j = 0; j < m_NumGPPts; ++j){
+// 			for (int i = 0; i < 4; ++i){
+// 				m_RhoList[i + 3 * j] = *RhoIt[i];
+// 				RhoIt[i]++;
+// 			}
+// 		}
+// 
+// 		m_FEVolumeMade = TRUE;
+// 	}
+// 
+// 	return IsOk;
+// }
 
 FESurface_c::~FESurface_c()
 {
@@ -671,157 +924,157 @@ const int FESurface_c::SaveAsTriFEZone(const string & ZoneName,
 }
 
 
-const int FESurface_c::SaveAsFEZone(vector<FieldDataType_e> DataTypes,
-	const vector<int> & XYZVarNums,
-	const int & RhoVarNum)
-{
-	Boolean_t IsOk = IsMade();
-	int ZoneNum = -1;
-
-	if (IsOk){
-		for (int i = 0; i < 3; ++i)
-			DataTypes[XYZVarNums[i] - 1] = FieldDataType_Double;
-
-		DataTypes[RhoVarNum - 1] = FieldDataType_Double;
-
-		IsOk = TecUtilDataSetAddZone(CSMZoneName.FESurface.c_str(), m_XYZList.size(), m_NumElems, 0, ZoneType_FEQuad, DataTypes.data());
-	}
-
-	Set_pa TmpSet = TecUtilSetAlloc(FALSE);
-
-	if (IsOk){
-		ZoneNum = TecUtilDataSetGetNumZones();
-		m_ZoneNum = ZoneNum;
-		TecUtilSetAddMember(TmpSet, ZoneNum, FALSE);
-		TecUtilZoneSetActive(TmpSet, AssignOp_MinusEquals);
-		TecUtilZoneSetScatter(SV_SHOW, TmpSet, 0.0, FALSE);
-
-		ArgList_pa CurrentArgList = TecUtilArgListAlloc();
-		TecUtilArgListAppendString(CurrentArgList, SV_P1, SV_FIELDMAP);
-		TecUtilArgListAppendString(CurrentArgList, SV_P2, SV_EFFECTS);
-		TecUtilArgListAppendString(CurrentArgList, SV_P3, SV_USETRANSLUCENCY);
-		TecUtilArgListAppendSet(CurrentArgList, SV_OBJECTSET, TmpSet);
-		TecUtilArgListAppendArbParam(CurrentArgList, SV_IVALUE, FALSE);
-		TecUtilStyleSetLowLevelX(CurrentArgList);
-		TecUtilArgListDealloc(&CurrentArgList);
-
-		TecUtilSetDealloc(&TmpSet);
-
-		vector<vector<double> > TmpValues(3, vector<double>(m_XYZList.size()));
-		for (int i = 0; i < m_XYZList.size(); ++i){
-			for (int j = 0; j < 3; ++j)
-				TmpValues[j][i] = m_XYZList[i][j];
-		}
-
-		for (int i = 0; i < 3 && IsOk; ++i){
-			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, XYZVarNums[i]);
-			IsOk = VALID_REF(SetFDPtr);
-			if (IsOk){
-				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_XYZList.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
-			}
-		}
-		if (IsOk){
-			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, RhoVarNum);
-			IsOk = VALID_REF(SetFDPtr);
-			if (IsOk){
-				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_XYZList.size(), reinterpret_cast<void*>(const_cast<double*>(m_RhoList.data())));
-			}
-		}
-
-	}
-
-	if (IsOk){
-		/*
-		*	Need to define the connectivity (nodal structure) of the FE volume.
-		*	The order doesn't really matter here, just that the connectivity
-		*	is correct between elements.
-		*/
-		NodeMap_pa NodeMap = TecUtilDataNodeGetWritableRef(ZoneNum);
-		IsOk = VALID_REF(NodeMap);
-		if (IsOk){
-			if (m_NumGPs == 3){
-				int ei = 1;
-				//	Beginning triangular cap
-				for (int i = 1; i <= 4; ++i){
-					// 4th corner gets repeated
-					TecUtilDataNodeSetByRef(NodeMap, ei, i, MIN(i, 3));
-				}
-				ei++;
-				/*
-				*	Now work down the FE volume, defining the elements starting
-				*	at the sphere, wrapping around the FE volume as you work
-				*	towards the FE volume's end.
-				*/
-				for (int i = 0; i < m_NumGPPts - 1 && ei < m_NumElems - 1; ++i){
-					int ii = 1 + 3 * i;
-					for (int j = 0; j < 2 && ei < m_NumElems - 1; ++j){
-						/*
-						*	First two elements of each iteration have
-						*	the same relative nodal structure, offset by
-						*	one for each element.
-						*/
-						int Vals[4] = { ii, ii + 1, ii + 4, ii + 3 };
-						for (int k = 0; k < 4; ++k){
-							TecUtilDataNodeSetByRef(NodeMap, ei, k + 1, Vals[k]);
-						}
-						ii++;
-						ei++;
-					}
-					/*
-					*	The third element has a different nodal structure
-					*/
-					int Vals[4] = { ii, ii - 2, ii + 1, ii + 3 };
-					for (int k = 0; k < 4; ++k){
-						TecUtilDataNodeSetByRef(NodeMap, ei, k + 1, Vals[k]);
-					}
-					ei++;
-				}
-				//	End triangular cap
-				for (int i = 1; i <= 4; ++i){
-					// 4th corner gets repeated
-					TecUtilDataNodeSetByRef(NodeMap, ei, i, MIN(i + 3 * (m_NumGPPts - 1), m_NumNodes));
-				}
-			}
-			else{
-				/*
-				*	Same thing for the 4-sided FE volumes, but the end cap
-				*	is a quad and the "walls" of the volume have three with
-				*	the same nodal structure instead of two.
-				*/
-				int ei = 1;
-				for (int i = 1; i <= 4; ++i){
-					TecUtilDataNodeSetByRef(NodeMap, ei, i, MAX(i % 4, 1));
-				}
-				ei++;
-				for (int i = 0; i < m_NumGPPts - 1 && ei < m_NumElems - 1; ++i){
-					int ii = 1 + 4 * i;
-					for (int j = 0; j < 3 && ei < m_NumElems - 1; ++j){
-						int Vals[4] = { ii, ii + 1, ii + 5, ii + 4 };
-						for (int k = 0; k < 4; ++k){
-							TecUtilDataNodeSetByRef(NodeMap, ei, k + 1, Vals[k]);
-						}
-						ii++;
-						ei++;
-					}
-					int Vals[4] = { ii, ii - 3, ii + 1, ii + 4 };
-					for (int k = 0; k < 4; ++k){
-						TecUtilDataNodeSetByRef(NodeMap, ei, k + 1, Vals[k]);
-					}
-					ei++;
-				}
-				//	End quadragonal cap
-				for (int i = 1; i <= 4; ++i){
-					// 4th corner not repeated
-					TecUtilDataNodeSetByRef(NodeMap, ei, i, i + 4 * (m_NumGPPts - 1));
-				}
-			}
-		}
-	}
-
-	TecUtilSetDealloc(&TmpSet);
-
-	return ZoneNum;
-}
+// const int FESurface_c::SaveAsFEZone(vector<FieldDataType_e> DataTypes,
+// 	const vector<int> & XYZVarNums,
+// 	const int & RhoVarNum)
+// {
+// 	Boolean_t IsOk = IsMade();
+// 	int ZoneNum = -1;
+// 
+// 	if (IsOk){
+// 		for (int i = 0; i < 3; ++i)
+// 			DataTypes[XYZVarNums[i] - 1] = FieldDataType_Double;
+// 
+// 		DataTypes[RhoVarNum - 1] = FieldDataType_Double;
+// 
+// 		IsOk = TecUtilDataSetAddZone(CSMZoneName.FESurface.c_str(), m_XYZList.size(), m_NumElems, 0, ZoneType_FEQuad, DataTypes.data());
+// 	}
+// 
+// 	Set_pa TmpSet = TecUtilSetAlloc(FALSE);
+// 
+// 	if (IsOk){
+// 		ZoneNum = TecUtilDataSetGetNumZones();
+// 		m_ZoneNum = ZoneNum;
+// 		TecUtilSetAddMember(TmpSet, ZoneNum, FALSE);
+// 		TecUtilZoneSetActive(TmpSet, AssignOp_MinusEquals);
+// 		TecUtilZoneSetScatter(SV_SHOW, TmpSet, 0.0, FALSE);
+// 
+// 		ArgList_pa CurrentArgList = TecUtilArgListAlloc();
+// 		TecUtilArgListAppendString(CurrentArgList, SV_P1, SV_FIELDMAP);
+// 		TecUtilArgListAppendString(CurrentArgList, SV_P2, SV_EFFECTS);
+// 		TecUtilArgListAppendString(CurrentArgList, SV_P3, SV_USETRANSLUCENCY);
+// 		TecUtilArgListAppendSet(CurrentArgList, SV_OBJECTSET, TmpSet);
+// 		TecUtilArgListAppendArbParam(CurrentArgList, SV_IVALUE, FALSE);
+// 		TecUtilStyleSetLowLevelX(CurrentArgList);
+// 		TecUtilArgListDealloc(&CurrentArgList);
+// 
+// 		TecUtilSetDealloc(&TmpSet);
+// 
+// 		vector<vector<double> > TmpValues(3, vector<double>(m_XYZList.size()));
+// 		for (int i = 0; i < m_XYZList.size(); ++i){
+// 			for (int j = 0; j < 3; ++j)
+// 				TmpValues[j][i] = m_XYZList[i][j];
+// 		}
+// 
+// 		for (int i = 0; i < 3 && IsOk; ++i){
+// 			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, XYZVarNums[i]);
+// 			IsOk = VALID_REF(SetFDPtr);
+// 			if (IsOk){
+// 				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_XYZList.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
+// 			}
+// 		}
+// 		if (IsOk){
+// 			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, RhoVarNum);
+// 			IsOk = VALID_REF(SetFDPtr);
+// 			if (IsOk){
+// 				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_XYZList.size(), reinterpret_cast<void*>(const_cast<double*>(m_RhoList.data())));
+// 			}
+// 		}
+// 
+// 	}
+// 
+// 	if (IsOk){
+// 		/*
+// 		*	Need to define the connectivity (nodal structure) of the FE volume.
+// 		*	The order doesn't really matter here, just that the connectivity
+// 		*	is correct between elements.
+// 		*/
+// 		NodeMap_pa NodeMap = TecUtilDataNodeGetWritableRef(ZoneNum);
+// 		IsOk = VALID_REF(NodeMap);
+// 		if (IsOk){
+// 			if (m_NumGPs == 3){
+// 				int ei = 1;
+// 				//	Beginning triangular cap
+// 				for (int i = 1; i <= 4; ++i){
+// 					// 4th corner gets repeated
+// 					TecUtilDataNodeSetByRef(NodeMap, ei, i, MIN(i, 3));
+// 				}
+// 				ei++;
+// 				/*
+// 				*	Now work down the FE volume, defining the elements starting
+// 				*	at the sphere, wrapping around the FE volume as you work
+// 				*	towards the FE volume's end.
+// 				*/
+// 				for (int i = 0; i < m_NumGPPts - 1 && ei < m_NumElems - 1; ++i){
+// 					int ii = 1 + 3 * i;
+// 					for (int j = 0; j < 2 && ei < m_NumElems - 1; ++j){
+// 						/*
+// 						*	First two elements of each iteration have
+// 						*	the same relative nodal structure, offset by
+// 						*	one for each element.
+// 						*/
+// 						int Vals[4] = { ii, ii + 1, ii + 4, ii + 3 };
+// 						for (int k = 0; k < 4; ++k){
+// 							TecUtilDataNodeSetByRef(NodeMap, ei, k + 1, Vals[k]);
+// 						}
+// 						ii++;
+// 						ei++;
+// 					}
+// 					/*
+// 					*	The third element has a different nodal structure
+// 					*/
+// 					int Vals[4] = { ii, ii - 2, ii + 1, ii + 3 };
+// 					for (int k = 0; k < 4; ++k){
+// 						TecUtilDataNodeSetByRef(NodeMap, ei, k + 1, Vals[k]);
+// 					}
+// 					ei++;
+// 				}
+// 				//	End triangular cap
+// 				for (int i = 1; i <= 4; ++i){
+// 					// 4th corner gets repeated
+// 					TecUtilDataNodeSetByRef(NodeMap, ei, i, MIN(i + 3 * (m_NumGPPts - 1), m_NumNodes));
+// 				}
+// 			}
+// 			else{
+// 				/*
+// 				*	Same thing for the 4-sided FE volumes, but the end cap
+// 				*	is a quad and the "walls" of the volume have three with
+// 				*	the same nodal structure instead of two.
+// 				*/
+// 				int ei = 1;
+// 				for (int i = 1; i <= 4; ++i){
+// 					TecUtilDataNodeSetByRef(NodeMap, ei, i, MAX(i % 4, 1));
+// 				}
+// 				ei++;
+// 				for (int i = 0; i < m_NumGPPts - 1 && ei < m_NumElems - 1; ++i){
+// 					int ii = 1 + 4 * i;
+// 					for (int j = 0; j < 3 && ei < m_NumElems - 1; ++j){
+// 						int Vals[4] = { ii, ii + 1, ii + 5, ii + 4 };
+// 						for (int k = 0; k < 4; ++k){
+// 							TecUtilDataNodeSetByRef(NodeMap, ei, k + 1, Vals[k]);
+// 						}
+// 						ii++;
+// 						ei++;
+// 					}
+// 					int Vals[4] = { ii, ii - 3, ii + 1, ii + 4 };
+// 					for (int k = 0; k < 4; ++k){
+// 						TecUtilDataNodeSetByRef(NodeMap, ei, k + 1, Vals[k]);
+// 					}
+// 					ei++;
+// 				}
+// 				//	End quadragonal cap
+// 				for (int i = 1; i <= 4; ++i){
+// 					// 4th corner not repeated
+// 					TecUtilDataNodeSetByRef(NodeMap, ei, i, i + 4 * (m_NumGPPts - 1));
+// 				}
+// 			}
+// 		}
+// 	}
+// 
+// 	TecUtilSetDealloc(&TmpSet);
+// 
+// 	return ZoneNum;
+// }
 
 
 
@@ -1727,94 +1980,94 @@ void FESurface_c::RefineTriElems(const vector<int> & TriNumList){
 }
 
 
-void FESurface_c::TriPolyLines(const bool ConnectBeginningAndEndGPs)
-{
-	vec3 NewNode, EdgeVec;
-	for (int iGP = 0; iGP < m_NumGPs - (ConnectBeginningAndEndGPs ? 0 : 1); ++iGP){
-		int lInd = iGP,
-			rInd = (iGP + 1) % m_NumGPs;
-		int li = lInd * m_NumGPPts,
-			ri = rInd * m_NumGPPts;
-		vector<int> lr = { li, ri }, 
-			lrMid = { li,ri };
-		vector<bool> MidFound(2, false);
-		int NumEdgePts;
-		double EdgePtSpacing, EdgeLen, MinNodeScore, TmpNodeScore, MinNodeNum, lLen, rLen, TmpLen;
-		EdgeVec = m_XYZList[ri + m_NumGPPts - 1] - m_XYZList[li + m_NumGPPts - 1];
-		EdgeLen = norm(EdgeVec);
-		EdgePtSpacing = norm(m_XYZList[li] - m_XYZList[li + 1]);
-		NumEdgePts = static_cast<int>(EdgeLen / EdgePtSpacing);
-		bool HasFarEdge = (NumEdgePts > 2);
-		if (HasFarEdge){
-			EdgePtSpacing = EdgeLen / static_cast<double>(NumEdgePts - 1);
-			EdgeVec = normalise(EdgeVec) * EdgePtSpacing;
-			MinNodeScore = DBL_MAX;
-			for (int i = 1; i < NumEdgePts - 1; ++i){
-				NewNode = m_XYZList[li + m_NumGPPts - 1] + EdgeVec * static_cast<double>(i);
-				lLen = DBL_MAX;
-				rLen = DBL_MAX;
-				for (int j = 0; j < m_NumGPPts; ++j){
-					lLen = MIN(lLen, DistSqr(NewNode, m_XYZList[li + j]));
-					rLen = MIN(rLen, DistSqr(NewNode, m_XYZList[ri + j]));
-
-				}
-				TmpNodeScore = lLen + rLen;
-				if (TmpNodeScore < MinNodeScore){
-					MinNodeScore = TmpNodeScore;
-					MinNodeNum = i;
-				}
-			}
-			NewNode = m_XYZList[li + m_NumGPPts - 1] + EdgeVec * static_cast<double>(MinNodeNum);
-		}
-		else
-			NewNode = (m_XYZList[li + m_NumGPPts - 1] + m_XYZList[ri + m_NumGPPts - 1]) / 2.0;
-		if (HasFarEdge) m_XYZList.push_back(NewNode);
-		int NewNodeNum = m_XYZList.size() - 1;
-		while (lr[0] < (lInd + 1) * m_NumGPPts - 1 && lr[1] < (rInd + 1) * m_NumGPPts - 1){
-			int FarPoint, MinSide, MinFarPoint;
-			double MinLen = DBL_MAX, TmpLen;
-			for (int i = 0; i < 2; ++i){
-				for (int j = 0; j < 1 + int(HasFarEdge); ++j){
-					if (j == 0)
-						FarPoint = lr[(i + 1) % 2];
-					else
-						FarPoint = NewNodeNum;
-					TmpLen = DistSqr(m_XYZList[lr[i] + 1], m_XYZList[FarPoint]);
-					if (TmpLen < MinLen){
-						MinSide = i;
-						MinFarPoint = FarPoint;
-						MinLen = TmpLen;
-					}
-				}
-			}
-			if (HasFarEdge && !MidFound[MinSide] && MinFarPoint == NewNodeNum){
-				MidFound[MinSide] = true;
-				lrMid[MinSide] = lr[MinSide];
-			}
-			m_ElemList.push_back({ lr[MinSide], lr[MinSide] + 1, MinFarPoint });
-			lr[MinSide]++;
-		}
-		vector<int> lrInd = { lInd, rInd };
-		for (int i = 0; i < 2; ++i){
-			while (lr[i] < (lrInd[i] + 1) * m_NumGPPts - 1){
-				if (DistSqr(m_XYZList[lr[i] + 1], m_XYZList[lr[(i + 1) % 2]]) < DistSqr(m_XYZList[lr[i] + 1], m_XYZList[NewNodeNum])){
-					m_ElemList.push_back({ lr[i], lr[i] + 1, lr[(i + 1) % 2] });
-				}
-				else if (HasFarEdge){
-					m_ElemList.push_back({ lr[i], lr[i] + 1, NewNodeNum });
-					if (!MidFound[i]){
-						MidFound[i] = true;
-						lrMid[i] = lr[i];
-					}
-				}
-				lr[i]++;
-			}
-		}
-		if (MidFound[0] && MidFound[1]){
-			m_ElemList.push_back({ lrMid[0], lrMid[1], NewNodeNum });
-		}
-	}
-}
+// void FESurface_c::TriPolyLines(const bool ConnectBeginningAndEndGPs)
+// {
+// 	vec3 NewNode, EdgeVec;
+// 	for (int iGP = 0; iGP < m_NumGPs - (ConnectBeginningAndEndGPs ? 0 : 1); ++iGP){
+// 		int lInd = iGP,
+// 			rInd = (iGP + 1) % m_NumGPs;
+// 		int li = lInd * m_NumGPPts,
+// 			ri = rInd * m_NumGPPts;
+// 		vector<int> lr = { li, ri }, 
+// 			lrMid = { li,ri };
+// 		vector<bool> MidFound(2, false);
+// 		int NumEdgePts;
+// 		double EdgePtSpacing, EdgeLen, MinNodeScore, TmpNodeScore, MinNodeNum, lLen, rLen, TmpLen;
+// 		EdgeVec = m_XYZList[ri + m_NumGPPts - 1] - m_XYZList[li + m_NumGPPts - 1];
+// 		EdgeLen = norm(EdgeVec);
+// 		EdgePtSpacing = norm(m_XYZList[li] - m_XYZList[li + 1]);
+// 		NumEdgePts = static_cast<int>(EdgeLen / EdgePtSpacing);
+// 		bool HasFarEdge = (NumEdgePts > 2);
+// 		if (HasFarEdge){
+// 			EdgePtSpacing = EdgeLen / static_cast<double>(NumEdgePts - 1);
+// 			EdgeVec = normalise(EdgeVec) * EdgePtSpacing;
+// 			MinNodeScore = DBL_MAX;
+// 			for (int i = 1; i < NumEdgePts - 1; ++i){
+// 				NewNode = m_XYZList[li + m_NumGPPts - 1] + EdgeVec * static_cast<double>(i);
+// 				lLen = DBL_MAX;
+// 				rLen = DBL_MAX;
+// 				for (int j = 0; j < m_NumGPPts; ++j){
+// 					lLen = MIN(lLen, DistSqr(NewNode, m_XYZList[li + j]));
+// 					rLen = MIN(rLen, DistSqr(NewNode, m_XYZList[ri + j]));
+// 
+// 				}
+// 				TmpNodeScore = lLen + rLen;
+// 				if (TmpNodeScore < MinNodeScore){
+// 					MinNodeScore = TmpNodeScore;
+// 					MinNodeNum = i;
+// 				}
+// 			}
+// 			NewNode = m_XYZList[li + m_NumGPPts - 1] + EdgeVec * static_cast<double>(MinNodeNum);
+// 		}
+// 		else
+// 			NewNode = (m_XYZList[li + m_NumGPPts - 1] + m_XYZList[ri + m_NumGPPts - 1]) / 2.0;
+// 		if (HasFarEdge) m_XYZList.push_back(NewNode);
+// 		int NewNodeNum = m_XYZList.size() - 1;
+// 		while (lr[0] < (lInd + 1) * m_NumGPPts - 1 && lr[1] < (rInd + 1) * m_NumGPPts - 1){
+// 			int FarPoint, MinSide, MinFarPoint;
+// 			double MinLen = DBL_MAX, TmpLen;
+// 			for (int i = 0; i < 2; ++i){
+// 				for (int j = 0; j < 1 + int(HasFarEdge); ++j){
+// 					if (j == 0)
+// 						FarPoint = lr[(i + 1) % 2];
+// 					else
+// 						FarPoint = NewNodeNum;
+// 					TmpLen = DistSqr(m_XYZList[lr[i] + 1], m_XYZList[FarPoint]);
+// 					if (TmpLen < MinLen){
+// 						MinSide = i;
+// 						MinFarPoint = FarPoint;
+// 						MinLen = TmpLen;
+// 					}
+// 				}
+// 			}
+// 			if (HasFarEdge && !MidFound[MinSide] && MinFarPoint == NewNodeNum){
+// 				MidFound[MinSide] = true;
+// 				lrMid[MinSide] = lr[MinSide];
+// 			}
+// 			m_ElemList.push_back({ lr[MinSide], lr[MinSide] + 1, MinFarPoint });
+// 			lr[MinSide]++;
+// 		}
+// 		vector<int> lrInd = { lInd, rInd };
+// 		for (int i = 0; i < 2; ++i){
+// 			while (lr[i] < (lrInd[i] + 1) * m_NumGPPts - 1){
+// 				if (DistSqr(m_XYZList[lr[i] + 1], m_XYZList[lr[(i + 1) % 2]]) < DistSqr(m_XYZList[lr[i] + 1], m_XYZList[NewNodeNum])){
+// 					m_ElemList.push_back({ lr[i], lr[i] + 1, lr[(i + 1) % 2] });
+// 				}
+// 				else if (HasFarEdge){
+// 					m_ElemList.push_back({ lr[i], lr[i] + 1, NewNodeNum });
+// 					if (!MidFound[i]){
+// 						MidFound[i] = true;
+// 						lrMid[i] = lr[i];
+// 					}
+// 				}
+// 				lr[i]++;
+// 			}
+// 		}
+// 		if (MidFound[0] && MidFound[1]){
+// 			m_ElemList.push_back({ lrMid[0], lrMid[1], NewNodeNum });
+// 		}
+// 	}
+// }
 
 const Boolean_t FESurface_c::DistSqrToSurfaceNodeWithinTolerance(const vec3 & CheckPt,
 																double & NewDistSqrUnderTol,
@@ -2585,4 +2838,111 @@ const double Domain_c::WeightFunc(const vector<int> & t) const
 		+ pow(AB[0] * AC[1] - AB[1] * AC[0], 2));
 
 	return Area;
+}
+
+
+void FESurface_c::StitchPaths(
+		const vector<int> &     L,       // indices of points in P
+		const vector<int> &     R,
+		const vector<vec3> &     P,
+		vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
+	)
+{
+	int iL = 0, iR = 0;
+	int nL = L.size() - 1, nR = R.size() - 1;
+	// index of last element of L rather than count
+	while (iL < nL || iR < nR)    // until exhaust both paths
+	{
+		int iL2 = MIN(iL + 1, nL), 
+			iR2 = MIN(iR + 1, nR);
+		// next point along the path unless at end
+		double dL = DistSqr(P[L[iL2]], P[R[iR]]),
+		// length of next edge if we step down left path
+			dR = DistSqr(P[L[iL]], P[R[iR2]]);
+		// length of next edge if we step down right path
+		// R and L are just indices, the actual points are in P
+		if ((dL < dR && iL != iL2) || iR == iR2) {
+			// if iR==iR2 then have to append left until finished
+			T.push_back({ L[iL], L[iL2], R[iR] });
+			iL = iL2;
+		}
+		else{// if ((dR < dL && iR != iR2) || iL == iL2) {
+			T.push_back({ L[iL], R[iR2], R[iR] });
+			iR = iR2;
+		}
+	}
+}
+
+void FESurface_c::StitchCapPaths(
+		const vector<int> &     L,       // indices of points in P
+		const vector<int> &     R,
+		const vector<int> &		C,       // indices of points in the cap, C. that go from L[-1] to R[-1]
+		const vector<vec3> &     P,
+		vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
+	)
+{
+	int nC = C.size() - 1;
+	if (nC < 0){
+		// If there are no cap points (i.e. the endpoint are sufficiently close together)
+		StitchPaths(L, R, P, T);
+	}
+	else{
+		int jL = MIN(nC - 1, int(nC / 2) + 1);
+		int jR = jL;
+		// midpoint of the cap, where we’ll transition to it
+		int iL = 0, iR = 0;
+		int nL = L.size() - 1, nR = R.size() - 1;
+		while (iL < nL || iR < nR)
+		{
+			int iL2 = MIN(iL + 1, nL),
+				iR2 = MIN(iR + 1, nR);
+			double dL = DistSqr(P[L[iL2]], P[R[iR]]),
+				dR = DistSqr(P[L[iL]], P[R[iR2]]),
+				dLC = DistSqr(P[R[iR]], P[C[jR]]),
+				dRC = DistSqr(P[L[iL]], P[C[jL]]);
+			//  length of next edge from L/R if transition to cap
+			if (dRC < dR / 2 || dLC < dL / 2) {
+				// next point on paths is closer to cap than to other path, 
+				// so switch to cap
+
+				T.push_back({ L[iL], C[jL], R[iR] });
+				// add transition triangle
+
+				// Now stitch each half of the cap with the remaining legs of the paths
+// 				vector<int> CVecL(&C[0], &C[jL]+1),
+// 					CVecR(&C[jR], &C[nC]+1),
+// 					LVec, RVec;
+// 				if (CVecL.size() == 0){
+// 					CVecL = C;
+// 					CVecR = C;
+// 				}
+// 				else std::reverse(CVecL.begin(), CVecL.end());
+// 
+// 				if (iL < nL) LVec.assign(&L[iL], &L[nL]+1);
+// 				else LVec.push_back(L[nL]);
+// 
+// 				if (iR < nR) RVec.assign(&R[iR], &R[nR]+1);
+// 				else RVec.push_back(R[nR]);
+// 
+// 				StitchPaths(LVec, CVecL, P, T);
+// 				StitchPaths(RVec, CVecR, P, T);
+
+				vector<int> CVecL(&C[0], &C[jL] + 1);
+				std::reverse(CVecL.begin(), CVecL.end());
+
+				StitchPaths(vector<int>(&L[iL], &L[nL] + 1), CVecL, P, T);
+				StitchPaths(vector<int>(&R[iR], &R[nR] + 1), vector<int>(&C[jR], &C[nC] + 1), P, T);
+
+				break;
+			}
+			else if ((dL < dR && iL != iL2) || iR == iR2) {
+				T.push_back({ L[iL], L[iL2], R[iR] });
+				iL = iL2;
+			}
+			else{// if ((dR < dL && iR != iR2) || iL == iL2) {
+				T.push_back({ L[iL], R[iR2], R[iR] });
+				iR = iR2;
+			}
+		}
+	}
 }

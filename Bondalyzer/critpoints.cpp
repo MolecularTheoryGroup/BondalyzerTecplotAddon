@@ -4768,7 +4768,8 @@ EntIndex_t CritPointsCreateTPZone(CritPoints_pa  CritPoints,
 								  EntIndex_t     TypeVarNum,
 								  EntIndex_t     UVarNum,
 								  EntIndex_t     VVarNum,
-								  EntIndex_t     WVarNum)
+								  EntIndex_t     WVarNum,
+								  const Boolean_t IsSurfCPs)
 {
 	EntIndex_t CPZoneNum = TECUTILSETNOTMEMBER;
 	Boolean_t  IsOk = TRUE;
@@ -4798,7 +4799,10 @@ EntIndex_t CritPointsCreateTPZone(CritPoints_pa  CritPoints,
 		EntIndex_t        SourceZoneNum = CritPoints->SourceZoneNum;
 		LgIndex_t         iv;
 
-		sprintf(ZoneName, "Critical Points Zone %d", SourceZoneNum);
+		if (IsSurfCPs)
+			sprintf(ZoneName, "Critical Points Zone %d", SourceZoneNum);
+		else
+			sprintf(ZoneName, "Surf Critical Points Zone %d", SourceZoneNum);
 
 		// AveZoneNum = TUZoneGetNumByName(ZoneName);
 

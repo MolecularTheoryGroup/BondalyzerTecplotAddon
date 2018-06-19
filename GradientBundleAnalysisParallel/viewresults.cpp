@@ -10,13 +10,16 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include <armadillo>
 
+#include "Set.h"
 #include "CSM_DATA_SET_INFO.h"
 #include "VIEWRESULTS.h"
 
 using namespace arma;
+using namespace tecplot::toolbox;
 
 using std::string;
 using std::to_string;
@@ -962,6 +965,181 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 		}
 
 		TecUtilDataLoadEnd();
+	}
+
+	TecUtilDrawGraphics(TRUE);
+	TecGUIDialogLaunch(Dialog1Manager);
+	TecUtilLockFinish(AddOnID);
+}
+
+const vec3 GetElemMidPoint(const int & ZoneNum, const int & ElemNum){
+	int NodeNums[3];
+	for (int i = 0; i < 3; ++i) NodeNums[i] = TecUtilDataNodeGetByZone(ZoneNum, ElemNum, i + 1);
+
+	vec3 Nodes[3];
+	for (int i = 0; i < 3; ++i) for (int j = 0; j < 3; ++j) 
+		Nodes[i][j] = TecUtilDataValueGetByZoneVar(ZoneNum, j + 1, NodeNums[i]);
+
+	for (int i = 1; i < 3; ++i) Nodes[0] += Nodes[i];
+	return Nodes[0] /= 3.0;
+}
+
+void SelectGBsInRegion(const int SphereZoneNum,
+	const int InteriorElemNum,
+	const int GroupNumberToWrite)
+{
+	/*
+	 *	Check that provided zone number is correct and corresponds to a GBA sphere zone
+	 */
+	if (!AuxDataZoneItemMatches(SphereZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)){
+		TecUtilDialogMessageBox("Failed to find source sphere zone", MessageBoxType_Error);
+		return;
+	}
+
+	/*
+	*	Get sphere zone info
+	*/
+	int SphereIJK[3];
+	TecUtilZoneGetIJK(SphereZoneNum, &SphereIJK[0], &SphereIJK[1], &SphereIJK[2]);
+	int NumElems = SphereIJK[1];
+	string SphereName = AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereCPName);
+
+	/*
+	*	Get list of all active GBs for the sphere, which are assumed
+	*	to be the GBs that define the region of interest.
+	*/
+	vector<int> ActiveElemNums;
+	ActiveElemNums.reserve(NumElems);
+	int ElemNum;
+	for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
+		if (TecUtilZoneIsActive(z)
+			&& TecUtilZoneIsFiniteElement(z)
+			&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+			&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, SphereName))
+		{
+			ElemNum = stoi(AuxDataZoneGetItem(z, CSMAuxData.GBA.ElemNum));
+			if (ElemNum != InteriorElemNum)
+				ActiveElemNums.push_back(ElemNum);
+		}
+	}
+
+	if (ActiveElemNums.size() <= 0){
+		TecUtilDialogMessageBox("Failed to find any active GBs on sphere", MessageBoxType_Error);
+		return;
+	}
+
+	/*
+	 *	Get midpoints of the interior element and boundary elements
+	 */
+	vec3 InteriorMidPt = GetElemMidPoint(SphereZoneNum, InteriorElemNum);
+	vector<vec3> BoundaryMidPts(ActiveElemNums.size());
+	for (int i = 0; i < ActiveElemNums.size(); ++i)
+		BoundaryMidPts[i] = GetElemMidPoint(SphereZoneNum, ActiveElemNums[i]);
+
+	/*
+	 *	Now for each element on the sphere:
+	 *	1. find its minimum distance to any of the boundary nodes
+	 *	2. find its distance to the interior node
+	 *	3. find the vectors from it to the minimum distance boundary node
+	 *		and to the interior element
+	 *	4. if the distance to the interior node is less than to any of the 
+	 *		boundary nodes, or if the dot product between the two vectors is
+	 *		less than zero (i.e. they're pointing more than 180 degrees away
+	 *		from each other) then consider the element to be interior to the 
+	 *		region.
+	 */
+	vector<double> BoundaryDistSqrList(BoundaryMidPts.size());
+	vector<int> ElemsToActivate;
+	ElemsToActivate.reserve(NumElems);
+
+	for (int e = 1; e <= NumElems; ++e){
+		if (e != InteriorElemNum && std::find(ActiveElemNums.begin(), ActiveElemNums.end(), e) == ActiveElemNums.end()){
+			/*
+			 *	Get distance (squared) to all boundary elements
+			 */
+			vec3 ElemMidPt = GetElemMidPoint(SphereZoneNum, e);
+			for (int i = 0; i < BoundaryMidPts.size(); ++i)
+				BoundaryDistSqrList[i] = DistSqr(ElemMidPt, BoundaryMidPts[i]);
+
+			/*
+			 *	Find minimum distance (squared) to boundary nodes
+			 */
+			double MinBoundaryDistSqr = DBL_MAX;
+			int MinBoundaryElemNum = 0;
+			for (int i = 0; i < BoundaryDistSqrList.size(); ++i){
+				if (BoundaryDistSqrList[i] < MinBoundaryDistSqr){
+					MinBoundaryDistSqr = BoundaryDistSqrList[i];
+					MinBoundaryElemNum = i;
+				}
+			}
+
+			/*
+			 *	Get vector from element to minimum distance boundary element
+			 *	and to interior element.
+			 *	Also get distance (squared) to interior element.
+			 */
+			vec3 BoundaryVec = BoundaryMidPts[MinBoundaryElemNum] - ElemMidPt,
+				RefVec = InteriorMidPt - ElemMidPt;
+			double RefDistSqr = DistSqr(ElemMidPt, InteriorMidPt);
+
+			if (RefDistSqr < MinBoundaryDistSqr || dot(RefVec, BoundaryVec) < 0)
+				ElemsToActivate.push_back(e);
+		}	
+	}
+
+	ElemsToActivate.push_back(InteriorElemNum);
+	ElemsToActivate.insert(ElemsToActivate.end(), ActiveElemNums.begin(), ActiveElemNums.end());
+
+	/*
+	 *	Now get set of zones to activate
+	 */
+	
+	vector<int> ZonesToActivate;
+	ZonesToActivate.reserve(ElemsToActivate.size());
+	Set ZoneSet;
+
+	for (const auto & e : ElemsToActivate){
+		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
+			if (TecUtilZoneIsFiniteElement(z)
+				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, SphereName)
+				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ElemNum, to_string(e)))
+			{
+				ZonesToActivate.push_back(z);
+				ZoneSet += z;
+			}
+		}
+	}
+
+	TecUtilZoneSetActive(ZoneSet.getRef(), AssignOp_PlusEquals);
+	
+	/*
+	 *	Change group number of zones
+	 */
+	if (GroupNumberToWrite > 0){
+		string ZoneStr = "[" + to_string(ZonesToActivate[0]);
+		for (int z = 1; z < ZonesToActivate.size(); ++z) ZoneStr += "," + to_string(ZonesToActivate[z]);
+		ZoneStr += "]";
+		TecUtilMacroExecuteCommand(string("$!FIELDMAP " + ZoneStr + " GROUP = " + to_string(GroupNumberToWrite)).c_str());
+	}
+}
+
+
+void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData)
+{
+	TecUtilLockStart(AddOnID);
+	TecUtilDrawGraphics(FALSE);
+
+	if (WasSuccessful){
+		Boolean_t IsOk = TRUE;
+
+		EntIndex_t ProbedZoneNum = TecUtilProbeFieldGetZone();
+		LgIndex_t ElemNum = TecUtilProbeFieldGetCell();
+		LgIndex_t GroupNumberToWrite;
+		TecGUITextFieldGetLgIndex(TFGrpNum_TF_T3_1, &GroupNumberToWrite);
+		SelectGBsInRegion(ProbedZoneNum, ElemNum, GroupNumberToWrite);
 	}
 
 	TecUtilDrawGraphics(TRUE);

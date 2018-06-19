@@ -364,9 +364,9 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 
 			high_resolution_clock::time_point StatusStartTime = high_resolution_clock::now();
 
-#ifndef _DEBUG
+// #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
-#endif
+// #endif
 			for (int i = 0; i < NumVolumes; ++i){
 // 			for (int i = 0; i < NumVolumes; i += NumVolumes / 10){
 // #else

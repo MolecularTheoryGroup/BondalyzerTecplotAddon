@@ -64,6 +64,10 @@ extern LgIndex_t  BTNExport_BTN_T3_1;
 extern LgIndex_t  TGLExGBs_TOG_T3_1;
 extern LgIndex_t  TGLExInt_TOG_T3_1;
 extern LgIndex_t  TGLShowMesh_TOG_T3_1;
+extern LgIndex_t  BTNSelGB_BTN_T3_1;
+extern LgIndex_t  TFGrpNum_TF_T3_1;
+extern LgIndex_t  LBL20_LBL_T3_1;
+extern LgIndex_t  LBL21_LBL_T3_1;
 extern LgIndex_t Dialog1Manager;
 extern void BuildDialog1(LgIndex_t  ParentDialog);
 

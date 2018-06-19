@@ -17,6 +17,7 @@
 
 #include <armadillo>
 
+#include "ArgList.h"
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_DATA_TYPES.h"
 #include "CSM_CRIT_POINTS.h"
@@ -34,6 +35,7 @@ using std::vector;
 using std::ofstream;
 
 using namespace arma;
+using namespace tecplot::toolbox;
 
 
 vector<Text_ID> CPLabelIDs;
@@ -871,6 +873,7 @@ void GBAResultViewerPrepareGUI(){
 	TecGUIListDeleteAllItems(MLSelGB_MLST_T3_1);
 	TecGUIListDeleteAllItems(SLSelVar_SLST_T3_1);
 	TecGUIToggleSet(TGLSphereVis_TOG_T3_1, FALSE);
+	TecGUITextFieldSetString(TFGrpNum_TF_T3_1, "10");
 	/*
 	*	First, populate the list of spheres.
 	*	Get a total list, then load them alphabetically
@@ -923,6 +926,7 @@ static void BTNExport_BTN_T3_1_CB(void)
 			TecUtilStringDealloc(&FolderNameCStr);
 			if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0 && TecGUIToggleGet(TGLExInt_TOG_T3_1)){
 				if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0){
+					Boolean_t ActiveZonesOnly = TecGUIToggleGet(TGLExGBs_TOG_T3_1);
 					vector<int> IntVarNums;
 					vector<string> IntVarNames;
 					vector<string> IntCheckStrs = { "I: ", "IN: ", "INS: ", " Integration" };
@@ -949,52 +953,86 @@ static void BTNExport_BTN_T3_1_CB(void)
 								vector<int> IJK(3);
 								TecUtilZoneGetIJK(ZoneNum, &IJK[0], &IJK[1], &IJK[2]);
 
-								ofstream OutFile(string(FolderName + "/Zone_" + to_string(ZoneNum) + "_" + string(ZoneName) + "_IntegrationResults.csv").c_str(), std::ios::trunc);
-								if (OutFile.is_open()){
-									OutFile << "Zone," << ZoneName << "\nNumber of gradient bundles (GBs)," << IJK[1];
-									string TmpStr;
-									if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.GPsPerGB, TmpStr))
-										OutFile << "\nGradient paths (GPs) per GB," << TmpStr;
-									if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.PointsPerGP, TmpStr))
-										OutFile << "\nPoints per GP," << TmpStr;
-									if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.IntPrecision, TmpStr))
-										OutFile << "\nIntegration precision," << TmpStr;
-									if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.IntWallTime, TmpStr))
-										OutFile << "\nIntegration runtime total [seconds]," << TmpStr;
-									OutFile << "\n\nIntegration totals\nVariable name,Variable number,Value\n";
-									
-									vector<FieldDataPointer_c> Ptrs(IntVarNums.size());
-									for (int i = 0; i < IntVarNums.size(); ++i)
-										Ptrs[i].GetReadPtr(ZoneNum, IntVarNums[i]);
-
-									for (int i = 0; i < Ptrs.size(); ++i){
-										OutFile << IntVarNames[i] << "," << i+1 << ",";
-										double Total = 0.0;
-										for (int j = 0; j < Ptrs[i].Size(); ++j){
-											Total += Ptrs[i][j];
+								vector<bool> ElemActive;
+								int NumActive = IJK[1];
+								if (ActiveZonesOnly){
+									string SphereName = AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.SphereCPName);
+									/*
+									*	Get list of elements for which the corresponding GB is active
+									*/
+									ElemActive.resize(IJK[1], false);
+									NumActive = 0;
+									for (int e = 0; e < IJK[1]; ++e){
+										for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
+											if (TecUtilZoneIsActive(z)
+												&& TecUtilZoneIsFiniteElement(z)
+												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, SphereName)
+												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ElemNum, to_string(e + 1)))
+											{
+												ElemActive[e] = true;
+												NumActive++;
+											}
 										}
-										OutFile << std::setprecision(16) << std::scientific << Total << '\n';
 									}
-
-									OutFile << "\nZone Name,Zone#,GB#";
-									for (const string & i : IntVarNames)
-										OutFile << "," << i;
-									OutFile << '\n';
-
-									for (int i = 0; i < Ptrs[0].Size(); ++i){
-										char* GBZoneName;
-										TecUtilZoneGetName(ZoneNum + i + 1, &GBZoneName);
-										OutFile << GBZoneName << "," << ZoneNum + i + 1 << "," << i + 1;
-										TecUtilStringDealloc(&GBZoneName);
-										for (const auto & j : Ptrs)
-											OutFile << std::setprecision(16) << std::scientific << "," << j[i];
-										OutFile << "\n";
-									}
-
-									OutFile.close();
 								}
 								else
-									TecUtilDialogMessageBox(string("Failed to open output file: " + string(FolderName + "/" + string(ZoneName) + "_IntegrationResults.csv")).c_str(), MessageBoxType_Error);
+									ElemActive.resize(IJK[1], true);
+
+								if (NumActive > 0){
+									ofstream OutFile(string(FolderName + "/Zone_" + to_string(ZoneNum) + "_" + string(ZoneName) + "_IntegrationResults.csv").c_str(), std::ios::trunc);
+									if (OutFile.is_open()){
+										OutFile << "Zone," << ZoneName << "\nNumber of gradient bundles (GBs)," << IJK[1];
+										if (ActiveZonesOnly){
+											OutFile << "\nNumber of active GBs," << NumActive;
+										}
+										string TmpStr;
+										if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.GPsPerGB, TmpStr))
+											OutFile << "\nGradient paths (GPs) per GB," << TmpStr;
+										if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.PointsPerGP, TmpStr))
+											OutFile << "\nPoints per GP," << TmpStr;
+										if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.IntPrecision, TmpStr))
+											OutFile << "\nIntegration precision," << TmpStr;
+										if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.IntWallTime, TmpStr))
+											OutFile << "\nIntegration runtime total [seconds]," << TmpStr;
+										OutFile << "\n\nIntegration totals\nVariable name,Variable number,Value\n";
+
+										vector<FieldDataPointer_c> Ptrs(IntVarNums.size());
+										for (int i = 0; i < IntVarNums.size(); ++i)
+											Ptrs[i].GetReadPtr(ZoneNum, IntVarNums[i]);
+
+										for (int i = 0; i < Ptrs.size(); ++i){
+											OutFile << IntVarNames[i] << "," << i + 1 << ",";
+											double Total = 0.0;
+											for (int j = 0; j < Ptrs[i].Size(); ++j){
+												if (ElemActive[j])
+													Total += Ptrs[i][j];
+											}
+											OutFile << std::setprecision(16) << std::scientific << Total << '\n';
+										}
+
+										OutFile << "\nZone Name,Zone#,GB#";
+										for (const string & i : IntVarNames)
+											OutFile << "," << i;
+										OutFile << '\n';
+
+										for (int i = 0; i < Ptrs[0].Size(); ++i){
+											if (ElemActive[i]){
+												char* GBZoneName;
+												TecUtilZoneGetName(ZoneNum + i + 1, &GBZoneName);
+												OutFile << GBZoneName << "," << ZoneNum + i + 1 << "," << i + 1;
+												TecUtilStringDealloc(&GBZoneName);
+												for (const auto & j : Ptrs)
+													OutFile << std::setprecision(16) << std::scientific << "," << j[i];
+												OutFile << "\n";
+											}
+										}
+
+										OutFile.close();
+									}
+									else
+										TecUtilDialogMessageBox(string("Failed to open output file: " + string(FolderName + "/" + string(ZoneName) + "_IntegrationResults.csv")).c_str(), MessageBoxType_Error);
+								}
 								TecUtilStringDealloc(&ZoneName);
 							}
 						}
@@ -1046,6 +1084,39 @@ static void TGLShowMesh_TOG_T3_1_CB(const LgIndex_t *I)
 
 	TecUtilDrawGraphics(TRUE);
 	TecUtilLockFinish(AddOnID);
+}
+
+/**
+*/
+static void BTNSelGB_BTN_T3_1_CB(void)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE("Select GB Button Pushed\n");
+	/*
+	 *	Check to see if probe is enabled, and switch if it is
+	 */
+	if (TecUtilMouseGetCurrentMode() == MouseButtonMode_Probe){
+		TecUtilMouseSetMode(Mouse_RotateRollerBall);
+	}
+	ArgList args;
+	args.appendFunction(SV_CALLBACKFUNCTION, SelectGBsInRegionProbeCB);
+	args.appendString(SV_STATUSLINETEXT, "Select an element interior to the boundary of active GBs");
+	TecUtilProbeInstallCallbackX(args.getRef());
+	TecUtilLockFinish(AddOnID);
+}
+
+/**
+*/
+static LgIndex_t  TFGrpNum_TF_T3_1_CB(const char *S)
+{
+	LgIndex_t IsOk = 1;
+	TecUtilLockStart(AddOnID);
+	TRACE1("Text field (TFGrpNum_TF_T3_1) Value Changed,  New value is: %s\n", S);
+	if (!StringIsInt(S)){
+		TecGUITextFieldSetString(TFGrpNum_TF_T3_1, TecGUITextFieldGetString(TFGrpNum_TF_T3_1));
+	}
+	TecUtilLockFinish(AddOnID);
+	return (IsOk);
 }
 
 #include "guibld.cpp"
