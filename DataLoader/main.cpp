@@ -333,7 +333,7 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 
 	AddOnID = TecUtilAddOnRegister(110,
 								   ADDON_NAME,
-								   "V"ADDON_VERSION"("TecVersionId") "ADDON_DATE,
+								   "V" ADDON_VERSION"(" TecVersionId") " ADDON_DATE,
 								   "Tecplot, Inc.");
 
 	/*

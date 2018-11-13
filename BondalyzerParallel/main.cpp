@@ -334,6 +334,21 @@ static void STDCALL MakeSliceFomeCPsCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL MakeSurfaceFromPathZonesMenuCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		MakeSurfaceFromPathZonesGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL GradientPathsOnSphereMenuCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -651,7 +666,7 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 
     AddOnID = TecUtilAddOnRegister(110,
                                    ADDON_NAME,
-                                   "V"ADDON_VERSION"("TecVersionId") "ADDON_DATE,
+                                   "V" ADDON_VERSION"(" TecVersionId") " ADDON_DATE,
                                    "Tecplot");
 
     /*
@@ -703,6 +718,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Gradient path shutgun around nuclear/cage CPs").c_str(),
 		'\0',
 		GradientPathsOnSphereMenuCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Make surface from path zones").c_str(),
+		'\0',
+		MakeSurfaceFromPathZonesMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		string("Create slice from CPs").c_str(),

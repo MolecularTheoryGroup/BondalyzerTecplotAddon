@@ -539,6 +539,13 @@ void DialogOKButtonCB(){
 			for (int i = 0; i < NumSelected; ++i){
 				IntVec.push_back(SelectedNums[i]);
 				StringVec.push_back(TecGUIListGetString(f.GetID(), SelectedNums[i]));
+				/*
+				 *	Remove leading number and period if present
+				 */
+				vector<string> tmpStr = SplitString(StringVec.back(), ". ");
+				if (tmpStr.size() > 1 && StringIsInt(tmpStr[0])){
+					StringVec.back() = VectorToString(vector<string>(tmpStr.begin() + 1, tmpStr.end()), ". ");
+				}
 			}
 			f.SetReturnStringVec(StringVec);
 			f.SetReturnIntVec(IntVec);
@@ -687,7 +694,7 @@ void CSMLaunchGui(const string & Title,
 		char *cStr;
 		for (int j = 1; j <= NumZonesVars[i]; ++j){
 			if ((i == 0 && TecUtilZoneGetName(j, &cStr)) || TecUtilVarGetName(j, &cStr)){
-				ZoneVarList[i].push_back(cStr);
+				ZoneVarList[i].push_back(to_string(j) + ". " + cStr);
 				MaxZoneVarWidth = MAX(MaxZoneVarWidth, int(ZoneVarList[i].back().length()));
 				ZoneVarCommaListValid[i] = (ZoneVarCommaListValid[i] && SplitString(ZoneVarList[i].back(), ",").size() == 1);
 			}

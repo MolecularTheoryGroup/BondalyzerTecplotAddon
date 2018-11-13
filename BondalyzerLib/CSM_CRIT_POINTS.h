@@ -23,7 +23,8 @@ using namespace arma;
 using std::vector;
 
 // 0.27 bohr is the value used in the BAND cp search, but then I went higher!
-const static double SpuriousCPCheckDistance = 0.35;
+const static double SpuriousCPCheckDistance = 0.2;
+const static double SpuriousCPDistanceRatioOfSearchGrid = 0.05;
 
 enum CPType_e{
 	CPType_Nuclear = -3,

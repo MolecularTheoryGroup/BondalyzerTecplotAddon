@@ -1754,7 +1754,7 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 			"ZZ Density Hessian",
 			"Density Laplacian"
 		};
-		T41VarSuffices = { "", "_A", "_B" };
+		T41VarSuffices = { "_A", "_B", "" };
 		MOTypeStrings = { "SCF", "LOC" };
 	}
 	else{
@@ -1893,57 +1893,60 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 				*/
 				for (const string & Type : MOTypeStrings){
 					for (const string & Sym : MOLabels){
-						/*
-						*	Query the MO section and see how many orbitals there are.
-						*/
-						int NumMOSize = getKFVariableLength(&GlobalKFFile, string(Type + "_" + Sym + "%nr of orbitals").c_str());
-						if (NumMOSize > 0){
+						for (const string & Spin : T41VarSuffices) {
 							/*
-							*	Get the MO occupancies and energies
+							*	Query the MO section and see how many orbitals there are.
 							*/
-							int NumMOs;
-							if (getKFData(&GlobalKFFile, string(Type + "_" + Sym + "%nr of orbitals").c_str(), reinterpret_cast<void*>(&NumMOs)) > 0){
-								vector<double> Occ(NumMOs), EigVals(NumMOs);
-								if (getKFData(&GlobalKFFile, string(Type + "_" + Sym + "%Occupations").c_str(), Occ.data()) > 0
-									&& getKFData(&GlobalKFFile, string(Type + "_" + Sym + "%Eigenvalues").c_str(), EigVals.data()) > 0)
-								{
-									/*
-									*	Now actually see if each MO is in the file.
-									*	If it is, construct it's string that includes
-									*	energy and occupancy and include it in the temporary
-									*	MO variable list.
-									*/
-									for (int i = 0; i < NumMOs; ++i){
-										int TmpSize = getKFVariableLength(&GlobalKFFile, string(Type + "_" + Sym + "%" + to_string(i + 1)).c_str());
-										if (TmpSize > 0){
-											/*
-											*	MO exists, so add it to temporary lists.
-											*/
-											stringstream ESS, OccSS;
-											string EStr, OccStr;
+							string MOStr = Type + "_" + Sym + Spin;
+							int NumMOSize = getKFVariableLength(&GlobalKFFile, string(MOStr + "%nr of orbitals").c_str());
+							if (NumMOSize > 0) {
+								/*
+								*	Get the MO occupancies and energies
+								*/
+								int NumMOs;
+								if (getKFData(&GlobalKFFile, string(MOStr + "%nr of orbitals").c_str(), reinterpret_cast<void*>(&NumMOs)) > 0) {
+									vector<double> Occ(NumMOs), EigVals(NumMOs);
+									if (getKFData(&GlobalKFFile, string(MOStr + "%Occupations").c_str(), Occ.data()) > 0
+										&& getKFData(&GlobalKFFile, string(MOStr + "%Eigenvalues").c_str(), EigVals.data()) > 0)
+									{
+										/*
+										*	Now actually see if each MO is in the file.
+										*	If it is, construct it's string that includes
+										*	energy and occupancy and include it in the temporary
+										*	MO variable list.
+										*/
+										for (int i = 0; i < NumMOs; ++i) {
+											int TmpSize = getKFVariableLength(&GlobalKFFile, string(MOStr + "%" + to_string(i + 1)).c_str());
+											if (TmpSize > 0) {
+												/*
+												*	MO exists, so add it to temporary lists.
+												*/
+												stringstream ESS, OccSS;
+												string EStr, OccStr;
 
-											ESS.precision(3);
-											OccSS.precision(3);
+												ESS.precision(3);
+												OccSS.precision(3);
 
-											if (abs(EigVals[i]) >= 1e-3)
-												ESS << EigVals[i];
-											else
-												ESS << std::scientific << EigVals[i];
+												if (abs(EigVals[i]) >= 1e-3)
+													ESS << EigVals[i];
+												else
+													ESS << std::scientific << EigVals[i];
 
-											if (Occ[i] == static_cast<int>(Occ[i]))
-												OccSS << static_cast<int>(Occ[i]);
-											else if (Occ[i] >= 1e-3)
-												OccSS << Occ[i];
-											else
-												OccSS << std::scientific << Occ[i];
+												if (Occ[i] == static_cast<int>(Occ[i]))
+													OccSS << static_cast<int>(Occ[i]);
+												else if (Occ[i] >= 1e-3)
+													OccSS << Occ[i];
+												else
+													OccSS << std::scientific << Occ[i];
 
-											ESS >> EStr;
-											OccSS >> OccStr;
+												ESS >> EStr;
+												OccSS >> OccStr;
 
-											MOUserVarStrings.push_back(string("MO E: " + EStr + ", Occ: " + OccStr + ", " + Type + "_" + Sym + "_" + to_string(i + 1)));
-											MOKFVarStrings.push_back(string(Type + "_" + Sym + "%" + to_string(i + 1)));
-											MOEnergies.push_back(EigVals[i]);
-											MODataSizes.push_back(TmpSize);
+												MOUserVarStrings.push_back(string("MO E: " + EStr + ", Occ: " + OccStr + ", " + MOStr + "_" + to_string(i + 1)));
+												MOKFVarStrings.push_back(string(MOStr + "%" + to_string(i + 1)));
+												MOEnergies.push_back(EigVals[i]);
+												MODataSizes.push_back(TmpSize);
+											}
 										}
 									}
 								}

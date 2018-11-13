@@ -8,14 +8,20 @@
 
 #include <cstring>
 #include <sstream>
+#include <iomanip>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <map>
+#include <set>
+#include <ctime>
 
 #include <armadillo>
 
 #include "Set.h"
 #include "CSM_DATA_SET_INFO.h"
+#include "CSM_DATA_TYPES.h"
 #include "VIEWRESULTS.h"
 
 using namespace arma;
@@ -26,9 +32,35 @@ using std::to_string;
 using std::stringstream;
 using std::vector;
 using std::stoi;
+using std::ofstream;
 
 
+const string GBADelim = " | ";
+void GBAResultViewerPopulateGBs() {
+	/*
+	*	Populate list of gradient bundles
+	*/
+	TecGUIListDeleteAllItems(MLSelGB_MLST_T3_1);
 
+	int NumZones = TecUtilDataSetGetNumZones();
+
+	std::set<string> GBNameMap;
+	string TmpStr;
+	for (int ZoneNum = 1; ZoneNum <= NumZones; ++ZoneNum) {
+		if ((AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin)
+			|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin))
+			&& AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, TmpStr)) {
+			string intVar;
+			if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinDefiningVariable, intVar)){
+				TmpStr += GBADelim + intVar;
+			}
+			
+			GBNameMap.insert(TmpStr);
+		}
+	}
+	for (const auto & i : GBNameMap)
+		TecGUIListAppendItem(MLSelGB_MLST_T3_1, i.c_str());
+}
 
 
 void GBAResultViewerSelectSphere(){
@@ -41,7 +73,7 @@ void GBAResultViewerSelectSphere(){
 	/*
 	*	Clear gradient bundle list
 	*/
-	TecGUIListDeleteAllItems(MLSelGB_MLST_T3_1);
+// 	TecGUIListDeleteAllItems(MLSelGB_MLST_T3_1);
 
 	/*
 	*	Get selected sphere name
@@ -60,18 +92,14 @@ void GBAResultViewerSelectSphere(){
 
 	EntIndex_t SphereZoneNum;
 
-	string TmpStr1, TmpStr2, TmpStr3, TmpStr4;
-
-	TmpStr1 = CSMAuxData.GBA.ZoneType;
-	TmpStr2 = CSMAuxData.GBA.SphereCPName;
-
 	if (IsOk){
 // 		TecUtilDataLoadBegin();
 
 		Boolean_t IsFound = FALSE;
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && !IsFound; ++ZoneNum){
-			if (AuxDataZoneItemMatches(ZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeSphereZone)
-				&& AuxDataZoneItemMatches(ZoneNum, TmpStr2, SphereNameStr))
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)
+				&& (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+					|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr)))
 			{
 				IsFound = TRUE;
 				SphereZoneNum = ZoneNum;
@@ -89,28 +117,27 @@ void GBAResultViewerSelectSphere(){
 		TecGUIToggleSet(TGLSphereVis_TOG_T3_1, TecUtilZoneIsActive(SphereZoneNum));
 
 
-	TecGUIListDeleteAllItems(MLSelGB_MLST_T3_1);
 	int SelectedVarNum = 1;
 	if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0)
 		SelectedVarNum = TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1);
 
 	TecGUIListDeleteAllItems(SLSelVar_SLST_T3_1);
 
-	if (TecGUIToggleGet(TGLSphereVis_TOG_T3_1)){
+	if (TecGUIToggleGet(TGLSphereVis_TOG_T3_1)) {
 		/*
 		 *	Get list of integrated variables for the selected sphere
 		 */
 
 		vector<string> IntVarNames;
 		vector<string> IntCheckStrs = { "I: ", "IN: ", "INS: ", " Integration" };
-		for (int i = 1; i <= TecUtilDataSetGetNumVars(); ++i){
+		for (int i = 1; i <= TecUtilDataSetGetNumVars(); ++i) {
 			char *VarName, *CheckStr;
-			if (TecUtilVarGetName(i, &VarName)){
-				for (const string & Str : IntCheckStrs){
+			if (TecUtilVarGetName(i, &VarName)) {
+				for (const string & Str : IntCheckStrs) {
 					CheckStr = std::strstr(VarName, Str.c_str());
-					if (CheckStr != NULL){
+					if (CheckStr != NULL) {
 						// Integration variable found. Now make sure it's not bit type for sphere zone.
-						if (TecUtilDataValueGetType(SphereZoneNum, i) != FieldDataType_Bit){
+						if (TecUtilDataValueGetType(SphereZoneNum, i) != FieldDataType_Bit) {
 							IntVarNames.push_back(VarName);
 							break;
 						}
@@ -120,83 +147,13 @@ void GBAResultViewerSelectSphere(){
 			}
 		}
 
-		if (IntVarNames.size() > 0){
+		if (IntVarNames.size() > 0) {
 			for (const string & i : IntVarNames)
 				TecGUIListAppendItem(SLSelVar_SLST_T3_1, i.c_str());
 			TecGUIListSetSelectedItem(SLSelVar_SLST_T3_1, SelectedVarNum);
 		}
 
-		/*
-		*	Get list of Gradient bundles for sphere zone
-		*	(one's that correspond to a volume CP)
-		*	and see if they're active.
-		*	"Active" here means that ALL gradient bundles around
-		*	a volume CP node are active.
-		*/
-
-		vector<string> GBFullCPNames;
-		vector<Boolean_t> GBVolIsActive;
-		vector<string> GBUniqueCPNames;
-		vector<LgIndex_t> SelectNums;
-
-		if (IsOk){
-// 			TecUtilDataLoadBegin();
-			/*
-			*	Get full name list
-			*/
-			
-			TmpStr3 = CSMAuxData.GBA.VolumeCPName;
-
-			for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones; ++ZoneNum){
-				if (AuxDataZoneItemMatches(ZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
-					&& AuxDataZoneItemMatches(ZoneNum, TmpStr2, SphereNameStr))
-				{
-					if (AuxDataZoneGetItem(ZoneNum, TmpStr3, TmpStr4)){
-						GBFullCPNames.push_back(TmpStr4);
-						GBVolIsActive.push_back(TecUtilZoneIsActive(ZoneNum));
-					}
-				}
-			}
-
-			/*
-			*	Get unique name list
-			*/
-			for (const string & it1 : GBFullCPNames){
-				if (VectorGetElementNum(GBUniqueCPNames, it1) < 0)
-					GBUniqueCPNames.push_back(it1);
-			}
-			SortCPNameList(GBUniqueCPNames);
-
-			/*
-			*	Get list of active GB vols.
-			*	Also add unique names to list while I'm at it.
-			*/
-			for (int i = 0; i < GBUniqueCPNames.size(); ++i){
-				TecGUIListAppendItem(MLSelGB_MLST_T3_1, GBUniqueCPNames[i].c_str());
-				int HitCount = 0;
-				for (int j = 0; j < GBFullCPNames.size(); ++j){
-					if (GBVolIsActive[j] && GBUniqueCPNames[i] == GBFullCPNames[j]){
-						HitCount++;
-					}
-				}
-				if (HitCount >= 5){
-					SelectNums.push_back(i + 1);
-				}
-			}
-
-			/*
-			*	Select GB's in list that are active
-			*/
-// 			if (SelectNums.size() > 0){
-// 				TecGUIListSetSelectedItems(MLSelGB_MLST_T3_1, SelectNums.data(), (LgIndex_t)SelectNums.size());
-// 			}
-
-// 			TecUtilDataLoadEnd();
-		}
 	}
-
-// 	GBAResultViewerSelectGB();
-
 
 	TecUtilDrawGraphics(TRUE);
 	TecUtilLockFinish(AddOnID);
@@ -252,7 +209,9 @@ void GBAResultViewerSelectIntVar(){
 
 		for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones(); ++ZoneNum){
 			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)
-				&& (!UseSelectedSphere || AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr))){
+				&& (!UseSelectedSphere 
+					|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+					|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr))){
 				SphereZoneNums.push_back(ZoneNum);
 				IsOk = TecUtilDataValueGetMinMaxByZoneVar(ZoneNum, VarNum, &TmpMin, &TmpMax);
 				if (TmpMin != TmpMax){
@@ -301,29 +260,21 @@ void GBAResultViewerSelectIntVar(){
 					NegCloseToZero = -1e-3;
 				if (PosCloseToZero == DBL_MAX)
 					PosCloseToZero = 1e-3;
-				int NegExp = log10(-NegCloseToZero) - 1;
-				int PosExp = log10(PosCloseToZero) - 1;
 
-				if (VarMax < 0){
-					ContourLevelsVec = logspace(log10(-VarMax)-1, log10(-VarMin)+1, NumContours) * -1.0;
+				if (VarMax <= 0){
+					ContourLevelsVec = LogSpace(-VarMax, -VarMin, NumContours) * -1.0;
 				}
-				else if (VarMax == 0.0){
-					ContourLevelsVec = logspace(NegExp, log10(-VarMin) + 1, NumContours) * -1.0;
-				}
-				else if (VarMin == 0.0){
-					ContourLevelsVec = logspace(PosExp, log10(VarMax) + 1, NumContours);
+				else if (VarMin >= 0.0){
+					ContourLevelsVec = LogSpace(VarMin, VarMax, NumContours);
 				}
 				else{
-					int NegExpUpper = log10(-VarMin) + 1;
-					int PosExpUpper = log10(VarMax) + 1;
-					int NumNegContours = static_cast<int>(static_cast<double>(NumContours)* (static_cast<double>(NegExpUpper - NegExp) / (static_cast<double>(NegExpUpper - NegExp) + static_cast<double>(PosExpUpper - PosExp))));
-// 					int NumNegContours = static_cast<int>(static_cast<double>(NumContours)* (-VarMin / (VarMax - VarMin)));
-					vec NegContours = flipud(logspace(NegExp, NegExpUpper, NumNegContours)) * -1.0;
-					ContourLevelsVec = join_cols(NegContours, logspace(PosExp, PosExpUpper, NumContours - NumNegContours));
+					int NumNegContours = int(double(NumContours) * (-VarMin) / (VarMax - VarMin));
+
+					ContourLevelsVec = join_cols(flipud(LogSpace(-NegCloseToZero, -VarMin, NumNegContours) * -1.0), LogSpace(PosCloseToZero, VarMax, NumContours - NumNegContours));
 				}
 			}
 			else{
-				ContourLevelsVec = logspace(log10(VarMin)-1, log10(VarMax)+1, NumContours);
+				ContourLevelsVec = LogSpace(VarMin, VarMax, NumContours);
 			}
 		}
 		else{
@@ -366,7 +317,8 @@ void GBAResultViewerSelectIntVar(){
 		Set_pa ZoneSet = TecUtilSetAlloc(FALSE);
 
 		for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones(); ++ZoneNum){
-			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)){
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr)){
 				TecUtilSetAddMember(ZoneSet, ZoneNum, FALSE);
 			}
 		}
@@ -396,6 +348,104 @@ void GBAResultViewerSelectIntVar(){
 		TecUtilArgListDealloc(&TempArgList);
 		TecUtilSetDealloc(&ZoneSet);
 	}
+
+	TecUtilDrawGraphics(TRUE);
+	TecUtilLockFinish(AddOnID);
+}
+
+void GBAResultViewerSelectCondensedGBs() {
+	TecUtilLockStart(AddOnID);
+	TecUtilDrawGraphics(FALSE);
+
+	Boolean_t IsOk = TRUE;
+
+	LgIndex_t *SelectedNums;
+	LgIndex_t NumSelected;
+
+	TecGUIListGetSelectedItems(MLSelGB_MLST_T3_1, &SelectedNums, &NumSelected);
+
+	Set ActivateSet, DeactivateSet;
+	std::set<int> ActivateSetSet, DeactivateSetSet;
+	
+
+	if (NumSelected > 0) {
+
+		// 		TecUtilDataLoadBegin();
+
+		EntIndex_t NumZones = TecUtilDataSetGetNumZones();
+
+		string ChkNameStr;
+
+		for (int i = 0; i < NumSelected && IsOk; ++i) {
+
+			char* ChkName = TecGUIListGetString(MLSelGB_MLST_T3_1, SelectedNums[i]);
+			ChkNameStr = ChkName;
+			TecUtilStringDealloc(&ChkName);
+
+			string intVar;
+			vector<string> strVec = SplitString(ChkNameStr, GBADelim);
+			if (strVec.size() > 1){
+				ChkNameStr = strVec[0];
+				intVar = strVec[1];
+			}
+
+			bool useInfo = false;
+			vector<string> tmpStrVec = SplitString(ChkNameStr, " basin");
+			if (tmpStrVec.size() > 1) {
+				ChkNameStr = tmpStrVec[0] + tmpStrVec[1];
+				useInfo = true;
+			}
+
+			for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum) {
+				if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasinWedge)
+					|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasinWedge)
+					|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin)
+					|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin))
+				{
+					if ((useInfo && AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.CondensedBasinInfo, ChkNameStr))
+						|| (!useInfo && AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.CondensedBasinName, ChkNameStr))
+						&& (strVec.size() < 2 || AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.CondensedBasinDefiningVariable, intVar))) {
+						ActivateSetSet.insert(ZoneNum);
+					}
+					else
+						DeactivateSetSet.insert(ZoneNum);
+				}
+			}
+		}
+
+		if (IsOk) {
+			for (const auto & i : ActivateSetSet)
+				ActivateSet += i;
+			for (const auto & i : DeactivateSetSet)
+				if (ActivateSetSet.count(i) == 0)
+					DeactivateSet += i;
+			TecUtilZoneSetActive(ActivateSet.getRef(), AssignOp_PlusEquals);
+			TecUtilZoneSetActive(DeactivateSet.getRef(), AssignOp_MinusEquals);
+		}
+
+		// 		TecUtilDataLoadEnd();
+	}
+	else if (TecGUIListGetItemCount(MLSelGB_MLST_T3_1) == 0) {
+		// 		TecUtilDataLoadBegin();
+
+		EntIndex_t NumZones = TecUtilDataSetGetNumZones();
+
+		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum) {
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasinWedge)
+				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasinWedge))
+			{
+				DeactivateSet += ZoneNum;
+			}
+		}
+
+		if (IsOk) {
+			TecUtilZoneSetActive(DeactivateSet.getRef(), AssignOp_MinusEquals);
+		}
+
+		// 		TecUtilDataLoadEnd();
+	}
+
+	TecUtilArrayDealloc((void**)&SelectedNums);
 
 	TecUtilDrawGraphics(TRUE);
 	TecUtilLockFinish(AddOnID);
@@ -434,8 +484,8 @@ void GBAResultViewerSelectGB(){
 			TecUtilStringDealloc(&ChkName);
 
 			for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum){
-				if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
-					&& AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr))
+				if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+					|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr))
 				{
 					if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.VolumeCPName, ChkNameStr)){
 						IsOk = TecUtilSetAddMember(ActivateSet, ZoneNum, FALSE);
@@ -478,8 +528,8 @@ void GBAResultViewerSelectGB(){
 		Set_pa DeactivateSet = TecUtilSetAlloc(FALSE);
 
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum){
-			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
-				&& AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr))
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr))
 			{
 				IsOk = TecUtilSetAddMember(DeactivateSet, ZoneNum, FALSE);
 			}
@@ -510,12 +560,6 @@ void GBAResultViewerToggleSphere(){
 
 	Boolean_t ActivateZone = TecGUIToggleGet(TGLSphereVis_TOG_T3_1);
 
-	string TmpStr1, TmpStr2;
-
-
-	TmpStr1 = CSMAuxData.GBA.ZoneType;
-	TmpStr2 = CSMAuxData.GBA.SphereCPName;
-
 	if (IsOk)
 	{
 		/*
@@ -528,8 +572,8 @@ void GBAResultViewerToggleSphere(){
 		TecUtilDataLoadBegin();
 
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum){
-			if (AuxDataZoneItemMatches(ZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeSphereZone)
-				&& AuxDataZoneItemMatches(ZoneNum, TmpStr2, ChkNameStr))
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)
+				&& AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, ChkNameStr))
 			{
 				Set_pa TempSet = TecUtilSetAlloc(FALSE);
 				TecUtilSetAddMember(TempSet, ZoneNum, FALSE);
@@ -555,8 +599,8 @@ void GBAResultViewerToggleSphere(){
 		TecUtilDataLoadBegin();
 
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum){
-			if (AuxDataZoneItemMatches(ZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeSphereZone)
-				&& AuxDataZoneItemMatches(ZoneNum, TmpStr2, ChkNameStr))
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)
+				&& AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, ChkNameStr))
 			{
 				Set_pa TempSet = TecUtilSetAlloc(FALSE);
 				TecUtilSetAddMember(TempSet, ZoneNum, FALSE);
@@ -656,10 +700,6 @@ void GBAResultViewerDeleteSphere(){
 	 */
 	TecUtilLockStart(AddOnID);
 
-	string TmpStr1;
-
-	TmpStr1 = CSMAuxData.GBA.SphereCPName;
-
 	if (TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0){
 		TecUtilDrawGraphics(FALSE);
 		/*
@@ -668,6 +708,7 @@ void GBAResultViewerDeleteSphere(){
 		LgIndex_t SelSphereNum = TecGUIListGetSelectedItem(SLSelSphere_SLST_T3_1);
 		char* SphereNameCStr = TecGUIListGetString(SLSelSphere_SLST_T3_1, SelSphereNum);
 		string SphereNameStr = SphereNameCStr;
+		string SphereNameForCondensedBasins = SphereNameStr + " Sphere";
 		TecUtilStringDealloc(&SphereNameCStr);
 		/*
 		*	Find sphere zone and
@@ -681,12 +722,14 @@ void GBAResultViewerDeleteSphere(){
 
 		TecUtilDataLoadBegin();
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones; ++ZoneNum){
-			if (AuxDataZoneItemMatches(ZoneNum, TmpStr1, SphereNameStr)){
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameForCondensedBasins)
+				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr)){
 				TecUtilSetAddMember(DeleteSet, ZoneNum, FALSE);
 			}
 		}
 
-		if (!TecUtilDataSetDeleteZone(DeleteSet)){
+		if (!TecUtilSetIsEmpty(DeleteSet) && !TecUtilDataSetDeleteZone(DeleteSet)){
 			TecUtilDialogErrMsg("Failed to delete zones.");
 		}
 
@@ -703,6 +746,27 @@ void GBAResultViewerDeleteSphere(){
 			TecGUIToggleSet(TGLSphereVis_TOG_T3_1, FALSE);
 		}
 
+		if (TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) == 0){
+			vector<string> VarNames(TecUtilDataSetGetNumVars());
+			for (int i = 0; i < VarNames.size(); ++i){
+				char *cStr;
+				TecUtilVarGetName(i + 1,&cStr);
+				VarNames[i] = cStr;
+				TecUtilStringDealloc(&cStr);
+			}
+			Set DelVars;
+			for (int vNum = 0; vNum < VarNames.size(); ++vNum){
+				for (string s2 : vector<string>({ "I: ", "IN: ", "INS: " })){
+					if (s2.length() <= VarNames[vNum].length() && VarNames[vNum].substr(0, s2.length()) == s2){
+						DelVars += vNum + 1;
+					}
+				}
+			}
+			if (!DelVars.isEmpty()){
+				TecUtilDataSetDeleteVar(DelVars.getRef());
+			}
+		}
+
 
 		TecUtilDataLoadEnd();
 		TecUtilDrawGraphics(TRUE);
@@ -713,8 +777,6 @@ void GBAResultViewerDeleteSphere(){
 
 void GBAResultViewerActivateAllGB(){
 	TecUtilLockStart(AddOnID);
-
-	string TmpStr1, TmpStr2;
 
 	if (TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0){
 		TecUtilDrawGraphics(FALSE);
@@ -737,12 +799,9 @@ void GBAResultViewerActivateAllGB(){
 
 		TecUtilDataLoadBegin();
 
-		TmpStr1 = CSMAuxData.GBA.ZoneType;
-		TmpStr2 = CSMAuxData.GBA.SphereCPName;
-
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones; ++ZoneNum){
-			if (AuxDataZoneItemMatches(ZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
-				&& AuxDataZoneItemMatches(ZoneNum, TmpStr2, SphereNameStr))
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr))
 			{
 				TecUtilSetAddMember(ActivateSet, ZoneNum, FALSE);
 			}
@@ -818,17 +877,13 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 
 		TecUtilDataLoadBegin();
 
-		TmpStr1 = CSMAuxData.GBA.ZoneType;
-		TmpStr2 = CSMAuxData.GBA.SphereCPName;
-		TmpStr3 = CSMAuxData.GBA.ElemNum;
-
 		if (IsOk){
-			IsOk = AuxDataZoneGetItem(ProbedZoneNum, TmpStr2, CPName);
+			IsOk = AuxDataZoneGetItem(ProbedZoneNum, CSMAuxData.GBA.SphereCPName, CPName);
 		}
 
 		string ZoneType;
 		if (IsOk){
-			IsOk = AuxDataZoneGetItem(ProbedZoneNum, TmpStr1, ZoneType);
+			IsOk = AuxDataZoneGetItem(ProbedZoneNum, CSMAuxData.GBA.ZoneType, ZoneType);
 		}
 
 		if (IsOk){
@@ -841,19 +896,15 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 					 *	around that node.
 					 */
 					LgIndex_t NodeNum = TecUtilProbeGetPointIndex();
-					TmpStr = to_string(NodeNum);
 					int NumFound = 0;
 					for (int CurZoneNum = 1; CurZoneNum < NumZones && NumFound < 6; ++CurZoneNum){
 						if (TecUtilZoneGetType(CurZoneNum) == ZoneType_FETriangle){
-							if (AuxDataZoneItemMatches(CurZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
-								&& AuxDataZoneItemMatches(CurZoneNum, TmpStr2, CPName))
+							if (AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+								&& AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.SphereCPName, CPName))
 							{
 								for (int i = 0; i < 3; ++i){
-									if (AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.NodeNums[i], TmpStr)){
-										Set_pa TempSet = TecUtilSetAlloc(FALSE);
-										IsOk = TecUtilSetAddMember(TempSet, CurZoneNum, FALSE);
-										TecUtilZoneSetActive(TempSet, AssignOp_PlusEquals);
-										TecUtilSetDealloc(&TempSet);
+									if (AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.NodeNums[i], to_string(NodeNum))){
+										TecUtilZoneSetActive(Set(CurZoneNum).getRef(), AssignOp_PlusEquals);
 										NumFound++;
 										break;
 									}
@@ -867,17 +918,13 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 					*	User selected an element, so activate its FE volume.
 					*/
 					LgIndex_t ElemNum = TecUtilProbeFieldGetCell();
-					TmpStr = to_string(ElemNum);
 					for (int CurZoneNum = 1; CurZoneNum < NumZones; ++CurZoneNum){
 						if (TecUtilZoneGetType(CurZoneNum) == ZoneType_FETriangle){
-							if (AuxDataZoneItemMatches(CurZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
-								&& AuxDataZoneItemMatches(CurZoneNum, TmpStr2, CPName)
-								&& AuxDataZoneItemMatches(CurZoneNum, TmpStr3, TmpStr))
+							if (AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+								&& AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.SphereCPName, CPName)
+								&& AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ElemNum, to_string(ElemNum)))
 							{
-								Set_pa TempSet = TecUtilSetAlloc(FALSE);
-								IsOk = TecUtilSetAddMember(TempSet, CurZoneNum, FALSE);
-								TecUtilZoneSetActive(TempSet, AssignOp_PlusEquals);
-								TecUtilSetDealloc(&TempSet);
+								TecUtilZoneSetActive(Set(CurZoneNum).getRef(), AssignOp_PlusEquals);
 								break;
 							}
 						}
@@ -922,8 +969,8 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 						SetIndex_t CurZoneNum = TecUtilSetGetNextMember(ActiveZones, TECUTILSETNOTMEMBER);
 						while (IsOk && CurZoneNum != TECUTILSETNOTMEMBER){
 							if (CurZoneNum != FEZoneNum && TecUtilZoneIsActive((EntIndex_t)CurZoneNum) && TecUtilZoneGetType((EntIndex_t)CurZoneNum) == ZoneType_FETriangle){
-								if (AuxDataZoneItemMatches(static_cast<int>(CurZoneNum), TmpStr1, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
-									&& AuxDataZoneItemMatches(static_cast<int>(CurZoneNum), TmpStr2, CPName))
+								if (AuxDataZoneItemMatches(static_cast<int>(CurZoneNum), CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+									&& AuxDataZoneItemMatches(static_cast<int>(CurZoneNum), CSMAuxData.GBA.SphereCPName, CPName))
 								{
 									for (int i = 0; i < 3 && IsOk; ++i){
 										IsOk = AuxDataZoneGetItem(static_cast<int>(CurZoneNum), CSMAuxData.GBA.NodeNums[i], TmpStr);
@@ -1145,4 +1192,387 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
 	TecUtilDrawGraphics(TRUE);
 	TecGUIDialogLaunch(Dialog1Manager);
 	TecUtilLockFinish(AddOnID);
+}
+
+void ExportGBAData(){
+	if ((TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0 && TecGUIToggleGet(TGLExGBs_TOG_T3_1)) || TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
+		char* FolderNameCStr;
+		if (TecUtilDialogGetFolderName("Select folder to save files", &FolderNameCStr)) {
+			string FolderName = FolderNameCStr;
+			TecUtilStringDealloc(&FolderNameCStr);
+			if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
+				if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
+					Boolean_t ActiveZonesOnly = TecGUIToggleGet(TGLExGBs_TOG_T3_1);
+					vector<int> IntVarNums;
+					vector<string> IntVarNames;
+					vector<string> IntCheckStrs = { "I: ", "IN: ", "INS: ", " Integration" };
+					for (int VarNum = 1; VarNum <= TecUtilDataSetGetNumVars(); ++VarNum) {
+						char *VarName, *CheckStr;
+						if (TecUtilVarGetName(VarNum, &VarName)) {
+							for (const string & Str : IntCheckStrs) {
+								CheckStr = std::strstr(VarName, Str.c_str());
+								if (CheckStr != NULL) {
+									string TmpStr = VarName;
+									std::replace(TmpStr.begin(), TmpStr.end(), ',', '.');
+									IntVarNames.push_back(TmpStr);
+									IntVarNums.push_back(VarNum);
+									break;
+								}
+								break; // Only want the "I:" integration values
+							}
+							TecUtilStringDealloc(&VarName);
+						}
+					}
+					int NumZones = TecUtilDataSetGetNumZones();
+					for (int ZoneNum = 1; ZoneNum <= NumZones; ++ZoneNum) {
+						if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)) {
+							char* ZoneName;
+							if (TecUtilZoneGetName(ZoneNum, &ZoneName)) {
+								vector<int> IJK(3);
+								TecUtilZoneGetIJK(ZoneNum, &IJK[0], &IJK[1], &IJK[2]);
+
+								vector<bool> ElemActive;
+								int NumActive = IJK[1];
+								if (ActiveZonesOnly) {
+									string SphereName = AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.SphereCPName);
+									/*
+									*	Get list of elements for which the corresponding GB is active
+									*/
+									ElemActive.resize(IJK[1], false);
+									NumActive = 0;
+									for (int e = 0; e < IJK[1]; ++e) {
+										for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
+											if (TecUtilZoneIsActive(z)
+												&& TecUtilZoneIsFiniteElement(z)
+												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, SphereName)
+												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ElemNum, to_string(e + 1)))
+											{
+												ElemActive[e] = true;
+												NumActive++;
+											}
+										}
+									}
+								}
+								else
+									ElemActive.resize(IJK[1], true);
+
+								if (NumActive > 0) {
+									ofstream OutFile(string(FolderName + "/Zone_" + to_string(ZoneNum) + "_" + string(ZoneName) + "_IntegrationResults.csv").c_str(), std::ios::trunc);
+									if (OutFile.is_open()) {
+										OutFile << "Zone," << ZoneName << "\nNumber of gradient bundles (GBs)," << IJK[1];
+										if (ActiveZonesOnly) {
+											OutFile << "\nNumber of active GBs," << NumActive;
+										}
+										string TmpStr;
+										if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.GPsPerGB, TmpStr))
+											OutFile << "\nGradient paths (GPs) per GB," << TmpStr;
+										if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.PointsPerGP, TmpStr))
+											OutFile << "\nPoints per GP," << TmpStr;
+										if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.IntPrecision, TmpStr))
+											OutFile << "\nIntegration precision," << TmpStr;
+										if (AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.IntWallTime, TmpStr))
+											OutFile << "\nIntegration runtime total [seconds]," << TmpStr;
+										OutFile << "\n\nIntegration totals\nVariable name,Variable number,Value\n";
+
+										vector<FieldDataPointer_c> Ptrs(IntVarNums.size());
+										for (int i = 0; i < IntVarNums.size(); ++i)
+											Ptrs[i].GetReadPtr(ZoneNum, IntVarNums[i]);
+
+										for (int i = 0; i < Ptrs.size(); ++i) {
+											OutFile << IntVarNames[i] << "," << i + 1 << ",";
+											double Total = 0.0;
+											for (int j = 0; j < Ptrs[i].Size(); ++j) {
+												if (ElemActive[j])
+													Total += Ptrs[i][j];
+											}
+											OutFile << std::setprecision(16) << std::scientific << Total << '\n';
+										}
+
+										OutFile << "\nZone Name,Zone#,GB#";
+										for (const string & i : IntVarNames)
+											OutFile << "," << i;
+										OutFile << '\n';
+
+										for (int i = 0; i < Ptrs[0].Size(); ++i) {
+											if (ElemActive[i]) {
+												char* GBZoneName;
+												TecUtilZoneGetName(ZoneNum + i + 1, &GBZoneName);
+												OutFile << GBZoneName << "," << ZoneNum + i + 1 << "," << i + 1;
+												TecUtilStringDealloc(&GBZoneName);
+												for (const auto & j : Ptrs)
+													OutFile << std::setprecision(16) << std::scientific << "," << j[i];
+												OutFile << "\n";
+											}
+										}
+
+										OutFile.close();
+									}
+									else
+										TecUtilDialogMessageBox(string("Failed to open output file: " + string(FolderName + "/" + string(ZoneName) + "_IntegrationResults.csv")).c_str(), MessageBoxType_Error);
+								}
+								TecUtilStringDealloc(&ZoneName);
+							}
+						}
+					}
+
+					/*
+					 *	Added this for exporting condensed basin and gradient bundle (e.g. bond bundle) information.
+					 *	Loop through the zones again saving relevant information for three groups: Bader atoms, 
+					 *	special gradient bundles, and condensed wedges.
+					 */
+					std::set<string> BaderAtomSet, SpecialGradientBundleSet, CondensedBasinSet, VarNameSet;
+					std::map<string, vector<string> > CPNames;
+					std::map<string, vector<string> > GBSphereZoneNums;
+					std::map<string, int> CondensedBasinZoneNums;
+					std::map<string, string> DefiningVars;
+					std::map<string, std::map<string, double> > VarVals;
+
+					vector<string> OmitStrs = { "IN: ", "INS: " };
+					string delStr = "I: ";
+
+					for (int z = 1; z <= NumZones; ++z) {
+						string IntVars, IntVals;
+						/*
+						 *	Checking for bader atoms (GBA spheres)
+						 */
+						if (AuxDataZoneGetItem(z, CSMAuxData.GBA.AtomicBasinIntegrationValues, IntVals)
+							&& AuxDataZoneGetItem(z, CSMAuxData.GBA.AtomicBasinIntegrationVariables, IntVars)){
+							char* cstr;
+							TecUtilZoneGetName(z, &cstr);
+							string tmpStr = cstr;
+							BaderAtomSet.insert(tmpStr);
+							if (VarVals.count(tmpStr) > 0) {
+								VarVals[tmpStr] = std::map<string, double>();
+							}
+							vector<string> varStrs = SplitString(IntVars, ",");
+							vector<double> valVec = SplitStringDbl(IntVals, ",");
+							if (varStrs.size() == valVec.size()){
+								for (int i = 0; i < varStrs.size(); ++i){
+
+									VarVals[tmpStr][varStrs[i]] = valVec[i];
+									VarNameSet.insert(varStrs[i]);
+								}
+							}
+							else {
+								TecUtilDialogErrMsg("Discrepancy between number of integration variables and integration values in aux data for atomic basins.");
+							}
+							GBSphereZoneNums[tmpStr] = { to_string(z) };
+							CPNames[tmpStr] = { AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceNucleusName) };
+						}
+
+						/*
+						 *	Checking for special gradient bundles
+						 */
+						if (AuxDataZoneHasItem(z, CSMAuxData.GBA.CondensedBasinIsSpecialGradientBundle)
+							&& (AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin)
+								|| AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin))){
+							IntVars = AuxDataZoneGetItem(z, CSMAuxData.GBA.IntVarNames);
+							IntVals = AuxDataZoneGetItem(z, CSMAuxData.GBA.IntVarVals);
+
+							string tmpStr = AuxDataZoneGetItem(z, CSMAuxData.GBA.CondensedBasinName);
+							string defVar = AuxDataZoneGetItem(z, CSMAuxData.GBA.CondensedBasinDefiningVariable);
+							tmpStr += GBADelim + defVar;
+							DefiningVars[tmpStr] = AuxDataZoneGetItem(z, CSMAuxData.GBA.CondensedBasinDefiningVariable);
+							SpecialGradientBundleSet.insert(tmpStr);
+							if (CPNames.count(tmpStr) == 0)
+								CPNames[tmpStr] = { AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceNucleusName) };
+							else
+								CPNames[tmpStr].push_back(AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceNucleusName));
+							
+							if (GBSphereZoneNums.count(tmpStr) == 0)
+								GBSphereZoneNums[tmpStr] = { AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceZoneNum) };
+							else
+								GBSphereZoneNums[tmpStr].push_back(AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceZoneNum));
+
+
+							vector<string> varStrs = SplitString(IntVars, ",");
+							vector<double> valVec = SplitStringDbl(IntVals, ",");
+							if (varStrs.size() == valVec.size()) {
+								for (int i = 0; i < varStrs.size(); ++i){
+									bool doOmit = false;
+									for (int si = 0; si < OmitStrs.size() && !doOmit; ++si) {
+										doOmit = (varStrs[i].find(OmitStrs[si]) != string::npos);
+									}
+									if (!doOmit) {
+										varStrs[i] = StringReplaceSubString(varStrs[i], delStr, "");
+										if (VarVals[tmpStr].count(varStrs[i]) == 0)
+											VarVals[tmpStr][varStrs[i]] = valVec[i];
+										else
+											VarVals[tmpStr][varStrs[i]] += valVec[i];
+										VarNameSet.insert(varStrs[i]);
+									}
+								}
+							}
+							else {
+								TecUtilDialogErrMsg("Discrepancy between number of integration variables and integration values in aux data for special gradient bundles.");
+							}
+
+						}
+					
+						/*
+						 *	Checking for condensed basins
+						 */
+						if (AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin)
+							|| AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin))
+						{
+							IntVars = AuxDataZoneGetItem(z, CSMAuxData.GBA.IntVarNames);
+							IntVals = AuxDataZoneGetItem(z, CSMAuxData.GBA.IntVarVals);
+
+							string tmpStr = AuxDataZoneGetItem(z, CSMAuxData.GBA.CondensedBasinInfo);
+							string defVar = AuxDataZoneGetItem(z, CSMAuxData.GBA.CondensedBasinDefiningVariable);
+							tmpStr += GBADelim + defVar;
+							CondensedBasinZoneNums[tmpStr] = z;
+							CondensedBasinSet.insert(tmpStr);
+							CPNames[tmpStr] = { AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceNucleusName) };
+							GBSphereZoneNums[tmpStr] = { AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceZoneNum) };
+							DefiningVars[tmpStr] = AuxDataZoneGetItem(z, CSMAuxData.GBA.CondensedBasinDefiningVariable);
+							
+							vector<string> varStrs = SplitString(IntVars, ",");
+							vector<double> valVec = SplitStringDbl(IntVals, ",");
+							if (varStrs.size() == valVec.size()) {
+								for (int i = 0; i < varStrs.size(); ++i) {
+									bool doOmit = false;
+									for (int si = 0; si < OmitStrs.size() && !doOmit; ++si) {
+										doOmit = (varStrs[i].find(OmitStrs[si]) != string::npos);
+									}
+									if (!doOmit) {
+										varStrs[i] = StringReplaceSubString(varStrs[i], delStr, "");
+										VarVals[tmpStr][varStrs[i]] = valVec[i];
+										VarNameSet.insert(varStrs[i]);
+									}
+								}
+							}
+							else {
+								TecUtilDialogErrMsg("Discrepancy between number of integration variables and integration values in aux data for condensed basins.");
+							}
+						}
+					}
+
+					/*
+					 *	Now write it all out.
+					 */
+					char *cstr;
+					TecUtilDataSetGetInfo(&cstr, NULL, NULL);
+					string dataSetName = cstr;
+					TecUtilStringDealloc(&cstr);
+					ofstream OutFile(string(FolderName + "/" + dataSetName + "_Atomic_Basins.csv"));
+
+					/*
+					 *`Get current date
+					 */
+					auto t = std::time(nullptr);
+					auto tm = *std::localtime(&t);
+					stringstream dateSS;
+					dateSS << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << std::endl;
+
+					// First atomic basins
+					if (OutFile.is_open()){
+						/*
+						 *	Print date and dataset name
+						 */
+						OutFile << dateSS.str() << endl << dataSetName << endl;
+
+						/*
+						 *	Print headings
+						 */
+						OutFile << "Atom,Zone name,Zone number,";
+						// and the variable names
+						for (const string & s : VarNameSet)
+							OutFile << s << ",";
+						OutFile << endl;
+
+						/*
+						 *	Now all the values
+						 */
+						for (const string & abStr : BaderAtomSet){
+							OutFile << abStr << "," << CPNames[abStr][0] << "," << GBSphereZoneNums[abStr][0] << ",";
+							for (const string & varStr : VarNameSet){
+								if (VarVals[abStr].count(varStr) > 0)
+									OutFile << std::setprecision(16) << VarVals[abStr][varStr];
+
+								OutFile << ",";
+							}
+							OutFile << endl;
+						}
+						OutFile.close();
+					}
+					else {
+						TecUtilDialogErrMsg("Failed to open output file for writing atomic basin data");
+					}
+
+					// Then special gradient bundles
+					OutFile.open(string(FolderName + "/" + dataSetName + "_Special_Gradient_Bundles.csv"));
+					if (OutFile.is_open()) {
+						/*
+							*	Print date and dataset name
+							*/
+						OutFile << dateSS.str() << endl << dataSetName << endl;
+
+						/*
+							*	Print headings
+							*/
+						OutFile << "Special gradient bundle,Contributing atoms,Atom sphere zone numbers,Defined using variable,";
+						// and the variable names
+						for (const string & s : VarNameSet)
+							OutFile << s << ",";
+						OutFile << endl;
+
+						/*
+							*	Now all the values
+							*/
+						for (const string & sgpStr : SpecialGradientBundleSet) {
+							OutFile << SplitString(sgpStr, GBADelim)[0] << "," << VectorToString(CPNames[sgpStr], "-") << "," << VectorToString(GBSphereZoneNums[sgpStr],"-") << "," << DefiningVars[sgpStr] << ",";
+							for (const string & varStr : VarNameSet) {
+								if (VarVals[sgpStr].count(varStr) > 0)
+									OutFile << std::setprecision(16) << VarVals[sgpStr][varStr];
+
+								OutFile << ",";
+							}
+							OutFile << endl;
+						}
+						OutFile.close();
+					}
+					else {
+						TecUtilDialogErrMsg("Failed to open output file for writing special gradient bundle data");
+					}
+
+					// Then the condensed basins, which includes any that were also counted in the special gradient bundles
+					OutFile.open(string(FolderName + "/" + dataSetName + "_Condensed_Basins.csv"));
+					if (OutFile.is_open()) {
+						/*
+							*	Print date and dataset name
+							*/
+						OutFile << dateSS.str() << endl << dataSetName << endl;
+
+						/*
+							*	Print headings
+							*/
+						OutFile << "Atom,Condensed basin information,Zone number,Atom sphere zone number,Defined using variable,";
+						// and the variable names
+						for (const string & s : VarNameSet)
+							OutFile << s << ",";
+						OutFile << endl;
+
+						/*
+							*	Now all the values
+							*/
+						for (const string & cbStr : CondensedBasinSet) {
+							OutFile << CPNames[cbStr][0] << "," << SplitString(cbStr, GBADelim)[0] << "," << CondensedBasinZoneNums[cbStr] << GBSphereZoneNums[cbStr][0] << "," << DefiningVars[cbStr] << ",";
+							for (const string & varStr : VarNameSet) {
+								if (VarVals[cbStr].count(varStr) > 0)
+									OutFile << std::setprecision(16) << VarVals[cbStr][varStr];
+
+								OutFile << ",";
+							}
+							OutFile << endl;
+						}
+					}
+					else {
+						TecUtilDialogErrMsg("Failed to open output file for writing special gradient bundle data");
+					}
+				}
+			}
+		}
+	}
 }

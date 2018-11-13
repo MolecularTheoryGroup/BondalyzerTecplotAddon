@@ -9,6 +9,10 @@
 #include <armadillo>
 using namespace arma;
 
+const vec LogSpace(const double & low, const double & high, const int & n){
+	return exp(linspace(log(low), log(high), n));
+}
+
 double DistSqr(const vec & A, const vec & B) { 
 	return sum(square(B - A)); 
 }
@@ -259,4 +263,43 @@ const bool ParallelpidedPointIsInternal(const mat33 & LV, const vec3 & Origin, c
 	double FullVol = ParallepipedVolume(LV);
 
 	return (PtTetVol <= FullVol);
+}
+
+/*
+ *	Calculates the scalar triple product
+ */
+const double ScTP(const vec3 & a, const vec3 & b, const vec3 & c){
+	return dot(a, cross(b, c));
+}
+
+/*
+ *	Calculates the barycentric coordinates of a point p in a tetrahedron
+ *	defined by a-b-c-d
+ */
+const vec4 BaryTet(const vec3 & a,
+	const vec3 & b,
+	const vec3 & c,
+	const vec3 & d,
+	const vec3 & p)
+{
+	vec3 vap = p - a;
+	vec3 vbp = p - b;
+
+	vec3 vab = b - a;
+	vec3 vac = c - a;
+	vec3 vad = d - a;
+
+	vec3 vbc = c - b;
+	vec3 vbd = d - b;
+	// ScTP computes the scalar triple product
+	double va6 = ScTP(vbp, vbd, vbc);
+	double vb6 = ScTP(vap, vac, vad);
+	double vc6 = ScTP(vap, vad, vab);
+	double vd6 = ScTP(vap, vab, vac);
+	double v6 = 1 / ScTP(vab, vac, vad);
+
+	vec4 bary;
+	bary << va6*v6 << vb6*v6 << vc6*v6 << vd6*v6;
+
+	return bary;
 }

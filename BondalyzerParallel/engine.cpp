@@ -1517,6 +1517,7 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 		vector<int> StartEndCPNums = GP.GetStartEndCPNum();
 		vector<vector<int> > StartEndCPTypeAndOffset(2);
 		StartEndCPTypeAndOffset[0] = AllCPs.GetTypeNumOffsetFromTotOffset(OldStartCPNum);
+		int CPNumForType = StartEndCPTypeAndOffset[0][1];
 		string Name = (CPType == CPType_Bond ? CSMZoneName.BondPath : CSMZoneName.RingLine) + CPNameList[StartEndCPTypeAndOffset[0][0]] + " " + to_string(StartEndCPTypeAndOffset[0][1] + 1);
 		Name += MakeStringFromCPNums(StartEndCPNums, AllCPs, StartEndCPTypeAndOffset);
 // 		for (int i = 0; i < 2; ++i){
@@ -1539,12 +1540,19 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 		GP.SaveAsOrderedZone(Name, vector<FieldDataType_e>(), XYZVarNums, RhoVarNum, TRUE, PathColor);
 		for (int i = 0; i < 2; ++i){
 			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndNumStrs[i], to_string(StartEndCPNums[i] + 1));
-			if (StartEndCPNums[i] >= 0) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], CPNameList[StartEndCPTypeAndOffset[i][0]]);
-			else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
+			if (StartEndCPNums[i] >= 0) 
+				AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], CPNameList[StartEndCPTypeAndOffset[i][0]]);
+			else 
+				AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
 		}
+		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPMiddleCPNum, to_string(CPNums[0] + 1));
+		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPMiddleCPNumForType, to_string(CPNumForType + 1));
+		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPMiddleCPType, (CPType == CPType_Bond ? CPNameList[1] : CPNameList[2]));
 		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeGP);
-		if (CPType == CPType_Ring) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
-		else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPath);
+		if (CPType == CPType_Ring) 
+			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
+		else 
+			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPath);
 	}
 
 	for (auto & GP : GPs){
@@ -1564,12 +1572,16 @@ const Boolean_t FindBondRingLines(const int & VolZoneNum,
 		GP.SaveAsOrderedZone(Name, vector<FieldDataType_e>(), XYZVarNums, RhoVarNum, FALSE, PathColor);
 		for (int i = 0; i < 2; ++i){
 			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndNumStrs[i], to_string(StartEndCPNums[i] + 1));
-			if (StartEndCPNums[i] >= 0) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], CPNameList[StartEndCPTypeAndOffset[i][0]]);
-			else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
+			if (StartEndCPNums[i] >= 0) 
+				AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], CPNameList[StartEndCPTypeAndOffset[i][0]]);
+			else 
+				AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
 		}
 		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeGP);
-		if (CPType == CPType_Ring) AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLine);
-		else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPath);
+		if (CPType == CPType_Ring) 
+			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRingLineSegment);
+		else 
+			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPathSegment);
 	}
 
 	TecUtilDataLoadEnd();
@@ -3595,6 +3607,7 @@ const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
 			else AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.GPEndTypes[i], "FF");
 		}
 		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeGP);
+		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, (CPType == CPType_Bond ? CSMAuxData.CC.ZoneSubTypeBondCagePath : CSMAuxData.CC.ZoneSubTypeRingNuclearPath));
 	}
 
 	TecUtilDataLoadEnd();
@@ -4284,20 +4297,21 @@ void CombineCPZonesReturnUserInfo(const bool GuiSuccess,
 {
 	int fNum = 0;
 	vector<int> ZoneNums = Fields[fNum++].GetReturnIntVec();
+	int RhoVarNum = Fields[fNum++].GetReturnInt();
 	int CPTypeVarNum = Fields[fNum++].GetReturnInt();
 	vector<int> XYZVarNums(3);
-	for (int i = 0; i < 3; ++i) XYZVarNums[i] = Fields[fNum++].GetReturnInt();
+	for (int i = 0; i < 3; ++i) XYZVarNums[i] = Fields[fNum].GetReturnInt() + i;
 
 
 	TecUtilLockStart(AddOnID);
 
 	CritPoints_c CPs;
 
-	for (const int & z : ZoneNums) CPs += CritPoints_c(z, XYZVarNums, CPTypeVarNum);
+	for (const int & z : ZoneNums) CPs += CritPoints_c(z, XYZVarNums, CPTypeVarNum, RhoVarNum);
 
 	CPs.RemoveSpuriousCPs();
 
-	CPs.SaveAsOrderedZone(XYZVarNums, -1, TRUE);
+	CPs.SaveAsOrderedZone(XYZVarNums, RhoVarNum, TRUE);
 
 	TecUtilLockFinish(AddOnID);
 }
@@ -4305,12 +4319,176 @@ void CombineCPZonesReturnUserInfo(const bool GuiSuccess,
 void CombineCPZonesGetUserInfo(){
 	vector<GuiField_c> Fields = {
 		GuiField_c(Gui_ZoneSelectMulti, "CP Zones"),
-		GuiField_c(Gui_VarSelect, "CP type variable", CSMVarName.CritPointType)
+		GuiField_c(Gui_VarSelect, "Electron density variable", CSMVarName.Dens),
+		GuiField_c(Gui_VarSelect, "CP type variable", CSMVarName.CritPointType),
+		GuiField_c(Gui_VarSelect, "X", "X")
 	};
 
-	for (const string & i : { "X", "Y", "Z" }) Fields.push_back(GuiField_c(Gui_VarSelect, i, i));
-
 	CSMGui("Combine CP zones", Fields, CombineCPZonesReturnUserInfo, AddOnID);
+}
+
+
+void MakeSurfaceFromPathZonesReturnUserInfo(const bool GuiSuccess,
+	const vector<GuiField_c> & Fields,
+	const vector<GuiField_c> PassthroughFields)
+{
+	int fNum = 0;
+	bool UseStreamtraces = Fields[fNum++].GetReturnBool();
+	vector<int> ZoneNums = Fields[fNum++].GetReturnIntVec();
+	int ResampleNumPoints = Fields[fNum++].GetReturnInt();
+	int GroupNum = Fields[fNum++].GetReturnInt();
+	bool ConnectFirstAndLastPaths = Fields[fNum++].GetReturnBool();
+	bool DelSourceZones = Fields[fNum++].GetReturnBool();
+	vector<int> XYZVarNums(3);
+	for (int i = 0; i < 3; ++i) XYZVarNums[i] = Fields[fNum++].GetReturnInt();
+
+	TecUtilLockStart(AddOnID);
+
+	if (UseStreamtraces && TecUtilStreamtraceGetCount() > 1 && TecUtilStreamtracesAreActive()) {
+		ZoneNums.clear();
+		int startZoneNum = TecUtilDataSetGetNumZones();
+		if (TecUtilCreateStreamZones(FALSE)){
+			for (int z = startZoneNum+1; z <= TecUtilDataSetGetNumZones(); ++z){
+				ZoneNums.push_back(z);
+			}
+		}
+		if (ZoneNums.back() - ZoneNums[0] < 2){
+			TecUtilDialogErrMsg("Not enough streamtrace zones were created");
+			TecUtilLockFinish(AddOnID);
+			return;
+		}
+		DelSourceZones = true;
+	}
+
+
+
+	if (ResampleNumPoints > 0){
+		/*
+		 *	First, read in all zones as GPs to resample.
+		 */
+		vector<GradPath_c> GPs;
+		vector<GradPath_c*> GPPtrs;
+		vector<int> XYZRhoVarNums = XYZVarNums;
+		XYZRhoVarNums.push_back(4);
+		for (const int & z : ZoneNums){
+			GPs.push_back(GradPath_c(z, XYZRhoVarNums, AddOnID));
+			GPs.back().Resample(ResampleNumPoints);
+		}
+		for (auto & gp : GPs)
+			GPPtrs.push_back(&gp);
+
+		/*
+		 *	Now make and save surface
+		 */
+		FESurface_c Surf;
+		Surf.MakeFromGPs(GPPtrs, ConnectFirstAndLastPaths);
+
+		if (Surf.IsMade()){
+			Surf.SaveAsTriFEZone(XYZVarNums, "Stitched path surface");
+		}
+	}
+	else {
+		/*
+		 *	First, need to read in all the points of all the zones to a single vector of vec3
+		 *	while recording the indices in that vector of each individual path.
+		 */
+		vector<vec3> P;
+		vector<vector<int> > IndList;
+		int Ind = 0;
+		for (const int & z : ZoneNums) {
+			REQUIRE(TecUtilZoneIsOrdered(z));
+			int IJK[3];
+			TecUtilZoneGetIJK(z, &IJK[0], &IJK[1], &IJK[2]);
+			REQUIRE(IJK[0] > 1 && IJK[1] == 1 && IJK[2] == 1);
+
+			/*
+			 *	Preallocate space in P assuming all paths are same number of points.
+			 */
+			if (P.size() == 0) {
+				P.reserve(IJK[0] * ZoneNums.size());
+			}
+			IndList.push_back(vector<int>(IJK[0]));
+
+			FieldVecPointer_c XYZVarPtr;
+			if (XYZVarPtr.GetReadPtr(z, XYZVarNums)) {
+				for (int i = 0; i < IJK[0]; ++i) {
+					P.push_back(XYZVarPtr[i]);
+					IndList.back()[i] = Ind++;
+				}
+			}
+		}
+		if (ConnectFirstAndLastPaths)
+			IndList.push_back(IndList[0]);
+
+		/*
+		 *	Second, construct the triangular elements by stitching neighboring paths together.
+		 */
+		vector<vector<int> > Elem;
+		for (int i = 0; i < IndList.size() - 1; ++i) {
+			StitchPaths(IndList[i], IndList[i + 1], P, Elem);
+		}
+
+		/*
+		 * Now create and save surface
+		 */
+		FESurface_c Surf(P, Elem);
+		if (Surf.IsMade()) {
+			Surf.SaveAsTriFEZone(XYZVarNums, "Stitched path surface");
+		}
+	}
+
+	/*
+	 *	Deactivate source zones and activate the new zone
+	 */
+	Set sourceZones;
+	for (const int & z : ZoneNums) sourceZones += z;
+	TecUtilZoneSetActive(sourceZones.getRef(), AssignOp_MinusEquals);
+	TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_PlusEquals);
+
+	/*
+	 *	Delete source zones
+	 */
+	if (DelSourceZones) {
+		Set delZones;
+		for (const int & z : ZoneNums) delZones += z;
+		TecUtilDataSetDeleteZone(delZones.getRef());
+		ZoneNums.clear();
+	}
+
+	/*
+	 *	Change group number of zones
+	 */
+	if (GroupNum > 1) {
+		ZoneNums.push_back(TecUtilDataSetGetNumZones());
+		string ZoneStr = "[" + to_string(ZoneNums[0]);
+		for (int z = 1; z < ZoneNums.size(); ++z) ZoneStr += "," + to_string(ZoneNums[z]);
+		ZoneStr += "]";
+		TecUtilMacroExecuteCommand(string("$!FIELDMAP " + ZoneStr + " GROUP = " + to_string(GroupNum)).c_str());
+	}
+
+	if (UseStreamtraces){
+		TecUtilStreamtraceDeleteAll();
+	}
+
+	
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void MakeSurfaceFromPathZonesGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_Toggle, "Use current set of streamtraces"),
+		GuiField_c(Gui_ZoneSelectMulti, "Path Zones"),
+		GuiField_c(Gui_Int, "Resample with at most # points (0 for no resample)", "500"),
+		GuiField_c(Gui_Int, "Group Number", "1"),
+		GuiField_c(Gui_Toggle, "Connect first and last paths?"),
+		GuiField_c(Gui_Toggle, "Delete source zones after surface creation?", "1"),
+		GuiField_c(Gui_VarSelect, "X", "X"),
+		GuiField_c(Gui_VarSelect, "Y", "Y"),
+		GuiField_c(Gui_VarSelect, "Z", "Z")
+	};
+
+	CSMGui("Make surface from path zones", Fields, MakeSurfaceFromPathZonesReturnUserInfo, AddOnID);
 }
 
 
@@ -4415,7 +4593,7 @@ void MakeSliceFromPointSelectionGetUserInfo(){
 
 
 void TestFunction(){
-
+	TecUtilLockStart(AddOnID);
 	/*
 	*	Quick test of tecplot toolbox set class
 	*/
@@ -4476,21 +4654,75 @@ void TestFunction(){
 	/*
 	 *	Test rolling average-based time remaining on status
 	 */
+// 
+// 	high_resolution_clock::time_point StartTime = high_resolution_clock::now();
+// 
+// 	StatusLaunch("test", AddOnID, TRUE, TRUE);
+// 
+// 	int N = 200;
+// 
+// 	for (int i = 0; i < N; ++i){
+// 		StatusUpdate(i, N, "test", AddOnID, StartTime);
+// 		Sleep(100 * (i % 5));
+// 	}
+// 
+// 	StatusDrop(AddOnID);
+// 	
 
-	TecUtilLockStart(AddOnID);
+	/*
+	 *	Test isoRho value based integration
+	 */
 
-	high_resolution_clock::time_point StartTime = high_resolution_clock::now();
+	/*
+	 *	First on a typical GB, starting at the sphere end terminating not at a point.
+	 */
+	vector<int> GPZoneNums = { 55, 191, 60, 126, 30, 124 };
+	vector<GradPath_c*> GPPtrs;
+	for (int i : GPZoneNums){
+		GPPtrs.push_back(new GradPath_c);
+		*GPPtrs.back() = GradPath_c(i, { 1, 2, 3, 4 }, AddOnID);
+	}
+	VolExtentIndexWeights_s VolInfo;
+	GetVolInfo(1, { 1, 2, 3 }, FALSE, VolInfo);
+	vector<FieldDataPointer_c> VarPtrs(1);
+	VarPtrs[0].GetReadPtr(1, 4);
+	vector<double> IntVals;
+	IntegrateUsingIsosurfaces(GPPtrs, 3, VolInfo, VarPtrs, IntVals);
 
-	StatusLaunch("test", AddOnID, TRUE, TRUE);
+	/*
+	 *	Get the sphere so we can add the sphere-interior portion of the integral
+	 */
+	FESurface_c Sphere(22, 1, { 1, 2, 3 }, { 4 });
+	Sphere.DoIntegrationNew(2, TRUE);
+	vector<double> SphereTriangleAreas;
+	vector<vector<double> > SphereElemIntVals = Sphere.GetTriSphereIntValsByElem(&SphereTriangleAreas);
 
-	int N = 200;
+	for (int i = 0; i < IntVals.size(); ++i){
+		IntVals[i] += SphereElemIntVals[62][i];
 
-	for (int i = 0; i < N; ++i){
-		StatusUpdate(i, N, "test", AddOnID, StartTime);
-		Sleep(100 * (i % 5));
+		// 		TecUtilDialogMessageBox(to_string(IntVals[i]).c_str(), MessageBoxType_Information);
 	}
 
-	StatusDrop(AddOnID);
+	/*
+	 *	Now a bond-path-coincident GB, again not terminating at a point.
+	 */
+
+	GPZoneNums = { 73, 278, 74, 94, 48, 177, 47, 93 };
+	GPPtrs.clear();
+	for (int i : GPZoneNums){
+		GPPtrs.push_back(new GradPath_c);
+		*GPPtrs.back() = GradPath_c(i, { 1, 2, 3, 4 }, AddOnID);
+	}
+	IntegrateUsingIsosurfaces(GPPtrs, 2, VolInfo, VarPtrs, IntVals, true);
+
+	for (int i = 0; i < IntVals.size(); ++i){
+		IntVals[i] += SphereElemIntVals[20][i];
+
+		// 		TecUtilDialogMessageBox(to_string(IntVals[i]).c_str(), MessageBoxType_Information);
+	}
+  	
+
+	
 
 	TecUtilLockFinish(AddOnID);
 }

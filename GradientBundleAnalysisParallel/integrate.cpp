@@ -24,6 +24,7 @@
 #include "CSM_FE_VOLUME.h"
 #include "VIEWRESULTS.h"
 #include "CSM_GUI.h"
+#include "CSM_GEOMETRY.h"
 
 #include "INTEGRATE.h"
 
@@ -49,75 +50,76 @@ using std::chrono::duration_cast;
 /*
 *	Result viewer sidebar functions
 */
-void GBAIntegrationPrepareGUI(){
-
-	TecUtilLockStart(AddOnID);
-
-	/*
-	*	Clear lists and stuff
-	*/
-
-	TecGUIListDeleteAllItems(MLIntSelSph_MLST_T2_1);
-	TecGUIListDeleteAllItems(MLIntSelVar_MLST_T2_1);
-	TecGUIToggleSet(TGLIntVolInt_TOG_T2_1, TRUE);
-	/*
-	*	First, populate the list of spheres.
-	*	Get a total list, then load them alphabetically
-	*	with atoms first and cages second.
-	*/
-
-	Boolean_t IsOk = TRUE;
-
-	vector<string> SphereCPNameList;
-
-	EntIndex_t NumZones = TecUtilDataSetGetNumZones();
-
-	TecUtilDataLoadBegin();
-
-	string TmpStr1, TmpStr2;
-
-	TmpStr1 = CSMAuxData.GBA.ZoneType;
-	TmpStr2 = CSMAuxData.GBA.SphereCPName;
-
-	for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones; ++ZoneNum){
-		if (AuxDataZoneItemMatches(ZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeSphereZone)){
-			SphereCPNameList.push_back(AuxDataZoneGetItem(ZoneNum, TmpStr2));
-		}
-	}
-
-	IsOk = (SphereCPNameList.size() > 0);
-	if (IsOk){
-		/*
-		*	Sort list of spheres and select first one
-		*/
-		SortCPNameList(SphereCPNameList);
-		for (const string & it : SphereCPNameList){
-			TecGUIListAppendItem(MLIntSelSph_MLST_T2_1, it.c_str());
-		}
-		TecGUIListSetSelectedItem(MLIntSelSph_MLST_T2_1, 1);
-	}
-
-	/*
-	 *	Populate variable list
-	 */
-	ListPopulateWithVarNames(MLIntSelVar_MLST_T2_1);
-
-	TecGUIScaleShowNumericDisplay(SCIntPrecise_SC_T2_1, TRUE);
-	TecGUIScaleSetLimits(SCIntPrecise_SC_T2_1, 0, 4, 0);
-	TecGUIScaleSetValue(SCIntPrecise_SC_T2_1, IntPrecise);
-	TecGUILabelSetText(LBLIntPrecis_LBL_T2_1, IntPrecisionLabels[IntPrecise].c_str());
-
-	TecUtilDataLoadEnd();
-
-	TecUtilLockFinish(AddOnID);
-}
+// void GBAIntegrationPrepareGUI(){
+// 
+// 	TecUtilLockStart(AddOnID);
+// 
+// 	/*
+// 	*	Clear lists and stuff
+// 	*/
+// 
+// 	TecGUIListDeleteAllItems(MLIntSelSph_MLST_T2_1);
+// 	TecGUIListDeleteAllItems(MLIntSelVar_MLST_T2_1);
+// 	TecGUIToggleSet(TGLIntVolInt_TOG_T2_1, TRUE);
+// 	/*
+// 	*	First, populate the list of spheres.
+// 	*	Get a total list, then load them alphabetically
+// 	*	with atoms first and cages second.
+// 	*/
+// 
+// 	Boolean_t IsOk = TRUE;
+// 
+// 	vector<string> SphereCPNameList;
+// 
+// 	EntIndex_t NumZones = TecUtilDataSetGetNumZones();
+// 
+// 	TecUtilDataLoadBegin();
+// 
+// 	string TmpStr1, TmpStr2;
+// 
+// 	TmpStr1 = CSMAuxData.GBA.ZoneType;
+// 	TmpStr2 = CSMAuxData.GBA.SphereCPName;
+// 
+// 	for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones; ++ZoneNum){
+// 		if (AuxDataZoneItemMatches(ZoneNum, TmpStr1, CSMAuxData.GBA.ZoneTypeSphereZone)){
+// 			SphereCPNameList.push_back(AuxDataZoneGetItem(ZoneNum, TmpStr2));
+// 		}
+// 	}
+// 
+// 	IsOk = (SphereCPNameList.size() > 0);
+// 	if (IsOk){
+// 		/*
+// 		*	Sort list of spheres and select first one
+// 		*/
+// 		SortCPNameList(SphereCPNameList);
+// 		for (const string & it : SphereCPNameList){
+// 			TecGUIListAppendItem(MLIntSelSph_MLST_T2_1, it.c_str());
+// 		}
+// 		TecGUIListSetSelectedItem(MLIntSelSph_MLST_T2_1, 1);
+// 	}
+// 
+// 	/*
+// 	 *	Populate variable list
+// 	 */
+// 	ListPopulateWithVarNames(MLIntSelVar_MLST_T2_1);
+// 
+// 	TecGUIScaleShowNumericDisplay(SCIntPrecise_SC_T2_1, TRUE);
+// 	TecGUIScaleSetLimits(SCIntPrecise_SC_T2_1, 0, 4, 0);
+// 	TecGUIScaleSetValue(SCIntPrecise_SC_T2_1, IntPrecise);
+// 	TecGUILabelSetText(LBLIntPrecis_LBL_T2_1, IntPrecisionLabels[IntPrecise].c_str());
+// 
+// 	TecUtilDataLoadEnd();
+// 
+// 	TecUtilLockFinish(AddOnID);
+// }
 
 
 const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 	const vector<string> & IntVarNameList,
 	const vector<int> & IntVarNumList,
 	const Boolean_t & IntegrateVolume,
-	const int & IntResolution)
+	const int & IntResolution,
+	const Boolean_t & ActiveGBsOnly)
 {
 
 	TecUtilLockStart(AddOnID);
@@ -307,31 +309,10 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 		VolumeList.reserve(NumZones);
 		for (int i = 1; i <= NumZones; ++i){
 			if (TecUtilZoneIsFiniteElement(i)
+				&& (!ActiveGBsOnly || TecUtilZoneIsActive(i))
 				&& AuxDataZoneItemMatches(i, CSMAuxData.GBA.SphereCPName, AtomNameList[AtomNum]))
 			{
 				VolumeList.push_back(FESurface_c(i, VolZoneNum, XYZVarNums, IntVarNumList));
-// 				GPClosestPtNums.push_back(vector<int>());
-// 				string ElemNumStr = AuxDataZoneGetItem(i, GBAElemNum);
-// 				if (ElemNumStr != "" ){
-// 					string GPElemNums;
-// 					for (int j = 0; j < 3; ++j){
-// // 						string NodeNumStr = AuxDataZoneGetItem(i, GBANodeNums[(j + 2) % 2]);
-// 						string NodeNumStr = AuxDataZoneGetItem(i, GBANodeNums[j]);
-// 						for (int k = 1; k <= NumZones; ++k){
-// 							if (TecUtilZoneIsOrdered(k)){
-// 								if (AuxDataZoneGetItem(k, GBAGPElemNums, GPElemNums)){
-// 									if (SearchVectorForString(SplitString(GPElemNums, ','), ElemNumStr, false) >= 0 && AuxDataZoneItemMatches(k, GBAGPNodeNum, NodeNumStr)){
-// 										VolumeList.back().AddGP(GradPath_c(k, XYZRhoVarNums, AddOnID));
-// 										string PosStr;
-// 										if (AuxDataZoneGetItem(k , GBAGPClosestPtNumToCP, PosStr)){
-// 											GPClosestPtNums[VolumeList.size() - 1].push_back(stoi(PosStr));
-// 										}
-// 									}
-// 								}
-// 							}
-// 						}
-// 					}
-// 				}
 			}
 		}
 
@@ -342,12 +323,6 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 
 		int CPNum = stoi(AuxDataZoneGetItem(VolumeList[0].GetZoneNum(), CSMAuxData.GBA.SphereCPNum));
 
-// 		vec3 CPPos;
-// 
-// 		for (int i = 0; i < 3; ++i){
-// 			CPPos[i] = TecUtilDataValueGetByZoneVar(CPZoneNum, XYZVarNums[i], CPNum);
-// 		}
-
 		Boolean_t FreshIntegration = FALSE;
 		for (int i = 0; i < AuxDataNames.size() && !FreshIntegration; ++i)
 			FreshIntegration = !AuxDataZoneHasItem(VolumeList[0].GetZoneNum(), AuxDataNames[i]);
@@ -355,10 +330,6 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 		if (FreshIntegration || TecUtilDialogMessageBox("Variables have already been integrated for this zone."
 			" Integrate again?", MessageBox_YesNo)){
 			int NumVolumes = static_cast<int>(VolumeList.size());
-			int NumVolForPercentDone = NumVolumes;
-#ifndef _DEBUG
-			NumVolForPercentDone /= numCPU;
-#endif
 
 			int NumComplete = 0;
 
@@ -375,15 +346,18 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 // // 				i -= (57 + 1);
 // 			for (int i = 0; i < NumVolumes; i += NumVolumes / 10){
 // #endif
-				if (omp_get_thread_num() == 0){
-					UserQuit = !StatusUpdate(NumComplete, NumVolForPercentDone, ss.str(), AddOnID, StatusStartTime);
-					NumComplete++;
-#pragma omp flush (UserQuit)
+// #pragma omp critical (UpdateIntegrationStatus)
+				if (omp_get_thread_num() == 0)
+				{
+					UserQuit = !StatusUpdate(NumComplete, NumVolumes, ss.str(), AddOnID, StatusStartTime);
+					#pragma omp flush (UserQuit)
 				}
 #pragma omp flush (UserQuit)
 				if (!UserQuit){
 // 					VolumeList[i].DoIntegration(IntResolution, IntegrateVolume);
 					VolumeList[i].DoIntegrationNew(IntResolution, IntegrateVolume);
+#pragma omp atomic
+					NumComplete++;
 // 					if (VolumeList[i].GetNumSides() == 3){
 // 						VolumeList[i].DoIntegration(IntegrateVolume, stuW);
 // 					}
@@ -417,9 +391,14 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 			*/
 
 			vector<double> SphereTriangleAreas;
+			vector<int> ElemNums(VolumeList.size() - 1);
+
 			vector<vector<double> > SphereElemIntVals = VolumeList[0].GetTriSphereIntValsByElem(&SphereTriangleAreas);
+			vector<bool> ElemIncluded(SphereElemIntVals.size(), false);
 			for (int i = 1; i < VolumeList.size() && VolumeList[i].IntResultsReady(); ++i){
 				int ElemNum = stoi(AuxDataZoneGetItem(VolumeList[i].GetZoneNum(), CSMAuxData.GBA.ElemNum));
+				ElemNums[i - 1] = ElemNum - 1;
+				ElemIncluded[ElemNum - 1] = true;
 				vector<double> IntVals = VolumeList[i].GetIntResults();
 				for (int j = 0; j < SphereElemIntVals[ElemNum - 1].size(); ++j){
 					SphereElemIntVals[ElemNum - 1][j] += IntVals[j];
@@ -429,7 +408,8 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 			vector<double> TotalList(SphereElemIntVals[0].size(), 0.0),
 				TotalNormlizedList(SphereElemIntVals[0].size(), 0.0),
 				IntScaleFactors(SphereElemIntVals[0].size());
-			for (int i = 0; i < SphereElemIntVals.size(); ++i){
+// 			for (int i = 0; i < SphereElemIntVals.size(); ++i){
+			for (int i : ElemNums){
 				for (int j = 0; j < SphereElemIntVals[i].size(); ++j){
 					NormalizedValues[i][j] /= SphereTriangleAreas[i];
 					TotalNormlizedList[j] += NormalizedValues[i][j];
@@ -439,7 +419,8 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 			for (int i = 0; i < SphereElemIntVals[0].size(); ++i){
 				IntScaleFactors[i] = TotalList[i] / TotalNormlizedList[i];
 			}
-			for (int i = 0; i < SphereElemIntVals.size(); ++i){
+			// 			for (int i = 0; i < SphereElemIntVals.size(); ++i){
+			for (int i : ElemNums){
 				vector<double> TmpVec = SphereElemIntVals[i];
 				SphereElemIntVals[i] = vector<double>();
 				SphereElemIntVals[i].reserve(3 * TmpVec.size());
@@ -462,30 +443,25 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 // 				TecUtilDialogErrMsg("Failed to get pointers to variables for integration.");
 // 			}
 
-			vector<vector<FieldDataPointer_c> > Ptrs(VolumeList.size(), vector<FieldDataPointer_c>(SphereElemIntVals[0].size()));
+			vector<vector<FieldDataPointer_c> > Ptrs(VolumeList.size());
 			for (int i = 0; i < VolumeList.size(); ++i){
-				for (int j = 0; j < NewVarNums.size(); ++j){
-					Ptrs[i][j].GetWritePtr(VolumeList[i].GetZoneNum(), NewVarNums[j]);
+				if (VolumeList[i].IntResultsReady()){
+					for (int j = 0; j < NewVarNums.size(); ++j){
+						Ptrs[i].push_back(FieldDataPointer_c());
+						Ptrs[i][j].GetWritePtr(VolumeList[i].GetZoneNum(), NewVarNums[j]);
+					}
 				}
 			}
 
 			// Write cell-centered integration values to sphere and FE zones
-			for (int i = 0; i < SphereElemIntVals.size(); ++i){
+			for (int e = 0; e < ElemNums.size(); ++e){
+				int i = ElemNums[e];
 				for (int j = 0; j < SphereElemIntVals[i].size(); ++j){
-// 					TecUtilDataValueSetByRef(SphereResultVarRefs[j], i+1, SphereElemIntVals[i][j]);
-// 					if (VolumeList[i + 1].IntResultsReady()){
-// 						FieldData_pa TempRef = TecUtilDataValueGetWritableNativeRef(VolumeList[i + 1].GetZoneNum(), NewVarNums[j]);
-// 						if (VALID_REF(TempRef)){
-// 							int NumElems;
-// 							TecUtilZoneGetIJK(VolumeList[i + 1].GetZoneNum(), NULL, &NumElems, NULL);
-// 							for (int k = 1; k <= NumElems; ++k){
-// 								TecUtilDataValueSetByRef(TempRef, k, SphereElemIntVals[i][j]);
-// 							}
-// 						}
-// 					}
 					Ptrs[0][j].Write(i, SphereElemIntVals[i][j]);
-					for (int k = 0; k < Ptrs[i + 1][j].Size(); k++){
-						Ptrs[i + 1][j].Write(k, SphereElemIntVals[i][j]);
+					if (Ptrs.size() > e){
+						for (int k = 0; k < Ptrs[e + 1][j].Size(); k++){
+							Ptrs[e + 1][j].Write(k, SphereElemIntVals[i][j]);
+						}
 					}
 				}
 			}
@@ -495,9 +471,9 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 // 			vector<vector<double> > AllIntValues = VolumeList[0].GetTriSphereIntValsByElem();
 // 			vector<vector<double> > AllIntValues(VolumeList.size(), vector<double>(IntVarNumList.size() + 1 - int(IntegrateVolume), 0.0));
 
-			TotalList = vector<double>(NewVarNums.size(), 0.0);
 
 			if (PrintOutput){
+				TotalList = vector<double>(NewVarNums.size(), 0.0);
 				OutFile.open(OutFileName.c_str(), ios::out | ios::app);
 				if (!OutFile.is_open()){
 					TecUtilDialogErrMsg("Failed to open output file. (are you accessing it with another program maybe?)");
@@ -714,3 +690,4 @@ const int GetRecommendedIntPrecision(){
 
 	return RecPrecision;
 }
+

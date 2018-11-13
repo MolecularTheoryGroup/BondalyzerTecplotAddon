@@ -4,6 +4,10 @@
 
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <sstream>
+#include <iterator>
+#include <iomanip>
 
 #include "CSM_CRIT_POINTS.h"
 #include "CSM_DATA_TYPES.h"
@@ -66,9 +70,13 @@ struct CSMAuxData_s{
 			SphereCPName = Prefix + "SphereCP",
 			SphereCPNum = Prefix + "SphereCPNumber",
 			SourceZoneNum = Prefix + "SourceZoneNumber",
+			SourceNucleusName = Prefix + "SourceNucleusName",
+			SphereRadius = Prefix + "SphereRadius",
+			SphereRadiusCPDistRatio = Prefix + "SphereRadiusCPDistRatio",
 			SphereConstrainedNodeNums = Prefix + "SphereConstrainedNodeNums",
 			SphereConstrainedNodeIntersectCPTypes = Prefix + "SphereConstrainedNodeIntersectCPTypes",
 			SphereConstrainedNodeIntersectCPNames = Prefix + "SphereConstrainedNodeIntersectCPNames",
+			SphereConstrainedNodeIntersectCPTotalOffsetNames = Prefix + "SphereConstrainedNodeIntersectCPTotalOffsetNames",
 			GPElemNums = Prefix + "SphereElemNums",
 			GPNodeNum = Prefix + "SphereNodeNum",
 			ZoneType = Prefix + "ZoneType",
@@ -76,12 +84,29 @@ struct CSMAuxData_s{
 			ZoneTypeFEVolumeZone = "FEVolumeZone",
 			ZoneTypeGradPath = "GradPath",
 			ZoneTypeIBEdgeZone = "IBEdgeZone",
+			ZoneTypeCondensedRepulsiveBasin = "CondensedRepulsiveBasin",
+			ZoneTypeCondensedAttractiveBasin = "CondensedAttractiveBasin",
+			ZoneTypeCondensedRepulsiveBasinWedge = "CondensedRepulsiveWedge",
+			ZoneTypeCondensedAttractiveBasinWedge = "CondensedAttractiveWedge",
+			CondensedBasinIsSpecialGradientBundle = Prefix + "IsSpecialGradientBundle",
+			CondensedBasinName = Prefix + "CondensedBasinName",
+			CondensedBasinInfo = Prefix + "CondensedBasinInfo",
+			CondensedBasinSphereNodes = Prefix + "BasinNodes",
+			CondensedBasinSphereElements = Prefix + "BasinElements",
+			CondensedBasinCentralElementIndex = Prefix + "BasinCentralElementIndex",
+			CondensedBasinDefiningVariable = Prefix + "CondensedBasinDefiningVariable",
 			VolumeCPName = Prefix + "VolumeCP",
 			IntPrecision = Prefix + "IntegrationPrecision",
 			NumGBs = Prefix + "NumberOfGradientBundles",
 			PointsPerGP = Prefix + "PointsPerGradientPath",
 			GPsPerGB = Prefix + "GradientPathsPerGradientBundle",
-			IntWallTime = Prefix + "IntegrationWallTime";
+			IntWallTime = Prefix + "IntegrationWallTime",
+			IntVarNames = Prefix + "IntegratedVariableNames",
+			IntVarVals = Prefix + "IntegratedVariableValues",
+			AtomicBasinIntegrationVariables = Prefix + "AtomicBasinIntegrateVariables",
+			AtomicBasinIntegrationValues = Prefix + "AtomicBasinIntegrationValues",
+			VarType = Prefix + "VarType",
+			VarTypeCondensedVariable = "CondensedVariable";
 		vector<string> NodeNums;
 
 		GBA_s(){
@@ -100,19 +125,27 @@ struct CSMAuxData_s{
 		const string Prefix = "CompChem.",
 		ZoneType = Prefix + "ZoneType",
 		ZoneSubType = Prefix + "ZoneSubType",
-		ZoneTypeCPs = Prefix + "CriticalPoints",
-		ZoneTypeCPsAll = Prefix + "AllCPs",
-		ZoneTypeGP = Prefix + "GradientPath",
-		ZoneTypeSZFS = Prefix + "SpecialZeroFluxSurface",
-		ZoneSubTypeIAS = Prefix + "InteratomicSurface",
-		ZoneSubTypeRS = Prefix + "RingSurface",
-		ZoneSubTypeBBS = Prefix + "BondBundleSurface",
-		ZoneSubTypeRBS = Prefix + "RingBundleSurface",
-		ZoneSubTypeBondPath = Prefix + "BondPath",
-		ZoneSubTypeRingLine = Prefix + "RingLine",
-		ZoneSubTypeCageNuclearPath = Prefix + "CageNuclearPath",
+		ZoneTypeCPs = "CriticalPoints",
+		ZoneTypeCPsAll = "AllCPs",
+		ZoneTypeGP = "GradientPath",
+		ZoneTypeSZFS = "SpecialZeroFluxSurface",
+		ZoneSubTypeIAS = "InteratomicSurface",
+		ZoneSubTypeRS = "RingSurface",
+		ZoneSubTypeBBS = "BondBundleSurface",
+		ZoneSubTypeRBS = "RingBundleSurface",
+		ZoneSubTypeCBS = "CageBundleSurface",
+		ZoneSubTypeBondPath = "BondPath",
+		ZoneSubTypeBondPathSegment = "BondPathSegment",
+		ZoneSubTypeBondCagePath = "CageBondPath",
+		ZoneSubTypeRingLine = "RingLine",
+		ZoneSubTypeRingLineSegment = "RingLineSegment",
+		ZoneSubTypeCageNuclearPath = "CageNuclearPath",
+		ZoneSubTypeRingNuclearPath = "RingNuclearPath",
 		GPEndNumList = Prefix + "BegEndCrtPtNums",
 		GPEndTypeList = Prefix + "BegEndCrtPtTypes",
+		GPMiddleCPNum = Prefix + "MiddleCrtPtNum",
+		GPMiddleCPNumForType = Prefix + "MiddleCrtPtNumForType",
+		GPMiddleCPType = Prefix + "MiddleCrtPtType",
 		ZFSCornerCPTypeList = Prefix + "CornerCrtPtTypes",
 		ZFSCornerCPNumList = Prefix + "CornerCrtPtNums";
 		vector<string> NumCPs,
@@ -132,14 +165,14 @@ struct CSMAuxData_s{
 				Prefix + "NumCrtPtCageFF"
 			};
 			CPSubTypes = {
-				Prefix + "NuclearCPs",
-				Prefix + "BondCPs",
-				Prefix + "RingCPs",
-				Prefix + "CageCPs",
-				Prefix + "RingFFCPs",
-				Prefix + "CageFFCPs"
+				"NuclearCPs",
+				"BondCPs",
+				"RingCPs",
+				"CageCPs",
+				"RingFFCPs",
+				"CageFFCPs"
 			};
-			// For gradiant path zone
+			// For gradient path zone
 			GPEndNumStrs = {
 				Prefix + "BegCrtPtNum",
 				Prefix + "EndCrtPtNum"
@@ -359,20 +392,32 @@ const int VectorGetElementNum(const vector<T> & SearchVec, const T & Item){
 }
 const int SearchVectorForString(const vector<string> & Vec, const string & SearchString, const bool & UseVectorStringLength = true);
 const vector<string> SplitString(const string &s, const string & delim = " ");
+const vector<int> SplitStringInt(const string &s, const string & delim = ",");
+const vector<double> SplitStringDbl(const string &s, const string & delim);
 template <class T>
 const string VectorToString(const vector<T> & Items, const string & Delim = " "){
-	string OutStr;
+	//string OutStr;
 
-	for (int i = 0; i < Items.size(); ++i){
-		OutStr += Items[i];
-		if (i < Items.size() - 1) OutStr += Delim;
+	//for (int i = 0; i < Items.size(); ++i) {
+	//	OutStr += to_string(Items[i]);
+	//	if (i < Items.size() - 1) OutStr += Delim;
+	//}
+
+	//return OutStr;
+
+	std::ostringstream oss;
+	if (!Items.empty()) {
+		oss.precision(16);
+		std::copy(Items.begin(), Items.end() - 1, std::ostream_iterator<T>(oss, Delim.c_str()));
+		oss << Items.back();
+		return oss.str();
 	}
-
-	return OutStr;
+	else return "";
 }
 const Boolean_t StringIsInt(const string & s);
 const Boolean_t StringIsFloat(const string & s);
 const string StringReplaceSubString(const string & InStr, const string & OldStr, const string & NewStr);
+const string StringRemoveSubString(const string & InString, const string & SubString);
 
 void AuxDataCopy(const int & SourceNum, const int & DestNum, bool IsZone);
 
@@ -430,6 +475,11 @@ const vector<LgIndex_t> IJKFromIndex(const LgIndex_t & Index,
 	const vector<LgIndex_t>& IJKMax);
 
 const Boolean_t SaveVec3VecAsScatterZone(const vector<vec3> & VecVec,
+	const string & ZoneName,
+	const ColorIndex_t & Color,
+	const vector<EntIndex_t> & XYZVarNums);
+
+const Boolean_t SaveTetVec3VecAsFEZone(const vector<vec3> & Verts,
 	const string & ZoneName,
 	const ColorIndex_t & Color,
 	const vector<EntIndex_t> & XYZVarNums);

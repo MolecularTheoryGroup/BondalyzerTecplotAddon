@@ -654,7 +654,7 @@ void GradPathBase_c::PointPrepend(const vec3 & Point, const double & Rho){
 	m_NumGPPoints++;
 }
 
-const Boolean_t GradPathBase_c::SaveAsOrderedZone(const string & ZoneName, const ColorIndex_t MeshColor)
+const EntIndex_t GradPathBase_c::SaveAsOrderedZone(const string & ZoneName, const ColorIndex_t MeshColor)
 {
 	Boolean_t IsOk = m_GradPathMade;
 
@@ -684,7 +684,9 @@ const Boolean_t GradPathBase_c::SaveAsOrderedZone(const string & ZoneName, const
 		}
 	}
 
-	return IsOk;
+	if (IsOk)
+		return m_ZoneNum;
+	else return -1;
 }
 
 const EntIndex_t GradPathBase_c::SaveAsOrderedZone(const string & ZoneName,
@@ -1990,4 +1992,111 @@ const Boolean_t NEBGradPath_c::Relax(const double & StepRatio,
 	IsOk = (Cost <= Tol && Iter <= MaxIter);
 
 	return IsOk;
+}
+
+
+void StitchPaths(
+	const vector<int> &     L,       // indices of points in P
+	const vector<int> &     R,
+	const vector<vec3> &     P,
+	vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
+	)
+{
+	int iL = 0, iR = 0;
+	int nL = L.size() - 1, nR = R.size() - 1;
+	// index of last element of L rather than count
+	while (iL < nL || iR < nR)    // until exhaust both paths
+	{
+		int iL2 = MIN(iL + 1, nL),
+			iR2 = MIN(iR + 1, nR);
+		// next point along the path unless at end
+		double dL = DistSqr(P[L[iL2]], P[R[iR]]),
+			// length of next edge if we step down left path
+			dR = DistSqr(P[L[iL]], P[R[iR2]]);
+		// length of next edge if we step down right path
+		// R and L are just indices, the actual points are in P
+		if ((dL < dR && iL != iL2) || iR == iR2) {
+			// if iR==iR2 then have to append left until finished
+			T.push_back({ L[iL], L[iL2], R[iR] });
+			iL = iL2;
+		}
+		else{// if ((dR < dL && iR != iR2) || iL == iL2) {
+			T.push_back({ L[iL], R[iR2], R[iR] });
+			iR = iR2;
+		}
+	}
+}
+
+void StitchCapPaths(
+	const vector<int> &     L,       // indices of points in P
+	const vector<int> &     R,
+	const vector<int> &		C,       // indices of points in the cap, C. that go from L[-1] to R[-1]
+	const vector<vec3> &     P,
+	vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
+	)
+{
+	int nC = C.size() - 1;
+	if (nC < 0){
+		// If there are no cap points (i.e. the endpoint are sufficiently close together)
+		StitchPaths(L, R, P, T);
+	}
+	else{
+		int jL = MIN(nC - 1, int(nC / 2) + 1);
+		int jR = jL;
+		// midpoint of the cap, where we’ll transition to it
+		int iL = 0, iR = 0;
+		int nL = L.size() - 1, nR = R.size() - 1;
+		while (iL < nL || iR < nR)
+		{
+			int iL2 = MIN(iL + 1, nL),
+				iR2 = MIN(iR + 1, nR);
+			double dL = DistSqr(P[L[iL2]], P[R[iR]]),
+				dR = DistSqr(P[L[iL]], P[R[iR2]]),
+				dLC = DistSqr(P[R[iR]], P[C[jR]]),
+				dRC = DistSqr(P[L[iL]], P[C[jL]]);
+			//  length of next edge from L/R if transition to cap
+			if (dRC < dR / 2 || dLC < dL / 2) {
+				// next point on paths is closer to cap than to other path, 
+				// so switch to cap
+
+				T.push_back({ L[iL], C[jL], R[iR] });
+				// add transition triangle
+
+				// Now stitch each half of the cap with the remaining legs of the paths
+				// 				vector<int> CVecL(&C[0], &C[jL]+1),
+				// 					CVecR(&C[jR], &C[nC]+1),
+				// 					LVec, RVec;
+				// 				if (CVecL.size() == 0){
+				// 					CVecL = C;
+				// 					CVecR = C;
+				// 				}
+				// 				else std::reverse(CVecL.begin(), CVecL.end());
+				// 
+				// 				if (iL < nL) LVec.assign(&L[iL], &L[nL]+1);
+				// 				else LVec.push_back(L[nL]);
+				// 
+				// 				if (iR < nR) RVec.assign(&R[iR], &R[nR]+1);
+				// 				else RVec.push_back(R[nR]);
+				// 
+				// 				StitchPaths(LVec, CVecL, P, T);
+				// 				StitchPaths(RVec, CVecR, P, T);
+
+				vector<int> CVecL(&C[0], &C[jL] + 1);
+				std::reverse(CVecL.begin(), CVecL.end());
+
+				StitchPaths(vector<int>(&L[iL], &L[nL] + 1), CVecL, P, T);
+				StitchPaths(vector<int>(&R[iR], &R[nR] + 1), vector<int>(&C[jR], &C[nC] + 1), P, T);
+
+				break;
+			}
+			else if ((dL < dR && iL != iL2) || iR == iR2) {
+				T.push_back({ L[iL], L[iL2], R[iR] });
+				iL = iL2;
+			}
+			else{// if ((dR < dL && iR != iR2) || iL == iL2) {
+				T.push_back({ L[iL], R[iR2], R[iR] });
+				iR = iR2;
+			}
+		}
+	}
 }

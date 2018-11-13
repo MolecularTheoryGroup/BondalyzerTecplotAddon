@@ -80,6 +80,37 @@ const vector<string> SplitString(const string &s, const string & delim) {
 	return tokens;
 }
 
+const vector<int> SplitStringInt(const string &s, const string & delim) {
+	vector<int> tokens;
+	auto start = 0U;
+	auto end = s.find(delim);
+	while (end != std::string::npos) {
+		tokens.push_back(stoi(s.substr(start, end - start)));
+		start = end + delim.length();
+		end = s.find(delim, start);
+	}
+	if (s.length() - start > 0)
+		tokens.push_back(stoi(s.substr(start, s.length() - start)));
+	// 	if (tokens.size() == 0) tokens.push_back(s);
+	return tokens;
+}
+
+const vector<double> SplitStringDbl(const string &s, const string & delim) {
+	vector<double> tokens;
+	auto start = 0U;
+	auto end = s.find(delim);
+	while (end != std::string::npos) {
+		tokens.push_back(stod(s.substr(start, end - start)));
+		start = end + delim.length();
+		end = s.find(delim, start);
+	}
+	if (s.length() - start > 0)
+		tokens.push_back(stod(s.substr(start, s.length() - start)));
+	// 	if (tokens.size() == 0) tokens.push_back(s);
+	return tokens;
+}
+
+
 const Boolean_t StringIsInt(const string & s){
 	Boolean_t IsInt = TRUE;
 	for (int i = 0; i < s.length() && IsInt; ++i)
@@ -111,6 +142,20 @@ const string StringReplaceSubString(const string & InStr, const string & OldStr,
 	}
 
 	return OutStr;
+}
+
+const string StringRemoveSubString(const string & InString,
+	const string & SubString)
+{
+	string NewString = InString;
+
+	size_t Pos = NewString.find_first_of(SubString);
+	while (Pos != string::npos) {
+		NewString.erase(Pos, SubString.length());
+		Pos = NewString.find_first_of(SubString);
+	}
+
+	return NewString;
 }
 
 
@@ -841,6 +886,57 @@ const Boolean_t SaveVec3VecAsScatterZone(const vector<vec3> & VecVec,
 		TecUtilZoneSetScatter(SV_COLOR, TmpSet, 0, Color);
 		TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TmpSet, GeomShape_Sphere);
 		TecUtilZoneSetScatter(SV_FRAMESIZE, TmpSet, 1, 0);
+
+		TecUtilZoneSetActive(TmpSet, AssignOp_PlusEquals);
+
+		TecUtilSetDealloc(&TmpSet);
+	}
+	return IsOk;
+}
+
+const Boolean_t SaveTetVec3VecAsFEZone(const vector<vec3> & Verts,
+	const string & ZoneName,
+	const ColorIndex_t & Color,
+	const vector<EntIndex_t> & XYZVarNums){
+	Boolean_t IsOk = Verts.size() == 4;
+	if (IsOk){
+
+		TecUtilDataSetAddZone(ZoneName.c_str(), Verts.size(), 1, 1, ZoneType_FETetra, NULL);
+		// 		for (int i = 0; i < VecVec.size(); ++i){
+		// 			for (int dir = 0; dir < 3; ++dir){
+		// 				TecUtilDataValueSetByZoneVar(TecUtilDataSetGetNumZones(), XYZVarNums[dir], i + 1, VecVec[i][dir]);
+		// 			}
+		// 		}
+		int ZoneNum = TecUtilDataSetGetNumZones();
+
+		vector<vector<double> > TmpValues(3, vector<double>(Verts.size()));
+		for (int i = 0; i < Verts.size(); ++i){
+			for (int j = 0; j < 3; ++j)
+				TmpValues[j][i] = Verts[i][j];
+		}
+
+		for (int i = 0; i < 3 && IsOk; ++i){
+			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, XYZVarNums[i]);
+			IsOk = VALID_REF(SetFDPtr);
+			if (IsOk){
+				TecUtilDataValueArraySetByRef(SetFDPtr, 1, Verts.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
+			}
+		}
+
+		NodeMap_pa NodeMap = TecUtilDataNodeGetWritableRef(ZoneNum);
+		IsOk = VALID_REF(NodeMap);
+		for (int i = 1; i <= 4; ++i){
+			TecUtilDataNodeSetByRef(NodeMap, 1, i, i);
+		}
+
+		Set_pa TmpSet = TecUtilSetAlloc(FALSE);
+		TecUtilSetAddMember(TmpSet, TecUtilDataSetGetNumZones(), FALSE);
+		TecUtilZoneSetMesh(SV_SHOW, TmpSet, 0, FALSE);
+		TecUtilZoneSetContour(SV_SHOW, TmpSet, 0, FALSE);
+		TecUtilZoneSetEdgeLayer(SV_SHOW, TmpSet, 0, TRUE);
+		TecUtilZoneSetScatter(SV_SHOW, TmpSet, 0, FALSE);
+		TecUtilZoneSetShade(SV_SHOW, TmpSet, 0, TRUE);
+		TecUtilZoneSetShade(SV_COLOR, TmpSet, 0, Color);
 
 		TecUtilZoneSetActive(TmpSet, AssignOp_PlusEquals);
 

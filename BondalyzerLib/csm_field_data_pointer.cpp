@@ -1,11 +1,15 @@
 #include "TECADDON.h"
 
+#include "Set.h"
+#include "ArgList.h"
+
 #include <armadillo>
 
 #include "CSM_FIELD_DATA_POINTER.h"
 #include "CSM_VOL_EXTENT_INDEX_WEIGHTS.h"
 
 using namespace arma;
+using namespace tecplot::toolbox;
 
 /*
 *	Begin methods for FieldDataPointer_c
@@ -281,21 +285,11 @@ const Boolean_t FieldDataPointer_c::GetWritePtr(const int & ZoneNum, const int &
 void FieldDataPointer_c::Close(){
 	if (m_IsReady){
 		if (!m_IsReadPtr && m_Zone > 0 && m_Var > 0){
-			Set_pa ZoneList = TecUtilSetAlloc(FALSE);
-			TecUtilSetAddMember(ZoneList, m_Zone, FALSE);
-
-			Set_pa VarList = TecUtilSetAlloc(FALSE);
-			TecUtilSetAddMember(VarList, m_Var, FALSE);
-
-			ArgList_pa ArgList = TecUtilArgListAlloc();
-			TecUtilArgListAppendInt(ArgList, SV_STATECHANGE, StateChange_VarsAltered);
-			TecUtilArgListAppendSet(ArgList, SV_ZONELIST, ZoneList);
-			TecUtilArgListAppendSet(ArgList, SV_VARLIST, VarList);
-			TecUtilStateChangedX(ArgList);
-
-			TecUtilArgListDealloc(&ArgList);
-			TecUtilSetDealloc(&ZoneList);
-			TecUtilSetDealloc(&VarList);
+			ArgList Args;
+			Args.appendInt(SV_STATECHANGE, StateChange_VarsAltered);
+			Args.appendSet(SV_ZONELIST, Set(m_Zone));
+			Args.appendSet(SV_VARLIST, Set(m_Var));
+			TecUtilStateChangedX(Args.getRef());
 		}
 		m_IsReady = FALSE;
 	}
@@ -341,7 +335,8 @@ const Boolean_t FieldVecPointer_c::GetReadPtr(const int & ZoneNum, const vector<
 
 	for (int i = 0; i < 3 && IsOk; ++i){
 		IsOk = (Ptrs[i].GetReadPtr(ZoneNum, VarNums[i]) && Ptrs[i].FDType() == FieldDataType_Double);
-		if (i > 0) IsOk = (IsOk && Ptrs[i].ValueLocation() == Ptrs[i - 1].ValueLocation());
+		if (i > 0) IsOk = (IsOk && Ptrs[i].ValueLocation() == Ptrs[i - 1].ValueLocation()
+			&& Ptrs[i].Size() == Ptrs[i - 1].Size());
 	}
 
 	if (!IsOk) Close();

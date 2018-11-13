@@ -114,7 +114,7 @@ public:
 	void PointPrepend(const vec3 & Point, const double & Rho);
 
 	const LgIndex_t GetZoneNum() const { return m_ZoneNum; }
-	const Boolean_t SaveAsOrderedZone(const string & ZoneName = "Gradient Path", const ColorIndex_t MeshColor = Black_C);
+	const EntIndex_t SaveAsOrderedZone(const string & ZoneName = "Gradient Path", const ColorIndex_t MeshColor = Black_C);
 	const EntIndex_t SaveAsOrderedZone(const string & ZoneName,
 		vector<FieldDataType_e> & VarDataTypes,
 		const vector<int> & XYZVarNums,
@@ -358,6 +358,23 @@ public:
 private:
 
 };
+
+/*
+*	Redo of path stitching algorithm, formally TryPolyLines
+*/
+void StitchPaths(
+	const vector<int> &     L,       // indices of points in P
+	const vector<int> &     R,
+	const vector<vec3> &     P,
+	vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
+	);
+void StitchCapPaths(
+	const vector<int> &     L,       // indices of points in P
+	const vector<int> &     R,
+	const vector<int> &		C,       // indices of points in the cap, C
+	const vector<vec3> &     P,
+	vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
+	);
 
 
 #endif

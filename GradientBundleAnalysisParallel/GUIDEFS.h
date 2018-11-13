@@ -9,6 +9,30 @@
 
 
 extern void InitTGB(void);
+extern LgIndex_t Tab3_1Manager;
+extern void BuildTab3_1(LgIndex_t  Parent);
+
+extern LgIndex_t  SLSelSphere_SLST_T3_1;
+extern LgIndex_t  TGLSphereVis_TOG_T3_1;
+extern LgIndex_t  BTNSphereDel_BTN_T3_1;
+extern LgIndex_t  SLSelVar_SLST_T3_1;
+extern LgIndex_t  MLSelGB_MLST_T3_1;
+extern LgIndex_t  BTNAllGB_BTN_T3_1;
+extern LgIndex_t  BTNTogMode_BTN_T3_1;
+extern LgIndex_t  TFNumContours_TF_T3_1;
+extern LgIndex_t  LBL9_LBL_T3_1;
+extern LgIndex_t  RBLogLin_RADIO_T3_1;
+extern LgIndex_t  RBCntSrc_RADIO_T3_1;
+extern LgIndex_t  LBLCntSrc_LBL_T3_1;
+extern LgIndex_t  LBL13_LBL_T3_1;
+extern LgIndex_t  BTNExport_BTN_T3_1;
+extern LgIndex_t  TGLExGBs_TOG_T3_1;
+extern LgIndex_t  TGLShowMesh_TOG_T3_1;
+extern LgIndex_t  BTNSelGB_BTN_T3_1;
+extern LgIndex_t  TFGrpNum_TF_T3_1;
+extern LgIndex_t  LBL20_LBL_T3_1;
+extern LgIndex_t  LBL21_LBL_T3_1;
+extern LgIndex_t  BTNFndBas_BTN_T3_1;
 extern LgIndex_t Tab1_1Manager;
 extern void BuildTab1_1(LgIndex_t  Parent);
 
@@ -29,45 +53,12 @@ extern LgIndex_t  TGLOpenSys_TOG_T1_1;
 extern LgIndex_t  MLSelVars_MLST_T1_1;
 extern LgIndex_t  SCPrecise_SC_T1_1;
 extern LgIndex_t  LBL23_LBL_T1_1;
-extern LgIndex_t  TGLVolInt_TOG_T1_1;
 extern LgIndex_t  TGLInt_TOG_T1_1;
 extern LgIndex_t  MLSelCPs_MLST_T1_1;
 extern LgIndex_t  LBLLevel_LBL_T1_1;
 extern LgIndex_t  LBLPrecise_LBL_T1_1;
-extern LgIndex_t Tab2_1Manager;
-extern void BuildTab2_1(LgIndex_t  Parent);
-
-extern LgIndex_t  MLIntSelSph_MLST_T2_1;
-extern LgIndex_t  MLIntSelVar_MLST_T2_1;
-extern LgIndex_t  TGLIntVolInt_TOG_T2_1;
-extern LgIndex_t  LBL6_LBL_T2_1;
-extern LgIndex_t  SCIntPrecise_SC_T2_1;
-extern LgIndex_t  BTNIntegrate_BTN_T2_1;
-extern LgIndex_t  LBLIntPrecis_LBL_T2_1;
-extern LgIndex_t Tab3_1Manager;
-extern void BuildTab3_1(LgIndex_t  Parent);
-
-extern LgIndex_t  SLSelSphere_SLST_T3_1;
-extern LgIndex_t  TGLSphereVis_TOG_T3_1;
-extern LgIndex_t  BTNSphereDel_BTN_T3_1;
-extern LgIndex_t  SLSelVar_SLST_T3_1;
-extern LgIndex_t  MLSelGB_MLST_T3_1;
-extern LgIndex_t  BTNAllGB_BTN_T3_1;
-extern LgIndex_t  BTNTogMode_BTN_T3_1;
-extern LgIndex_t  TFNumContours_TF_T3_1;
-extern LgIndex_t  LBL9_LBL_T3_1;
-extern LgIndex_t  RBLogLin_RADIO_T3_1;
-extern LgIndex_t  RBCntSrc_RADIO_T3_1;
-extern LgIndex_t  LBLCntSrc_LBL_T3_1;
-extern LgIndex_t  LBL13_LBL_T3_1;
-extern LgIndex_t  BTNExport_BTN_T3_1;
-extern LgIndex_t  TGLExGBs_TOG_T3_1;
-extern LgIndex_t  TGLExInt_TOG_T3_1;
-extern LgIndex_t  TGLShowMesh_TOG_T3_1;
-extern LgIndex_t  BTNSelGB_BTN_T3_1;
-extern LgIndex_t  TFGrpNum_TF_T3_1;
-extern LgIndex_t  LBL20_LBL_T3_1;
-extern LgIndex_t  LBL21_LBL_T3_1;
+extern LgIndex_t  TGLsGP_TOG_T1_1;
+extern LgIndex_t  TGLsGB_TOG_T1_1;
 extern LgIndex_t Dialog1Manager;
 extern void BuildDialog1(LgIndex_t  ParentDialog);
 

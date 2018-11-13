@@ -3,6 +3,10 @@
 #include <cmath>
 #include <vector>
 
+#include <string>
+#include <stdio.h>
+#include <set>
+
 #include <armadillo>
 
 using namespace std;
@@ -261,7 +265,13 @@ int main(char *vargv, int argc){
 // 	TestParallelpipedInteriorCheck();
 // 	TestTetVolume();
 // 	
-	TransformationTest();
+// 	TransformationTest();
+// 	
+// 	char *cstr = new char[10];
+// 	sprintf(cstr, "a + %d", 5);
+// 	string str = cstr;
+
+	std::set<int> a = { 1,2,3,4,4,4,5,5,6 };
 
 	cout << endl << endl;
 	system("pause");

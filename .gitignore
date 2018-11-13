@@ -154,3 +154,7 @@ $RECYCLE.BIN/
 
 # Mac desktop service store files
 .DS_Store
+/.vs/BondalyzerSuite/v15
+/BondalyzerLib/spdlog
+/BondalyzerLib/tseqjtti.tzv
+/BondalyzerLib/kebgfbrz.yse

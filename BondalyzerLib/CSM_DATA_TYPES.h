@@ -146,6 +146,8 @@ const vector<string> ElementNameList = {
 "Atom "
 };
 
+const vec LogSpace(const double & low, const double & high, const int & n);
+
 double DistSqr(const vec & A, const vec & B);
 double Distance(const vec & A, const vec & B);
 double VectorAngle(const vec3 & A, const vec3 & B);

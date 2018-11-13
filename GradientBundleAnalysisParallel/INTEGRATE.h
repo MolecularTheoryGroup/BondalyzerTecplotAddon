@@ -7,10 +7,10 @@
 using std::vector;
 using std::string;
 
-static int IntPrecise = 1;
+static int IntPrecise = 2;
 static vector<string> IntPrecisionLabels = { "Coarse", "Normal", "Fine", "Finer", "Finest" };
 
-void GBAIntegrationPrepareGUI();
+// void GBAIntegrationPrepareGUI();
 
 const int GetRecommendedIntPrecision();
 
@@ -18,6 +18,7 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 	const vector<string> & IntVarNameList,
 	const vector<int> & IntVarNumList,
 	const Boolean_t & IntegrateVolume,
-	const int & IntResolution);
+	const int & IntResolution,
+	const Boolean_t & ActiveGBsOnly);
 
 #endif

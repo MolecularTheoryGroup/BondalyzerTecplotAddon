@@ -4,10 +4,13 @@
 #include <string>
 #include <vector>
 
+#include "CSM_FE_VOLUME.h"
+
 using std::vector;
 using std::string;
 
 void MainFunction();
 void GradPathTest();
 
+void FindSphereBasins();
 #endif

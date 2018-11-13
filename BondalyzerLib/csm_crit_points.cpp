@@ -531,17 +531,17 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 		*	no CP zones, so the data type for all current zones can be
 		*	bit for the CP type variable.
 		*/
-		vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Bit);
+		vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Double);
 		if (!TecUtilDataSetAddVar(CSMVarName.CritPointType.c_str(), DataTypes.data())){
 			TecUtilDialogErrMsg("Failed to create CP type variable for CP zone");
 			return{ -1 };
 		}
 		CPTypeVarNum = TecUtilDataSetGetNumVars();
 	}
-	vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars());
-	for (int i = 0; i < DataTypes.size(); ++i)
-		DataTypes[i] = TecUtilDataValueGetType(1, i + 1);
-	DataTypes[CPTypeVarNum - 1] = FieldDataType_Int16;
+	vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars(), FieldDataType_Double);
+// 	for (int i = 0; i < DataTypes.size(); ++i)
+// 		DataTypes[i] = TecUtilDataValueGetType(1, i + 1);
+// 	DataTypes[CPTypeVarNum - 1] = FieldDataType_Int16;
 
 	if (!TecUtilDataSetAddZone(CSMZoneName.CriticalPoints.c_str(), NumCPs(), 1, 1, ZoneType_Ordered, DataTypes.data())){
 		TecUtilDialogErrMsg("Failed to create CP zone");
@@ -583,6 +583,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 			for (int d = 0; d < 3; ++d){
 				XYZPtrs[d].Write(CPNum, GetXYZ(t, ti)[d]);
 			}
+			RhoPtr.Write(CPNum, m_Rho[t][ti]);
 			CPTypePtr.Write(CPNum++, CPTypeList[t]);
 		}
 	}
@@ -632,6 +633,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 						XYZPtrs[d].Write(ti, GetXYZ(t, ti)[d]);
 					}
 					CPTypeZonePtr.Write(ti, CPTypeList[t]);
+					RhoPtr.Write(ti, m_Rho[t][ti]);
 				}
 
 				CPTypeZonePtr.Close();
@@ -1442,7 +1444,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 
 	if (IsOk){
 		CPs = CritPoints_c(ThreadCPs);
-		CPs.RemoveSpuriousCPs();
+		CPs.RemoveSpuriousCPs(SpuriousCPDistanceRatioOfSearchGrid * CellSpacing);
 	}
 
 	return IsOk;

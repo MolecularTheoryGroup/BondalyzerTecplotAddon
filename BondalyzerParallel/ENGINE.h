@@ -60,6 +60,7 @@ void ConnectCPsGetUserInfo();
 void DrawEigenvectorArrowsGetUserInfo();
 class FieldDataPointer_c;
 void GetClosedIsoSurface(const int & IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
+void MakeSurfaceFromPathZonesGetUserInfo();
 void MakeSliceFromPointSelectionGetUserInfo();
 
 void GradientPathsOnSphereGetUserInfo();

@@ -2,7 +2,7 @@
 #define DEBUG_H
 
 #ifdef WIN32
-#define snprintf _snprintf
+//#define snprintf _snprintf
 #define __func__ __FUNCTION__
 #endif
 

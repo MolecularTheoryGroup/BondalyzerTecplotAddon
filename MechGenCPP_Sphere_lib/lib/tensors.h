@@ -2,7 +2,7 @@
 #define tensors_h
 
 #ifdef WIN32
-#define snprintf _snprintf
+//#define snprintf _snprintf
 #define __func__ __FUNCTION__
 #endif
 

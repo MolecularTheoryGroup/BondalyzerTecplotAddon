@@ -35,7 +35,8 @@ public:
 	FESurface_c(const int & ZoneNum,
 		const int & VolZoneNum,
 		const vector<int> & InXYZVarNums,
-		const vector<int> & InIntVarNums);
+		const vector<int> & InIntVarNums,
+		const bool CopyData = false);
 
 	/*
 	*	Make FEVolume from an existing zone.
@@ -98,6 +99,10 @@ public:
 	const double IntVolume(const int & N, const vec3 & StartPoint) const;
 	const vector<mat> GetIntegrationPointsWeights(const vec3 & StartPoint, const vector<vec> & stuW) const;
 	const vector<mat> GetIntegrationPointsWeights(const vector<vec> & stuW) const;
+
+	const vector<vector<LgIndex_t> > * GetConnectivityListPtr() const { return &m_ConnectivityList; }
+	const vector<vector<int> > * GetElemListPtr() const { return &m_ElemList; }
+	const vector<vec3> * GetXYZListPtr() const { return &m_XYZList; }
 
 // 	const Boolean_t MakeGradientBundle(vector<GradPath_c*> GPs);
 	const Boolean_t MakeFromGPs(vector<GradPath_c*> GPs, const bool ConnectBeginningAndEndGPs = false, const bool AddCap = false);
@@ -164,23 +169,6 @@ private:
 	void RefineTriElems(const vector<int> & TriNumList);
 // 	void TriPolyLines(const bool ConnectBeginningAndEndGPs = true);
 	void RemoveDupicateNodes();
-
-	/*
-	 *	Redo of path stitching algorithm, formally TryPolyLines
-	 */
-	void StitchPaths(
-		const vector<int> &     L,       // indices of points in P
-		const vector<int> &     R,
-		const vector<vec3> &     P,
-		vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
-		);
-	void StitchCapPaths(
-		const vector<int> &     L,       // indices of points in P
-		const vector<int> &     R,
-		const vector<int> &		C,       // indices of points in the cap, C
-		const vector<vec3> &     P,
-		vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
-		);
 
 
 	vector<GradPath_c> m_GPList;
