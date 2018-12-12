@@ -69,9 +69,9 @@ void X2DataValues(vector<double> &LevelVector, double Min, double Max)
 	}
 }
 
-const string ReplaceStringChar(const string & InString, 
-	const string & OldChar, 
-	const string & NewChar)
+string ReplaceStringChar(string const & InString, 
+	string const & OldChar, 
+	string const & NewChar)
 {
 	string NewString = InString;
 
@@ -85,8 +85,8 @@ const string ReplaceStringChar(const string & InString,
 	return NewString;
 }
 
-const string RemoveStringChar(const string & InString,
-	const string & OldChar)
+string RemoveStringChar(string const & InString,
+	string const & OldChar)
 {
 	string NewString = InString;
 

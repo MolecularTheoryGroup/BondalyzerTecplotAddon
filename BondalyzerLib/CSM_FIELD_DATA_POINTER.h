@@ -15,24 +15,24 @@ public:
 	FieldDataPointer_c(){}
 	~FieldDataPointer_c(){ Close(); }
 
-	const Boolean_t operator==(const FieldDataPointer_c & rhs) const;
-	FieldDataPointer_c & operator=(const FieldDataPointer_c & rhs);
-	const double operator[](const unsigned int & i) const;
-	const double At(vec3 & Pt, VolExtentIndexWeights_s & VolInfo) const;
-	const Boolean_t Write(const unsigned int & i, const double & Val) const;
-	const Boolean_t GetReadPtr(const int & ZoneNum, const int & VarNum);
-	const Boolean_t GetWritePtr(const int & ZoneNum, const int & VarNum);
+	Boolean_t operator==(FieldDataPointer_c const & rhs) const;
+	FieldDataPointer_c & operator=(FieldDataPointer_c const & rhs);
+	double operator[](unsigned int i) const;
+	double At(vec3 & Pt, VolExtentIndexWeights_s & VolInfo) const;
+	Boolean_t Write(unsigned int i, double const & Val) const;
+	Boolean_t GetReadPtr(int ZoneNum, int VarNum);
+	Boolean_t GetWritePtr(int ZoneNum, int VarNum);
 	void Close();
 
-	const Boolean_t IsReady() const { return m_IsReady; }
-	const unsigned int Size() const { return m_Size; }
-	const vector<int> MaxIJK() const { return vector<int>(m_MaxIJK, m_MaxIJK + 3); }
-	const int VarNum() const { return m_Var; }
-	const int ZoneNum() const { return m_Zone; }
-	const ZoneType_e ZoneType() const { return m_ZoneType; }
-	const bool ZoneIsOrdered() const { return (m_ZoneType == ZoneType_Invalid); }
-	const FieldDataType_e FDType() const { return m_FDType; }
-	const ValueLocation_e ValueLocation() const { return m_ValueLocation; }
+	Boolean_t IsReady() const { return m_IsReady; }
+	unsigned int Size() const { return m_Size; }
+	vector<int> MaxIJK() const { return vector<int>(m_MaxIJK, m_MaxIJK + 3); }
+	int VarNum() const { return m_Var; }
+	int ZoneNum() const { return m_Zone; }
+	ZoneType_e ZoneType() const { return m_ZoneType; }
+	bool ZoneIsOrdered() const { return (m_ZoneType == ZoneType_Invalid); }
+	FieldDataType_e FDType() const { return m_FDType; }
+	ValueLocation_e ValueLocation() const { return m_ValueLocation; }
 private:
 	void* m_VoidPtr = NULL;
 
@@ -69,22 +69,22 @@ public:
 	FieldVecPointer_c(vector<FieldDataPointer_c> & InVecs);
 	~FieldVecPointer_c(){ Close(); }
 
-	const Boolean_t operator==(const FieldVecPointer_c & rhs) const;
-	FieldVecPointer_c & operator=(const FieldVecPointer_c & rhs);
-	const vec3 operator[](const unsigned int & i) const;
-	const Boolean_t Write(const unsigned int & i, const vec3 & Vec) const;
-	const Boolean_t GetReadPtr(const int & ZoneNum, const vector<int> & VarNums);
-	const Boolean_t GetWritePtr(const int & ZoneNum, const vector<int> & VarNums);
+	Boolean_t operator==(FieldVecPointer_c const & rhs) const;
+	FieldVecPointer_c & operator=(FieldVecPointer_c const & rhs);
+	vec3 operator[](unsigned int i) const;
+	Boolean_t Write(unsigned int i, vec3 const & Vec) const;
+	Boolean_t GetReadPtr(int ZoneNum, vector<int> const & VarNums);
+	Boolean_t GetWritePtr(int ZoneNum, vector<int> const & VarNums);
 	void Close();
 
-	const Boolean_t IsReady() const { return Ptrs[0].IsReady(); }
-	const unsigned int Size() const { return Ptrs[0].Size(); }
-	const vector<int> MaxIJK() const { return Ptrs[0].MaxIJK(); }
-	const int VarNum() const { return Ptrs[0].VarNum(); }
-	const int ZoneNum() const { return Ptrs[0].ZoneNum(); }
-	const ZoneType_e ZoneType() const { return Ptrs[0].ZoneType(); }
-	const bool ZoneIsOrdered() const { return Ptrs[0].ZoneIsOrdered(); }
-	const ValueLocation_e ValueLocation() const { return Ptrs[0].ValueLocation(); }
+	Boolean_t IsReady() const { return Ptrs[0].IsReady(); }
+	unsigned int Size() const { return Ptrs[0].Size(); }
+	vector<int> MaxIJK() const { return Ptrs[0].MaxIJK(); }
+	int VarNum() const { return Ptrs[0].VarNum(); }
+	int ZoneNum() const { return Ptrs[0].ZoneNum(); }
+	ZoneType_e ZoneType() const { return Ptrs[0].ZoneType(); }
+	bool ZoneIsOrdered() const { return Ptrs[0].ZoneIsOrdered(); }
+	ValueLocation_e ValueLocation() const { return Ptrs[0].ValueLocation(); }
 private:
 	FieldDataPointer_c Ptrs[3];
 };

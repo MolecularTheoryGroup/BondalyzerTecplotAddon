@@ -34,7 +34,7 @@ v1/____|____\v3
 *	Calculate tetrahedron volume using squared edge lengths.
 *	Taken from    http://keisan.casio.com/exec/system/1329962711
 */
-const double TetVolume(const vector<double> & e2){
+double const TetVolume(vector<double> const & e2){
 
 	double v = 0.0069444444444444 * (
 		e2[0] * e2[4] * (e2[1] + e2[2] + e2[3] + e2[5] - e2[0] - e2[4])
@@ -59,7 +59,7 @@ const double TetVolume(const vector<double> & e2){
 *	the vertices of a hexahedron and an internal point.
 *	V is list of vertices, where 0 (i) is the internal point.
 */
-const double TetVolume(const vec3 & a, const vec3 & b, const vec3 & c, const vec3 & d){
+double const TetVolume(vec3 const & a, vec3 const & b, vec3 const & c, vec3 const & d){
 	return abs(dot(a - d, cross(b - d, c - d))) / 6.0;
 }
 
@@ -131,7 +131,7 @@ vector<vector<int> > TetInds = {
 	{ 0, 3, 4, 7 }, { 0, 4, 7, 8 },
 	{ 0, 5, 6, 7 }, { 0, 6, 7, 8 }
 };
-const double HexahedronInternalPointTetVolume(const vector<vec3> & V){
+double const HexahedronInternalPointTetVolume(vector<vec3> const & V){
 
 	double vol = 0.0;
 	for (auto & vi : TetInds) vol += TetVolume(V[vi[0]], V[vi[1]], V[vi[2]], V[vi[3]]);
@@ -142,16 +142,16 @@ const double HexahedronInternalPointTetVolume(const vector<vec3> & V){
 /*
 *	Calculate volume of parallelpiped using the lattice vector that defines it
 */
-const double ParallepipedVolume(const vector<vec3> & LV){
+double const ParallepipedVolume(vector<vec3> const & LV){
 
 	return  abs(dot(LV[0], cross(LV[1], LV[2])));
 }
 
-const double ParallepipedVolume(const mat33 & LV){
+double const ParallepipedVolume(mat33 const & LV){
 	return det(LV);
 }
 
-const bool ParallelpidedPointIsInternal(const mat33 & LV, const vec3 & Origin, const vec3 & Pt){
+bool const ParallelpidedPointIsInternal(mat33 const & LV, vec3 const & Origin, vec3 const & Pt){
 
 	vector<vec3> V(9);
 	V[0] = Pt;

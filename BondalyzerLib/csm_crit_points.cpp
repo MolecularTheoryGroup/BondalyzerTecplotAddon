@@ -37,7 +37,7 @@ CritPoints_c::CritPoints_c()
 	m_Dimensions = -1;
 }
 
-CritPoints_c::CritPoints_c(const double & RhoCutoff, const int & NumDimensions){
+CritPoints_c::CritPoints_c(double const & RhoCutoff, int NumDimensions){
 	m_TotNumCPs = 0;
 	for (int i = 0; i < 6; ++i)
 		m_NumCPs[i] = 0;
@@ -52,7 +52,7 @@ CritPoints_c::CritPoints_c(const double & RhoCutoff, const int & NumDimensions){
 	m_MinCPDistFound = FALSE;
 }
 
-CritPoints_c::CritPoints_c(const vector<CritPoints_c> & CPLists){
+CritPoints_c::CritPoints_c(vector<CritPoints_c> const & CPLists){
 	m_TotNumCPs = 0;
 	for (int i = 0; i < 6; ++i)
 		m_NumCPs[i] = 0;
@@ -64,10 +64,10 @@ CritPoints_c::CritPoints_c(const vector<CritPoints_c> & CPLists){
 	m_MinCPDistFound = FALSE;
 }
 
-CritPoints_c::CritPoints_c(const int & CPZoneNum,
-	const vector<int> & XYZVarNums,
-	const int & CPTypeVarNum,
-	const int & RhoVarNum,
+CritPoints_c::CritPoints_c(int CPZoneNum,
+	vector<int> const & XYZVarNums,
+	int CPTypeVarNum,
+	int RhoVarNum,
 	MultiRootParams_s *MR) : CritPoints_c()
 {
 	int NumZones = TecUtilDataSetGetNumZones();
@@ -77,7 +77,7 @@ CritPoints_c::CritPoints_c(const int & CPZoneNum,
 	REQUIRE(RhoVarNum <= NumVars);
 	REQUIRE(0 < CPTypeVarNum && CPTypeVarNum <= NumVars);
 	REQUIRE(XYZVarNums.size() == 3);
-	for (const auto & i : XYZVarNums) REQUIRE(0 < i && i < NumVars);
+	for (auto const & i : XYZVarNums) REQUIRE(0 < i && i < NumVars);
 
 	FieldDataPointer_c RhoPtr, CPTypePtr;
 	vector<FieldDataPointer_c> XYZPtrs(3);
@@ -136,7 +136,7 @@ CritPoints_c::~CritPoints_c()
 *	Operator overloads
 */
 
-CritPoints_c & CritPoints_c::operator+=(const CritPoints_c & rhs){
+CritPoints_c & CritPoints_c::operator+=(CritPoints_c const & rhs){
 	this->Append(rhs);
 
 	return *this;
@@ -146,7 +146,7 @@ CritPoints_c & CritPoints_c::operator+=(const CritPoints_c & rhs){
 *	Getter methods
 */
 
-const double CritPoints_c::GetMinCPDist(const vector<CPType_e> & CPTypes){
+double CritPoints_c::GetMinCPDist(vector<CPType_e> const & CPTypes){
 	if (m_MinCPDistFound && CPTypes == m_MinDistCPTypes)
 		return m_MinCPDist;
 	else if (FindMinCPDist(CPTypes))
@@ -156,14 +156,14 @@ const double CritPoints_c::GetMinCPDist(const vector<CPType_e> & CPTypes){
 }
 
 
-const double CritPoints_c::GetMinCPDist(const int & CPTypeInd, const int & CPOffset, const vector<CPType_e> & CPTypes){
+double CritPoints_c::GetMinCPDist(int CPTypeInd, int CPOffset, vector<CPType_e> const & CPTypes){
 	double MinDistSqr = DBL_MAX;
 
 	vector<int> TypeIndList;
-	for (const auto & i : CPTypes) TypeIndList.push_back(VectorGetElementNum(CPTypeList, i));
+	for (auto const & i : CPTypes) TypeIndList.push_back(VectorGetElementNum(CPTypeList, i));
 
-	for (const int & t : TypeIndList){
-		for (const vec3 & pt : m_XYZ[t]){
+	for (int t : TypeIndList){
+		for (vec3 const & pt : m_XYZ[t]){
 			if (t != CPTypeInd || sum(GetXYZ(CPTypeInd, CPOffset) == pt) < 3){
 				double TmpDistSqr = DistSqr(GetXYZ(CPTypeInd, CPOffset), pt);
 				if (TmpDistSqr < MinDistSqr) MinDistSqr = TmpDistSqr;
@@ -175,13 +175,13 @@ const double CritPoints_c::GetMinCPDist(const int & CPTypeInd, const int & CPOff
 	else return -1;
 }
 
-const double CritPoints_c::GetMinCPDist(const int & CPTotOffset, const vector<CPType_e> & CPTypes){
+double CritPoints_c::GetMinCPDist(int CPTotOffset, vector<CPType_e> const & CPTypes){
 	vector<int> TypeOffset = GetTypeNumOffsetFromTotOffset(CPTotOffset);
 
 	return GetMinCPDist(TypeOffset[0], TypeOffset[1], CPTypes);
 }
 
-vec3 CritPoints_c::GetXYZ(const int & TotOffset) const{
+vec3 CritPoints_c::GetXYZ(int TotOffset) const{
 	vector<int> TypeNumOffset = GetTypeNumOffsetFromTotOffset(TotOffset);
 	if (TypeNumOffset[0] >= 0)
 		return GetXYZ(TypeNumOffset[0], TypeNumOffset[1]);
@@ -189,7 +189,7 @@ vec3 CritPoints_c::GetXYZ(const int & TotOffset) const{
 	return vec3();
 }
 
-const double CritPoints_c::GetRho(const int & TotOffset) const{
+double CritPoints_c::GetRho(int TotOffset) const{
 	vector<int> TypeNumOffset = GetTypeNumOffsetFromTotOffset(TotOffset);
 	if (TypeNumOffset[0] >= 0)
 		return GetRho(TypeNumOffset[0], TypeNumOffset[1]);
@@ -197,21 +197,21 @@ const double CritPoints_c::GetRho(const int & TotOffset) const{
 	return -1;
 }
 
-vec3 CritPoints_c::GetPrincDir(const int & TotOffset) const{
+vec3 CritPoints_c::GetPrincDir(int TotOffset) const{
 	vector<int> TypeNumOffset = GetTypeNumOffsetFromTotOffset(TotOffset);
 	if (TypeNumOffset[0] >= 0)
 		return GetPrincDir(TypeNumOffset[0], TypeNumOffset[1]);
 
 	return vec3();
 }
-vec3 CritPoints_c::GetEigVals(const int & TotOffset) const{
+vec3 CritPoints_c::GetEigVals(int TotOffset) const{
 	vector<int> TypeNumOffset = GetTypeNumOffsetFromTotOffset(TotOffset);
 	if (TypeNumOffset[0] >= 0)
 		return GetEigVals(TypeNumOffset[0], TypeNumOffset[1]);
 
 	return vec3();
 }
-mat33 CritPoints_c::GetEigVecs(const int & TotOffset) const{
+mat33 CritPoints_c::GetEigVecs(int TotOffset) const{
 	vector<int> TypeNumOffset = GetTypeNumOffsetFromTotOffset(TotOffset);
 	if (TypeNumOffset[0] >= 0)
 		return GetEigVecs(TypeNumOffset[0], TypeNumOffset[1]);
@@ -219,7 +219,7 @@ mat33 CritPoints_c::GetEigVecs(const int & TotOffset) const{
 	return mat33();
 }
 
-const Boolean_t CritPoints_c::IsValid() const{
+Boolean_t CritPoints_c::IsValid() const{
 	Boolean_t IsOk = TRUE;
 	size_t TmpInt;
 
@@ -235,10 +235,10 @@ const Boolean_t CritPoints_c::IsValid() const{
 *	Setter methods
 */
 
-const Boolean_t CritPoints_c::AddPoint(const double & Rho,
-	const vec3 & Pos,
-	const vec3 & PrincDir,
-	const char & Type)
+Boolean_t CritPoints_c::AddPoint(double const & Rho,
+	vec3 const & Pos,
+	vec3 const & PrincDir,
+	char Type)
 {
 	Boolean_t IsOk = FALSE;
 
@@ -256,7 +256,7 @@ const Boolean_t CritPoints_c::AddPoint(const double & Rho,
 	return IsOk;
 }
 
-void CritPoints_c::Append(const CritPoints_c & rhs)
+void CritPoints_c::Append(CritPoints_c const & rhs)
 {
 	for (int i = 0; i < 6; ++i){
 		m_Rho[i].insert(m_Rho[i].end(), rhs.m_Rho[i].cbegin(), rhs.m_Rho[i].cend());
@@ -274,12 +274,12 @@ void CritPoints_c::Append(const CritPoints_c & rhs)
 *	Mutators and other methods
 */
 
-const Boolean_t CritPoints_c::FindMinCPDist(const vector<CPType_e> & CPTypes){
+Boolean_t CritPoints_c::FindMinCPDist(vector<CPType_e> const & CPTypes){
 	Boolean_t IsOk = (m_TotNumCPs > 0);
 
 	vector<int> TypeIndList;
 	m_MinDistCPTypes = CPTypes;
-	for (const auto & i : CPTypes) TypeIndList.push_back(VectorGetElementNum(CPTypeList, i));
+	for (auto const & i : CPTypes) TypeIndList.push_back(VectorGetElementNum(CPTypeList, i));
 
 	int MinI = -1, MinJ = -1, MinII = -1, MinJJ = -1;
 	double TmpDbl;
@@ -329,7 +329,7 @@ const Boolean_t CritPoints_c::FindMinCPDist(const vector<CPType_e> & CPTypes){
 	return IsOk;
 }
 
-void CritPoints_c::RemoveSpuriousCPs(const double & CheckDist){
+void CritPoints_c::RemoveSpuriousCPs(double const & CheckDist){
 	double CheckDistSqr = CheckDist * CheckDist;
 
 
@@ -466,7 +466,7 @@ void CritPoints_c::RemoveSpuriousCPs(const double & CheckDist){
 
 }
 
-vector<int> CritPoints_c::GetTypeNumOffsetFromTotOffset(const int & TotOffset) const{
+vector<int> CritPoints_c::GetTypeNumOffsetFromTotOffset(int TotOffset) const{
 	vector<int> TypeNumAndOffset = { -1, -1 };
 
 	int CPCount = 0;
@@ -482,7 +482,7 @@ vector<int> CritPoints_c::GetTypeNumOffsetFromTotOffset(const int & TotOffset) c
 	return TypeNumAndOffset;
 }
 
-const CPType_e CritPoints_c::GetTypeFromTotOffset(const int & TotOffset) const{
+CPType_e CritPoints_c::GetTypeFromTotOffset(int TotOffset) const{
 	CPType_e Type = CPType_Invalid;
 	if (TotOffset < 0) return Type;
 
@@ -497,7 +497,7 @@ const CPType_e CritPoints_c::GetTypeFromTotOffset(const int & TotOffset) const{
 	return Type;
 }
 
-const int CritPoints_c::GetTotOffsetFromTypeNumOffset(const int & TypeNum, const int & TypeOffset) const
+int CritPoints_c::GetTotOffsetFromTypeNumOffset(int TypeNum, int TypeOffset) const
 {
 	int TotOffset = 0;
 	for (int i = 0; i < TypeNum; ++i) TotOffset += m_NumCPs[i];
@@ -516,8 +516,8 @@ const int CritPoints_c::GetTotOffsetFromTypeNumOffset(const int & TypeNum, const
 *	Mutators and other methods
 */
 
-const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum, const int & RhoVarNum, const Boolean_t & SaveCPTypeZones){
-	for (const auto & i : XYZVarNum) REQUIRE(i > 0 && i <= TecUtilDataSetGetNumVars());
+vector<int> CritPoints_c::SaveAsOrderedZone(vector<int> const & XYZVarNum, int RhoVarNum, Boolean_t SaveCPTypeZones){
+	for (auto const & i : XYZVarNum) REQUIRE(i > 0 && i <= TecUtilDataSetGetNumVars());
 
 	vector<int> NewZoneNums;
 	/*
@@ -556,6 +556,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 	TecUtilSetAddMember(CPZoneSet, NewZoneNums.back(), TRUE);
 
 	TecUtilZoneSetActive(CPZoneSet, AssignOp_PlusEquals);
+	TecUtilZoneSetScatter(SV_FRAMESIZE, CPZoneSet, 1, TRUE);
 
 	vector<FieldDataPointer_c> XYZPtrs(3);
 	FieldDataPointer_c RhoPtr;
@@ -593,6 +594,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 	if (SaveCPTypeZones){
 		TecUtilZoneSetActive(CPZoneSet, AssignOp_MinusEquals);
 		Set_pa CPTypeZoneSet = TecUtilSetAlloc(TRUE);
+		vector<double> ScatterSize = { 2.5,1,0.5,0.5,0.5,0.5 };
 		for (int t = 0; t < 6; ++t){
 			if (NumCPs(t) > 0){
 				// 				DataTypes.push_back(FieldDataType_Int16);
@@ -610,6 +612,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 				TecUtilSetClear(CPTypeZoneSet);
 				TecUtilSetAddMember(CPTypeZoneSet, NewZoneNums.back(), TRUE);
 				TecUtilZoneSetScatter(SV_COLOR, CPTypeZoneSet, 0.0, CPColorList[t]);
+				TecUtilZoneSetScatter(SV_FRAMESIZE, CPTypeZoneSet, ScatterSize[t], TRUE);
 
 				TecUtilDataLoadBegin();
 
@@ -654,7 +657,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 	TecUtilZoneSetMesh(SV_SHOW, CPZoneSet, 0.0, FALSE);
 	TecUtilZoneSetShade(SV_SHOW, CPZoneSet, 0.0, FALSE);
 	TecUtilZoneSetScatter(SV_SHOW, CPZoneSet, 0.0, TRUE);
-	TecUtilZoneSetScatter(SV_FRAMESIZE, CPZoneSet, 1, FALSE);
+// 	TecUtilZoneSetScatter(SV_FRAMESIZE, CPZoneSet, 1, FALSE);
 	TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, CPZoneSet, GeomShape_Sphere);
 
 	return NewZoneNums;
@@ -665,7 +668,7 @@ const vector<int> CritPoints_c::SaveAsOrderedZone(const vector<int> & XYZVarNum,
 *	End CritPoints_c methods
 */
 
-void SetCPZone(const int & ZoneNum){
+void SetCPZone(int ZoneNum){
 	REQUIRE(0 < ZoneNum && ZoneNum <= TecUtilDataSetGetNumZones());
 
 	Set_pa TmpSet = TecUtilSetAlloc(TRUE);
@@ -733,7 +736,7 @@ void SetCPZone(const int & ZoneNum){
 
 
 
-int F3D(const gsl_vector * pos, void * params, gsl_vector * GradValues){
+int F3D(gsl_vector const * pos, void * params, gsl_vector * GradValues){
 
 	MultiRootParams_s * RootParams = reinterpret_cast<MultiRootParams_s*>(params);
 
@@ -773,7 +776,7 @@ int F3D(const gsl_vector * pos, void * params, gsl_vector * GradValues){
 *	Function to return the derivatives (jacobian matrix of gradient, ie Hessian of rho)
 */
 
-int DF3D(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
+int DF3D(gsl_vector const * pos, void * params, gsl_matrix * Jacobian){
 
 	MultiRootParams_s * RootParams = reinterpret_cast<MultiRootParams_s*>(params);
 
@@ -841,7 +844,7 @@ int DF3D(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
 *	Function to return both grad and dgrad (function and derivatives)
 */
 
-int FDF3D(const gsl_vector * pos, void * params, gsl_vector * GradValues, gsl_matrix * Jacobian){
+int FDF3D(gsl_vector const * pos, void * params, gsl_vector * GradValues, gsl_matrix * Jacobian){
 
 	int Status = F3D(pos, params, GradValues);
 
@@ -852,11 +855,11 @@ int FDF3D(const gsl_vector * pos, void * params, gsl_vector * GradValues, gsl_ma
 }
 
 
-const Boolean_t CritPointInCell(const vector<int> & IJK,
+Boolean_t CritPointInCell(vector<int> const & IJK,
 	vec3 & Point,
 	vec3 & PrincDir,
 	double & RhoValue,
-	const double & RhoCutoff,
+	double const & RhoCutoff,
 	char & Type,
 	MultiRootParams_s & RootParams,
 	MultiRootObjects_s & MR)
@@ -952,13 +955,13 @@ const Boolean_t CritPointInCell(const vector<int> & IJK,
 	return CPInCell;
 }
 
-const Boolean_t CritPointInCell(
-	const vec3 & CellMinXYZ,
-	const vec3 & CellMaxXYZ,
+Boolean_t CritPointInCell(
+	vec3 const & CellMinXYZ,
+	vec3 const & CellMaxXYZ,
 	vec3 & Point,
 	vec3 & PrincDir,
 	double & RhoValue,
-	const double & RhoCutoff,
+	double const & RhoCutoff,
 	char & Type,
 	MultiRootParams_s & RootParams,
 	MultiRootObjects_s & MR)
@@ -1062,14 +1065,14 @@ const Boolean_t CritPointInCell(
 *	Function for searching a subzone (ordered IJK)
 *	for critical points.
 */
-const Boolean_t FindCPs(CritPoints_c & CPs,
+Boolean_t FindCPs(CritPoints_c & CPs,
 	VolExtentIndexWeights_s VolInfo,
-	const Boolean_t & IsPeriodic,
-	const vector<int> & StartIJK,
-	const vector<int> & EndIJK,
-	const FieldDataPointer_c & RhoPtr,
-	const vector<FieldDataPointer_c> & GradXYZPtrs,
-	const vector<FieldDataPointer_c> & HessPtrs)
+	Boolean_t IsPeriodic,
+	vector<int> const & StartIJK,
+	vector<int> const & EndIJK,
+	FieldDataPointer_c const & RhoPtr,
+	vector<FieldDataPointer_c> const & GradXYZPtrs,
+	vector<FieldDataPointer_c> const & HessPtrs)
 {
 	Boolean_t IsOk = (GradXYZPtrs.size() == 3
 		&& StartIJK.size() == 3 && EndIJK.size() == 3
@@ -1153,11 +1156,11 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 *	Function for searching a subzone (ordered IJK)
 *	for critical points using aribrary cells.
 */
-const Boolean_t FindCPs(CritPoints_c & CPs,
-	const VolExtentIndexWeights_s & VolInfo,
-	const double & CellSpacing,
+Boolean_t FindCPs(CritPoints_c & CPs,
+	VolExtentIndexWeights_s const & VolInfo,
+	double const & CellSpacing,
 	double & RhoCutoff,
-	const Boolean_t & IsPeriodic,
+	Boolean_t IsPeriodic,
 	FieldDataPointer_c & RhoPtr,
 	vector<FieldDataPointer_c> & GradXYZPtrs,
 	vector<FieldDataPointer_c> & HessPtrs)
@@ -1359,7 +1362,7 @@ const Boolean_t FindCPs(CritPoints_c & CPs,
 							*RootParams[ThreadNum].GradPtrs,
 							*RootParams[ThreadNum].RhoPtr);
 
-						// 						const vector<FieldDataPointer_c> * junkPtrs = NULL;
+						// 						vector<FieldDataPointer_c> const * junkPtrs = NULL;
 						// 						GradPath_c GP(
 						// 							CellMinXYZ[ThreadNum],
 						// 							(StreamDir_e)s,

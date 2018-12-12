@@ -19,14 +19,14 @@ using namespace arma;
 
 using std::vector;
 
-static const int ArrowRotationSteps = 10;
+static int const ArrowRotationSteps = 10;
 
-const bool CSMArrow(const vec3 & Origin, 
-	const vec3 & Dir, 
-	const double & Length, 
-	const double & Radius, 
-	const double & ArrowheadLengthRatio,
-	const double & ArrowheadRadiusRatio,
+bool CSMArrow(vec3 const & Origin, 
+	vec3 const & Dir, 
+	double const & Length, 
+	double const & Radius, 
+	double const & ArrowheadLengthRatio,
+	double const & ArrowheadRadiusRatio,
 	vector<vec3> & Nodes,
 	vector<vector<int> > & ElemList)
 {
@@ -130,7 +130,7 @@ const bool CSMArrow(const vec3 & Origin,
  % Output:
  % pts - evenly space points
  */
-const mat getPoints(const mat & Edge, const int & NumPts){
+mat getPoints(mat const & Edge, int NumPts){
 	// initialize pts
 	mat Pts(NumPts, 3);
 
@@ -183,7 +183,7 @@ const mat getPoints(const mat & Edge, const int & NumPts){
 	return Pts;
 }
 
-mat cubTrans(const mat & e1, const mat & e2, const mat & e3){
+mat cubTrans(mat const & e1, mat const & e2, mat const & e3){
 
 	// Define the 20 nodes on the reference tet
 	mat Rpt;
@@ -320,10 +320,10 @@ mat cubTrans(const mat & e1, const mat & e2, const mat & e3){
  % y and z transforms are defined the same way with b and c
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  */
-const mat cubTrans_func(const mat & abc,
-	const vec & s,
-	const vec & t,
-	const vec & u)
+mat cubTrans_func(mat const & abc,
+	vec const & s,
+	vec const & t,
+	vec const & u)
 {
 	mat xyz(s.n_elem, 3);
 	for (int i = 0; i < 3; ++i){
@@ -365,7 +365,7 @@ const mat cubTrans_func(const mat & abc,
  % J - determinant of the Jacobian at the point (s,t,u)
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  */
-const double cubJacobian(mat & abc, const double & s, const double & t, const double & u){
+double cubJacobian(mat & abc, double const & s, double const & t, double const & u){
 	// Get vectors of terms for the s,t,u partial derivatives of the mapping
 	vector<vec> dstu({ vector<double>({ 0.,
 		1.,
@@ -440,7 +440,7 @@ const double cubJacobian(mat & abc, const double & s, const double & t, const do
 	return det(J);
 }
 
-void rquad(const int & N, const double & k, vec & x, vec & w)
+void rquad(int N, double const & k, vec & x, vec & w)
 {
 	double k1 = k + 1, k2 = k + 2;
 
@@ -501,7 +501,7 @@ void rquad(const int & N, const double & k, vec & x, vec & w)
  %
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  */
-const vector<vec> tetraquad(const int & N, const mat & Verts)
+vector<vec> tetraquad(int N, mat const & Verts)
 {
 
 	vector<vec> q(3), w123(3);
@@ -553,7 +553,7 @@ const vector<vec> tetraquad(const int & N, const mat & Verts)
 
 
 
-const vector<vec> GetWeightsPoints(const int & N){
+vector<vec> GetWeightsPoints(int N){
 
 	mat Verts;
 	Verts << 0 << 0 << 0 << endr
@@ -571,7 +571,7 @@ const vector<vec> GetWeightsPoints(const int & N){
  *	the polygon when split at the vertices of greatest
  *	euclidean distance.
  */
-vector<vector<int> > TriangulatePolygon(const vector<vec3> & V){
+vector<vector<int> > TriangulatePolygon(vector<vec3> const & V){
 	vector<vector<int> > T;
 	double ChkDistSqr = DBL_MIN, TmpDistSqr;
 	int MaxDistInds[2];
@@ -627,7 +627,7 @@ vector<vector<int> > TriangulatePolygon(const vector<vec3> & V){
  *	find points along the rest of the GPs with the same rho value.
  */
 
-const bool GetIsoRhoGPPoints(const vector<GradPath_c*> GPs, vector<unsigned int> & IndexList, const int & MinGPNum, vector<vec3> & NewVerts, const double & NewStepCutoffRatio, const bool & MultiStep = false){
+bool GetIsoRhoGPPoints(const vector<GradPath_c*> GPs, vector<unsigned int> & IndexList, int MinGPNum, vector<vec3> & NewVerts, double const & NewStepCutoffRatio, bool MultiStep = false){
 	unsigned int NumGPs = GPs.size();
 	NewVerts.resize(NumGPs);
 	bool NotTerminated = true;
@@ -695,7 +695,7 @@ const bool GetIsoRhoGPPoints(const vector<GradPath_c*> GPs, vector<unsigned int>
  *	Integrate volume and variables (for provided var pointers) over a tetrahedron specified
  *	according to vertex indices and a list of vertices.
  */
-void IntTet(const vector<vec3*> & Vptr, const vector<unsigned int> & Ind, const int & nPts, const vector<FieldDataPointer_c> & VarPtrs, VolExtentIndexWeights_s & VolInfo, vector<double> & IntVals){
+void IntTet(const vector<vec3*> & Vptr, vector<unsigned int> const & Ind, int nPts, vector<FieldDataPointer_c> const & VarPtrs, VolExtentIndexWeights_s & VolInfo, vector<double> & IntVals){
 	/*
 	*	I'll do this in two ways;
 	*	one that generates quadrature weights for a reference tetrahedron
@@ -778,14 +778,14 @@ vector<vector<vector<unsigned int> > > IntTetInds = {
  *	further into tetrahedra, which are then integrated using Gauss quadrature rules.
  */
 void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
-	const int & nPts,
+	int nPts,
 	VolExtentIndexWeights_s & VolInfo,
-	const vector<FieldDataPointer_c> & VarPtrs,
+	vector<FieldDataPointer_c> const & VarPtrs,
 	vector<double> & IntVals,
-	const bool ContainsBondPath)
+	bool const ContainsBondPath)
 {
 	REQUIRE(GPs.size() > 3);
-	for (const auto * p : GPs){
+	for (auto const * p : GPs){
 		REQUIRE(p->IsMade() && p->GetCount() > 3);
 	}
 
@@ -1003,7 +1003,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
  		 * and then update those that don't, changing the degenerate indices to DegenGPNum.
  		 */
  		bool TriIsDegenerate;
- 		for (const auto & t : T2){
+ 		for (auto const & t : T2){
  			bool EdgeIsDegenerate = false;
  			for (int i = 0; i < 3 && !EdgeIsDegenerate; ++i){
  				EdgeIsDegenerate = true;
@@ -1161,7 +1161,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 		int tColor = 0;
 #endif
 
-		for (const auto & t : T){
+		for (auto const & t : T){
 #ifdef _DEBUG
 			// Save triangle as scatter
 			vector<vec3> tv;
@@ -1197,7 +1197,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 
 #ifdef _DEBUG
 			vector<vec3> hexv;
-// 			for (const auto & i : VI){
+// 			for (auto const & i : VI){
 // 				int PlaneNum = (i < NumGPs ? 0 : 1);
 // 				hexv.push_back(Planes[PlaneNum][i % NumGPs]);
 // 			}
@@ -1218,7 +1218,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 			int tetColor = 0;
 #endif // _DEBUG
 
-			for (const auto & tet : IntTetInds[TetSetNum])
+			for (auto const & tet : IntTetInds[TetSetNum])
 			{
 
 				/*
@@ -1241,7 +1241,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 #ifdef _DEBUG
 				// Save tet as scatter
 				vector<vec3> tetv;
-				for (const auto & i : tet){
+				for (auto const & i : tet){
 					// 					int PlaneNum = (VI[i] < NumGPs ? 0 : 1);
 					// 					tetv.push_back(Planes[PlaneNum][VI[i] % NumGPs]);
 					tetv.push_back(*Vptr[VI[i]]);
@@ -1268,9 +1268,9 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 }
 
 
-void GetTriElementConnectivityList(const vector<vector<int> > * ElemListPtr,
+void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 	vector<vector<int> > & ElemConnectivity,
-	const int & NumSharedCorners)
+	int NumSharedCorners)
 {
 	REQUIRE(NumSharedCorners == 1 || NumSharedCorners == 2);
 	int NumElems = ElemListPtr->size();
@@ -1298,11 +1298,11 @@ void GetTriElementConnectivityList(const vector<vector<int> > * ElemListPtr,
 	}
 }
 
-const string GetEdgeString(const int & ei, const int & ej) {
+string GetEdgeString(int ei, int ej) {
 	return (ei < ej ? to_string(ei) + "," + to_string(ej) : to_string(ej) + "," + to_string(ei));
 }
 
-const bool GetPerimeterEdges(const vector<vector<int> > & TriElems, const vector<vec3> & TriNodes, vector<vector<int> > & PerimeterEdges) {
+bool GetPerimeterEdges(vector<vector<int> > const & TriElems, vector<vec3> const & TriNodes, vector<vector<int> > & PerimeterEdges) {
 
 	/*
 	 *	We'll use a hash table (unordered map) to count occurrence of edges.
@@ -1347,13 +1347,13 @@ const bool GetPerimeterEdges(const vector<vector<int> > & TriElems, const vector
 	vector<vector<int> > UnsortedEdges;
 	std::map<string, int> EdgeNums;
 	vector<int> UnsortedEdgeTriNums;
-	for (const auto e : EdgeMap) {
+	for (auto const e : EdgeMap) {
 		if (e.second[0] == 1) {
 			vector<int> edgeNodes = SplitStringInt(e.first);
 			EdgeNums[e.first] = UnsortedEdges.size();
 			UnsortedEdges.push_back(edgeNodes);
 			UnsortedEdgeTriNums.push_back(e.second[1]);
-			for (const auto & i : edgeNodes) {
+			for (auto const & i : edgeNodes) {
 				if (NodeOccurenceCount.count(i) == 0) {
 					NodeOccurenceCount[i] = 1;
 					NodeEdges[i] = { e.first };
@@ -1367,7 +1367,7 @@ const bool GetPerimeterEdges(const vector<vector<int> > & TriElems, const vector
 	}
 
 	std::set<int> RepeatNodes;
-	for (const auto & n : NodeOccurenceCount) {
+	for (auto const & n : NodeOccurenceCount) {
 		if (n.second > 2) {
 			RepeatNodes.insert(n.first);
 		}
@@ -1376,7 +1376,7 @@ const bool GetPerimeterEdges(const vector<vector<int> > & TriElems, const vector
 
 // 	vector<vector<int> > RepeatNodeEdgeOrders;
 // 	vector<int> RepeatNodes;
-// 	for (const auto & n : NodeOccurenceCount) {
+// 	for (auto const & n : NodeOccurenceCount) {
 // 		if (n.second > 2) {
 // 		/*
 // 		 *	There are dangling elements.
@@ -1444,7 +1444,7 @@ const bool GetPerimeterEdges(const vector<vector<int> > & TriElems, const vector
 // 										vec3 kVec = 0.5 * (TriNodes[RepeatNodeEdges[k]->at(0)] + TriNodes[RepeatNodeEdges[k]->at(1)]);
 // 										vector<int> ij = { i,j };
 // 										vector<double> ijDist;
-// 										for (const int & ii : ij) {
+// 										for (int ii : ij) {
 // 											ijDist.push_back(DistSqr(kVec, 0.5 * (TriNodes[RepeatNodeEdges[ii]->at(0)] + TriNodes[RepeatNodeEdges[ii]->at(1)])));
 // 										}
 // 										if (ijDist[0] < ijDist[1]) {
@@ -1461,7 +1461,7 @@ const bool GetPerimeterEdges(const vector<vector<int> > & TriElems, const vector
 // 										 *	Now all the edges except one from RepeatNodeEdgeNums has been added,
 // 										 *	so search for the remaining edge and add it.
 // 										 */
-// 										for (const int & ii : RepeatNodeEdgeNums)
+// 										for (int ii : RepeatNodeEdgeNums)
 // 											if (std::find(RepeatNodeEdgeOrders.back().begin(), RepeatNodeEdgeOrders.back().end(), ii) == RepeatNodeEdgeOrders.back().end())
 // 												RepeatNodeEdgeOrders.back().push_back(ii);
 // 										break;
@@ -1595,8 +1595,8 @@ const bool GetPerimeterEdges(const vector<vector<int> > & TriElems, const vector
 	return IsOk;
 }
 
-const bool GetSortedParameterEdgeMidpoints(const vector<vector<int> > & TriElems, 
-	const vector<vec3> & NodeList, 
+bool GetSortedParameterEdgeMidpoints(vector<vector<int> > const & TriElems, 
+	vector<vec3> const & NodeList, 
 	vector<vec3> & SortedEdgeMidpoints,
 	vector<vector<int> > & PerimeterEdges)
 {
@@ -1607,4 +1607,350 @@ const bool GetSortedParameterEdgeMidpoints(const vector<vector<int> > & TriElems
 		SortedEdgeMidpoints[i] = 0.5 * (NodeList[PerimeterEdges[i][0]] + NodeList[PerimeterEdges[i][1]]);
 	}
 	return IsOk;
+}
+
+Boolean_t Vec3PathResample(vector<vec3> const & OldXYZList, int NumPoints, vector<vec3> & NewXYZList) {
+	Boolean_t IsOk = NumPoints > 1;
+
+	int OldCount = OldXYZList.size();
+
+	// 	if (IsOk && NumPoints < OldCount){
+	if (IsOk) {
+		NewXYZList.resize(NumPoints);
+
+		double Length = 0;
+		for (int i = 1; i < OldXYZList.size(); ++i)
+			Length += Distance(OldXYZList[i], OldXYZList[i - 1]);
+
+		double DelLength = Length / static_cast<double>(NumPoints - 1);
+
+		double ArcLength = 0.0,
+			ArcLengthI = 0.0,
+			ArcLengthIm1 = 0.0;
+
+		vec3 PtI, PtIm1;
+
+		PtI = OldXYZList[0];
+
+		NewXYZList[0] = PtI;
+
+		int OldI = 0;
+
+		for (int NewI = 1; NewI < NumPoints - 1; ++NewI) {
+			ArcLength += DelLength;
+
+			while (OldI < OldCount - 1 && ArcLengthI < ArcLength) {
+				++OldI;
+
+				ArcLengthIm1 = ArcLengthI;
+				PtIm1 = PtI;
+
+				PtI = OldXYZList[OldI];
+
+				ArcLengthI += Distance(PtI, PtIm1);
+			}
+
+			double Ratio = (ArcLength - ArcLengthIm1) / (ArcLengthI - ArcLengthIm1);
+			NewXYZList[NewI] = PtIm1 + (PtI - PtIm1) * Ratio;
+
+			if (OldI >= OldCount) {
+				while (NewI < NumPoints) {
+					NewI++;
+					if (NewI < NumPoints) {
+						NewXYZList[NewI] = PtIm1 + (PtI - PtIm1) * Ratio;
+					}
+				}
+			}
+		}
+
+		/*
+		*	Add last point
+		*/
+
+		NewXYZList[NumPoints - 1] = OldXYZList[OldCount - 1];
+
+
+		IsOk = NewXYZList.size() == NumPoints;
+	}
+	else IsOk = FALSE;
+
+	return IsOk;
+}
+
+
+bool ProjectedPointToTriangleIsInterior(vec3 const & P0, vec3 & TP, vec3 const & T1, vec3 const & T2, vec3 const & T3){
+	// 3d method from http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.104.4264&rep=rep1&type=pdf
+
+	// normal of triangle and its norm
+	vec3 TN = cross(T2 - T1, T3 - T1);
+	double TNLen = norm(TN);
+
+	// first corner to P0 and its norm
+	vec3 VP = P0 - T1;
+	double VPLen = norm(VP);
+
+	// alpha is the angle between TN and VP
+	double CosAlpha = dot(VP, TN) / (VPLen * TNLen);
+
+	// distance from P0 to triangle plane
+	double PointTriDist = VPLen * CosAlpha;
+
+	// vector from P0 to P1 on triangle
+	vec3 PP = TN * (-PointTriDist) / TNLen;
+
+	// point on triangle
+	TP = P0 + PP;
+
+	// for determining if interior or not
+// 	vec3 V12 = T2 - T1,
+// 		V21 = -V12,
+// 		V13 = T3 - T1,
+// 		V31 = -V13,
+// 		V23 = T3 - T2,
+// 		V32 = -V23;
+// 
+// 	vec3 V1 = V21 / norm(V21) + V31 / norm(V31),
+// 		V2 = V32 / norm(V32) + V12 / norm(V12),
+// 		V3 = V13 / norm(V13) + V23 / norm(V23);
+// 
+// 	vec3 T1P = T1 - TP,
+// 		T2P = T2 - TP,
+// 		T3P = T3 - TP;
+// 
+// 	double F1 = dot(cross(V1, -T1P), TN),
+// 		F2 = dot(cross(V2, -T2P), TN),
+// 		F3 = dot(cross(V3, -T3P), TN);
+
+
+	bool IsInterior = dot(cross(T1 - TP, T2 - TP), TN) >= 0.0;
+
+	return IsInterior;
+}
+
+double PointDistanceToTriangleSquared(vec3 const & P, vec3 & ClosestPoint, vec3 const & T1, vec3 const & T2, vec3 const & T3, bool RecordPoint) {
+	/*
+	 * from http://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
+float dot2( in vec3 v ) { return dot(v,v); }
+
+float udTriangle( in vec3 v1, in vec3 v2, in vec3 v3, in vec3 p )
+{
+	// prepare data
+	vec3 v21 = v2 - v1; vec3 p1 = p - v1;
+	vec3 v32 = v3 - v2; vec3 p2 = p - v2;
+	vec3 v13 = v1 - v3; vec3 p3 = p - v3;
+	vec3 nor = cross( v21, v13 );
+
+	return sqrt( // inside/outside test
+				 (sign(dot(cross(v21,nor),p1)) +
+				  sign(dot(cross(v32,nor),p2)) +
+				  sign(dot(cross(v13,nor),p3))<2.0)
+				  ?
+				  // 3 edges
+				  min( min(
+				  dot2(v21*clamp(dot(v21,p1)/dot2(v21),0.0,1.0)-p1),
+				  dot2(v32*clamp(dot(v32,p2)/dot2(v32),0.0,1.0)-p2) ),
+				  dot2(v13*clamp(dot(v13,p3)/dot2(v13),0.0,1.0)-p3) )
+				  :
+				  // 1 face
+				  dot(nor,p1)*dot(nor,p1)/dot2(nor) );
+}
+*/
+// 	vec3 v21 = T2 - T1,
+// 		v32 = T3 - T2,
+// 		v13 = T1 - T3,
+// 		nor = cross(v21, v13);
+// 
+// 	vec3 p1 = P - T1,
+// 		p2 = P - T2,
+// 		p3 = P - T3;
+// 
+// 	double MinDistSqr = DBL_MAX;
+// 
+// 	// inside/outside test
+// 	if (SIGN(dot(cross(v21, nor), p1))
+// 		+ SIGN(dot(cross(v32, nor), p2))
+// 		+ SIGN(dot(cross(v13, nor), p3))
+// 		< 2.0)
+// 	{
+// 		// 3 edges
+// 
+// 		vec3 u = v21, v = -v13, w = p1;
+// 		double gamma = (dot(cross(u, w), nor)) / dot2(nor),
+// 			beta = (dot(cross(w, v), nor)) / dot2(nor),
+// 			alpha = 1.0 - gamma - beta;
+// 		ClosestPoint = (T1 * CLAMP(alpha, 0.0, 1.0)) + (T2 * CLAMP(beta, 0.0, 1.0)) + (T3 * CLAMP(gamma, 0.0, 1.0));
+// 		MinDistSqr = DistSqr(ClosestPoint, P);
+// 
+// 
+// // 		vec3 e1point = (v21 * CLAMP(dot(v21, p1) / dot2(v21), 0.0, 1.0)),
+// // 			e2point = (v32 * CLAMP(dot(v32, p2) / dot2(v32), 0.0, 1.0)),
+// // 			e3point = (v13 * CLAMP(dot(v13, p3) / dot2(v13), 0.0, 1.0));
+// // 		double e1DistSqr = dot2(e1point - p1),
+// // 			e2DistSqr = dot2(e2point - p2),
+// // 			e3DistSqr = dot2(e3point - p3);
+// // 
+// // 		if (e1DistSqr < e2DistSqr)
+// // 		{
+// // 			
+// // 			if (e1DistSqr < e3DistSqr)
+// // 			{
+// // 				ClosestPoint = e1point;
+// // 				MinDistSqr = e1DistSqr;
+// // 			}
+// // 			else if (e1DistSqr == e3DistSqr)
+// // 			{
+// // 				ClosestPoint = T1;
+// // 				MinDistSqr = e1DistSqr;
+// // 			}
+// // 			else if (e1DistSqr == e2DistSqr)
+// // 			{
+// // 				ClosestPoint = T2;
+// // 				MinDistSqr = e1DistSqr;
+// // 			}
+// // 			else
+// // 			{
+// // 				ClosestPoint = e3point;
+// // 				MinDistSqr = e3DistSqr;
+// // 			}
+// // 		}
+// // 		else if (e2DistSqr < e1DistSqr)
+// // 		{
+// // 			
+// // 			if (e2DistSqr < e3DistSqr)
+// // 			{
+// // 				ClosestPoint = e2point;
+// // 				MinDistSqr = e2DistSqr;
+// // 			}
+// // 			else if (e2DistSqr == e3DistSqr)
+// // 			{
+// // 				ClosestPoint = T3;
+// // 				MinDistSqr = e2DistSqr;
+// // 			}
+// // 			else if (e2DistSqr == e1DistSqr)
+// // 			{
+// // 				ClosestPoint = T2;
+// // 				MinDistSqr = e2DistSqr;
+// // 			}
+// // 			else
+// // 			{
+// // 				ClosestPoint = e3point;
+// // 				MinDistSqr = e3DistSqr;
+// // 			}
+// // 		}
+// 	}
+// 	else
+// 	{
+// 		// triangle face
+// 
+// 		nor = normalise(nor);
+// 		ClosestPoint = P - (dot(p1, nor)) * nor;
+// 		MinDistSqr = DistSqr(P, ClosestPoint);
+// // 		MinDistSqr = std::pow(dot(nor, p1), 2) / dot2(nor);
+// // 		if (RecordPoint) ClosestPoint = P + nor * (-sqrt(MinDistSqr)) / dot2(nor);
+// 	}
+// 
+// 	return sqrt(MinDistSqr);
+// 	
+
+
+/*
+ * from https://www.gamedev.net/forums/topic/552906-closest-point-on-triangle/
+ */
+double MinDistSqr;
+
+vec3 edge0 = T2 - T1,
+edge1 = T3 - T1,
+v0 = T1 - P;
+
+double a = dot2(edge0),
+b = dot(edge0, edge1),
+c = dot2(edge1),
+d = dot(edge0, v0),
+e = dot(edge1, v0),
+
+Det = a * c - b * b,
+s = b * e - c * d,
+t = b * d - a * e;
+
+if (s + t < Det)
+{
+	if (s < 0.0)
+	{
+		if (t < 0.0)
+		{
+			if (d < 0.0)
+			{
+				s = CLAMP(-d / a, 0.0, 1.0);
+				t = 0.0;
+			}
+			else
+			{
+				s = 0.0;
+				t = CLAMP(-e / c, 0.0, 1.0);
+			}
+		}
+		else
+		{
+			s = 0.0;
+			t = CLAMP(-e / c, 0.0, 1.0);
+		}
+	}
+	else if (t < 0.0)
+	{
+		s = CLAMP(-d / a, 0.0, 1.0);
+		t = 0.0;
+	}
+	else
+	{
+		double invDet = 1.0 / Det;
+		s *= invDet;
+		t *= invDet;
+	}
+}
+else
+{
+	if (s < 0.0)
+	{
+		double tmp0 = b + d;
+		double tmp1 = c + e;
+		if (tmp1 > tmp0)
+		{
+			double numer = tmp1 - tmp0;
+			double denom = a - 2 * b + c;
+			s = CLAMP(numer / denom, 0.0, 1.0);
+			t = 1 - s;
+		}
+		else
+		{
+			t = CLAMP(-e / c, 0.0, 1.0);
+			s = 0.0;
+		}
+	}
+	else if (t < 0.0)
+	{
+		if (a + d > b + e)
+		{
+			double numer = c + e - b - d;
+			double denom = a - 2 * b + c;
+			s = CLAMP(numer / denom, 0.0, 1.0);
+			t = 1 - s;
+		}
+		else
+		{
+			s = CLAMP(-e / c, 0.0, 1.0);
+			t = 0.0;
+		}
+	}
+	else
+	{
+		double numer = c + e - b - d;
+		double denom = a - 2 * b + c;
+		s = CLAMP(numer / denom, 0.0, 1.0);
+		t = 1.0 - s;
+	}
+}
+
+ClosestPoint = T1 + s * edge0 + t * edge1;
+return Distance(ClosestPoint, P);
+
 }

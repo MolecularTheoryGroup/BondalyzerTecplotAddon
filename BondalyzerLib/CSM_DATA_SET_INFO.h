@@ -28,9 +28,9 @@ using std::string;
 using std::vector;
 using std::to_string;
 
-const double DefaultRhoCutoff = 1e-3;
+double const DefaultRhoCutoff = 1e-3;
 
-const string T21Prefix = "T21.";
+string const T21Prefix = "T21.";
 
 /*
 *	These are the aux data tags and values (where applicable)
@@ -41,7 +41,7 @@ struct CSMAuxData_s{
 	*	Aux data tags and values for the DataLoader add-on
 	*/
 	struct DL_s{
-		const string Prefix = "DataLoader.",
+		string const Prefix = "DataLoader.",
 			ProgramName = Prefix + "ProgramName",
 			LatticeConstants = Prefix + "LatticeConstants",
 			Origin = Prefix + "Origin",
@@ -59,12 +59,12 @@ struct CSMAuxData_s{
 			};
 		}
 	}; 
-	const DL_s DL;
+	DL_s const DL;
 	/*
 	*	Aux data tags and values for the GradientBundleAnalysis add-on
 	*/
 	struct GBA_s{
-		const string Prefix = "GBA.",
+		string const Prefix = "GBA.",
 			ElemNum = Prefix + "Elem",
 			GPClosestPtNumToCP = Prefix + "ClosestPointNumToCP",
 			SphereCPName = Prefix + "SphereCP",
@@ -117,12 +117,12 @@ struct CSMAuxData_s{
 			};
 		}
 	}; 
-	const GBA_s GBA;
+	GBA_s const GBA;
 	/*
 	*	Aux data tags and values for the Bondalyzer (CompChem) add-on
 	*/
 	struct CC_s{
-		const string Prefix = "CompChem.",
+		string const Prefix = "CompChem.",
 		ZoneType = Prefix + "ZoneType",
 		ZoneSubType = Prefix + "ZoneSubType",
 		ZoneTypeCPs = "CriticalPoints",
@@ -130,7 +130,9 @@ struct CSMAuxData_s{
 		ZoneTypeGP = "GradientPath",
 		ZoneTypeSZFS = "SpecialZeroFluxSurface",
 		ZoneSubTypeIAS = "InteratomicSurface",
+		ZoneSubTypeIASSegment = "InteratomicSurfaceSegment",
 		ZoneSubTypeRS = "RingSurface",
+		ZoneSubTypeRSSegment = "RingSurfaceSegment",
 		ZoneSubTypeBBS = "BondBundleSurface",
 		ZoneSubTypeRBS = "RingBundleSurface",
 		ZoneSubTypeCBS = "CageBundleSurface",
@@ -188,29 +190,29 @@ struct CSMAuxData_s{
 			}
 		}
 	}; 
-	const CC_s CC;
+	CC_s const CC;
 
 	CSMAuxData_s(){}
 }; 
-const CSMAuxData_s CSMAuxData;
+CSMAuxData_s const CSMAuxData;
 
 /*
  *	DataLoader aux data tags
  */
 
-const string DLDataPrefix = "DataLoader.";
-const string DLProgramName = DLDataPrefix + "ProgramName";
-const vector<string> DLLatticeVecs = {
+string const DLDataPrefix = "DataLoader.";
+string const DLProgramName = DLDataPrefix + "ProgramName";
+vector<string> const DLLatticeVecs = {
 	DLDataPrefix + "LatticeVectorA",
 	DLDataPrefix + "LatticeVectorB",
 	DLDataPrefix + "LatticeVectorC"
 };
-const string DLLatticeConstants = DLDataPrefix + "LatticeConstants";
-const string DLOrigin = DLDataPrefix + "Origin";
-const string DLZoneType = DLDataPrefix + "ZoneType";
-const string DLZoneTypeVolumeZone = "Volume Zone";
-const string DLZoneTypeNuclearPositions = "Nuclear Positions";
-const string DLZoneAtomicSpecies = DLDataPrefix + "Atomic Species";
+string const DLLatticeConstants = DLDataPrefix + "LatticeConstants";
+string const DLOrigin = DLDataPrefix + "Origin";
+string const DLZoneType = DLDataPrefix + "ZoneType";
+string const DLZoneTypeVolumeZone = "Volume Zone";
+string const DLZoneTypeNuclearPositions = "Nuclear Positions";
+string const DLZoneAtomicSpecies = DLDataPrefix + "Atomic Species";
 
 /*
  *	Gradient bundle analysis aux data tags
@@ -218,44 +220,44 @@ const string DLZoneAtomicSpecies = DLDataPrefix + "Atomic Species";
 
 
 
-const string GBADataPrefix = "GBA.";
-const string GBAElemNum = GBADataPrefix + "Elem";
-const vector<string> GBANodeNums = {
+string const GBADataPrefix = "GBA.";
+string const GBAElemNum = GBADataPrefix + "Elem";
+vector<string> const GBANodeNums = {
 	GBADataPrefix + "Node1",
 	GBADataPrefix + "Node2",
 	GBADataPrefix + "Node3"
 };
-const string GBAGPClosestPtNumToCP = GBADataPrefix + "ClosestPointNumToCP";
-const string GBASphereCPName = GBADataPrefix + "SphereCP";
-const string GBASphereCPNum = GBADataPrefix + "SphereCPNumber";
-const string GBASphereConstrainedNodeNums = GBADataPrefix + "SphereConstrainedNodeNums";
-const string GBASphereConstrainedNodeIntersectCPTypes = GBADataPrefix + "SphereConstrainedNodeIntersectCPTypes";
-const string GBASphereConstrainedNodeIntersectCPNames = GBADataPrefix + "SphereConstrainedNodeIntersectCPNames";
-const string GBAGPElemNums = GBADataPrefix + "SphereElemNums";
-const string GBAGPNodeNum = GBADataPrefix + "SphereNodeNum";
-const string GBAZoneType = GBADataPrefix + "ZoneType";
-const string GBAZoneTypeSphereZone = "SphereMeshZone";
-const string GBAZoneTypeFEVolumeZone = "FEVolumeZone";
-const string GBAZoneTypeGradPath = "GradPath";
-const string GBAZoneTypeIBEdgeZone = "IBEdgeZone";
-const string GBAVolumeCPName = GBADataPrefix + "VolumeCP";
+string const GBAGPClosestPtNumToCP = GBADataPrefix + "ClosestPointNumToCP";
+string const GBASphereCPName = GBADataPrefix + "SphereCP";
+string const GBASphereCPNum = GBADataPrefix + "SphereCPNumber";
+string const GBASphereConstrainedNodeNums = GBADataPrefix + "SphereConstrainedNodeNums";
+string const GBASphereConstrainedNodeIntersectCPTypes = GBADataPrefix + "SphereConstrainedNodeIntersectCPTypes";
+string const GBASphereConstrainedNodeIntersectCPNames = GBADataPrefix + "SphereConstrainedNodeIntersectCPNames";
+string const GBAGPElemNums = GBADataPrefix + "SphereElemNums";
+string const GBAGPNodeNum = GBADataPrefix + "SphereNodeNum";
+string const GBAZoneType = GBADataPrefix + "ZoneType";
+string const GBAZoneTypeSphereZone = "SphereMeshZone";
+string const GBAZoneTypeFEVolumeZone = "FEVolumeZone";
+string const GBAZoneTypeGradPath = "GradPath";
+string const GBAZoneTypeIBEdgeZone = "IBEdgeZone";
+string const GBAVolumeCPName = GBADataPrefix + "VolumeCP";
 
 /*
 *	Aux data names for bondalyzed files
 */
 // For CP zone
-const string CCDataNumCPs[4] = {
+string const CCDataNumCPs[4] = {
 	"CompChem.NumCrtPtAtom",
 	"CompChem.NumCrtPtBond",
 	"CompChem.NumCrtPtRing",
 	"CompChem.NumCrtPtCage"
 };
 // For gradiant path zone
-const string CCDataGPEndNums[2] = {
+string const CCDataGPEndNums[2] = {
 	"CompChem.BegCrtPtNum",
 	"CompChem.EndCrtPtNum"
 };
-const string CCDataGPEndTypes[2] = {
+string const CCDataGPEndTypes[2] = {
 	"CompChem.BegCrtPtType",
 	"CompChem.EndCrtPtType"
 };
@@ -264,7 +266,7 @@ const string CCDataGPEndTypes[2] = {
  *	Strings for variable names
  */
 struct CSMVarName_s{
-	const string Dens = "Electron Density",
+	string const Dens = "Electron Density",
 		DensGrad = "Density Gradient",
 		DensHess = "Density Hessian",
 		DensLap = "Density Laplacian",
@@ -345,14 +347,14 @@ struct CSMVarName_s{
 		};
 	}
 };
-const CSMVarName_s CSMVarName;
+CSMVarName_s const CSMVarName;
 
 
 /*
 *	Strings for variable names
 */
 struct CSMZoneName_s{
-	const string Delim = "_",
+	string const Delim = "_",
 		FullVolume = "Full Volume Zone" + Delim,
 
 		CriticalPoints = "Critical Points",
@@ -374,13 +376,13 @@ struct CSMZoneName_s{
 		for (string & i : CPType) i = CriticalPoints + Delim + i;
 	}
 };
-const CSMZoneName_s CSMZoneName;
+CSMZoneName_s const CSMZoneName;
 
 
 size_t getTotalSystemMemory();
 
 template <class T>
-const int VectorGetElementNum(const vector<T> & SearchVec, const T & Item){
+int VectorGetElementNum(vector<T> const & SearchVec, T const & Item){
 	int ElemNum;
 
 	vector<T>::const_iterator itr = std::find(SearchVec.cbegin(), SearchVec.cend(), Item);
@@ -390,12 +392,12 @@ const int VectorGetElementNum(const vector<T> & SearchVec, const T & Item){
 	ElemNum = itr - SearchVec.cbegin();
 	return ElemNum;
 }
-const int SearchVectorForString(const vector<string> & Vec, const string & SearchString, const bool & UseVectorStringLength = true);
-const vector<string> SplitString(const string &s, const string & delim = " ");
-const vector<int> SplitStringInt(const string &s, const string & delim = ",");
-const vector<double> SplitStringDbl(const string &s, const string & delim);
+int SearchVectorForString(vector<string> const & Vec, string const & SearchString, bool UseVectorStringLength = true);
+vector<string> SplitString(string const &s, string const & delim = " ");
+vector<int> SplitStringInt(string const &s, string const & delim = ",");
+vector<double> SplitStringDbl(string const &s, string const & delim);
 template <class T>
-const string VectorToString(const vector<T> & Items, const string & Delim = " "){
+string VectorToString(vector<T> const & Items, string const & Delim = " "){
 	//string OutStr;
 
 	//for (int i = 0; i < Items.size(); ++i) {
@@ -414,74 +416,74 @@ const string VectorToString(const vector<T> & Items, const string & Delim = " ")
 	}
 	else return "";
 }
-const Boolean_t StringIsInt(const string & s);
-const Boolean_t StringIsFloat(const string & s);
-const string StringReplaceSubString(const string & InStr, const string & OldStr, const string & NewStr);
-const string StringRemoveSubString(const string & InString, const string & SubString);
+Boolean_t StringIsInt(string const & s);
+Boolean_t StringIsFloat(string const & s);
+string StringReplaceSubString(string const & InStr, string const & OldStr, string const & NewStr);
+string StringRemoveSubString(string const & InString, string const & SubString);
 
-void AuxDataCopy(const int & SourceNum, const int & DestNum, bool IsZone);
+void AuxDataCopy(int SourceNum, int DestNum, bool IsZone);
 
-const Boolean_t AuxDataZoneHasItem(const int & ZoneNum, const string & AuxDataName);
-const Boolean_t AuxDataZoneItemMatches(const int & ZoneNum, const string & AuxDataName, const string & AuxDataValue);
-const string AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataName);
-const Boolean_t AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataName, string & Value);
-const vector<string> AuxDataZoneGetList(const int & ZoneNum, const string & AuxDataName);
-const Boolean_t AuxDataZoneSetItem(const int & ZoneNum, const string & AuxDataName, const string & AuxDataValue);
+Boolean_t AuxDataZoneHasItem(int ZoneNum, string const & AuxDataName);
+Boolean_t AuxDataZoneItemMatches(int ZoneNum, string const & AuxDataName, string const & AuxDataValue);
+string AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName);
+Boolean_t AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName, string & Value);
+vector<string> AuxDataZoneGetList(int ZoneNum, string const & AuxDataName);
+Boolean_t AuxDataZoneSetItem(int ZoneNum, string const & AuxDataName, string const & AuxDataValue);
 template <class T>
-const Boolean_t AuxDataZoneSetList(const int & ZoneNum, const string & AuxDataName, const vector<T> & AuxDataValueList){
+Boolean_t AuxDataZoneSetList(int ZoneNum, string const & AuxDataName, vector<T> const & AuxDataValueList){
 	AuxDataZoneSetItem(ZoneNum, AuxDataName, VectorToString(AuxDataValueList, ',,'));
 }
-const Boolean_t AuxDataZoneDeleteItemByName(const int & ZoneNum, const string & AuxDataName);
+Boolean_t AuxDataZoneDeleteItemByName(int ZoneNum, string const & AuxDataName);
 
-const string AuxDataDataSetGetItem(const string & AuxDataName);
-const Boolean_t AuxDataDataSetGetItem(const string & AuxDataName, string & Value);
-const Boolean_t AuxDataDataSetSetItem(const string & AuxDataName, const string & AuxDataValue);
-const Boolean_t AuxDataDataSetDeleteItemByName(const string & AuxDataName);
+string AuxDataDataSetGetItem(string const & AuxDataName);
+Boolean_t AuxDataDataSetGetItem(string const & AuxDataName, string & Value);
+Boolean_t AuxDataDataSetSetItem(string const & AuxDataName, string const & AuxDataValue);
+Boolean_t AuxDataDataSetDeleteItemByName(string const & AuxDataName);
 
 
-SmInteger_t VarNumByNameList(const vector<string> & VarNameList, const bool PartialMatch = false);
-SmInteger_t VarNumByName(const string & VarName, const bool PartialMatch = false);
-SmInteger_t ZoneNumByNameList(const vector<string> & ZoneNameList);
-SmInteger_t ZoneNumByName(const string & ZoneName, const bool ActiveOnly = false, const bool PartialMatch = false);
+SmInteger_t VarNumByNameList(vector<string> const & VarNameList, bool const PartialMatch = false);
+SmInteger_t VarNumByName(string const & VarName, bool const PartialMatch = false);
+SmInteger_t ZoneNumByNameList(vector<string> const & ZoneNameList);
+SmInteger_t ZoneNumByName(string const & ZoneName, bool const ActiveOnly = false, bool const PartialMatch = false);
 
-const vec3 GetDelXYZ_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum);
-const vector<vec3> ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum);
-void ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum, vec3 & MinXYZ, vec3 & MaxXYZ);
-void ZoneXYZVarGetBasisVectors_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum, mat33 & BasisVectors, vec3 & BVExtent);
+vec3 GetDelXYZ_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum);
+vector<vec3> ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum);
+void ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum, vec3 & MinXYZ, vec3 & MaxXYZ);
+void ZoneXYZVarGetBasisVectors_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum, mat33 & BasisVectors, vec3 & BVExtent);
 
-void StatusLaunch(const string & StatusStr, const AddOn_pa & AddOnID, const Boolean_t & ShowScale = TRUE, const Boolean_t & ShowButton = TRUE);
-void StatusDrop(const AddOn_pa & AddOnID);
-const Boolean_t StatusUpdate(unsigned int CurrentNum, 
+void StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale = TRUE, Boolean_t ShowButton = TRUE);
+void StatusDrop(AddOn_pa const & AddOnID);
+Boolean_t StatusUpdate(unsigned int CurrentNum, 
 	unsigned int TotalNum, 
-	const string & ProgresssText, 
-	const AddOn_pa & AddOnID, 
+	string const & ProgresssText, 
+	AddOn_pa const & AddOnID, 
 	high_resolution_clock::time_point StartTime = high_resolution_clock::time_point());
 
-const LgIndex_t IndexFromIJK(const LgIndex_t & I,
-	const LgIndex_t & J,
-	const LgIndex_t & K,
-	const LgIndex_t & MaxI,
-	const LgIndex_t & MaxJ);
+LgIndex_t IndexFromIJK(LgIndex_t I,
+	LgIndex_t J,
+	LgIndex_t K,
+	LgIndex_t MaxI,
+	LgIndex_t MaxJ);
 
-const LgIndex_t IndexFromIJK(const LgIndex_t    & I,
-	const LgIndex_t &    J,
-	const LgIndex_t &    K,
-	const LgIndex_t & IMax,
-	const LgIndex_t & JMax,
-	const LgIndex_t & KMax,
-	const Boolean_t & PeriodicBC);
+LgIndex_t IndexFromIJK(LgIndex_t I,
+	LgIndex_t    J,
+	LgIndex_t    K,
+	LgIndex_t IMax,
+	LgIndex_t JMax,
+	LgIndex_t KMax,
+	Boolean_t PeriodicBC);
 
-const vector<LgIndex_t> IJKFromIndex(const LgIndex_t & Index,
+vector<LgIndex_t> IJKFromIndex(LgIndex_t Index,
 	const vector<LgIndex_t>& IJKMax);
 
-const Boolean_t SaveVec3VecAsScatterZone(const vector<vec3> & VecVec,
-	const string & ZoneName,
-	const ColorIndex_t & Color,
-	const vector<EntIndex_t> & XYZVarNums);
+Boolean_t SaveVec3VecAsScatterZone(vector<vec3> const & VecVec,
+	string const & ZoneName = "IOrderedZone",
+	ColorIndex_t const & Color = Black_C,
+	vector<EntIndex_t> const & XYZVarNums = { 1,2,3 });
 
-const Boolean_t SaveTetVec3VecAsFEZone(const vector<vec3> & Verts,
-	const string & ZoneName,
-	const ColorIndex_t & Color,
-	const vector<EntIndex_t> & XYZVarNums);
+Boolean_t SaveTetVec3VecAsFEZone(vector<vec3> const & Verts,
+	string const & ZoneName,
+	ColorIndex_t const & Color,
+	vector<EntIndex_t> const & XYZVarNums);
 
 #endif

@@ -31,7 +31,7 @@ public:
 	CSM_Vec3_s centroid;
 	CSM_Vec3_s normal;
 
-	int operator[](const int & i) const{
+	int operator[](int i) const{
 		switch (i){
 			case 0: return aIdx; break;
 			case 1: return bIdx; break;
@@ -40,7 +40,7 @@ public:
 		}
 	}
 
-	const Boolean_t debug_save_tecplot_zone(const string & ZoneName, const int & ColorNum) const;
+	Boolean_t const debug_save_tecplot_zone(string const & ZoneName, int ColorNum) const;
 
 };
 

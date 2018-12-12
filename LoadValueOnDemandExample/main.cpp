@@ -231,7 +231,7 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
     {
         ArgList_pa ArgList;
         ArgList = TecUtilArgListAlloc();
-        TecUtilArgListAppendFunction(ArgList, SV_CALLBACKFUNCTION, (const void *)StateChangeCallback);
+        TecUtilArgListAppendFunction(ArgList, SV_CALLBACKFUNCTION, (void const *)StateChangeCallback);
         TecUtilArgListAppendInt(ArgList,      SV_STATECHANGEMODE,  StateChangeMode_v100);
         TecUtilStateChangeAddCallbackX(ArgList);
         TecUtilArgListDealloc(&ArgList);

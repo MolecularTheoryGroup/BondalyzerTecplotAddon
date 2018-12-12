@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "CSM_GRAD_PATH.h"
-
+#include "CSM_GEOMETRY.h"
 
 using std::vector;
 
@@ -20,23 +20,23 @@ public:
 	*	These are the FEVolume_c's that will integrate over them
 	*	selves.
 	*/
-	FESurface_c(const int & InZoneNum,
-		const ZoneType_e & InZoneType,
-		const vector<FieldDataPointer_c> & InXYZPtrs,
-		const vec3 & InMaxXYZ,
-		const vec3 & InMinXYZ,
-		const vector<int> InMaxIJK,
+	FESurface_c(int InZoneNum,
+		ZoneType_e const & InZoneType,
+		vector<FieldDataPointer_c> const & InXYZPtrs,
+		vec3 const & InMaxXYZ,
+		vec3 const & InMinXYZ,
+		vector<int> const InMaxIJK,
 		NodeMap_t* InConnectivityListPtr);
 	/*
 	*	This is a constructor for making a FEVolume_c
 	*	from an existing zone. The FEVolume_c gets all the
 	*	information it needs from Tec360.
 	*/
-	FESurface_c(const int & ZoneNum,
-		const int & VolZoneNum,
-		const vector<int> & InXYZVarNums,
-		const vector<int> & InIntVarNums,
-		const bool CopyData = false);
+	FESurface_c(int ZoneNum,
+		int VolZoneNum,
+		vector<int> const & InXYZVarNums,
+		vector<int> const & InIntVarNums,
+		bool const CopyData = false);
 
 	/*
 	*	Make FEVolume from an existing zone.
@@ -45,13 +45,13 @@ public:
 	*		with connectivity info and such.
 	*	This assumes the structure of the surfaces made by Bondalyzer
 	*/
-	FESurface_c(const int & ZoneNum,
-		const vector<int> & InXYZVarNums);
+	FESurface_c(int ZoneNum,
+		vector<int> const & InXYZVarNums);
 
 	/*
 	 *	Make FEVolume from lists of nodes (points) and elements (lists of point indices).
 	 */
-	FESurface_c(const vector<vec3> & Nodes, vector<vector<int> > & Elements);
+	FESurface_c(vector<vec3> const & Nodes, vector<vector<int> > & Elements);
 
 
 	~FESurface_c();
@@ -60,114 +60,124 @@ public:
 	 *	Operators
 	 */
 
-	FESurface_c & operator+=(const FESurface_c & rhs);
-	const FESurface_c operator+(const FESurface_c & rhs) const;
+	FESurface_c & operator+=(FESurface_c const & rhs);
+	FESurface_c operator+(FESurface_c const & rhs) const;
 
 	/*
 	*	Getters
 	*/
-	const int GetNumSides() const { return m_GPList.size(); }
-	const int GetGPZoneNum(const int & i) const { REQUIRE(0 <= i && i < m_GPList.size()); return m_GPList[i].GetZoneNum(); }
-	const Boolean_t IsMade() const { return m_FEVolumeMade; }
-	const Boolean_t IntResultsReady() const { return m_IntegrationResultsReady; }
-	const vector<double> GetIntResults() const;
-	const int GetZoneNum() const { return m_ZoneNum; }
-	const vector<vector<double> > GetTriSphereIntValsByElem(vector<double> * SphereTriangleAreas = NULL) const { return TriSphereIntValsByElem(SphereTriangleAreas); }
+	int GetNumSides() const { return m_GPList.size(); }
+	int GetGPZoneNum(int i) const { REQUIRE(0 <= i && i < m_GPList.size()); return m_GPList[i].GetZoneNum(); }
+	Boolean_t IsMade() const { return m_FEVolumeMade; }
+	Boolean_t IntResultsReady() const { return m_IntegrationResultsReady; }
+	vector<double> GetIntResults() const;
+	int GetZoneNum() const { return m_ZoneNum; }
+	vector<vector<double> > GetTriSphereIntValsByElem(vector<double> * SphereTriangleAreas = NULL) const { return TriSphereIntValsByElem(SphereTriangleAreas); }
+
+
+	vector<vec3> GetSphereIntersectionPath(vec3 const & SphereCenter, double const & SphereRadius);
+	bool ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, int & ProjectedElemIndex, bool & ProjectionIsInterior) const;
 
 	/*
 	*	Setters
 	*/
-	const Boolean_t Setup(const int & InZoneNum,
-		const int & VolZoneNum,
-		const vector<int> & InXYZVarNums,
-		const vector<int> & InIntVarNums,
-		const bool CopyData = false);
-	const Boolean_t Setup(const int InZoneNum,
-		const vector<int> & InXYZVarNums);
+	Boolean_t Setup(int InZoneNum,
+		int VolZoneNum,
+		vector<int> const & InXYZVarNums,
+		vector<int> const & InIntVarNums,
+		bool const CopyData = false);
+	Boolean_t Setup(int const InZoneNum,
+		vector<int> const & InXYZVarNums);
 
-	void AddGP(const GradPath_c & GP){ m_GPList.push_back(GP); }
+	void AddGP(GradPath_c const & GP){ m_GPList.push_back(GP); }
 
-	const Boolean_t DoIntegration(const Boolean_t & IntegrateVolume, 
-		const vector<vec> & stuW, 
-		const vector<int> & SplitPtNums = vector<int>(),
-		const vector<vec> & stuW2 = vector<vec>());
-// 	const Boolean_t DoIntegration(const int & ResolutionScale, const Boolean_t & IntegrateVolume);
-	const Boolean_t DoIntegrationNew(const int & ResolutionScale, const Boolean_t & IntegrateVolume);
+	Boolean_t DoIntegration(Boolean_t IntegrateVolume, 
+		vector<vec> const & stuW, 
+		vector<int> const & SplitPtNums = vector<int>(),
+		vector<vec> const & stuW2 = vector<vec>());
+// 	Boolean_t DoIntegration(int ResolutionScale, Boolean_t IntegrateVolume);
+	Boolean_t DoIntegrationNew(int ResolutionScale, Boolean_t IntegrateVolume);
 
-	const Boolean_t GQIntegration(const int & NumGQPts, const vector<FieldDataPointer_c> & InIntFDPtrs, const Boolean_t & IntegrateVolume);
+	Boolean_t GQIntegration(int NumGQPts, vector<FieldDataPointer_c> const & InIntFDPtrs, Boolean_t IntegrateVolume);
 
-	const double IntVolume(const int & N, const vec3 & StartPoint) const;
-	const vector<mat> GetIntegrationPointsWeights(const vec3 & StartPoint, const vector<vec> & stuW) const;
-	const vector<mat> GetIntegrationPointsWeights(const vector<vec> & stuW) const;
+	double IntVolume(int N, vec3 const & StartPoint) const;
+	vector<mat> GetIntegrationPointsWeights(vec3 const & StartPoint, vector<vec> const & stuW) const;
+	vector<mat> GetIntegrationPointsWeights(vector<vec> const & stuW) const;
 
-	const vector<vector<LgIndex_t> > * GetConnectivityListPtr() const { return &m_ConnectivityList; }
-	const vector<vector<int> > * GetElemListPtr() const { return &m_ElemList; }
-	const vector<vec3> * GetXYZListPtr() const { return &m_XYZList; }
+	void GeneratePointElementDistanceCheckData();
+	void GenerateElemMidpoints();
+	void GetNodeConnectivityFromTecplot();
+	void GenerateElemConnectivity();
+	vector<vector<LgIndex_t> > const * GetNodeConnectivityListPtr() const { return &m_NodeConnectivityList; }
+	vector<vector<LgIndex_t> > const * GetElemConnectivityListPtr() const { return &m_ElemConnectivityList; }
+	vector<vector<int> > const * GetElemListPtr() const { return &m_ElemList; }
+	vector<vec3> const * GetXYZListPtr() const { return &m_XYZList; }
 
-// 	const Boolean_t MakeGradientBundle(vector<GradPath_c*> GPs);
-	const Boolean_t MakeFromGPs(vector<GradPath_c*> GPs, const bool ConnectBeginningAndEndGPs = false, const bool AddCap = false);
+// 	Boolean_t MakeGradientBundle(vector<GradPath_c*> GPs);
+	Boolean_t MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBeginningAndEndGPs = false, bool const AddCap = false);
 
-	const Boolean_t MakeFromNodeElemList(const vector<vec3> & P, const vector<vector<int> > & T);
+	Boolean_t MakeFromNodeElemList(vector<vec3> const & P, vector<vector<int> > const & T);
 
-	const Boolean_t Refine();
+	Boolean_t Refine();
 	/*
 	*	Two methods to make the 3- and 4-sided
 	*	FE volumes from gradient paths.
 	*/
-// 	const Boolean_t MakeGradientBundle(const GradPath_c & GP1,
-// 		const GradPath_c & GP2,
-// 		const GradPath_c & GP3);
-// 	const Boolean_t MakeGradientBundle(const GradPath_c & GP1,
-// 		const GradPath_c & GP2,
-// 		const GradPath_c & GP3,
-// 		const GradPath_c & GP4);
+// 	Boolean_t MakeGradientBundle(GradPath_c const & GP1,
+// 		GradPath_c const & GP2,
+// 		GradPath_c const & GP3);
+// 	Boolean_t MakeGradientBundle(GradPath_c const & GP1,
+// 		GradPath_c const & GP2,
+// 		GradPath_c const & GP3,
+// 		GradPath_c const & GP4);
 
 	/*
 	*	Other
 	*/
-	static const int SetZoneStyle(const int ZoneNum,
-		const AssignOp_e ZoneActive = AssignOp_PlusEquals,
-		const Boolean_t ShowContour = TRUE,
-		const Boolean_t ShowMesh = TRUE,
-		const Boolean_t ShowScatter = FALSE,
-		const Boolean_t ShowShade = FALSE);
-	const int SaveAsTriFEZone(const vector<int> & XYZVarNums, string ZoneName = "");
-	const int SaveAsTriFEZone(const string & ZoneName, 
+	static int SetZoneStyle(int const ZoneNum,
+		AssignOp_e const ZoneActive = AssignOp_PlusEquals,
+		Boolean_t const ShowContour = TRUE,
+		Boolean_t const ShowMesh = TRUE,
+		Boolean_t const ShowScatter = FALSE,
+		Boolean_t const ShowShade = FALSE);
+	int SaveAsTriFEZone(vector<int> const & XYZVarNums, string ZoneName = "");
+	int SaveAsTriFEZone(string const & ZoneName, 
 		vector<FieldDataType_e> DataTypes,
-		const vector<ValueLocation_e> & DataLocations,
-		const vector<int> & XYZVarNums);
-// 	const int SaveAsFEZone(
+		vector<ValueLocation_e> const & DataLocations,
+		vector<int> const & XYZVarNums);
+// 	int const SaveAsFEZone(
 // 		vector<FieldDataType_e> DataTypes,
-// 		const vector<int> & XYZVarNums,
-// 		const int & RhoVarNum
+// 		vector<int> const & XYZVarNums,
+// 		int RhoVarNum
 // 		);
 
 	friend class Domain_c;
 
 private:
 
-	const Boolean_t PointIsInterior(const vec3 & Point, const vector<vec3> & FarPoints) const;
-	const int TriangleIntersect(const vec3 & T_P0,
-		const vec3 & T_P1,
-		const vec3 & T_P2,
-		const vec3 & R_P1,
-		const vec3 & R_P0) const;
-	const vector<vector<double> > TriSphereIntValsByElem(vector<double> * SphereTriangleAreas = NULL) const;
-	const Boolean_t CalcMaxNodeDistSqr();
-	const Boolean_t DistSqrToSurfaceNodeWithinTolerance(const vec3 & CheckPt,
+	double FESurface_c::PointDistanceToElementSquared(vec3 const & P, int e, vec3 & ClosestPoint)  const;
+	Boolean_t PointIsInterior(vec3 const & Point, vector<vec3> const & FarPoints) const;
+	int TriangleIntersect(vec3 const & T_P0,
+		vec3 const & T_P1,
+		vec3 const & T_P2,
+		vec3 const & R_P1,
+		vec3 const & R_P0) const;
+	vector<vector<double> > TriSphereIntValsByElem(vector<double> * SphereTriangleAreas = NULL) const;
+	Boolean_t CalcMaxNodeDistSqr();
+	Boolean_t DistSqrToSurfaceNodeWithinTolerance(vec3 const & CheckPt,
 		double & NewDistSqrUnderTol,
 		int & CloseNodeNum,
-		const double & DistSqrTol = -1.0);
-	const Boolean_t SubDivideIntegrateCellAtPoint(const vec3 & Point,
-		const vector<vec3> & FarPoints,
-		const vec3 & DelXYZ,
-		const double & MinDistSqrToSurfaceNode,
+		double const & DistSqrTol = -1.0);
+	Boolean_t SubDivideIntegrateCellAtPoint(vec3 const & Point,
+		vector<vec3> const & FarPoints,
+		vec3 const & DelXYZ,
+		double const & MinDistSqrToSurfaceNode,
 		int MinDistNodeNum,
-		const int & SubDivideLevel,
-		const Boolean_t & IntegrateVolume);
-	const vector<int> TriangleEdgeMidPointSubdivide(const int & TriNum);
-	void RefineTriElems(const vector<int> & TriNumList);
-// 	void TriPolyLines(const bool ConnectBeginningAndEndGPs = true);
+		int SubDivideLevel,
+		Boolean_t IntegrateVolume);
+	vector<int> TriangleEdgeMidPointSubdivide(int TriNum);
+	void RefineTriElems(vector<int> const & TriNumList);
+// 	void TriPolyLines(bool const ConnectBeginningAndEndGPs = true);
 	void RemoveDupicateNodes();
 
 
@@ -175,10 +185,21 @@ private:
 
 	vector<vec3> m_XYZList;
 
+	// data for speeding up surface grad paths
+	vector<vec3> m_ElemMidPoints, m_v21, m_v32, m_v13, m_normals,
+		m_v21crossN, m_v32crossN, m_v13crossN;
+	vector<double> m_oneOverMagSqrV21, m_oneOverMagSqrV32, m_oneOverMagSqrV13, m_oneOverMagSqrN;
+
+	vector<vec3> m_edge0, m_edge1;
+	vector<double> m_a, m_b, m_c, m_det, m_invDet, m_oneOverDenom, m_oneOverA, m_oneOverC;
+	// end
+
+
 	vector<double> m_RhoList;
 
 	NodeMap_t* m_ConnectivityListPtr;
-	vector<vector<LgIndex_t> > m_ConnectivityList;
+	vector<vector<LgIndex_t> > m_NodeConnectivityList,
+		m_ElemConnectivityList;
 	vector<double> m_MaxNeighborNodeDistSqr,
 		m_MinNeighborNodeDistSqr;
 	vector<vec3> m_RefinedXYZList;
@@ -218,23 +239,23 @@ private:
 };
 
 
-const vector<vec> GetWeightsPoints(const int & N);
+vector<vec> GetWeightsPoints(int N);
 
 
 class Domain_c
 {
 public:
 	Domain_c(){}
-	Domain_c(const vector<int> & V, FESurface_c *Vol){ Setup(V, Vol); }
+	Domain_c(vector<int> const & V, FESurface_c *Vol){ Setup(V, Vol); }
 	~Domain_c(){ m_Vol = NULL; }
-	void Setup(const vector<int> & V, FESurface_c *Vol);
+	void Setup(vector<int> const & V, FESurface_c *Vol);
 
-	const double Weight() const;
+	double Weight() const;
 protected:
 	
 private:
-	const double Split(const int & ei, vector<int> & t, Domain_c & D1, Domain_c & D2) const;
-	const double WeightFunc(const vector<int> & t) const;
+	double Split(int ei, vector<int> & t, Domain_c & D1, Domain_c & D2) const;
+	double WeightFunc(vector<int> const & t) const;
 
 
 	vector<int> m_V;

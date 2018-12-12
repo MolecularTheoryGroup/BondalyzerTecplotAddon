@@ -96,7 +96,7 @@
       <AdditionalIncludeDirectories>$(TEC360HOME)include;$(SolutionDir)armadillo\include;$(ProjectDir)spdlog;$(SolutionDir)..\gsl-1.16;$(SolutionDir)..\TP_Toolbox_2013r1;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
       <OpenMPSupport>true</OpenMPSupport>
-      <PreprocessorDefinitions>ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -146,7 +146,7 @@
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
       <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>;4244</DisableSpecificWarnings>
-      <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

@@ -30,7 +30,7 @@ typedef struct _Bundles_s
 
 typedef struct _Bundles_s  *Bundles_pa;
 
-Boolean_t     BundlesIsValid(const Bundles_pa Bundles);
+Boolean_t     BundlesIsValid(Bundles_pa const Bundles);
 Bundles_pa    BundlesAlloc();
 void          BundlesClear(Bundles_pa Bundles);
 Boolean_t     BundlesRemovePoint(Bundles_pa Bundles,
@@ -60,33 +60,33 @@ Boolean_t   BundlesAppendAtEnd(Bundles_pa Bundles,
                                LgIndex_t  CageOrRing2,
                                char       CageOrRingCPType,
                                char       BundleType);
-Boolean_t BundlesGetFromOffset(const Bundles_pa  Bundles,
-                               const LgIndex_t   PointOffset,
+Boolean_t BundlesGetFromOffset(Bundles_pa  const Bundles,
+                               LgIndex_t   const PointOffset,
                                LgIndex_t  *Atom,
                                LgIndex_t  *Bond,
                                LgIndex_t  *Ring,
                                LgIndex_t  *CageOrRing2,
                                char       *CageOrRingCPType,
                                char       *BundleType);
-Boolean_t BundlesGetBondRingFromAtomCage(const Bundles_pa  Bundles,
-                                         const LgIndex_t     Atom,
-                                         const LgIndex_t     Cage,
+Boolean_t BundlesGetBondRingFromAtomCage(Bundles_pa  const Bundles,
+                                         LgIndex_t     const Atom,
+                                         LgIndex_t     const Cage,
                                          Bundles_pa          BundlesAtomCage);
-Boolean_t BundlesIsEdge(const Bundles_pa    Bundles,
-                        const LgIndex_t     BundleNum,
-                        const char          BegCrtPtType,
-                        const LgIndex_t     BegCrtPtNum,
-                        const char          EndCrtPtType,
-                        const LgIndex_t     EndCrtPtNum);
+Boolean_t BundlesIsEdge(Bundles_pa    const Bundles,
+                        LgIndex_t     const BundleNum,
+                        char          const BegCrtPtType,
+                        LgIndex_t     const BegCrtPtNum,
+                        char          const EndCrtPtType,
+                        LgIndex_t     const EndCrtPtNum);
 
-Boolean_t BundlesIsSurface(const Bundles_pa    Bundles,
-                           const LgIndex_t     BundleNum,
-                           const char          BegCrtPtType,
-                           const LgIndex_t     BegCrtPtNum,
-                           const char          EndCrtPtType,
-                           const LgIndex_t     EndCrtPtNum,
-                           const char          ThrdCrtPtType,
-                           const LgIndex_t     ThrdCrtPtNum);
+Boolean_t BundlesIsSurface(Bundles_pa    const Bundles,
+                           LgIndex_t     const BundleNum,
+                           char          const BegCrtPtType,
+                           LgIndex_t     const BegCrtPtNum,
+                           char          const EndCrtPtType,
+                           LgIndex_t     const EndCrtPtNum,
+                           char          const ThrdCrtPtType,
+                           LgIndex_t     const ThrdCrtPtNum);
 
 
 #endif /* BUNDLES_H_ */

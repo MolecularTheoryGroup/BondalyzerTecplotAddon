@@ -110,7 +110,7 @@
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
       <MinimalRebuild>true</MinimalRebuild>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <PreprocessorDefinitions>_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -163,7 +163,7 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <MinimalRebuild>true</MinimalRebuild>
       <DisableSpecificWarnings>4996;4244</DisableSpecificWarnings>
-      <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>

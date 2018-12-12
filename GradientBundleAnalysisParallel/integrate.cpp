@@ -92,7 +92,7 @@ using std::chrono::duration_cast;
 // 		*	Sort list of spheres and select first one
 // 		*/
 // 		SortCPNameList(SphereCPNameList);
-// 		for (const string & it : SphereCPNameList){
+// 		for (string const & it : SphereCPNameList){
 // 			TecGUIListAppendItem(MLIntSelSph_MLST_T2_1, it.c_str());
 // 		}
 // 		TecGUIListSetSelectedItem(MLIntSelSph_MLST_T2_1, 1);
@@ -114,12 +114,12 @@ using std::chrono::duration_cast;
 // }
 
 
-const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
-	const vector<string> & IntVarNameList,
-	const vector<int> & IntVarNumList,
-	const Boolean_t & IntegrateVolume,
-	const int & IntResolution,
-	const Boolean_t & ActiveGBsOnly)
+Boolean_t PerformIntegration(vector<string> const & AtomNameList,
+	vector<string> const & IntVarNameList,
+	vector<int> const & IntVarNumList,
+	Boolean_t IntegrateVolume,
+	int IntResolution,
+	Boolean_t ActiveGBsOnly)
 {
 
 	TecUtilLockStart(AddOnID);
@@ -574,7 +574,7 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 		}
 
 // 		Set_pa TmpSet = TecUtilSetAlloc(FALSE);
-// 		for (const auto & i : VolumeList){
+// 		for (auto const & i : VolumeList){
 // 			for (int j = 0; j < i.GetNumSides(); ++j){
 // 				TecUtilSetAddMember(TmpSet, i.GetGPZoneNum(j), TRUE);
 // 			}
@@ -653,7 +653,7 @@ const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
 	return IsOk;
 }
 
-const int GetRecommendedIntPrecision(){
+int GetRecommendedIntPrecision(){
 	int RecPrecision = 2;
 
 	if (TecUtilDataSetIsAvailable()){

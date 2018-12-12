@@ -30,7 +30,7 @@ enum CalcVar_e{
 	CalcInvalidVar = -1
 };
 
-static const vector<string> CalcVarTypeNames = {
+static vector<string> const CalcVarTypeNames = {
 	"Density gradient vector",
 	"Density gradient magnitude",
 	"Density Hessian",
@@ -68,139 +68,139 @@ struct CalcVarsOptions_s{
 
 void CalcVars(CalcVarsOptions_s & Opt);
 
-void CalcGradGradMagForDataset(Boolean_t IsPeriodic, const AddOn_pa & AddOnID);
+void CalcGradGradMagForDataset(Boolean_t IsPeriodic, AddOn_pa const & AddOnID);
 
-const Boolean_t CalcGradForRegularVar(const vector<int> & IJKMax,
-	const vec3 & DelXYZ,
-	const Boolean_t & IsPeriodic,
-	const FieldDataPointer_c & VarReadPtr,
-	const vector<FieldDataPointer_c> & VarWritePtrs,
-	const string & VarName,
-	const AddOn_pa & AddOnID);
+Boolean_t CalcGradForRegularVar(vector<int> const & IJKMax,
+	vec3 const & DelXYZ,
+	Boolean_t IsPeriodic,
+	FieldDataPointer_c const & VarReadPtr,
+	vector<FieldDataPointer_c> const & VarWritePtrs,
+	string const & VarName,
+	AddOn_pa const & AddOnID);
 
-const Boolean_t CalcMagForRegularVectorVar(const vector<int> & IJKMax,
-	const vector<FieldDataPointer_c> & VarReadPtrs,
-	const FieldDataPointer_c & VarWritePtr,
-	const string & VarName,
-	const AddOn_pa & AddOnID);
+Boolean_t CalcMagForRegularVectorVar(vector<int> const & IJKMax,
+	vector<FieldDataPointer_c> const & VarReadPtrs,
+	FieldDataPointer_c const & VarWritePtr,
+	string const & VarName,
+	AddOn_pa const & AddOnID);
 
-void CalcGradForNode(const int & ii,
-	const int & jj,
-	const int & kk,
-	const vec3 & DelXYZx2,
-	const vec3 & DelXYZx12,
+void CalcGradForNode(int ii,
+	int jj,
+	int kk,
+	vec3 const & DelXYZx2,
+	vec3 const & DelXYZx12,
 	vector<double> & Vals,
 	vector<int> & DirInd,
-	const int & StartDir,
-	const vector<int> & IJKMax,
-	const Boolean_t & IsPeriodic,
-	const FieldDataPointer_c & VarReadPtr,
+	int StartDir,
+	vector<int> const & IJKMax,
+	Boolean_t IsPeriodic,
+	FieldDataPointer_c const & VarReadPtr,
 	vec3 & OutValues);
 
-void CalcGradForPoint(const vec3 & Point,
-	const vec3 & DelXYZ,
+void CalcGradForPoint(vec3 const & Point,
+	vec3 const & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const mat33 & DirVects,
-	const int & StartDir,
-	const Boolean_t & IsPeriodic,
+	mat33 const & DirVects,
+	int StartDir,
+	Boolean_t IsPeriodic,
 	vec & OutValues,
-	const FieldDataPointer_c & VarReadPtr,
-	const GPType_e & CalcType,
+	FieldDataPointer_c const & VarReadPtr,
+	GPType_e const & CalcType,
 	void * Params);
 
-void CalcHessForNode(const int & ii,
-	const int & jj,
-	const int & kk,
-	const vec3 & DelXYZx2,
-	const vec3 & DelXYZx12,
+void CalcHessForNode(int ii,
+	int jj,
+	int kk,
+	vec3 const & DelXYZx2,
+	vec3 const & DelXYZx12,
 	vector<double> & Vals,
 	vector<int> & DirInd,
-	const vector<int> & IJKMax,
-	const Boolean_t & IsPeriodic,
-	const FieldDataPointer_c & ScalarReadPtr,
-	const vector<FieldDataPointer_c> & GradReadPtrs,
+	vector<int> const & IJKMax,
+	Boolean_t IsPeriodic,
+	FieldDataPointer_c const & ScalarReadPtr,
+	vector<FieldDataPointer_c> const & GradReadPtrs,
 	mat33 & Hess);
 
-void CalcHessForPoint(const vec3 & Point,
-	const vec3 & DelXYZ,
+void CalcHessForPoint(vec3 const & Point,
+	vec3 const & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const mat33 & DirVects,
-	const Boolean_t & IsPeriodic,
+	mat33 const & DirVects,
+	Boolean_t IsPeriodic,
 	mat & OutValues,
-	const FieldDataPointer_c & VarReadPtr,
-	const GPType_e & CalcType,
+	FieldDataPointer_c const & VarReadPtr,
+	GPType_e const & CalcType,
 	void * Params);
 
-void CalcHessFor3DPoint(const vec3 & Point,
-	const vec3 & DelXYZ,
+void CalcHessFor3DPoint(vec3 const & Point,
+	vec3 const & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const Boolean_t & IsPeriodic,
+	Boolean_t IsPeriodic,
 	mat33 & Hess,
-	const vector<FieldDataPointer_c> & VarReadPtrs,
-	const GPType_e & CalcType,
+	vector<FieldDataPointer_c> const & VarReadPtrs,
+	GPType_e const & CalcType,
 	void * Params);
 
 void CalcHessForDataSet(Boolean_t IsPeriodic,
-	const AddOn_pa & AddOnID);
+	AddOn_pa const & AddOnID);
 
-const Boolean_t CalcEigenSystemForNode(const int & ii,
-	const int & jj,
-	const int & kk,
+Boolean_t CalcEigenSystemForNode(int ii,
+	int jj,
+	int kk,
 	vec3 & EigenValues,
 	mat33 & EigenVectors,
 	MultiRootParams_s & RootParams);
 
-const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
+Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 	vec & EigenValues,
 	mat & EigenVectors,
 	MultiRootParams_s & RootParams);
 
 void CalcEigenSystemForDataSet(Boolean_t IsPeriodic,
-	const AddOn_pa & AddOnID);
+	AddOn_pa const & AddOnID);
 
 void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
-	const Boolean_t & NormalizeGrad,
-	const AddOn_pa & AddOnID);
+	Boolean_t NormalizeGrad,
+	AddOn_pa const & AddOnID);
 
 void CalcEigenvecDotGradForPoint(vec3 Point,
 	vec3 & DotProducts,
 	vec3 & EigenValues,
 	mat33 & EigenVectors,
-	const Boolean_t & NormalizeGrad,
+	Boolean_t NormalizeGrad,
 	MultiRootParams_s & RootParams);
 
 void CalcEigenvecDotGradForPoint(vec3 Point,
 	vec3 & DotProducts,
-	const Boolean_t & NormalizeGrad,
+	Boolean_t NormalizeGrad,
 	MultiRootParams_s & RootParams);
 
-const double Eberly1RidgeFunction(vec3 & Point,
-	const double & RhoCutoff,
-	const Boolean_t & NormalizeGrad,
+double Eberly1RidgeFunction(vec3 & Point,
+	double const & RhoCutoff,
+	Boolean_t NormalizeGrad,
 	MultiRootParams_s & RootParams);
-const double Eberly2RidgeFunction(vec3 & Point,
-	const double & RhoCutoff,
-	const Boolean_t & NormalizeGrad,
-	MultiRootParams_s & RootParams);
-
-const double NEBForceFunction(vec3 & Point,
+double Eberly2RidgeFunction(vec3 & Point,
+	double const & RhoCutoff,
+	Boolean_t NormalizeGrad,
 	MultiRootParams_s & RootParams);
 
-void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const double & RhoCutoff);
+double NEBForceFunction(vec3 & Point,
+	MultiRootParams_s & RootParams);
 
-void MapAllVarsToAllZones(const AddOn_pa & AddOnID);
+void CalcEberlyFunctions(Boolean_t IsPeriodic, AddOn_pa const & AddOnID, double const & RhoCutoff);
 
-const vector<double> LogLevels(double Min, double Max);
+void MapAllVarsToAllZones(AddOn_pa const & AddOnID);
 
-void GaussianBlur(const Boolean_t & IsPeriodic,
-	const AddOn_pa & AddOnID,
-	const EntIndex_t & ZoneNum,
-	const EntIndex_t & VarNum,
-	const string & NewZoneName,
-	const double & Sigma);
+vector<double> LogLevels(double Min, double Max);
 
-const vec3 Transform2dTo3d(const vec2 & TwoPt,
-	const mat33 & BasisVectors,
-	const vec3 & Origin);
+void GaussianBlur(Boolean_t IsPeriodic,
+	AddOn_pa const & AddOnID,
+	EntIndex_t const & ZoneNum,
+	EntIndex_t const & VarNum,
+	string const & NewZoneName,
+	double const & Sigma);
+
+vec3 Transform2dTo3d(vec2 const & TwoPt,
+	mat33 const & BasisVectors,
+	vec3 const & Origin);
 
 #endif

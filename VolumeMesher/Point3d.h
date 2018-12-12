@@ -18,7 +18,7 @@ public:
 
 	void addConnection(int connection);
 
-	double operator[](const int & i) const{
+	double operator[](int i) const{
 		switch(i){
 			case 0: return x; break;
 			case 1: return y; break;

@@ -39,7 +39,7 @@ struct OptParams{
 	triangle* t;
 };
 
-const point GSLVecToPoint(const gsl_vector *v){
+point const GSLVecToPoint(gsl_vector const *v){
 	point tmp;
 	for (int i = 0 ; i < 3 ; ++i)
 		tmp[i] = gsl_vector_get(v, i);
@@ -47,7 +47,7 @@ const point GSLVecToPoint(const gsl_vector *v){
 	return tmp;
 }
 
-double CostFunc(const gsl_vector *v, void* params){
+double CostFunc(gsl_vector const *v, void* params){
 
 	OptParams* Params = (OptParams*)params;
 
@@ -60,7 +60,7 @@ double CostFunc(const gsl_vector *v, void* params){
 
 	point CurPt = GSLVecToPoint(v);
 
-	for (const int & PtNum : Params->AdjList[Params->OptPoint]){
+	for (int PtNum : Params->AdjList[Params->OptPoint]){
 		if (PtNum >= 0)
 			TAreas.push_back(Params->p[PtNum].magsqr(CurPt));
 	}
@@ -69,7 +69,7 @@ double CostFunc(const gsl_vector *v, void* params){
 		 * get the areas of the local triangles (actually, the
 		 * area squared, times two)
 		 */
-// 	for (const int & TNum : Params->TriAdjList[Params->OptPoint]){
+// 	for (int TNum : Params->TriAdjList[Params->OptPoint]){
 // 
 // 		if (TNum >= 0){
 // 			double A, B, C;
@@ -123,7 +123,7 @@ double CostFunc(const gsl_vector *v, void* params){
 	 * get the average areas
 	 */
 	double Mean = 0;
-	for (const double & i : TAreas)
+	for (double const & i : TAreas)
 		Mean += i;
 	Mean /= (double)TAreas.size();
 
@@ -131,7 +131,7 @@ double CostFunc(const gsl_vector *v, void* params){
 	 * get the variance of the areas of the triangles
 	 */
 	double Var = 0;
-	for (const double & i : TAreas)
+	for (double const & i : TAreas)
 		Var += (i - Mean) * (i - Mean);
 	Var /= (double)TAreas.size();
 
@@ -148,7 +148,7 @@ double TriAreaVar(OptParams * Params){
 	for (int PtNum = 0; PtNum < Params->NumPts; ++PtNum){
 		vector<double> TAreas;
 		TAreas.reserve(Params->TriAdjListCounts[PtNum]);
-		for (const int & TriNum : Params->TriAdjList[PtNum]){
+		for (int TriNum : Params->TriAdjList[PtNum]){
 			if (TriNum >= 0){
 				double A, B, C;
 
@@ -172,7 +172,7 @@ double TriAreaVar(OptParams * Params){
 		 * get the average areas
 		 */
 		double Mean = 0;
-		for (const double & i : TAreas)
+		for (double const & i : TAreas)
 			Mean += i;
 		Mean /= (double)TAreas.size();
 
@@ -180,7 +180,7 @@ double TriAreaVar(OptParams * Params){
 		 * get the variace of the areas of the triangles
 		 */
 		double Var = 0;
-		for (const double & i : TAreas)
+		for (double const & i : TAreas)
 			Var += pow(i - Mean, 2);
 		Var /= (double)TAreas.size();
 		MaxList[PtNum] = Var;
@@ -245,7 +245,7 @@ MeshStatus_e meshgen2D_sphere(double Radius,
    * constraint to the constrained point location
    */
   MovedPointNums.clear();
-  for (const point & cp : ConstrainedVertices){
+  for (point cp : ConstrainedVertices){
 	  double MinLenSqr = Radius * 10.0;
 	  int MovedPointNum = -1;
 	  for (int i = 0; i < Params.NumPts; ++i){
@@ -257,7 +257,7 @@ MeshStatus_e meshgen2D_sphere(double Radius,
 	  }
 	  if (MovedPointNum >= 0){
 		  bool NewPoint = true;
-		  for (const int & pn : MovedPointNums)
+		  for (int pn : MovedPointNums)
 			  if (MovedPointNum == pn){
 				  NewPoint = false;
 				  break;
@@ -326,11 +326,11 @@ MeshStatus_e meshgen2D_sphere(double Radius,
 	 *	Check that no two constrained points share a neighbor
 	 */
 	bool MeshFail = false;
-	for (const int & ChkPt : MovedPointNums){
-		for (const int & ChkNeighbor : Params.AdjList[ChkPt]){
-			for (const int & ChkPt2 : MovedPointNums){
+	for (int ChkPt : MovedPointNums){
+		for (int ChkNeighbor : Params.AdjList[ChkPt]){
+			for (int ChkPt2 : MovedPointNums){
 				if (ChkPt != ChkPt2){
-					for (const int & ChkNeighbor2 : Params.AdjList[ChkPt2]){
+					for (int ChkNeighbor2 : Params.AdjList[ChkPt2]){
 						if (!MeshFail) MeshFail = (ChkNeighbor == ChkNeighbor2 && ChkNeighbor >= 0);
 						if (MeshFail)
 							int b = 1;
@@ -368,7 +368,7 @@ MeshStatus_e meshgen2D_sphere(double Radius,
 
 					double NewPoint[3] = { 0 };
 
-					for (const int & i : Params.AdjList[PtNum]){
+					for (int i : Params.AdjList[PtNum]){
 						if (i >= 0){
 							for (int k = 0; k < 3; ++k){
 								NewPoint[k] += Params.p[i][k];
@@ -423,7 +423,7 @@ MeshStatus_e meshgen2D_sphere(double Radius,
 
 					double DStep = 0;
 					double G[3] = { 0 };
-					for (const int & i : Params.AdjList[Params.OptPoint]){
+					for (int i : Params.AdjList[Params.OptPoint]){
 						if (i >= 0){
 							for (int k = 0; k < 3; ++k){
 								G[k] += Params.p[i][k];
@@ -446,7 +446,7 @@ MeshStatus_e meshgen2D_sphere(double Radius,
 					/*
 					 * initialize the minimizer
 					 */
-					const gsl_multimin_fminimizer_type *T;
+					gsl_multimin_fminimizer_type const *T;
 					T = gsl_multimin_fminimizer_nmsimplex2;
 
 					gsl_multimin_fminimizer *s;

@@ -16,12 +16,12 @@ using std::string;
 using std::vector;
 using std::to_string;
 
-const static int LineHeight = 150;
-const static int CharWidth = 110;
-const static int VertSpacing = 50;
-const static int HorzSpacing = 100;
+static int const LineHeight = 150;
+static int const CharWidth = 110;
+static int const VertSpacing = 50;
+static int const HorzSpacing = 100;
 
-const static int ListNumLines = 5;
+static int const ListNumLines = 5;
 
 vector<GuiField_c> CSMGuiFields;
 vector<GuiField_c> CSMPassthroughFields;
@@ -32,7 +32,7 @@ bool CSMGuiDialogUp = false;
 int CSMGuiMultiListID = BADDIALOGID;
 bool CSMGuiMultiListIsPointSelect;
 int CSMGuiPointSelectZoneNum = -1;
-const static string CSMGuiPointSelectDelim = ": ";
+static string const CSMGuiPointSelectDelim = ": ";
 vector<Text_ID> CSMGuiPointLabelIDs;
 Set_pa CSMGuiActiveZones = NULL;
 bool CSMGuiProbeFirstInstall = true;
@@ -43,7 +43,7 @@ int CSMGuiDialogManager;
 bool CSMGuiSuccess;
 CSMGuiReturnFunc_pf CurrentReturnFunc;
 
-const vector<GuiFieldType_e> 
+vector<GuiFieldType_e> const 
 	IntTypes = {
 		Gui_ZoneSelect,
 		Gui_ZoneSelectInt,
@@ -83,9 +83,9 @@ GuiField_c::GuiField_c()
 {
 }
 
-GuiField_c::GuiField_c(const GuiFieldType_e & Type,
-	const string & Label,
-	const string & Val,
+GuiField_c::GuiField_c(GuiFieldType_e const & Type,
+	string const & Label,
+	string const & Val,
 	const vector<void*> & CallbackFuntions)
 {
 	Type_m = Type;
@@ -101,7 +101,7 @@ GuiField_c::~GuiField_c()
 void GuiField_c::CheckIntType() const{
 #ifdef _DEBUG
 	bool IsCorrect = false;
-	for (const auto & t : IntTypes) IsCorrect = (IsCorrect || Type_m == t);
+	for (auto const & t : IntTypes) IsCorrect = (IsCorrect || Type_m == t);
 	if (!IsCorrect) TecUtilDialogErrMsg("Type int requested from non-int CSM gui field");
 #endif
 }
@@ -109,7 +109,7 @@ void GuiField_c::CheckIntType() const{
 void GuiField_c::CheckDoubleType() const{
 #ifdef _DEBUG
 	bool IsCorrect = false;
-	for (const auto & t : DoubleTypes) IsCorrect = (IsCorrect || Type_m == t);
+	for (auto const & t : DoubleTypes) IsCorrect = (IsCorrect || Type_m == t);
 	if (!IsCorrect) TecUtilDialogErrMsg("Type double requested from non-double CSM gui field");
 #endif
 }
@@ -117,7 +117,7 @@ void GuiField_c::CheckDoubleType() const{
 void GuiField_c::CheckBoolType() const{
 #ifdef _DEBUG
 	bool IsCorrect = false;
-	for (const auto & t : BoolTypes) IsCorrect = (IsCorrect || Type_m == t);
+	for (auto const & t : BoolTypes) IsCorrect = (IsCorrect || Type_m == t);
 	if (!IsCorrect) TecUtilDialogErrMsg("Type bool requested from non-bool CSM gui field");
 #endif
 }
@@ -125,7 +125,7 @@ void GuiField_c::CheckBoolType() const{
 void GuiField_c::CheckStringType() const{
 #ifdef _DEBUG
 	bool IsCorrect = false;
-	for (const auto & t : StringTypes) IsCorrect = (IsCorrect || Type_m == t);
+	for (auto const & t : StringTypes) IsCorrect = (IsCorrect || Type_m == t);
 	if (!IsCorrect) TecUtilDialogErrMsg("Type string requested from non-string CSM gui field");
 #endif
 }
@@ -133,7 +133,7 @@ void GuiField_c::CheckStringType() const{
 void GuiField_c::CheckIntVecType() const{
 #ifdef _DEBUG
 	bool IsCorrect = false;
-	for (const auto & t : IntVecTypes) IsCorrect = (IsCorrect || Type_m == t);
+	for (auto const & t : IntVecTypes) IsCorrect = (IsCorrect || Type_m == t);
 	if (!IsCorrect) TecUtilDialogErrMsg("Type integer vector requested from non-IntVec CSM gui field");
 #endif
 }
@@ -141,69 +141,69 @@ void GuiField_c::CheckIntVecType() const{
 void GuiField_c::CheckStringVecType() const{
 #ifdef _DEBUG
 	bool IsCorrect = false;
-	for (const auto & t : IntVecTypes) IsCorrect = (IsCorrect || Type_m == t);
+	for (auto const & t : IntVecTypes) IsCorrect = (IsCorrect || Type_m == t);
 	if (!IsCorrect) TecUtilDialogErrMsg("Type integer vector requested from non-IntVec CSM gui field");
 #endif
 }
 
 
-const int GuiField_c::GetReturnInt() const{
+int GuiField_c::GetReturnInt() const{
 	CheckIntType();
 	return ValueInt_m;
 }
 
-const double GuiField_c::GetReturnDouble() const{
+double GuiField_c::GetReturnDouble() const{
 	CheckDoubleType();
 	return ValueDouble_m;
 }
 
-const string GuiField_c::GetReturnString() const{
+string GuiField_c::GetReturnString() const{
 	CheckStringType();
 	return ValueString_m;
 }
 
-const bool GuiField_c::GetReturnBool() const{
+bool GuiField_c::GetReturnBool() const{
 	CheckBoolType();
 	return ValueBool_m;
 }
 
-const vector<int> GuiField_c::GetReturnIntVec() const{
+vector<int> GuiField_c::GetReturnIntVec() const{
 	CheckIntVecType();
 	return ValueIntVec_m;
 }
 
-const vector<string> GuiField_c::GetReturnStringVec() const{
+vector<string> GuiField_c::GetReturnStringVec() const{
 	CheckStringVecType();
 	return ValueStringVec_m;
 }
 
 
-void GuiField_c::SetReturnInt(const int & Val){
+void GuiField_c::SetReturnInt(int Val){
 	CheckIntType();
 	ValueInt_m = Val;
 }
 
-void GuiField_c::SetReturnDouble(const double & Val){
+void GuiField_c::SetReturnDouble(double const & Val){
 	CheckDoubleType();
 	ValueDouble_m = Val;
 }
 
-void GuiField_c::SetReturnString(const string & Val){
+void GuiField_c::SetReturnString(string const & Val){
 	CheckStringType();
 	ValueString_m = Val;
 }
 
-void GuiField_c::SetReturnBool(const bool & Val){
+void GuiField_c::SetReturnBool(bool Val){
 	CheckBoolType();
 	ValueBool_m = Val;
 }
 
-void GuiField_c::SetReturnIntVec(const vector<int> & Val){
+void GuiField_c::SetReturnIntVec(vector<int> const & Val){
 	CheckIntVecType();
 	ValueIntVec_m = Val;
 }
 
-void GuiField_c::SetReturnStringVec(const vector<string> & Val){
+void GuiField_c::SetReturnStringVec(vector<string> const & Val){
 	CheckStringVecType();
 	ValueStringVec_m = Val;
 }
@@ -212,8 +212,8 @@ void GuiField_c::SetReturnStringVec(const vector<string> & Val){
  *	End GuiField_c methods
  */
 
-const vec3 GetPointCoordsFromListItem(const int & ItemIndex,
-	const int & PointZoneNum){
+vec3 const GetPointCoordsFromListItem(int ItemIndex,
+	int PointZoneNum){
 	vec3 Out;
 
 	int XYZVarNums[3] = { -1, -1, -1 };
@@ -283,7 +283,7 @@ void CSMGuiMultiListDeselectAll(){
 	int NumItems = TecGUIListGetItemCount(CSMGuiMultiListID);
 	for (int i = 0; i < NumItems; ++i) ListItems.push_back(TecGUIListGetString(CSMGuiMultiListID, i + 1));
 	TecGUIListDeleteAllItems(CSMGuiMultiListID);
-	for (const auto & s : ListItems) TecGUIListAppendItem(CSMGuiMultiListID, s.c_str());
+	for (auto const & s : ListItems) TecGUIListAppendItem(CSMGuiMultiListID, s.c_str());
 }
 
 void CSMGuiPointSelectButtonCB();
@@ -453,7 +453,7 @@ void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID){
 		TecUtilDrawGraphics(FALSE);
 		for (int i = 0; i < 2; ++i){
 			TecUtilPickDeselectAll();
-			for (const auto & l : CSMGuiPointLabelIDs) if (TecUtilTextIsValid(l)) TecUtilPickText(l);
+			for (auto const & l : CSMGuiPointLabelIDs) if (TecUtilTextIsValid(l)) TecUtilPickText(l);
 
 			if (TecUtilPickListGetCount() > 0){
 				TecUtilPickClear();
@@ -646,8 +646,8 @@ static void VoidCallbackDoNothing(const int* iVal){
 }
 
 
-void CSMLaunchGui(const string & Title, 
-	const vector<GuiField_c> & Fields)
+void CSMLaunchGui(string const & Title, 
+	vector<GuiField_c> const & Fields)
 {
 	TecUtilPleaseWait("Loading dialog...", TRUE);
 
@@ -676,7 +676,7 @@ void CSMLaunchGui(const string & Title,
 
 	vector<vector<int> > FieldZoneVarNums(CSMGuiFields.size());
 
-	for (const auto & f : CSMGuiFields) {
+	for (auto const & f : CSMGuiFields) {
 		if (f.GetType() == Gui_Radio){
 			NumFields[int(Gui_Radio)] += SplitString(f.GetSearchString(), ",").size();
 		}
@@ -690,7 +690,7 @@ void CSMLaunchGui(const string & Title,
 	vector<string> ZoneVarCommaList(2); // comma-delimited list of zones/vars for option menus
 	vector<int> NumZonesVars = { TecUtilDataSetGetNumZones(), TecUtilDataSetGetNumVars() };
 
-	for (int i = 0; i < 2; ++i) for (const auto & t : ZoneVarFields[i]) if (NumFields[int(t)]){ // Get full list of zone/var names
+	for (int i = 0; i < 2; ++i) for (auto const & t : ZoneVarFields[i]) if (NumFields[int(t)]){ // Get full list of zone/var names
 		char *cStr;
 		for (int j = 1; j <= NumZonesVars[i]; ++j){
 			if ((i == 0 && TecUtilZoneGetName(j, &cStr)) || TecUtilVarGetName(j, &cStr)){
@@ -711,12 +711,12 @@ void CSMLaunchGui(const string & Title,
 	for (int f = 0; f < CSMGuiFields.size(); ++f){
 		GuiFieldType_e t = CSMGuiFields[f].GetType();
 		if (t == Gui_ZoneSelect || t == Gui_ZoneSelectInt || t == Gui_ZoneSelectMulti || t == Gui_ZonePointSelectMulti){
-			for (const auto & s : SplitString(CSMGuiFields[f].GetSearchString(), ",")){
+			for (auto const & s : SplitString(CSMGuiFields[f].GetSearchString(), ",")){
 				FieldZoneVarNums[f].push_back(ZoneNumByName(s, false, true));
 			}
 		}
 		else if (t == Gui_VarSelect || t == Gui_VarSelectInt || t == Gui_VarSelectMulti){
-			for (const auto & s : SplitString(CSMGuiFields[f].GetSearchString(), ",")){
+			for (auto const & s : SplitString(CSMGuiFields[f].GetSearchString(), ",")){
 				FieldZoneVarNums[f].push_back(VarNumByName(s, true));
 			}
 		}
@@ -816,11 +816,11 @@ void CSMLaunchGui(const string & Title,
 					int Val = MAX(1, FieldZoneVarNums[fNum].back());
 					CSMGuiPointSelectOptionCallback(&Val);
 				}
-				else for (const auto & s : ListItems) TecGUIListAppendItem(f.GetID(), s.c_str());
+				else for (auto const & s : ListItems) TecGUIListAppendItem(f.GetID(), s.c_str());
 				if (t != Gui_ZonePointSelectMulti && FieldZoneVarNums[fNum].size() > 0){
 					vector<LgIndex_t> SelectNums;
 					int MinNum = INT_MAX;
-					for (const auto & i : FieldZoneVarNums[fNum]) if (i > 0){
+					for (auto const & i : FieldZoneVarNums[fNum]) if (i > 0){
 						SelectNums.push_back(i);
 						MinNum = MIN(MinNum, i);
 					}
@@ -861,7 +861,7 @@ void CSMLaunchGui(const string & Title,
 
 	// Now check that Gui_ToggleEnable fields are satisfied
 	if (NumFields[int(Gui_ToggleEnable)]){
-		for (const auto & f : CSMGuiFields){
+		for (auto const & f : CSMGuiFields){
 			if (f.GetType() == Gui_ToggleEnable){
 				vector<string> DependentFields = SplitString(f.GetSearchString(), ",");
 				bool IsEnabled = true;
@@ -877,7 +877,7 @@ void CSMLaunchGui(const string & Title,
 						FieldZoneVarNums[fi].size() > 0);
 					if (IsEnabled){
 						int NumHits = 0;
-						for (const auto & i : FieldZoneVarNums[fi]) NumHits += int(i > 0);
+						for (auto const & i : FieldZoneVarNums[fi]) NumHits += int(i > 0);
 						IsEnabled = (NumHits > 0);
 					}
 				}
@@ -888,7 +888,7 @@ void CSMLaunchGui(const string & Title,
 
 	// Set toggle default values based on toggle Val "0" or blank for false and "1" for true
 	if (NumFields[int(Gui_Toggle)]){
-		for (const auto & f : CSMGuiFields){
+		for (auto const & f : CSMGuiFields){
 			if (f.GetType() == Gui_Toggle){
 				TecGUIToggleSet(f.GetID(), f.GetSearchString().length() > 0 && f.GetSearchString() != "0");
 			}
@@ -902,7 +902,7 @@ void CSMLaunchGui(const string & Title,
 
 	// #ifdef MSWIN
 	// 	RECT desktop;
-	// 	const HWND hDesktop = GetDesktopWindow();
+	// 	HWND const hDesktop = GetDesktopWindow();
 	// 	GetWindowRect(hDesktop, &desktop);
 	// 
 	// 	desktop.right; // screen width
@@ -912,11 +912,11 @@ void CSMLaunchGui(const string & Title,
 	// #endif
 }
 
-void CSMGui(const string & Title, 
-	const vector<GuiField_c> & Fields, 
+void CSMGui(string const & Title, 
+	vector<GuiField_c> const & Fields, 
 	CSMGuiReturnFunc_pf ReturnFunc, 
-	const AddOn_pa & InputAddOnID,
-	const vector<GuiField_c> PassthroughFields)
+	AddOn_pa const & InputAddOnID,
+	vector<GuiField_c> const PassthroughFields)
 {
 	CurrentReturnFunc = ReturnFunc;
 	CSMGuiAddOnID = InputAddOnID;

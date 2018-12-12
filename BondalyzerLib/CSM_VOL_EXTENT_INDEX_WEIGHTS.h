@@ -34,22 +34,22 @@ struct VolExtentIndexWeights_s{
 	VolExtentIndexWeights_s(){ 
 		MaxIJK.resize(3); 
 	}
-	VolExtentIndexWeights_s & operator=(const VolExtentIndexWeights_s & rhs);
-	const Boolean_t operator==(const VolExtentIndexWeights_s & rhs) const;
+	VolExtentIndexWeights_s & operator=(VolExtentIndexWeights_s const & rhs);
+	Boolean_t operator==(VolExtentIndexWeights_s const & rhs) const;
 
-	VolExtentIndexWeights_s(const VolExtentIndexWeights_s & rhs){ *this = rhs; }
+	VolExtentIndexWeights_s(VolExtentIndexWeights_s const & rhs){ *this = rhs; }
 };
-const Boolean_t GetVolInfo(const int & VolZoneNum,
-	const vector<int> & XYZVarNums,
-	const Boolean_t & IsPeriodic,
+Boolean_t GetVolInfo(int VolZoneNum,
+	vector<int> const & XYZVarNums,
+	Boolean_t IsPeriodic,
 	VolExtentIndexWeights_s & VolInfo);
 
-const Boolean_t SetIndexAndWeightsForPoint(vec3 Point, VolExtentIndexWeights_s & SysInfo);
-const vector<int> GetIJKForPoint(vec3 & Point, VolExtentIndexWeights_s & VolZoneInfo);
-void GetCellCornerIndices(const int & CornerNum, int & i, int & j, int & k);
+Boolean_t SetIndexAndWeightsForPoint(vec3 Point, VolExtentIndexWeights_s & SysInfo);
+vector<int> GetIJKForPoint(vec3 & Point, VolExtentIndexWeights_s & VolZoneInfo);
+void GetCellCornerIndices(int CornerNum, int & i, int & j, int & k);
 
-const double ValByCurrentIndexAndWeightsFromRawPtr(const VolExtentIndexWeights_s & VolZoneInfo, const FieldDataPointer_c & FDPtr);
+double ValByCurrentIndexAndWeightsFromRawPtr(VolExtentIndexWeights_s const & VolZoneInfo, FieldDataPointer_c const & FDPtr);
 
-const double ValAtPointByPtr(vec3 & Point, VolExtentIndexWeights_s & VolZoneInfo, const FieldDataPointer_c & FDPtr);
+double ValAtPointByPtr(vec3 & Point, VolExtentIndexWeights_s & VolZoneInfo, FieldDataPointer_c const & FDPtr);
 
 #endif

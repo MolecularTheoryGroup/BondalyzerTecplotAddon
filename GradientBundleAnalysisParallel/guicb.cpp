@@ -45,8 +45,8 @@ vector<Text_ID> CPLabelIDs;
 LgIndex_t GBATabNumber = 1;
 bool GBAIsOpen = false;
 string GBAOldNumContours = "30";
-const int GBAMaxNumContours = 1000;
-const int GBAMinNumContours = 5;
+int const GBAMaxNumContours = 1000;
+int const GBAMinNumContours = 5;
 
 int GBALogLin = 1;
 int GBACntSrc = 1;
@@ -63,7 +63,7 @@ int PrecisionOffset = 2;
 
 // /**
 // */
-// static void TGLIntVolInt_TOG_T2_1_CB(const LgIndex_t *I)
+// static void TGLIntVolInt_TOG_T2_1_CB(LgIndex_t const *I)
 // {
 // 	TecUtilLockStart(AddOnID);
 // 	TRACE1("Toggle (TGLIntVolInt_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -73,7 +73,7 @@ int PrecisionOffset = 2;
 // 
 // /**
 // */
-// static void MLIntSelVar_MLST_T2_1_CB(const LgIndex_t *I)
+// static void MLIntSelVar_MLST_T2_1_CB(LgIndex_t const *I)
 // {
 // 	TecUtilLockStart(AddOnID);
 // 	TRACE1("Multi selection list (MLIntSelVar_MLST_T2_1) item selected,  First Item is: %d\n", *I);
@@ -94,7 +94,7 @@ int PrecisionOffset = 2;
 // 
 // /**
 // */
-// static void MLIntSelSph_MLST_T2_1_CB(const LgIndex_t *I)
+// static void MLIntSelSph_MLST_T2_1_CB(LgIndex_t const *I)
 // {
 // 	TecUtilLockStart(AddOnID);
 // 	TRACE1("Multi selection list (MLIntSelSph_MLST_T2_1) item selected,  First Item is: %d\n", *I);
@@ -115,7 +115,7 @@ int PrecisionOffset = 2;
 // 
 // /**
 // */
-// static void SCIntPrecise_SC_T2_1_CB(const LgIndex_t *I)
+// static void SCIntPrecise_SC_T2_1_CB(LgIndex_t const *I)
 // {
 // 	TecUtilLockStart(AddOnID);
 // 	TRACE1("Scale (SCIntPrecise_SC_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -127,7 +127,7 @@ int PrecisionOffset = 2;
 // 
 // /**
 // */
-// static void SCIntPrecise_SCD_T2_1_CB(const LgIndex_t *I)
+// static void SCIntPrecise_SCD_T2_1_CB(LgIndex_t const *I)
 // {
 // 	TecUtilLockStart(AddOnID);
 // 	TRACE1("Scale (SCIntPrecise_SCD_T2_1) Value Changed on drag,  New value is: %d\n", *I);
@@ -144,7 +144,7 @@ int PrecisionOffset = 2;
 
 /**
 */
-static void SLSelSphere_SLST_T3_1_CB(const LgIndex_t *I)
+static void SLSelSphere_SLST_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Single selection list (SLSelSphere_SLST_T3_1) item selected,  Item is: %d\n", *I);
@@ -162,7 +162,7 @@ static void SLSelSphere_SLST_T3_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void TGLSphereVis_TOG_T3_1_CB(const LgIndex_t *I)
+static void TGLSphereVis_TOG_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLSphere_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
@@ -185,7 +185,7 @@ static void BTNSphereDel_BTN_T3_1_CB(void)
 
 /**
 */
-static void MLSelGB_MLST_T3_1_CB(const LgIndex_t *I)
+static void MLSelGB_MLST_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Multi selection list (MLSelVol_MLST_T3_1) item selected,  First Item is: %d\n", *I);
@@ -197,7 +197,7 @@ static void MLSelGB_MLST_T3_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void SLSelVar_SLST_T3_1_CB(const LgIndex_t *I)
+static void SLSelVar_SLST_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Single selection list (SLSelVar_SLST_T3_1) item selected,  Item is: %d\n", *I);
@@ -305,7 +305,7 @@ static void Dialog1Init_CB(void)
 
 /**
 */
-static void MLSelCPs_MLST_T1_1_CB(const LgIndex_t *I)
+static void MLSelCPs_MLST_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Multi selection list (MLSelCPs_MLST_T1_1) item selected,  First Item is: %d\n", *I);
@@ -317,7 +317,7 @@ static void MLSelCPs_MLST_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void TGLInt_TOG_T1_1_CB(const LgIndex_t *I)
+static void TGLInt_TOG_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLInt_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -334,7 +334,7 @@ static void TGLInt_TOG_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void MLSelVars_MLST_T1_1_CB(const LgIndex_t *I)
+static void MLSelVars_MLST_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Multi selection list (MLSelVars_MLST_T1_1) item selected,  First Item is: %d\n", *I);
@@ -344,7 +344,7 @@ static void MLSelVars_MLST_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static LgIndex_t  TFCutoff_TF_T1_1_CB(const char *S)
+static LgIndex_t  TFCutoff_TF_T1_1_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -356,7 +356,7 @@ static LgIndex_t  TFCutoff_TF_T1_1_CB(const char *S)
 
 /**
 */
-static void TGLOpenSys_TOG_T1_1_CB(const LgIndex_t *I)
+static void TGLOpenSys_TOG_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLOpenSys_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -366,7 +366,7 @@ static void TGLOpenSys_TOG_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static LgIndex_t  TFLevel_TFS_T1_1_ValueChanged_CB(const char *S)
+static LgIndex_t  TFLevel_TFS_T1_1_ValueChanged_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -412,7 +412,7 @@ static void TFLevel_TFS_T1_1_ButtonDown_CB(void)
 
 /**
 */
-static void SCPrecise_SC_T1_1_CB(const LgIndex_t *I)
+static void SCPrecise_SC_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Scale (SCPrecise_SC_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -424,7 +424,7 @@ static void SCPrecise_SC_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void SCPrecise_SCD_T1_1_CB(const LgIndex_t *I)
+static void SCPrecise_SCD_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Scale (SCPrecise_SCD_T1_1) Value Changed on drag,  New value is: %d\n", *I);
@@ -436,7 +436,7 @@ static void SCPrecise_SCD_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void TGLVolInt_TOG_T1_1_CB(const LgIndex_t *I)
+static void TGLVolInt_TOG_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLVolInt_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -446,7 +446,7 @@ static void TGLVolInt_TOG_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static LgIndex_t  TFRad_TF_T1_1_CB(const char *S)
+static LgIndex_t  TFRad_TF_T1_1_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -461,7 +461,7 @@ static LgIndex_t  TFRad_TF_T1_1_CB(const char *S)
 
 /**
 */
-static void SCNumEdgeGPs_SC_T1_1_CB(const LgIndex_t *I)
+static void SCNumEdgeGPs_SC_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Scale (SCNumEdgeGPs_SC_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -472,7 +472,7 @@ static void SCNumEdgeGPs_SC_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void SCNumEdgeGPs_SCD_T1_1_CB(const LgIndex_t *I)
+static void SCNumEdgeGPs_SCD_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Scale (SCNumEdgeGPs_SCD_T1_1) Value Changed on drag,  New value is: %d\n", *I);
@@ -483,7 +483,7 @@ static void SCNumEdgeGPs_SCD_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-// static LgIndex_t  TFIBDist_TF_T1_1_CB(const char *S)
+// static LgIndex_t  TFIBDist_TF_T1_1_CB(char const *S)
 // {
 // 	LgIndex_t IsOk = 1;
 // 	TecUtilLockStart(AddOnID);
@@ -499,7 +499,7 @@ static void SCNumEdgeGPs_SCD_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-// static LgIndex_t  TFIBAng_TF_T1_1_CB(const char *S)
+// static LgIndex_t  TFIBAng_TF_T1_1_CB(char const *S)
 // {
 // 	LgIndex_t IsOk = 1;
 // 	TecUtilLockStart(AddOnID);
@@ -514,7 +514,7 @@ static void SCNumEdgeGPs_SCD_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static LgIndex_t  TFSTPts_TF_T1_1_CB(const char *S)
+static LgIndex_t  TFSTPts_TF_T1_1_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -533,7 +533,7 @@ static LgIndex_t  TFSTPts_TF_T1_1_CB(const char *S)
 
 /**
 */
-static void RBRadMode_RADIO_T1_1_CB(const LgIndex_t *I)
+static void RBRadMode_RADIO_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("RadioBox (RBRadMode_RADIO_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -787,7 +787,7 @@ void PrepareIntegration(Boolean_t IntegratingFromIntTab){
 
 /**
 */
-static void TAB1_TBA_D1_CB(const LgIndex_t *I)
+static void TAB1_TBA_D1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Activate callback for tab (TAB1_TBA_D1) called\n");
@@ -812,7 +812,7 @@ static void TAB1_TBA_D1_CB(const LgIndex_t *I)
 
 /**
 */
-static void TAB1_TBD_D1_CB(const LgIndex_t *I)
+static void TAB1_TBD_D1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Deactivate callback for tab (TAB1_TBD_D1) called\n");
@@ -830,7 +830,7 @@ void GBAReloadDialog(){
 
 /**
 */
-static void RBCntSrc_RADIO_T3_1_CB(const LgIndex_t *I)
+static void RBCntSrc_RADIO_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("RadioBox (RBCntSrc_RADIO_T3_1) Value Changed,  New value is: %d\n", *I);
@@ -841,7 +841,7 @@ static void RBCntSrc_RADIO_T3_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void RBLogLin_RADIO_T3_1_CB(const LgIndex_t *I)
+static void RBLogLin_RADIO_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("RadioBox (RBLogLin_RADIO_T3_1) Value Changed,  New value is: %d\n", *I);
@@ -852,13 +852,13 @@ static void RBLogLin_RADIO_T3_1_CB(const LgIndex_t *I)
 
 /**
 */
-static LgIndex_t  TFNumContours_TF_T3_1_CB(const char *S)
+static LgIndex_t  TFNumContours_TF_T3_1_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
 	string TFStr = S;
 	bool IsNumber = true;
-	for (const char & i : TFStr){
+	for (char i : TFStr){
 		IsNumber = (std::isdigit(i));
 		if (!IsNumber) break;
 	}
@@ -914,7 +914,7 @@ void GBAResultViewerPrepareGUI(){
 		*	Sort list of spheres and select first one
 		*/
 // 		SortCPNameList(SphereCPNameList);
-		for (const string & it : SphereCPNameList){
+		for (string const & it : SphereCPNameList){
 			TecGUIListAppendItem(SLSelSphere_SLST_T3_1, it.c_str());
 		}
 		TecGUIListSetSelectedItem(SLSelSphere_SLST_T3_1, GBAResultViewerSelectSphereNum);
@@ -938,7 +938,7 @@ static void BTNExport_BTN_T3_1_CB(void)
 
 /**
 */
-static void TGLExGBs_TOG_T3_1_CB(const LgIndex_t *I)
+static void TGLExGBs_TOG_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLExGBs_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
@@ -948,7 +948,7 @@ static void TGLExGBs_TOG_T3_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void TGLExInt_TOG_T3_1_CB(const LgIndex_t *I)
+static void TGLExInt_TOG_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLExInt_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
@@ -957,7 +957,7 @@ static void TGLExInt_TOG_T3_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void TGLShowMesh_TOG_T3_1_CB(const LgIndex_t *I)
+static void TGLShowMesh_TOG_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLShowMesh_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
@@ -999,7 +999,7 @@ static void BTNSelGB_BTN_T3_1_CB(void)
 
 /**
 */
-static LgIndex_t  TFGrpNum_TF_T3_1_CB(const char *S)
+static LgIndex_t  TFGrpNum_TF_T3_1_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -1013,7 +1013,7 @@ static LgIndex_t  TFGrpNum_TF_T3_1_CB(const char *S)
 
 // /**
 // */
-// static void TGLIntAct2_TOG_T2_1_CB(const LgIndex_t *I)
+// static void TGLIntAct2_TOG_T2_1_CB(LgIndex_t const *I)
 // {
 // 	TecUtilLockStart(AddOnID);
 // 	TRACE1("Toggle (TGLIntAct2_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -1022,7 +1022,7 @@ static LgIndex_t  TFGrpNum_TF_T3_1_CB(const char *S)
 // 
 /**
 */
-static void TGLsGP_TOG_T1_1_CB(const LgIndex_t *I)
+static void TGLsGP_TOG_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLsGP_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -1031,7 +1031,7 @@ static void TGLsGP_TOG_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void TGLsGB_TOG_T1_1_CB(const LgIndex_t *I)
+static void TGLsGB_TOG_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLsGB_TOG_T1_1) Value Changed,  New value is: %d\n", *I);

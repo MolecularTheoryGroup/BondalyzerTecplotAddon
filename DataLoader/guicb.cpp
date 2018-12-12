@@ -51,7 +51,7 @@ static void Dialog1Init_CB(void)
 
 /**
 */
-static void MLT41LoadVa_MLST_D1_CB(const LgIndex_t *I)
+static void MLT41LoadVa_MLST_D1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Multi selection list (MLT41LoadVa_MLST_D1) item selected,  First Item is: %d\n", *I);
@@ -137,7 +137,7 @@ static void Dialog2Init_CB(void)
 
 /**
 */
-static LgIndex_t  XNC_TFS_D2_ValueChanged_CB(const char *S)
+static LgIndex_t  XNC_TFS_D2_ValueChanged_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -172,7 +172,7 @@ static void XNC_TFS_D2_ButtonDown_CB(void)
 
 /**
 */
-static LgIndex_t  YNC_TFS_D2_ValueChanged_CB(const char *S)
+static LgIndex_t  YNC_TFS_D2_ValueChanged_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -207,7 +207,7 @@ static void YNC_TFS_D2_ButtonDown_CB(void)
 
 /**
 */
-static LgIndex_t  ZNC_TFS_D2_ValueChanged_CB(const char *S)
+static LgIndex_t  ZNC_TFS_D2_ValueChanged_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -267,7 +267,7 @@ static void ImportBTN_BTN_T1_1_CB(void)
 
 /**
 */
-static void ZoneList_MLST_T1_1_CB(const LgIndex_t *I)
+static void ZoneList_MLST_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Multi selection list (ZoneList_MLST_T1_1) item selected,  First Item is: %d\n", *I);
@@ -343,7 +343,7 @@ static void Dialog3Init_CB(void)
 
 /**
 */
-static void TAB1_TBA_D3_CB(const LgIndex_t *I)
+static void TAB1_TBA_D3_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Activate callback for tab (TAB1_TBA_D3) called\n");
@@ -353,7 +353,7 @@ static void TAB1_TBA_D3_CB(const LgIndex_t *I)
 
 /**
 */
-static void TAB1_TBD_D3_CB(const LgIndex_t *I)
+static void TAB1_TBD_D3_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Deactivate callback for tab (TAB1_TBD_D3) called\n");

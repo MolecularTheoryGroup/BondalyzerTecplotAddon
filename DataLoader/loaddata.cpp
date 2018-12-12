@@ -59,11 +59,11 @@ LoadType FileType;
 
 double MaxPointsForShowVolumeZone = 6e6;
 
-const string DS_ZoneName_Delim = "_-_";
-const string T41Ext = ".t41";
+string const DS_ZoneName_Delim = "_-_";
+string const T41Ext = ".t41";
 
-const string KFDelim = "%";
-const vector<FieldDataType_e> KF_TP_Types = {
+string const KFDelim = "%";
+vector<FieldDataType_e> const KF_TP_Types = {
 	FieldDataType_Int32,
 	FieldDataType_Double,
 	FieldDataType_Byte,
@@ -94,7 +94,7 @@ void GetADFASCIITape41FileName(){
 	TecUtilLockFinish(AddOnID);
 }
 
-const LoaderStatus_e GetTape41FileNames(const Boolean_t & IsADFFile){
+LoaderStatus_e GetTape41FileNames(Boolean_t IsADFFile){
 	TecUtilLockStart(AddOnID);
 
 // 	if (TecUtilDataSetIsAvailable()){
@@ -164,13 +164,13 @@ const LoaderStatus_e GetTape41FileNames(const Boolean_t & IsADFFile){
 		return LoaderFailed;
 }
 
-const Boolean_t IsNumber(const string & s){
+Boolean_t IsNumber(string const & s){
 	string::const_iterator it = s.begin();
 	while (it != s.end() && isdigit(*it)) ++it;
 	return (!s.empty() && it == s.end());
 }
 
-const Boolean_t GetCHGCARFileName(){
+Boolean_t GetCHGCARFileName(){
 	TecUtilLockStart(AddOnID);
 
 	FileType = VASPFile;
@@ -202,7 +202,7 @@ const Boolean_t GetCHGCARFileName(){
 	return IsOk;
 }
 
-const Boolean_t GetAECCARFileNames(){
+Boolean_t GetAECCARFileNames(){
 	TecUtilLockStart(AddOnID);
 
 	vector<string> TmpStrs = {
@@ -248,7 +248,7 @@ const Boolean_t GetAECCARFileNames(){
 }
 
 
-const Boolean_t LoadVASPData(){
+Boolean_t LoadVASPData(){
 
 	TecUtilLockStart(AddOnID);
 
@@ -280,7 +280,7 @@ const Boolean_t LoadVASPData(){
 			return FALSE;
 		}
 
-		const int LineLen = 500;
+		int const LineLen = 500;
 
 		TecUtilDataLoadBegin();
 
@@ -1140,7 +1140,7 @@ const Boolean_t LoadVASPData(){
 	return IsOk;
 }
 
-const int LoadADFTape41ASCIIData(char* FileNameCStr)
+int LoadADFTape41ASCIIData(char* FileNameCStr)
 {
 	TecUtilLockStart(AddOnID);
 	/*
@@ -1151,7 +1151,7 @@ const int LoadADFTape41ASCIIData(char* FileNameCStr)
 	ifstream  InFile;
 
 //	Max number of characters on a single line
-	const int LineLen = 500;
+	int const LineLen = 500;
 
 //	Strings repeatedly used
 	string TempVarType, TempVarName;
@@ -1193,9 +1193,9 @@ const int LoadADFTape41ASCIIData(char* FileNameCStr)
 
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-	static const string Slash="\\";
+	static string const Slash="\\";
 #else
-	static const string Slash="/";
+	static string const Slash="/";
 #endif
 
 	size_t StrPos = FileNameStr.find_last_of("/\\");
@@ -1698,7 +1698,7 @@ const int LoadADFTape41ASCIIData(char* FileNameCStr)
 	return 0;
 }
 
-const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t & SaveToList){
+LoaderStatus_e GetT41Contents(Boolean_t IsADFFile, Boolean_t SaveToList){
 	/*
 	 *	Create lists of strings that are combined to form all the
 	 *	possible combinations of section and variable names
@@ -1792,8 +1792,8 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 			"Coulomb Potential of Startup Atom Density",
 			"Electron Density"
 		};
-		for (const string & s : { "X", "Y", "Z" }) VarStrings.push_back(s + " Density Gradient");
-		for (const string & s : { "XX", "XY", "XZ", "YY", "YZ", "ZZ" }) VarStrings.push_back(s + " Density Hessian");
+		for (string const & s : { "X", "Y", "Z" }) VarStrings.push_back(s + " Density Gradient");
+		for (string const & s : { "XX", "XY", "XZ", "YY", "YZ", "ZZ" }) VarStrings.push_back(s + " Density Hessian");
 		T41VarSuffices = { "" };
 	}
 
@@ -1891,9 +1891,9 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 				*	expect.
 				*	Do this for SCM and then for Localized orbitals.
 				*/
-				for (const string & Type : MOTypeStrings){
-					for (const string & Sym : MOLabels){
-						for (const string & Spin : T41VarSuffices) {
+				for (string const & Type : MOTypeStrings){
+					for (string const & Sym : MOLabels){
+						for (string const & Spin : T41VarSuffices) {
 							/*
 							*	Query the MO section and see how many orbitals there are.
 							*/
@@ -2011,7 +2011,7 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 				 */
 				string ChkStr = SectionNames[SecNum] + "%" + VariableNames[SecNum][VarNum];
 				Boolean_t VarFound = FALSE;
-				for (const string & i : XYZVarStrings)
+				for (string const & i : XYZVarStrings)
 					if (ChkStr == i){
 						VarFound = TRUE;
 						break;
@@ -2023,10 +2023,10 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 				/*
 				 *	First check against "main" variables
 				 */
-				if (!VarFound) for (const string & Sec : T41Sec){
+				if (!VarFound) for (string const & Sec : T41Sec){
 					unsigned int VarChkNum = 0;
-					for (const string & Var : T41Var){
-						for (const string & Suffix : T41VarSuffices){
+					for (string const & Var : T41Var){
+						for (string const & Suffix : T41VarSuffices){
 							string Str1 = Sec + "%" + Var + Suffix;
 							if (Str1 == ChkStr){
 								string Str2 = VarStrings[VarChkNum] + Suffix + " " + Sec;
@@ -2048,8 +2048,8 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 				 */
 				if (!VarFound && IsADFFile){
 					unsigned int VarNum = 0;
-					for (const string & Var : T41TransDensVar){
-						for (const string & Suffix : T41TransDensVarSuf){
+					for (string const & Var : T41TransDensVar){
+						for (string const & Suffix : T41TransDensVarSuf){
 							string Str1 = T41TransDensSec + "%" + Var + Suffix;
 							if (Str1 == ChkStr){
 								string Str2 = TransDensString + " " + TransDensVarStrs[VarNum] + Suffix;
@@ -2068,7 +2068,7 @@ const LoaderStatus_e GetT41Contents(const Boolean_t & IsADFFile, const Boolean_t
 				/*
 				 *	See if it's an orbital, in which case we skip it until after all the other vars have been added.
 				 */
-				if (!VarFound && IsADFFile) for (const string & i : MOKFVarStrings){
+				if (!VarFound && IsADFFile) for (string const & i : MOKFVarStrings){
 					if (i == ChkStr){
 						VarFound = TRUE;
 						break;
@@ -2149,7 +2149,7 @@ void QuitT41Load(){
 
 void LoadADFTape41Files(){
 	GroupIndex = 50;
-	for (const string & i : FileNameStrs){
+	for (string const & i : FileNameStrs){
 		FileNameStr = i;
 		LoadADFTape41Data();
 		ReplaceDataSet = FALSE;
@@ -2262,7 +2262,7 @@ void LoadADFTape41Data(){
 	TempLgIndex.clear();
 
 	StringList_pa VarNames = TecUtilStringListAlloc();
-	for (const int & i : SelectedVarNums)
+	for (int i : SelectedVarNums)
 		TecUtilStringListAppendString(VarNames, T41LoadUserVarStrings[i - 1].c_str());
 
 	vector<FieldDataType_e> VarDataTypes;
@@ -2274,7 +2274,7 @@ void LoadADFTape41Data(){
 	Boolean_t UnloadBetweenVars = FALSE;
 	size_t TotalMem = getTotalSystemMemory();
 	size_t ImportMem = 0;
-	for (const int & i : SelectedVarNums)
+	for (int i : SelectedVarNums)
 		ImportMem += T41DataSizes[i - 1];
 	ImportMem *= 8;
 
@@ -2287,7 +2287,7 @@ void LoadADFTape41Data(){
 	if (IsOk){
 		if (ReplaceDataSet){
 			VarDataTypes.reserve(SelectedVarNums.size());
-			for (const int & i : SelectedVarNums){
+			for (int i : SelectedVarNums){
 				if (T41DataSizes[i - 1] > 0)
 					VarDataTypes.push_back(FieldDataType_Double);
 				else
@@ -2299,7 +2299,7 @@ void LoadADFTape41Data(){
 		else{
 			if (!TecUtilDataSetIsAvailable()){
 				VarDataTypes.reserve(SelectedVarNums.size());
-				for (const int & i : SelectedVarNums){
+				for (int i : SelectedVarNums){
 					if (T41DataSizes[i - 1] > 0)
 						VarDataTypes.push_back(FieldDataType_Double);
 					else
@@ -2898,26 +2898,39 @@ void LoadBANDTape41Data(){
 					for (int Zx = 0; Zx < NCellsX; ++Zx){
 						for (LgIndex_t i = 1; i <= MaxI; ++i){
 							LgIndex_t IJK[3] = { i - 1, j - 1, k - 1 };
-							LgIndex_t TotIJK[3] = { i + Zx*MaxI - 1, j + Zy*MaxJ - 1, k + Zz*MaxK - 1 };
+							vec TotIJK;
+							TotIJK << i + Zx * MaxI - 1 << j + Zy * MaxJ - 1 << k + Zz * MaxK - 1;
+// 							LgIndex_t TotIJK[3] = { i + Zx * MaxI - 1, j + Zy * MaxJ - 1, k + Zz * MaxK - 1 };
 							LgIndex_t Index = IndexFromIJK(i + Zx*MaxI, j + Zy*MaxJ, k + Zz*MaxK, TMx, TMy, TMz, TRUE) - 1;
 							LgIndex_t SmIndex = IndexFromIJK(i, j, k, MaxI, MaxJ, MaxK, TRUE) - 1;
-							for (EntIndex_t VarNum = 0; VarNum < NumVars; ++VarNum){
-								double Value;
-								if (VarNum < 3){
-									/*
-									*	Here, for the generation of x,y,z values, using
-									*	the lattice vectors so that non-cartesian systems
-									*	are property represented as well.
-									*/
-									Value = StartPoint[VarNum];
-									for (int Dir = 0; Dir < 3; ++Dir)
-										Value += static_cast<double>(TotIJK[Dir]) / static_cast<double>(MAX(MaxIJK[Dir] - 1, 1)) * LatticeVector.at(Dir, VarNum);
-								}
-								else{
-									Value = VarData[VarNum - 3][SmIndex];
-								}
 
-								VarRawPtrs[VarNum].Write(Index, Value);
+							vec3 XYZ = LatticeVector * TotIJK;
+							for (int VarNum = 0; VarNum < 3; ++VarNum){
+								VarRawPtrs[VarNum].Write(Index, XYZ[VarNum]);
+							}
+
+							for (EntIndex_t VarNum = 3; VarNum < NumVars; ++VarNum){
+
+
+// 								double Value;
+// 								if (VarNum < 3){
+// 									/*
+// 									*	Here, for the generation of x,y,z values, using
+// 									*	the lattice vectors so that non-cartesian systems
+// 									*	are property represented as well.
+// 									*/
+// 									Value = StartPoint[VarNum];
+// 									for (int Dir = 0; Dir < 3; ++Dir) {
+// 										Value += static_cast<double>(TotIJK[Dir]) / static_cast<double>(MAX(MaxIJK[Dir] - 1, 1)) * LatticeVector.at(Dir, VarNum);
+// 									}
+// 								}
+// 								else {
+// 									Value = VarData[VarNum - 3][SmIndex];
+// 								}
+// 
+// 								VarRawPtrs[VarNum].Write(Index, Value);
+
+								VarRawPtrs[VarNum].Write(Index, VarData[VarNum - 3][SmIndex]);
 							}
 						}
 					}
@@ -3038,46 +3051,18 @@ void LoadBANDTape41Data(){
 			for (int i = 0; i < 3; ++i)
 				TmpLatPos[i] = AtomGroupList[GroupNum].Positions[i][AtomNum];
 
-			// 					for (int i = 0; i < 3; ++i)
-			// 						TmpLatPos += LatticeVector[i] * 0.0001;
-
-			/*
-			*	My method for doing this basically iterates for each atom
-			*	in the x, then y, then z direction, making more copies of
-			*	the atom in that direction until the max position is hit.
-			*	CPTmpXYZ lets me do this independently, so that all atoms in
-			*	one direction can be created while the atom position in the
-			*	other two directions changes around.
-			*
-			*	The initial location of CPTmpXYZ is the location of the atom
-			*	as specified in the VASP file.
-			*
-			*	CPMaxXYZ is the greatest x,y,z values that the atom should ever
-			*	have based on system repetition and periodicity.
-			*/
 			vec3 CPTmpXYZ;
 
-			/*
-			*	See how atom's get to be placed in the x direction while
-			*	it's y and z directions remain the same?
-			*	Then when the x direction is maxed out, the y direction
-			*	will iterate and the x will go again. This repeats until
-			*	the y direction is maxed out, at which point the z
-			*	direction iterates. So the atom has all its copies made in this way.
-			*/
-			for (int kk = 0; kk < NCellsZ; ++kk){
-				for (int jj = 0; jj < NCellsY; ++jj){
-					CPTmpXYZ = LVTranspose * TmpLatPos;
-					for (int i = 0; i < jj; ++i)
-						CPTmpXYZ += LatticeVector[1];
-					for (int i = 0; i < kk; ++i)
-						CPTmpXYZ += LatticeVector[2];
+			for (int kk = 0; kk < NCellsZ + int(abs(TmpLatPos[2]) < 0.01); ++kk){
+				for (int jj = 0; jj < NCellsY + int(abs(TmpLatPos[1]) < 0.01); ++jj){
+					for (int ii = 0; ii < NCellsX + int(abs(TmpLatPos[0]) < 0.01); ++ii){
+						vec3 IJK;
+						IJK << ii * MaxI << jj * MaxJ << kk * MaxK;
 
-					for (int ii = 0; ii < NCellsX; ++ii){
-						for (int i = 0; i < 3; ++i){
-							XYZ[i].push_back(CPTmpXYZ[i]);
+						vec3 Pos = (LatticeVector * IJK) + TmpLatPos;
+						for (int dir = 0; dir < 3; ++dir){
+							XYZ[dir].push_back(Pos[dir]);
 						}
-						CPTmpXYZ += LatticeVector[0];
 					}
 				}
 			}
@@ -3316,7 +3301,7 @@ void SpinValueChangedInt(LgIndex_t DialogIndex){
 }
 
 
-int dos2unix(const string & FileName)
+int dos2unix(string const & FileName)
 {
 	char ch;
 	char temp[MAX_PATH] = "\0";
@@ -3352,7 +3337,7 @@ int dos2unix(const string & FileName)
 	return 0;
 }
 
-int dos2unix2(const string & FileName)
+int dos2unix2(string const & FileName)
 {
 	char ch;
 	char temp[MAX_PATH] = "\0";
@@ -3382,7 +3367,7 @@ int dos2unix2(const string & FileName)
 		if (!InFile.eof()) OutFile.put(ch);
 	}
 
-// 	for (const char & aChar : FileData){
+// 	for (char aChar : FileData){
 // 		if ((int)aChar == 0x0D)
 // 			continue;
 // 
@@ -3401,7 +3386,7 @@ int dos2unix2(const string & FileName)
 }
 
 template <typename T>
-std::string to_string_with_precision(const T a_value, const int n = 6)
+std::string to_string_with_precision(T const a_value, int const n = 6)
 {
 	std::ostringstream out;
 	out << std::setprecision(n) << a_value;
@@ -3643,7 +3628,7 @@ void MakeDensfScriptForZones(){
 }
 
 
-const vector<string> SelectDensfTape41Folder(){
+vector<string> SelectDensfTape41Folder(){
 	/*
 	*	Have user select a folder
 	*/
@@ -3668,7 +3653,7 @@ const vector<string> SelectDensfTape41Folder(){
 	return T41FileNames;
 }
 
-void ImportAdditionalTape41Files(const Boolean_t & MatchZones, const Boolean_t & MatchDataSet){
+void ImportAdditionalTape41Files(Boolean_t MatchZones, Boolean_t MatchDataSet){
 	Boolean_t IsOk = TRUE;
 
 	/*
@@ -3770,7 +3755,7 @@ void ImportAdditionalTape41Files(const Boolean_t & MatchZones, const Boolean_t &
 
 		TecUtilDataLoadBegin();
 
-		const string StatusStr = "Importing data";
+		string const StatusStr = "Importing data";
 		StatusLaunch(StatusStr, AddOnID, TRUE);
 
 		for (int FileNum = 0; FileNum < NumFiles; ++FileNum){
@@ -3839,10 +3824,10 @@ void ImportAdditionalTape41Files(const Boolean_t & MatchZones, const Boolean_t &
 			T41DataSizes.clear();
 			T41LoadKFVarStrings.clear();
 			T41LoadUserVarStrings.clear();
-			if (IsOk) for (const string & Sec : T41Sec){
+			if (IsOk) for (string const & Sec : T41Sec){
 				unsigned int VarNum = 0;
-				for (const string & Var : T41Var){
-					for (const string & Suffix : T41VarSuffices){
+				for (string const & Var : T41Var){
+					for (string const & Suffix : T41VarSuffices){
 						stringstream ss1;
 						ss1 << Sec << "%" << Var << Suffix;
 						int DataSize = getKFVariableLength(&T41File, ss1.str().c_str());
@@ -3862,8 +3847,8 @@ void ImportAdditionalTape41Files(const Boolean_t & MatchZones, const Boolean_t &
 			*	Then for the transition variables
 			*/
 			unsigned int VarNum = 0;
-			for (const string & Var : T41TransDensVar){
-				for (const string & Suffix : T41TransDensVarSuf){
+			for (string const & Var : T41TransDensVar){
+				for (string const & Suffix : T41TransDensVarSuf){
 					stringstream ss1;
 					ss1 << T41TransDensSec << "%" << Var << Suffix;
 					int DataSize = getKFVariableLength(&T41File, ss1.str().c_str());
@@ -3923,7 +3908,7 @@ void ImportAdditionalTape41Files(const Boolean_t & MatchZones, const Boolean_t &
 }
 
 
-const Boolean_t LoadADFTape21(){
+Boolean_t LoadADFTape21(){
 	Boolean_t IsOk = TRUE;
 
 	TecUtilLockStart(AddOnID);
@@ -4410,7 +4395,7 @@ const Boolean_t LoadADFTape21(){
 
 				AtomGroupList.clear();
 				AtomGroupList.reserve(4);
-				for (const string & i : CPTypeStrs) AtomGroupList.push_back(i);
+				for (string const & i : CPTypeStrs) AtomGroupList.push_back(i);
 				for (AtomGroup_s & i : AtomGroupList) i.AtomColor = GetAtomColor(AtomColorList, i.Name);
 
 				for (int i = 0; i < NumCPs; ++i){
@@ -4764,7 +4749,7 @@ void LoadGaussianCubeFiles()
 		/*
 		 *	Loop over each file selected and import the data
 		 */
-		for (const string & CubeFileName : FileNameStrs){
+		for (string const & CubeFileName : FileNameStrs){
 			//	Open the cube file
 			ifstream CubeFile(CubeFileName);
 			if (!CubeFile.is_open()){
@@ -4988,11 +4973,11 @@ void LoadGaussianCubeFiles()
 				if (IsMOFile)
 					VarNameStrs.push_back(H1 + " " + to_string(MOList[i]));
 				else{
-					for (const string & Str : VarUserNames[VarNameIndices[GaussVarNum][i]])
+					for (string const & Str : VarUserNames[VarNameIndices[GaussVarNum][i]])
 						VarNameStrs.push_back(Str + VarSuffix);
 				}
 			}
-			for (const string & i : VarNameStrs)
+			for (string const & i : VarNameStrs)
 				TecUtilStringListAppendString(VarNames, i.c_str());
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
@@ -5383,7 +5368,7 @@ void LoadTurboMoleCubeFiles()
 		*	Loop over each file selected and import the data
 		*/
 		Boolean_t FirstFile = ReplaceDataSet;
-		for (const string & CubeFileName : FileNameStrs){
+		for (string const & CubeFileName : FileNameStrs){
 			//	Open the cube file
 			ifstream CubeFile(CubeFileName);
 			if (!CubeFile.is_open()){
@@ -5453,7 +5438,7 @@ void LoadTurboMoleCubeFiles()
 				IsMOFile = TRUE;
 			}
 			VarName = H1.substr(0,H1.find_last_not_of('  ')+1);
-			for (const auto i : VarNameList){
+			for (auto const & i : VarNameList){
 				if (VarName == i[0]){
 					VarName = i[1];
 					break;
@@ -5561,7 +5546,7 @@ void LoadTurboMoleCubeFiles()
 			*/
 			StringList_pa VarNames = TecUtilStringListAlloc();
 			vector<string> VarNameStrs = { "X", "Y", "Z" , VarName};
-			for (const string & i : VarNameStrs)
+			for (string const & i : VarNameStrs)
 				TecUtilStringListAppendString(VarNames, i.c_str());
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
@@ -5910,7 +5895,7 @@ Boolean_t LoadBinaryPLTFileData(){
 				vector<string> VarNamesVec = { "X", "Y", "Z", TypeNames[TypeNum] };
 				StringList_pa VarNames = TecUtilStringListAlloc();
 				LoadVarNum = 4;
-				for (const auto & i : VarNamesVec)
+				for (auto const & i : VarNamesVec)
 					TecUtilStringListAppendString(VarNames, i.c_str());
 				LoadSuccess = TecUtilDataSetCreate("TurboMole Data", VarNames, TRUE);
 				TecUtilStringListDealloc(&VarNames);
@@ -6061,7 +6046,7 @@ Boolean_t LoadBinaryPLTFileData(){
 		TecUtilArgListDealloc(&argList);
 	}
 
-	//	for (const auto & i : Values)
+	//	for (auto const & i : Values)
 	//		cout << i << '\n';
 
 	return LoadSuccess;

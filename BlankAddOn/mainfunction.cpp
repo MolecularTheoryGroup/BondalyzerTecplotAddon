@@ -37,7 +37,7 @@ Boolean_t StatusUpdate(unsigned int CurrentNum, unsigned int TotalNum, const cha
 	return IsOk;
 }
 
-vector<double> split(const string &s, char delim) {
+vector<double> split(string const &s, char delim) {
 	stringstream ss(s);
 	string item;
 	vector<double> tokens;
@@ -47,7 +47,7 @@ vector<double> split(const string &s, char delim) {
 	return tokens;
 }
 
-const mat LoadFile(const string & Path, const char & Delim){
+mat const LoadFile(string const & Path, char Delim){
 	mat Points(1, 3);
 	std::ifstream File(Path.c_str());
 
@@ -68,7 +68,7 @@ const mat LoadFile(const string & Path, const char & Delim){
 	return Points.tail_rows(Points.n_rows - 1);
 }
 
-const mat getPoints(const mat & Edge, const int & NumPts){
+mat const getPoints(mat const & Edge, int NumPts){
 	mat Pts(NumPts, 3);
 
 	mat EdgeDiff = Edge.tail_rows(Edge.n_rows - 1) - Edge.head_rows(Edge.n_rows - 1);
@@ -101,7 +101,7 @@ const mat getPoints(const mat & Edge, const int & NumPts){
 	return Pts;
 }
 
-mat cubTrans(const mat & e1, const mat & e2, const mat & e3){
+mat cubTrans(mat const & e1, mat const & e2, mat const & e3){
 
 	mat Rpt;
 	Rpt << 0 << 0 << 0 << endr
@@ -208,7 +208,7 @@ mat cubTrans(const mat & e1, const mat & e2, const mat & e3){
 	return abc.t();
 }
 
-const mat cubTrans_func(mat & abc,
+mat const cubTrans_func(mat & abc,
 	vec & s,
 	vec & t,
 	vec & u)
@@ -239,7 +239,7 @@ const mat cubTrans_func(mat & abc,
 	return xyz;
 }
 
-const double cubJacobian(mat & abc, const double & s, const double & t, const double & u){
+double const cubJacobian(mat & abc, double const & s, double const & t, double const & u){
 	vector<vec> dstu({ vector<double>({ 0., 1., 0., 0., s * 2, 0., 0., t, u, 0.,
 		(s*s) * 3, 0., 0., s*t * 2, s*u * 2, t*t, 0., u*u, 0., t*u }),
 		vector<double>({ 0., 0., 1., 0., 0., t * 2, 0., s, 0., u,
@@ -256,7 +256,7 @@ const double cubJacobian(mat & abc, const double & s, const double & t, const do
 	return det(J);
 }
 
-void rquad(const int & N, const double & k, vec & x, vec & w)
+void rquad(int N, double const & k, vec & x, vec & w)
 {
 	double k1 = k + 1, k2 = k + 2;
 
@@ -290,7 +290,7 @@ void rquad(const int & N, const double & k, vec & x, vec & w)
 	return;
 }
 
-const vector<vec> tetraquad(const int & N, const mat & Verts)
+vector<vec> const tetraquad(int N, mat const & Verts)
 {
 
 	vector<vec> q(3), w123(3);
@@ -373,7 +373,7 @@ int GetWeightsPoints(){
 
 int Number = 1;
 
-const string AuxDataMakeStringValidName(string Str){
+string const AuxDataMakeStringValidName(string Str){
 	if (Str.length() <= 0) return "Blank_Name";
 
 	if (!(Str[0] == 95 || (Str[0] >= 65 && Str[0] <= 90) || (Str[0] >= 97 && Str[0] <= 122)))
@@ -393,7 +393,7 @@ const string AuxDataMakeStringValidName(string Str){
 	return Str;
 }
 
-const Boolean_t AuxDataDataSetSetItem(const string & AuxDataName, const string & AuxDataValue)
+Boolean_t const AuxDataDataSetSetItem(string const & AuxDataName, string const & AuxDataValue)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
 	Boolean_t IsOk = VALID_REF(TempAuxData);
@@ -403,7 +403,7 @@ const Boolean_t AuxDataDataSetSetItem(const string & AuxDataName, const string &
 	return IsOk;
 }
 
-const Boolean_t AuxDataZoneSetItem(const int & ZoneNum, const string & AuxDataName, const string & AuxDataValue)
+Boolean_t const AuxDataZoneSetItem(int ZoneNum, string const & AuxDataName, string const & AuxDataValue)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
 	Boolean_t IsOk = VALID_REF(TempAuxData);

@@ -13,18 +13,18 @@ CSM_Vec3_s::CSM_Vec3_s(double x, double y, double z){
 	Y = y;
 	Z = z;
 }
-CSM_Vec3_s::CSM_Vec3_s(const CSM_Vec4_s &a){
+CSM_Vec3_s::CSM_Vec3_s(CSM_Vec4_s const &a){
 	X = a.X;
 	Y = a.Y;
 	Z = a.Z;
 }
-CSM_Vec3_s::CSM_Vec3_s(const CSM_Vec3_s &a){
+CSM_Vec3_s::CSM_Vec3_s(CSM_Vec3_s const &a){
 	X = a.X;
 	Y = a.Y;
 	Z = a.Z;
 }
 
-CSM_Vec3_s & CSM_Vec3_s::operator=(const CSM_Vec3_s &a){
+CSM_Vec3_s & CSM_Vec3_s::operator=(CSM_Vec3_s const &a){
 	X = a.X;
 	Y = a.Y;
 	Z = a.Z;
@@ -34,13 +34,13 @@ CSM_Vec3_s & CSM_Vec3_s::operator=(double a){
 	X = Y = Z = a;
 	return *this;
 }
-const bool CSM_Vec3_s::operator==(const CSM_Vec3_s &a) const{
+bool const CSM_Vec3_s::operator==(CSM_Vec3_s const &a) const{
 	return (
 		X == a.X &&
 		Y == a.Y &&
 		Z == a.Z);
 }
-const bool CSM_Vec3_s::operator!=(const CSM_Vec3_s &a) const{
+bool const CSM_Vec3_s::operator!=(CSM_Vec3_s const &a) const{
 	return !(*this == a);
 }
 double &	CSM_Vec3_s::operator[](unsigned int i){
@@ -59,7 +59,7 @@ double &	CSM_Vec3_s::operator[](unsigned int i){
 	}
 }
 
-const double CSM_Vec3_s::at(const unsigned int & i)
+double const CSM_Vec3_s::at(unsigned int i)
 {
 	switch (i){
 		case 0:
@@ -76,54 +76,54 @@ const double CSM_Vec3_s::at(const unsigned int & i)
 	}
 }
 
-const CSM_Vec3_s CSM_Vec3_s::operator-(){
+CSM_Vec3_s const CSM_Vec3_s::operator-(){
 	return CSM_Vec3_s(-X, -Y, -Z);
 }
-CSM_Vec3_s & CSM_Vec3_s::operator-=(const CSM_Vec3_s &a){
+CSM_Vec3_s & CSM_Vec3_s::operator-=(CSM_Vec3_s const &a){
 	X -= a.X;
 	Y -= a.Y;
 	Z -= a.Z;
 
 	return *this;
 }
-CSM_Vec3_s & CSM_Vec3_s::operator+=(const CSM_Vec3_s &a){
+CSM_Vec3_s & CSM_Vec3_s::operator+=(CSM_Vec3_s const &a){
 		X += a.X;
 		Y += a.Y;
 		Z += a.Z;
 
 		return *this;
 }
-CSM_Vec3_s & CSM_Vec3_s::operator*=(const double &a){
+CSM_Vec3_s & CSM_Vec3_s::operator*=(double const &a){
 	X *= a;
 	Y *= a;
 	Z *= a;
 
 	return *this;
 }
-CSM_Vec3_s & CSM_Vec3_s::operator*=(const CSM_Vec3_s &a){
+CSM_Vec3_s & CSM_Vec3_s::operator*=(CSM_Vec3_s const &a){
 	X *= a.X;
 	Y *= a.Y;
 	Z *= a.Z;
 
 	return *this;
 }
-const CSM_Vec3_s CSM_Vec3_s::operator-(const CSM_Vec3_s &a) const{
+CSM_Vec3_s const CSM_Vec3_s::operator-(CSM_Vec3_s const &a) const{
 	return CSM_Vec3_s(*this) -= a;
 }
-const CSM_Vec3_s CSM_Vec3_s::operator+(const CSM_Vec3_s &a) const{
+CSM_Vec3_s const CSM_Vec3_s::operator+(CSM_Vec3_s const &a) const{
 	return CSM_Vec3_s(*this) += a;
 }
 const CSM_Vec3_s	CSM_Vec3_s::operator*(double a) const{
 	return CSM_Vec3_s(*this) *= a;
 }
-const CSM_Vec3_s	CSM_Vec3_s::operator*(const CSM_Vec3_s &a) const{
+const CSM_Vec3_s	CSM_Vec3_s::operator*(CSM_Vec3_s const &a) const{
 	return CSM_Vec3_s(*this) *= a;
 }
 
-const double CSM_Vec3_s::Dot(const CSM_Vec3_s &a) const{
+double const CSM_Vec3_s::Dot(CSM_Vec3_s const &a) const{
 	return X*a.X + Y*a.Y + Z*a.Z;
 }
-const CSM_Vec3_s CSM_Vec3_s::Cross(const CSM_Vec3_s &a) const{
+CSM_Vec3_s const CSM_Vec3_s::Cross(CSM_Vec3_s const &a) const{
 	CSM_Vec3_s Tmp;
 	Tmp.X = -Z*a.Y + Y*a.Z;
 	Tmp.Y = Z*a.X - X*a.Z;
@@ -140,15 +140,15 @@ const CSM_Vec3_s	CSM_Vec3_s::Normalize() const{
 	}
 	return a;
 }
-const double CSM_Vec3_s::Magnitude() const
+double const CSM_Vec3_s::Magnitude() const
 {
 	return sqrt(X*X + Y*Y + Z*Z);
 }
-const double CSM_Vec3_s::MagSqr() const
+double const CSM_Vec3_s::MagSqr() const
 {
 	return X*X + Y*Y + Z*Z;
 }
-const CSM_Vec3_s	CSM_Vec3_s::RotationAngles(const CSM_Vec3_s &a) const{
+const CSM_Vec3_s	CSM_Vec3_s::RotationAngles(CSM_Vec3_s const &a) const{
 	CSM_Vec3_s RotAngles;
 	for (int i = 0; i < 3; ++i){
 		CSM_Vec3_s Tmp1 = *this;
@@ -162,10 +162,10 @@ const CSM_Vec3_s	CSM_Vec3_s::RotationAngles(const CSM_Vec3_s &a) const{
 	End methods for CSM_Vec3_s
 */
 
-const CSM_Vec3_s		Normalize(const CSM_Vec3_s &a){
+const CSM_Vec3_s		Normalize(CSM_Vec3_s const &a){
 	return CSM_Vec3_s(a).Normalize();
 }
-const double CSM_Distance(const CSM_Vec3_s &a, const CSM_Vec3_s &b){
+double const CSM_Distance(CSM_Vec3_s const &a, CSM_Vec3_s const &b){
 	return CSM_Vec3_s(a - b).Magnitude();
 }
 
@@ -179,7 +179,7 @@ CSM_Mat3_s::CSM_Mat3_s(CSM_Vec3_s r1, CSM_Vec3_s r2, CSM_Vec3_s r3){
 	R2 = r2;
 	R3 = r3;
 }
-CSM_Mat3_s::CSM_Mat3_s(const CSM_Mat3_s & a){
+CSM_Mat3_s::CSM_Mat3_s(CSM_Mat3_s const & a){
 	R1 = a.R1;
 	R2 = a.R2;
 	R3 = a.R3;
@@ -212,14 +212,14 @@ CSM_Mat3_s & CSM_Mat3_s::operator*=(CSM_Mat3_s &a){
 
 	return *this;
 }
-const CSM_Vec3_s CSM_Mat3_s::operator*(const CSM_Vec3_s &a) const{
+CSM_Vec3_s const CSM_Mat3_s::operator*(CSM_Vec3_s const &a) const{
 	CSM_Vec3_s Pdt;
 	CSM_Mat3_s aa(*this);
 	for (int i = 0; i < 3; ++i)
 		Pdt[i] = aa[i].Dot(a);
 	return Pdt;
 }
-const CSM_Mat3_s CSM_Mat3_s::operator*(CSM_Mat3_s &a) const{
+CSM_Mat3_s const CSM_Mat3_s::operator*(CSM_Mat3_s &a) const{
 	return CSM_Mat3_s(*this) *= a;
 }
 
@@ -232,14 +232,14 @@ CSM_Vec4_s::CSM_Vec4_s(double x, double y, double z, double w){
 	Z = z;
 	W = w;
 }
-CSM_Vec4_s::CSM_Vec4_s(const CSM_Vec3_s &a, double w){
+CSM_Vec4_s::CSM_Vec4_s(CSM_Vec3_s const &a, double w){
 	X = a.X;
 	Y = a.Y;
 	Z = a.Z;
 	W = w;
 }
 
-CSM_Vec4_s & CSM_Vec4_s::operator=(const CSM_Vec4_s &a){
+CSM_Vec4_s & CSM_Vec4_s::operator=(CSM_Vec4_s const &a){
 	X = a.X;
 	Y = a.Y;
 	Z = a.Z;
@@ -250,14 +250,14 @@ CSM_Vec4_s & CSM_Vec4_s::operator=(double a){
 	X = Y = Z = W = a;
 	return *this;
 }
-const bool CSM_Vec4_s::operator==(const CSM_Vec4_s &a) const{
+bool const CSM_Vec4_s::operator==(CSM_Vec4_s const &a) const{
 	return (
 		X == a.X &&
 		Y == a.Y &&
 		Z == a.Z &&
 		W == a.W);
 }
-const bool CSM_Vec4_s::operator!=(const CSM_Vec4_s &a) const{
+bool const CSM_Vec4_s::operator!=(CSM_Vec4_s const &a) const{
 	return !(*this == a);
 }
 double &	CSM_Vec4_s::operator[](unsigned int i){
@@ -279,10 +279,10 @@ double &	CSM_Vec4_s::operator[](unsigned int i){
 	}
 }
 
-const CSM_Vec4_s CSM_Vec4_s::operator-(){
+CSM_Vec4_s const CSM_Vec4_s::operator-(){
 	return CSM_Vec4_s(-X, -Y, -Z, -W);
 }
-CSM_Vec4_s & CSM_Vec4_s::operator-=(const CSM_Vec4_s &a){
+CSM_Vec4_s & CSM_Vec4_s::operator-=(CSM_Vec4_s const &a){
 	X -= a.X;
 	Y -= a.Y;
 	Z -= a.Z;
@@ -290,7 +290,7 @@ CSM_Vec4_s & CSM_Vec4_s::operator-=(const CSM_Vec4_s &a){
 
 	return *this;
 }
-CSM_Vec4_s & CSM_Vec4_s::operator+=(const CSM_Vec4_s &a){
+CSM_Vec4_s & CSM_Vec4_s::operator+=(CSM_Vec4_s const &a){
 	X += a.X;
 	Y += a.Y;
 	Z += a.Z;
@@ -298,7 +298,7 @@ CSM_Vec4_s & CSM_Vec4_s::operator+=(const CSM_Vec4_s &a){
 
 	return *this;
 }
-CSM_Vec4_s & CSM_Vec4_s::operator*=(const double &a){
+CSM_Vec4_s & CSM_Vec4_s::operator*=(double const &a){
 	X *= a;
 	Y *= a;
 	Z *= a;
@@ -306,7 +306,7 @@ CSM_Vec4_s & CSM_Vec4_s::operator*=(const double &a){
 
 	return *this;
 }
-CSM_Vec4_s & CSM_Vec4_s::operator*=(const CSM_Vec4_s &a){
+CSM_Vec4_s & CSM_Vec4_s::operator*=(CSM_Vec4_s const &a){
 	X *= a.X;
 	Y *= a.Y;
 	Z *= a.Z;
@@ -314,23 +314,23 @@ CSM_Vec4_s & CSM_Vec4_s::operator*=(const CSM_Vec4_s &a){
 
 	return *this;
 }
-const CSM_Vec4_s CSM_Vec4_s::operator-(const CSM_Vec4_s &a) const{
+CSM_Vec4_s const CSM_Vec4_s::operator-(CSM_Vec4_s const &a) const{
 	return CSM_Vec4_s(*this) -= a;
 }
-const CSM_Vec4_s CSM_Vec4_s::operator+(const CSM_Vec4_s &a) const{
+CSM_Vec4_s const CSM_Vec4_s::operator+(CSM_Vec4_s const &a) const{
 	return CSM_Vec4_s(*this) += a;
 }
 const CSM_Vec4_s	CSM_Vec4_s::operator*(double a) const{
 	return CSM_Vec4_s(*this) *= a;
 }
-const CSM_Vec4_s	CSM_Vec4_s::operator*(const CSM_Vec4_s &a) const{
+const CSM_Vec4_s	CSM_Vec4_s::operator*(CSM_Vec4_s const &a) const{
 	return CSM_Vec4_s(*this) *= a;
 }
 
-const double CSM_Vec4_s::Dot(const CSM_Vec4_s &a) const{
+double const CSM_Vec4_s::Dot(CSM_Vec4_s const &a) const{
 	return X*a.X + Y*a.Y + Z*a.Z + W*a.W;
 }
-// CSM_Vec4_s CSM_Vec4_s::Cross(const CSM_Vec4_s &a){
+// CSM_Vec4_s CSM_Vec4_s::Cross(CSM_Vec4_s const &a){
 // 	CSM_Vec4_s Tmp;
 // 	Tmp.X = -Z*a.Y + Y*a.Z;
 // 	Tmp.Y = Z*a.X - X*a.Z;
@@ -348,11 +348,11 @@ const CSM_Vec4_s	CSM_Vec4_s::Normalize() const{
 	}
 	return a;
 }
-const double CSM_Vec4_s::Magnitude() const
+double const CSM_Vec4_s::Magnitude() const
 {
 	return sqrt(X*X + Y*Y + Z*Z + W*W);
 }
-// CSM_Vec4_s	CSM_Vec4_s::RotationAngles(const CSM_Vec4_s &a){
+// CSM_Vec4_s	CSM_Vec4_s::RotationAngles(CSM_Vec4_s const &a){
 // 	CSM_Vec4_s RotAngles;
 // 	for (int i = 0; i < 3; ++i){
 // 		CSM_Vec4_s Tmp1 = *this;
@@ -366,10 +366,10 @@ const double CSM_Vec4_s::Magnitude() const
 End methods for CSM_Vec4_s
 */
 
-const CSM_Vec4_s		Normalize(const CSM_Vec4_s &a){
+const CSM_Vec4_s		Normalize(CSM_Vec4_s const &a){
 	return CSM_Vec4_s(a).Normalize();
 }
-const double CSM_Distance(const CSM_Vec4_s &a, const CSM_Vec4_s &b)
+double const CSM_Distance(CSM_Vec4_s const &a, CSM_Vec4_s const &b)
 {
 	return CSM_Vec4_s(a - b).Magnitude();
 }
@@ -385,7 +385,7 @@ CSM_Mat4_s::CSM_Mat4_s(CSM_Vec4_s r1, CSM_Vec4_s r2, CSM_Vec4_s r3, CSM_Vec4_s r
 	R3 = r3;
 	R4 = r4;
 }
-CSM_Mat4_s::CSM_Mat4_s(const CSM_Mat4_s & a){
+CSM_Mat4_s::CSM_Mat4_s(CSM_Mat4_s const & a){
 	R1 = a.R1;
 	R2 = a.R2;
 	R3 = a.R3;
@@ -422,14 +422,14 @@ CSM_Mat4_s & CSM_Mat4_s::operator*=(CSM_Mat4_s &a){
 
 	return *this;
 }
-const CSM_Vec4_s CSM_Mat4_s::operator*(const CSM_Vec4_s &a) const{
+CSM_Vec4_s const CSM_Mat4_s::operator*(CSM_Vec4_s const &a) const{
 	CSM_Vec4_s Pdt;
 	CSM_Mat4_s aa(*this);
 	for (int i = 0; i < 4; ++i)
 		Pdt[i] = aa[i].Dot(a);
 	return Pdt;
 }
-const CSM_Mat4_s CSM_Mat4_s::operator*(CSM_Mat4_s &a) const{
+CSM_Mat4_s const CSM_Mat4_s::operator*(CSM_Mat4_s &a) const{
 	return CSM_Mat4_s(*this) *= a;
 }
 
@@ -445,7 +445,7 @@ const CSM_Mat4_s CSM_Mat4_s::operator*(CSM_Mat4_s &a) const{
  *	
  *	Modified the code written by Bibek Subedi 3/31/2012
  */
-const CSM_Mat4_s	CSM_Rotate(double Angle, const CSM_Vec3_s &a){
+const CSM_Mat4_s	CSM_Rotate(double Angle, CSM_Vec3_s const &a){
 	double L = CSM_Vec3_s(a).Magnitude();
 	double LSqr = L * L;
 	CSM_Vec3_s a2 = a * a;

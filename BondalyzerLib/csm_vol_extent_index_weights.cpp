@@ -27,7 +27,7 @@ using std::to_string;
 using std::stringstream;
 
 
-VolExtentIndexWeights_s & VolExtentIndexWeights_s::operator = (const VolExtentIndexWeights_s & rhs){
+VolExtentIndexWeights_s & VolExtentIndexWeights_s::operator = (VolExtentIndexWeights_s const & rhs){
 	if (this == &rhs)
 		return *this;
 
@@ -49,7 +49,7 @@ VolExtentIndexWeights_s & VolExtentIndexWeights_s::operator = (const VolExtentIn
 
 	return *this;
 }
-const Boolean_t VolExtentIndexWeights_s::operator == (const VolExtentIndexWeights_s & rhs) const{
+Boolean_t VolExtentIndexWeights_s::operator == (VolExtentIndexWeights_s const & rhs) const{
 	Boolean_t AreEqual = (
 		MaxIJK == rhs.MaxIJK &&
 		sum(MaxXYZ == rhs.MaxXYZ) == 3 &&
@@ -75,9 +75,9 @@ const Boolean_t VolExtentIndexWeights_s::operator == (const VolExtentIndexWeight
 	return AreEqual;
 }
 
-const Boolean_t GetVolInfo(const int & VolZoneNum,
-	const vector<int> & XYZVarNums,
-	const Boolean_t & IsPeriodic,
+Boolean_t GetVolInfo(int VolZoneNum,
+	vector<int> const & XYZVarNums,
+	Boolean_t IsPeriodic,
 	VolExtentIndexWeights_s & VolInfo)
 {
 	TecUtilZoneGetIJK(VolZoneNum, &VolInfo.MaxIJK[0], &VolInfo.MaxIJK[1], &VolInfo.MaxIJK[2]);
@@ -93,7 +93,7 @@ const Boolean_t GetVolInfo(const int & VolZoneNum,
 	return TRUE;
 }
 
-const Boolean_t SetIndexAndWeightsForPoint(vec3 Point, VolExtentIndexWeights_s & VolZoneInfo)
+Boolean_t SetIndexAndWeightsForPoint(vec3 Point, VolExtentIndexWeights_s & VolZoneInfo)
 {
 
 	Boolean_t IsOk = TRUE;
@@ -200,9 +200,9 @@ const Boolean_t SetIndexAndWeightsForPoint(vec3 Point, VolExtentIndexWeights_s &
 
 
 	return IsOk;
-} //	const Boolean_t SetIndexAndWeightsForPoint() 
+} //	Boolean_t const SetIndexAndWeightsForPoint() 
 
-const vector<int> GetIJKForPoint(vec3 & Point, VolExtentIndexWeights_s & VolZoneInfo)
+vector<int> GetIJKForPoint(vec3 & Point, VolExtentIndexWeights_s & VolZoneInfo)
 {
 	Boolean_t IsOk = TRUE;
 
@@ -297,7 +297,7 @@ const vector<int> GetIJKForPoint(vec3 & Point, VolExtentIndexWeights_s & VolZone
 *	increment the IJK values as necessary to get the IJK values of
 *	the corner specified.
 */
-void GetCellCornerIndices(const int & CornerNum, int & i, int & j, int & k){
+void GetCellCornerIndices(int CornerNum, int & i, int & j, int & k){
 	switch (CornerNum){
 		case 0:
 			break;
@@ -330,7 +330,7 @@ void GetCellCornerIndices(const int & CornerNum, int & i, int & j, int & k){
 	}
 }
 
-const double ValByCurrentIndexAndWeightsFromRawPtr(const VolExtentIndexWeights_s & VolZoneInfo, const FieldDataPointer_c & FDPtr)
+double ValByCurrentIndexAndWeightsFromRawPtr(VolExtentIndexWeights_s const & VolZoneInfo, FieldDataPointer_c const & FDPtr)
 {
 	double Value = 0.0;
 
@@ -342,7 +342,7 @@ const double ValByCurrentIndexAndWeightsFromRawPtr(const VolExtentIndexWeights_s
 	return Value;
 }
 
-const double ValAtPointByPtr(vec3 & Point, VolExtentIndexWeights_s & VolZoneInfo, const FieldDataPointer_c & FDPtr){
+double ValAtPointByPtr(vec3 & Point, VolExtentIndexWeights_s & VolZoneInfo, FieldDataPointer_c const & FDPtr){
 	if (SetIndexAndWeightsForPoint(Point, VolZoneInfo)){
 		return ValByCurrentIndexAndWeightsFromRawPtr(VolZoneInfo, FDPtr);
 	}

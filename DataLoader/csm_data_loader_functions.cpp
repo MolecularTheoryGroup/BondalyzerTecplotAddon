@@ -37,7 +37,7 @@ std::string ab_str[] = {
 	"NOAB"
 };
 
-const string GetAtomStr(const int & AtomNum){
+string GetAtomStr(int AtomNum){
 	if (AtomNum <= 0 || AtomNum > ElementSymbolList.size())
 		return "";
 	return ElementSymbolList[AtomNum - 1];
@@ -126,11 +126,11 @@ void T41Var_s::SetType(VarType_e In){
 		}
 }
 
-const Boolean_t T41Var_s::operator== (const T41Var_s & T2) const{
+Boolean_t T41Var_s::operator== (T41Var_s const & T2) const{
 	return (T41FullNameStr == T2.T41FullNameStr);
 }
 
-const Boolean_t T41Var_s::operator!= (const T41Var_s & T2) const{
+Boolean_t T41Var_s::operator!= (T41Var_s const & T2) const{
 	return !(*this == T2);
 }
 
@@ -148,7 +148,7 @@ void AtomGroup_s::AddPosition(vec3 & Position){
 * Other functions
 */
 
-Boolean_t IsInDataTypeList(const std::vector<T41Var_s> &SearchVec, const T41Var_s &ToFind){
+Boolean_t IsInDataTypeList(const std::vector<T41Var_s> &SearchVec, T41Var_s const &ToFind){
 	Boolean_t IsFound = FALSE;
 	for (std::vector<T41Var_s>::const_iterator it = SearchVec.cbegin(); it != SearchVec.cend() && !IsFound; it++)
 		if (*it == ToFind)
@@ -176,7 +176,7 @@ Boolean_t VectorContainsString(const std::vector<std::string> &SearchVec, const 
 	return IsFound;
 }
 
-const ColorIndex_t GetAtomColor(const std::vector<AtomColor_s> & AtomColorList, const std::string & AtomName){
+ColorIndex_t GetAtomColor(const std::vector<AtomColor_s> & AtomColorList, const std::string & AtomName){
 	for (int i = 1; i < AtomColorList.size(); ++i)
 		if (VectorContainsString(AtomColorList[i].Names, AtomName))
 			return AtomColorList[i].Color;
@@ -344,10 +344,10 @@ int PopulateTypeList(std::vector<T41Var_s> &TypeList){
 	return static_cast<int>(TypeList.size());
 }
 
-const Boolean_t CreateAtomZonesFromAtomGroupList(const vector<AtomGroup_s> & AtomGroupList,
-	const vector<string> & XYZVarNames,
+Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroupList,
+	vector<string> const & XYZVarNames,
 	vector<FieldDataType_e> & VarDataTypes,
-	const int & GroupIndex)
+	int GroupIndex)
 {
 	/*
 	*	Now create zones for each atom group and set their style settings accordingly

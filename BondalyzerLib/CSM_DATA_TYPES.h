@@ -23,8 +23,12 @@ using namespace arma;
 using std::vector;
 using std::string;
 
-const vector<string> ElementSymbolList = { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Uut", "Fl", "Uup", "Lv", "Uus", "Uuo"};
-const vector<string> ElementNameList = {
+#define SIGN(x) (x < 0 ? -1 : (x > 0 ? 1 : 0))
+
+double dot2(const vec & v);
+
+vector<string> const ElementSymbolList = { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Uut", "Fl", "Uup", "Lv", "Uus", "Uuo"};
+vector<string> const ElementNameList = {
 "Hydrogen",
 "Helium",
 "Lithium",
@@ -146,21 +150,22 @@ const vector<string> ElementNameList = {
 "Atom "
 };
 
-const vec LogSpace(const double & low, const double & high, const int & n);
+vec const LogSpace(double const & low, double const & high, int n);
 
-double DistSqr(const vec & A, const vec & B);
-double Distance(const vec & A, const vec & B);
-double VectorAngle(const vec3 & A, const vec3 & B);
-const vec3 SphericalToCartesian(const double & r, const double & theta, const double & phi);
-const mat44	RotationMatrix(const double & Angle, vec3 Axis);
-const vec3 Rotate(const vec3 & Point, const double & Angle, vec3 Axis);
-const double TriangleArea(const vec3 & A, const vec3 & B, const vec3 & C);
-const double TetVolume(const vector<vec3> & V); 
-const double HexahedronInternalPointTetVolume(const vector<vec3> & V);
-const double ParallepipedVolume(const vector<vec3> & BV);
-const double ParallepipedVolume(const mat33 & BV);
 
-const bool ParallelpidedPointIsInternal(const mat33 & LV, const vec3 & Origin, const vec3 & Pt);
+double DistSqr(vec const & A, vec const & B);
+double Distance(vec const & A, vec const & B);
+double VectorAngle(vec3 const & A, vec3 const & B);
+vec3 const SphericalToCartesian(double const & r, double const & theta, double const & phi);
+const mat44	RotationMatrix(double const & Angle, vec3 Axis);
+vec3 const Rotate(vec3 const & Point, double const & Angle, vec3 Axis);
+double const TriangleArea(vec3 const & A, vec3 const & B, vec3 const & C);
+double const TetVolume(vector<vec3> const & V); 
+double const HexahedronInternalPointTetVolume(vector<vec3> const & V);
+double const ParallepipedVolume(vector<vec3> const & BV);
+double const ParallepipedVolume(mat33 const & BV);
+
+bool const ParallelpidedPointIsInternal(mat33 const & LV, vec3 const & Origin, vec3 const & Pt);
 
 typedef double ImportType_t;
 
@@ -185,10 +190,10 @@ struct MultiRootParams_s{
 	Boolean_t IsPeriodic;
 	Boolean_t HasGrad;
 	Boolean_t HasHess;
-	const FieldDataPointer_c * RhoPtr = NULL;
-	const vector<FieldDataPointer_c> * GradPtrs = NULL;
-	const vector<FieldDataPointer_c> * HessPtrs = NULL;
-	const mat33 * BasisVectors = NULL;
+	FieldDataPointer_c const * RhoPtr = NULL;
+	vector<FieldDataPointer_c> const * GradPtrs = NULL;
+	vector<FieldDataPointer_c> const * HessPtrs = NULL;
+	mat33 const * BasisVectors = NULL;
 	vec3 * Origin = NULL;
 	vec3 * EquilPos = NULL;
 	int Index = -1;
@@ -199,7 +204,7 @@ struct MultiRootParams_s{
 struct MultiRootObjects_s{
 	gsl_multiroot_function_fdf Func;
 	gsl_vector * pos;
-	const gsl_multiroot_fdfsolver_type * T;
+	gsl_multiroot_fdfsolver_type const * T;
 	gsl_multiroot_fdfsolver * s;
 };
 

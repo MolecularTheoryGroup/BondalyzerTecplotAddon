@@ -43,7 +43,7 @@ size_t getTotalSystemMemory()
 }
 
 // template <class T>
-// const int VectorGetElementNum(const vector<T> & SearchVec, const T & Item){
+// int const VectorGetElementNum(vector<T> const & SearchVec, T const & Item){
 // 	int ElemNum;
 // 
 // 	vector<T>::const_iterator itr = std::find(SearchVec.cbegin(), SearchVec.cend(), Item);
@@ -54,7 +54,7 @@ size_t getTotalSystemMemory()
 // 	return ElemNum;
 // }
 
-const int SearchVectorForString(const vector<string> & Vec, const string & SearchString, const bool & UseVectorStringLength){
+int SearchVectorForString(vector<string> const & Vec, string const & SearchString, bool UseVectorStringLength){
 	Boolean_t IsFound = FALSE;
 
 	for (int i = 0; i < Vec.size(); ++i)
@@ -66,7 +66,7 @@ const int SearchVectorForString(const vector<string> & Vec, const string & Searc
 	return -1;
 }
 
-const vector<string> SplitString(const string &s, const string & delim) {
+vector<string> SplitString(string const &s, string const & delim) {
 	vector<string> tokens;
 	auto start = 0U;
 	auto end = s.find(delim);
@@ -80,7 +80,7 @@ const vector<string> SplitString(const string &s, const string & delim) {
 	return tokens;
 }
 
-const vector<int> SplitStringInt(const string &s, const string & delim) {
+vector<int> SplitStringInt(string const &s, string const & delim) {
 	vector<int> tokens;
 	auto start = 0U;
 	auto end = s.find(delim);
@@ -95,7 +95,7 @@ const vector<int> SplitStringInt(const string &s, const string & delim) {
 	return tokens;
 }
 
-const vector<double> SplitStringDbl(const string &s, const string & delim) {
+vector<double> SplitStringDbl(string const &s, string const & delim) {
 	vector<double> tokens;
 	auto start = 0U;
 	auto end = s.find(delim);
@@ -111,7 +111,7 @@ const vector<double> SplitStringDbl(const string &s, const string & delim) {
 }
 
 
-const Boolean_t StringIsInt(const string & s){
+Boolean_t StringIsInt(string const & s){
 	Boolean_t IsInt = TRUE;
 	for (int i = 0; i < s.length() && IsInt; ++i)
 		IsInt = isdigit(s[i]);
@@ -119,14 +119,14 @@ const Boolean_t StringIsInt(const string & s){
 	return IsInt;
 }
 
-const Boolean_t StringIsFloat(const string & s){
-	for (const auto & i : s) if (!isdigit(i) && i != '.') return FALSE;
+Boolean_t StringIsFloat(string const & s){
+	for (auto const & i : s) if (!isdigit(i) && i != '.') return FALSE;
 
 	return TRUE;
 }
 
 
-const string StringReplaceSubString(const string & InStr, const string & OldStr, const string & NewStr){
+string StringReplaceSubString(string const & InStr, string const & OldStr, string const & NewStr){
 	string OutStr = InStr;
 
 	size_t Index = 0;
@@ -144,8 +144,8 @@ const string StringReplaceSubString(const string & InStr, const string & OldStr,
 	return OutStr;
 }
 
-const string StringRemoveSubString(const string & InString,
-	const string & SubString)
+string StringRemoveSubString(string const & InString,
+	string const & SubString)
 {
 	string NewString = InString;
 
@@ -178,7 +178,7 @@ const string StringRemoveSubString(const string & InString,
 	*		a-z		97-122
 	*/
 
-const string AuxDataMakeStringValidName(string Str){
+string AuxDataMakeStringValidName(string Str){
 	if (Str.length() <= 0) return "Blank_Name";
 
 	if (!(Str[0] == 95 || (Str[0] >= 65 && Str[0] <= 90) || (Str[0] >= 97 && Str[0] <= 122)))
@@ -202,7 +202,7 @@ const string AuxDataMakeStringValidName(string Str){
 	*	Begin aux data wrapper functions
 	*/
 
-void AuxDataCopy(const int & SourceNum, const int & DestNum, bool IsZone){
+void AuxDataCopy(int SourceNum, int DestNum, bool IsZone){
 	AuxData_pa SourcePtr = NULL, DestPtr = NULL;
 
 	if (IsZone){
@@ -229,7 +229,7 @@ void AuxDataCopy(const int & SourceNum, const int & DestNum, bool IsZone){
 	}
 }
 
-const Boolean_t AuxDataZoneHasItem(const int & ZoneNum, const string & CheckString)
+Boolean_t AuxDataZoneHasItem(int ZoneNum, string const & CheckString)
 {
 	Boolean_t ZoneOK = TRUE;
 
@@ -245,7 +245,7 @@ const Boolean_t AuxDataZoneHasItem(const int & ZoneNum, const string & CheckStri
 
 	return ZoneOK;
 }
-const Boolean_t AuxDataZoneItemMatches(const int & ZoneNum, const string & AuxDataName, const string & AuxDataValue)
+Boolean_t AuxDataZoneItemMatches(int ZoneNum, string const & AuxDataName, string const & AuxDataValue)
 {
 	Boolean_t ZoneOK = TRUE;
 
@@ -265,7 +265,7 @@ const Boolean_t AuxDataZoneItemMatches(const int & ZoneNum, const string & AuxDa
 	return ZoneOK;
 }
 
-const string AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataName)
+string AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName)
 {
 	Boolean_t ZoneOK = TRUE;
 
@@ -287,7 +287,7 @@ const string AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataName)
 	return TmpStr;
 }
 
-const Boolean_t AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataName, string & Value)
+Boolean_t AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName, string & Value)
 {
 	Boolean_t ZoneOK = TRUE;
 
@@ -308,12 +308,12 @@ const Boolean_t AuxDataZoneGetItem(const int & ZoneNum, const string & AuxDataNa
 	return ZoneOK;
 }
 
-const vector<string> AuxDataZoneGetList(const int & ZoneNum, const string & AuxDataName, string & Value){
+vector<string> AuxDataZoneGetList(int ZoneNum, string const & AuxDataName, string & Value){
 	return SplitString(AuxDataZoneGetItem(ZoneNum, AuxDataName), ",,");
 }
 
 
-const Boolean_t AuxDataZoneSetItem(const int & ZoneNum, const string & AuxDataName, const string & AuxDataValue)
+Boolean_t AuxDataZoneSetItem(int ZoneNum, string const & AuxDataName, string const & AuxDataValue)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
 	Boolean_t IsOk = (TempAuxData != NULL);
@@ -323,7 +323,7 @@ const Boolean_t AuxDataZoneSetItem(const int & ZoneNum, const string & AuxDataNa
 	return IsOk;
 }
 
-const Boolean_t AuxDataZoneDeleteItemByName(const int & ZoneNum, const string & AuxDataName)
+Boolean_t AuxDataZoneDeleteItemByName(int ZoneNum, string const & AuxDataName)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
 	Boolean_t IsOk = (TempAuxData != NULL);
@@ -333,7 +333,7 @@ const Boolean_t AuxDataZoneDeleteItemByName(const int & ZoneNum, const string & 
 	return IsOk;
 }
 
-const Boolean_t AuxDataDataSetDeleteItemByName(const string & AuxDataName)
+Boolean_t AuxDataDataSetDeleteItemByName(string const & AuxDataName)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
 	Boolean_t IsOk = (TempAuxData != NULL);
@@ -343,7 +343,7 @@ const Boolean_t AuxDataDataSetDeleteItemByName(const string & AuxDataName)
 	return IsOk;
 }
 
-const string AuxDataDataSetGetItem(const string & AuxDataName)
+string AuxDataDataSetGetItem(string const & AuxDataName)
 {
 	Boolean_t ZoneOK = TRUE;
 
@@ -365,7 +365,7 @@ const string AuxDataDataSetGetItem(const string & AuxDataName)
 	return TmpStr;
 }
 
-const Boolean_t AuxDataDataSetGetItem(const string & AuxDataName, string & Value)
+Boolean_t AuxDataDataSetGetItem(string const & AuxDataName, string & Value)
 {
 	Boolean_t ZoneOK = TRUE;
 
@@ -387,7 +387,7 @@ const Boolean_t AuxDataDataSetGetItem(const string & AuxDataName, string & Value
 }
 
 
-const Boolean_t AuxDataDataSetSetItem(const string & AuxDataName, const string & AuxDataValue)
+Boolean_t AuxDataDataSetSetItem(string const & AuxDataName, string const & AuxDataValue)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
 	Boolean_t IsOk = (TempAuxData != NULL);
@@ -400,7 +400,7 @@ const Boolean_t AuxDataDataSetSetItem(const string & AuxDataName, const string &
 /*
 	*	Begin var/zone wrapper functions
 	*/
-SmInteger_t VarNumByNameList(const vector<string> & VarNameList, const bool PartialMatch)
+SmInteger_t VarNumByNameList(vector<string> const & VarNameList, bool const PartialMatch)
 {
 	SmInteger_t VarNum = -1;
 
@@ -409,7 +409,7 @@ SmInteger_t VarNumByNameList(const vector<string> & VarNameList, const bool Part
 	for (EntIndex_t CurrentVar = NumberOfVars; CurrentVar >= 1 && VarNum < 0; CurrentVar--){
 		VarName_t CurrentVarName;
 		if (TecUtilVarGetName(CurrentVar, &CurrentVarName)){
-			for (const auto & s : VarNameList){
+			for (auto const & s : VarNameList){
 				if (!strncmp(CurrentVarName, s.c_str(), s.size())){
 					VarNum = CurrentVar;
 				}
@@ -421,7 +421,7 @@ SmInteger_t VarNumByNameList(const vector<string> & VarNameList, const bool Part
 	return VarNum;
 }
 
-SmInteger_t VarNumByName(const string & VarName, const bool PartialMatch)
+SmInteger_t VarNumByName(string const & VarName, bool const PartialMatch)
 {
 	SmInteger_t VarNum = -1;
 
@@ -441,7 +441,7 @@ SmInteger_t VarNumByName(const string & VarName, const bool PartialMatch)
 	return VarNum;
 }
 
-SmInteger_t ZoneNumByNameList(const vector<string> & ZoneNameList)
+SmInteger_t ZoneNumByNameList(vector<string> const & ZoneNameList)
 {
 	SmInteger_t ZoneNum = -1;
 
@@ -462,7 +462,7 @@ SmInteger_t ZoneNumByNameList(const vector<string> & ZoneNameList)
 	return ZoneNum;
 }
 
-SmInteger_t ZoneNumByName(const string & ZoneName, const bool ActiveOnly, const bool PartialMatch)
+SmInteger_t ZoneNumByName(string const & ZoneName, bool const ActiveOnly, bool const PartialMatch)
 {
 	SmInteger_t ZoneNum = -1;
 
@@ -484,7 +484,7 @@ SmInteger_t ZoneNumByName(const string & ZoneName, const bool ActiveOnly, const 
 }
 
 
-const vec3 GetDelXYZ_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum){
+vec3 GetDelXYZ_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum){
 	REQUIRE(TecUtilZoneIsOrdered(ZoneNum));
 	REQUIRE(XYZVarNums.size() == 3);
 	REQUIRE(ZoneNum >= 1 && ZoneNum <= TecUtilDataSetGetNumZones());
@@ -535,7 +535,7 @@ const vec3 GetDelXYZ_Ordered3DZone(const vector<int> & XYZVarNums, const int & Z
 }
 
 
-const vector<vec3> ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum){
+vector<vec3> ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum){
 
 	vector<vec3> MinMaxPts(2);
 
@@ -545,7 +545,7 @@ const vector<vec3> ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarN
 }
 
 
-void ZoneXYZVarGetBasisVectors_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum, mat33 & BasisVectors, vec3 & BVExtent){
+void ZoneXYZVarGetBasisVectors_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum, mat33 & BasisVectors, vec3 & BVExtent){
 	REQUIRE(TecUtilZoneIsOrdered(ZoneNum));
 	REQUIRE(XYZVarNums.size() == 3);
 	REQUIRE(ZoneNum >= 1 && ZoneNum <= TecUtilDataSetGetNumZones());
@@ -579,7 +579,7 @@ void ZoneXYZVarGetBasisVectors_Ordered3DZone(const vector<int> & XYZVarNums, con
 }
 
 
-void ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int & ZoneNum, vec3 & MinXYZ, vec3 & MaxXYZ){
+void ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum, vec3 & MinXYZ, vec3 & MaxXYZ){
 	REQUIRE(TecUtilZoneIsOrdered(ZoneNum));
 	REQUIRE(XYZVarNums.size() == 3);
 	REQUIRE(ZoneNum >= 1 && ZoneNum <= TecUtilDataSetGetNumZones());
@@ -674,7 +674,7 @@ void ZoneXYZVarGetMinMax_Ordered3DZone(const vector<int> & XYZVarNums, const int
 	*	Begin other functions
 	*/
 
-void StatusLaunch(const string & StatusStr, const AddOn_pa & AddOnID, const Boolean_t & ShowScale, const Boolean_t & ShowButton){
+void StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale, Boolean_t ShowButton){
 	TecUtilLockStart(AddOnID);
 // 	TecUtilDrawGraphics(TRUE);
 	TecUtilStatusSuspend(FALSE);
@@ -690,7 +690,7 @@ void StatusLaunch(const string & StatusStr, const AddOn_pa & AddOnID, const Bool
 	TecUtilLockFinish(AddOnID);
 }
 
-void StatusDrop(const AddOn_pa & AddOnID){
+void StatusDrop(AddOn_pa const & AddOnID){
 	TecUtilLockStart(AddOnID);
 // 	TecUtilDrawGraphics(TRUE);
 	TecUtilStatusSuspend(FALSE);
@@ -701,7 +701,7 @@ void StatusDrop(const AddOn_pa & AddOnID){
 	TecUtilLockFinish(AddOnID);
 }
 
-const string PrintDuration(duration<double> dur){
+string PrintDuration(duration<double> dur){
 	using namespace std::chrono;
 	using day_t = duration<long, std::ratio<3600 * 24>>;
 	
@@ -720,10 +720,10 @@ const string PrintDuration(duration<double> dur){
 	return str;
 }
 
-const Boolean_t StatusUpdate(unsigned int CurrentNum,
+Boolean_t StatusUpdate(unsigned int CurrentNum,
 	unsigned int TotalNum,
-	const string & ProgresssText,
-	const AddOn_pa & AddOnID,
+	string const & ProgresssText,
+	AddOn_pa const & AddOnID,
 	high_resolution_clock::time_point StartTime)
 {
 	unsigned int Percent = MAX(0, MIN(static_cast<int>((static_cast<double>(CurrentNum) + 0.5) / static_cast<double>(TotalNum)* 100.), 100));
@@ -770,11 +770,11 @@ const Boolean_t StatusUpdate(unsigned int CurrentNum,
 }
 
 
-const LgIndex_t IndexFromIJK(const LgIndex_t &I,
-	const LgIndex_t &J,
-	const LgIndex_t &K,
-	const LgIndex_t &MaxI,
-	const LgIndex_t &MaxJ)
+LgIndex_t IndexFromIJK(LgIndex_t I,
+	LgIndex_t J,
+	LgIndex_t K,
+	LgIndex_t MaxI,
+	LgIndex_t MaxJ)
 {
 	return I + (J - 1) * MaxI + (K - 1) * MaxI * MaxJ;
 }
@@ -794,13 +794,13 @@ const LgIndex_t IndexFromIJK(const LgIndex_t &I,
 * return
 *     Linear (1-based) index into the Tecplot field-data arrays.
 */
-const LgIndex_t IndexFromIJK(const LgIndex_t &    I,
-	const LgIndex_t &    J,
-	const LgIndex_t &    K,
-	const LgIndex_t & IMax,
-	const LgIndex_t & JMax,
-	const LgIndex_t & KMax,
-	const Boolean_t & PeriodicBC)
+LgIndex_t IndexFromIJK(LgIndex_t    I,
+	LgIndex_t    J,
+	LgIndex_t    K,
+	LgIndex_t IMax,
+	LgIndex_t JMax,
+	LgIndex_t KMax,
+	Boolean_t PeriodicBC)
 {
 	LgIndex_t Result;
 	LgIndex_t IIndex = I;
@@ -834,7 +834,7 @@ const LgIndex_t IndexFromIJK(const LgIndex_t &    I,
 	return Result;
 }
 
-const vector<LgIndex_t> IJKFromIndex(const LgIndex_t & Index,
+vector<LgIndex_t> IJKFromIndex(LgIndex_t Index,
 									const vector<LgIndex_t>& IJKMax){
 	vector<LgIndex_t> IJK(3);
 	Boolean_t IsOk = (Index <= IJKMax[0] * IJKMax[1] * IJKMax[2] + 1);
@@ -849,10 +849,10 @@ const vector<LgIndex_t> IJKFromIndex(const LgIndex_t & Index,
 }
 
 
-const Boolean_t SaveVec3VecAsScatterZone(const vector<vec3> & VecVec, 
-	const string & ZoneName,
-	const ColorIndex_t & Color,
-	const vector<EntIndex_t> & XYZVarNums){
+Boolean_t SaveVec3VecAsScatterZone(vector<vec3> const & VecVec, 
+	string const & ZoneName,
+	ColorIndex_t const & Color,
+	vector<EntIndex_t> const & XYZVarNums){
 	Boolean_t IsOk = VecVec.size() > 0;
 	if (IsOk){
 
@@ -894,10 +894,10 @@ const Boolean_t SaveVec3VecAsScatterZone(const vector<vec3> & VecVec,
 	return IsOk;
 }
 
-const Boolean_t SaveTetVec3VecAsFEZone(const vector<vec3> & Verts,
-	const string & ZoneName,
-	const ColorIndex_t & Color,
-	const vector<EntIndex_t> & XYZVarNums){
+Boolean_t SaveTetVec3VecAsFEZone(vector<vec3> const & Verts,
+	string const & ZoneName,
+	ColorIndex_t const & Color,
+	vector<EntIndex_t> const & XYZVarNums){
 	Boolean_t IsOk = Verts.size() == 4;
 	if (IsOk){
 

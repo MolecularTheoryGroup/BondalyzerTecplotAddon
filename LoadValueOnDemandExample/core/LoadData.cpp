@@ -146,7 +146,7 @@ static void STDCALL LoadOnDemandVarCleanup(FieldData_pa FieldData)
 }
 
 
-static double STDCALL GetFirstStagedData(const FieldData_pa FieldData, LgIndex_t  PointIndex)
+static double STDCALL GetFirstStagedData(FieldData_pa const FieldData, LgIndex_t  PointIndex)
 {
     Lock lockStart;
 
@@ -165,7 +165,7 @@ static double STDCALL GetFirstStagedData(const FieldData_pa FieldData, LgIndex_t
 
 
 
-static double STDCALL GetSecondStagedData(const FieldData_pa FieldData, LgIndex_t  PointIndex)
+static double STDCALL GetSecondStagedData(FieldData_pa const FieldData, LgIndex_t  PointIndex)
 {
     Lock lockStart;
 

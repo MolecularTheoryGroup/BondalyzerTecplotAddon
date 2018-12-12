@@ -68,8 +68,8 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>true</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -124,8 +124,8 @@
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>true</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -203,6 +203,9 @@
   <ItemGroup>
     <ProjectReference Include="..\BondalyzerLib\BondalyzerLib.vcxproj">
       <Project>{56a88a1b-1458-47bc-aab9-2ca1c440312a}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\heffnormFromCraig\heffnormFromCraig.vcxproj">
+      <Project>{60f40e44-dc16-4d19-a0f7-2427dc1da8d9}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

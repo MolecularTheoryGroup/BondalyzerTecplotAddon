@@ -113,7 +113,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(TEC_360_2013R1)\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <OpenMPSupport>true</OpenMPSupport>
@@ -170,7 +170,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(TEC_360_2013R1)\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;4244</DisableSpecificWarnings>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>

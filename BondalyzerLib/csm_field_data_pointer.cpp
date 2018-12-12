@@ -14,7 +14,7 @@ using namespace tecplot::toolbox;
 /*
 *	Begin methods for FieldDataPointer_c
 */
-const Boolean_t FieldDataPointer_c::operator==(const FieldDataPointer_c & rhs) const{
+Boolean_t FieldDataPointer_c::operator==(FieldDataPointer_c const & rhs) const{
 	return (m_VoidPtr == rhs.m_VoidPtr
 
 		&& m_ReadBitPtr == rhs.m_ReadBitPtr
@@ -39,7 +39,7 @@ const Boolean_t FieldDataPointer_c::operator==(const FieldDataPointer_c & rhs) c
 		&& m_IsReadPtr == rhs.m_IsReadPtr
 		&& m_FDType == rhs.m_FDType);
 }
-FieldDataPointer_c & FieldDataPointer_c::operator=(const FieldDataPointer_c & rhs){
+FieldDataPointer_c & FieldDataPointer_c::operator=(FieldDataPointer_c const & rhs){
 	if (this == &rhs) return *this;
 
 	m_VoidPtr = rhs.m_VoidPtr;
@@ -68,7 +68,7 @@ FieldDataPointer_c & FieldDataPointer_c::operator=(const FieldDataPointer_c & rh
 
 	return *this;
 }
-const double FieldDataPointer_c::operator[](const unsigned int & i) const{
+double FieldDataPointer_c::operator[](unsigned int i) const{
 	double Val = 0.0;
 	REQUIRE(m_IsReady && i < m_Size && i >= 0);
 	if (m_IsReadPtr){
@@ -123,7 +123,7 @@ const double FieldDataPointer_c::operator[](const unsigned int & i) const{
 	return Val;
 }
 
-const double FieldDataPointer_c::At(vec3 & Pt, VolExtentIndexWeights_s & VolInfo) const{
+double FieldDataPointer_c::At(vec3 & Pt, VolExtentIndexWeights_s & VolInfo) const{
 	if (SetIndexAndWeightsForPoint(Pt, VolInfo)){
 		return ValByCurrentIndexAndWeightsFromRawPtr(VolInfo, *this);
 	}
@@ -133,7 +133,7 @@ const double FieldDataPointer_c::At(vec3 & Pt, VolExtentIndexWeights_s & VolInfo
 	}
 }
 
-const Boolean_t FieldDataPointer_c::Write(const unsigned int & i, const double & Val) const{
+Boolean_t FieldDataPointer_c::Write(unsigned int i, double const & Val) const{
 	REQUIRE(m_IsReady && !m_IsReadPtr && i < m_Size && i >= 0);
 
 	switch (m_FDType){
@@ -161,7 +161,7 @@ const Boolean_t FieldDataPointer_c::Write(const unsigned int & i, const double &
 
 	return TRUE;
 }
-const Boolean_t FieldDataPointer_c::GetReadPtr(const int & ZoneNum, const int & VarNum){
+Boolean_t FieldDataPointer_c::GetReadPtr(int ZoneNum, int VarNum){
 	m_IsReady = (
 		ZoneNum >= 1 && ZoneNum <= TecUtilDataSetGetNumZones()
 		&& VarNum >= 1 && VarNum <= TecUtilDataSetGetNumVars()
@@ -221,7 +221,7 @@ const Boolean_t FieldDataPointer_c::GetReadPtr(const int & ZoneNum, const int & 
 
 	return m_IsReady;
 }
-const Boolean_t FieldDataPointer_c::GetWritePtr(const int & ZoneNum, const int & VarNum){
+Boolean_t FieldDataPointer_c::GetWritePtr(int ZoneNum, int VarNum){
 	m_IsReady = (
 		ZoneNum >= 1 && ZoneNum <= TecUtilDataSetGetNumZones()
 		&& VarNum >= 1 && VarNum <= TecUtilDataSetGetNumVars()
@@ -303,15 +303,17 @@ void FieldDataPointer_c::Close(){
 
 FieldVecPointer_c::FieldVecPointer_c(vector<FieldDataPointer_c> & InVecs){
 	REQUIRE(InVecs.size() == 3);
+	for (int i = 1; i < 3; ++i)
+		REQUIRE(InVecs[i].Size() == InVecs[i - 1].Size());
 	for (int i = 0; i < 3; ++i) Ptrs[i] = InVecs[i];
 }
 
-const Boolean_t FieldVecPointer_c::operator == (const FieldVecPointer_c & rhs) const{
+Boolean_t FieldVecPointer_c::operator == (FieldVecPointer_c const & rhs) const{
 	for (int i = 0; i < 3; ++i) if (!(Ptrs[i] == rhs.Ptrs[i])) return FALSE;
 
 	return TRUE;
 }
-FieldVecPointer_c & FieldVecPointer_c::operator=(const FieldVecPointer_c & rhs){
+FieldVecPointer_c & FieldVecPointer_c::operator=(FieldVecPointer_c const & rhs){
 	if (rhs == *this)
 		return *this;
 
@@ -319,18 +321,18 @@ FieldVecPointer_c & FieldVecPointer_c::operator=(const FieldVecPointer_c & rhs){
 
 	return *this;
 }
-const vec3 FieldVecPointer_c::operator[](const unsigned int & i) const{
+vec3 FieldVecPointer_c::operator[](unsigned int i) const{
 	vec3 a;
 	for (int d = 0; d < 3; ++d) a[d] = Ptrs[d][i];
 
 	return a;
 }
-const Boolean_t FieldVecPointer_c::Write(const unsigned int & i, const vec3 & Vec) const{
+Boolean_t FieldVecPointer_c::Write(unsigned int i, vec3 const & Vec) const{
 	for (int d = 0; d < 3; ++d) if (!Ptrs[d].Write(i, Vec[d])) return FALSE;
 
 	return TRUE;
 }
-const Boolean_t FieldVecPointer_c::GetReadPtr(const int & ZoneNum, const vector<int> & VarNums){
+Boolean_t FieldVecPointer_c::GetReadPtr(int ZoneNum, vector<int> const & VarNums){
 	Boolean_t IsOk = TRUE;
 
 	for (int i = 0; i < 3 && IsOk; ++i){
@@ -343,7 +345,7 @@ const Boolean_t FieldVecPointer_c::GetReadPtr(const int & ZoneNum, const vector<
 
 	return IsOk;
 }
-const Boolean_t FieldVecPointer_c::GetWritePtr(const int & ZoneNum, const vector<int> & VarNums){
+Boolean_t FieldVecPointer_c::GetWritePtr(int ZoneNum, vector<int> const & VarNums){
 	Boolean_t IsOk = TRUE;
 	
 	for (int i = 0; i < 3 && IsOk; ++i){

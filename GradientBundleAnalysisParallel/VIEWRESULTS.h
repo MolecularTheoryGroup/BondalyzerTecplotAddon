@@ -9,7 +9,7 @@ using std::string;
 using std::vector;
 
 
-const vector<string> RankStrs = { "Nuclear", "Bond", "Ring", "Cage" };
+vector<string> const RankStrs = { "Nuclear", "Bond", "Ring", "Cage" };
 
 
 void GBAResultViewerSelectSphere();

@@ -32,7 +32,7 @@ using std::to_string;
 
 /**
 */
-static void CalcGrad_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcGrad_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcGrad_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -42,7 +42,7 @@ static void CalcGrad_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void CalcMag_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcMag_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcMag_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -52,7 +52,7 @@ static void CalcMag_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void CalcHess_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcHess_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcHess_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -62,7 +62,7 @@ static void CalcHess_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void CalcLap_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcLap_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcLap_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -72,7 +72,7 @@ static void CalcLap_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void CalcGauss_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcGauss_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcGauss_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -82,7 +82,7 @@ static void CalcGauss_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void CalcEVdotGra_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcEVdotGra_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcEVdotGra_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -92,7 +92,7 @@ static void CalcEVdotGra_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void CalcEb1_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcEb1_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcEb1_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -102,7 +102,7 @@ static void CalcEb1_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void CalcEb2_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcEb2_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcEb2_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -112,7 +112,7 @@ static void CalcEb2_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void CalcEigRank_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcEigRank_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcEigRank_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -214,7 +214,7 @@ static void CalcBTN_BTN_T2_1_CB(void)
 
 /**
 */
-static void EB2Cutoff_TOG_T2_1_CB(const LgIndex_t *I)
+static void EB2Cutoff_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (EB2Cutoff_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -224,7 +224,7 @@ static void EB2Cutoff_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static LgIndex_t  EB2CutoffVal_TF_T2_1_CB(const char *S)
+static LgIndex_t  EB2CutoffVal_TF_T2_1_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -236,7 +236,7 @@ static LgIndex_t  EB2CutoffVal_TF_T2_1_CB(const char *S)
 
 /**
 */
-static void EB1Cutoff_TOG_T2_1_CB(const LgIndex_t *I)
+static void EB1Cutoff_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (EB1Cutoff_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -246,7 +246,7 @@ static void EB1Cutoff_TOG_T2_1_CB(const LgIndex_t *I)
 
 /**
 */
-static LgIndex_t  EB1CutoffVal_TF_T2_1_CB(const char *S)
+static LgIndex_t  EB1CutoffVal_TF_T2_1_CB(char const *S)
 {
 	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
@@ -258,7 +258,7 @@ static LgIndex_t  EB1CutoffVal_TF_T2_1_CB(const char *S)
 
 /**
 */
-static void CalcES_TOG_T2_1_CB(const LgIndex_t *I)
+static void CalcES_TOG_T2_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (CalcES_TOG_T2_1) Value Changed,  New value is: %d\n", *I);
@@ -272,7 +272,7 @@ char *RhoVarNum_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void RhoVarNum_OPT_T1_1_CB(const LgIndex_t *I)
+static void RhoVarNum_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (RhoVarNum_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -282,7 +282,7 @@ static void RhoVarNum_OPT_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void HasGrad_TOG_T1_1_CB(const LgIndex_t *I)
+static void HasGrad_TOG_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (HasGrad_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -296,7 +296,7 @@ char *GradZVar_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void GradZVar_OPT_T1_1_CB(const LgIndex_t *I)
+static void GradZVar_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (GradZVar_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -310,7 +310,7 @@ char *GradYVar_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void GradYVar_OPT_T1_1_CB(const LgIndex_t *I)
+static void GradYVar_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (GradYVar_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -324,7 +324,7 @@ char *GradXVar_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void GradXVar_OPT_T1_1_CB(const LgIndex_t *I)
+static void GradXVar_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (GradXVar_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -334,7 +334,7 @@ static void GradXVar_OPT_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void HasHess_TOG_T1_1_CB(const LgIndex_t *I)
+static void HasHess_TOG_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (HasHess_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -348,7 +348,7 @@ char *HessXX_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void HessXX_OPT_T1_1_CB(const LgIndex_t *I)
+static void HessXX_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (HessXX_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -362,7 +362,7 @@ char *HessZZ_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void HessZZ_OPT_T1_1_CB(const LgIndex_t *I)
+static void HessZZ_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (HessZZ_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -376,7 +376,7 @@ char *HessYZ_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void HessYZ_OPT_T1_1_CB(const LgIndex_t *I)
+static void HessYZ_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (HessYZ_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -390,7 +390,7 @@ char *HessYY_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void HessYY_OPT_T1_1_CB(const LgIndex_t *I)
+static void HessYY_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (HessYY_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -404,7 +404,7 @@ char *HessXZ_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void HessXZ_OPT_T1_1_CB(const LgIndex_t *I)
+static void HessXZ_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (HessXZ_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -418,7 +418,7 @@ char *HessXY_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void HessXY_OPT_T1_1_CB(const LgIndex_t *I)
+static void HessXY_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (HessXY_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -428,7 +428,7 @@ static void HessXY_OPT_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void PeriodicBC_TOG_T1_1_CB(const LgIndex_t *I)
+static void PeriodicBC_TOG_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (PeriodicBC_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -438,7 +438,7 @@ static void PeriodicBC_TOG_T1_1_CB(const LgIndex_t *I)
 
 /**
 */
-static void VolOrZone_RADIO_T1_1_CB(const LgIndex_t *I)
+static void VolOrZone_RADIO_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("RadioBox (VolOrZone_RADIO_T1_1) Value Changed,  New value is: %d\n", *I);
@@ -451,7 +451,7 @@ char *SelZone_OPT_T1_1_List = "Option 1,Option 2,Option 3";
 
 /**
 */
-static void SelZone_OPT_T1_1_CB(const LgIndex_t *I)
+static void SelZone_OPT_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Option Menu (SelZone_OPT_T1_1) value changed,  New value is: %d\n", *I);
@@ -619,7 +619,7 @@ static void Dialog2Init_CB(void)
 
 /**
 */
-static void TAB1_TBA_D2_CB(const LgIndex_t *I)
+static void TAB1_TBA_D2_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Activate callback for tab (TAB1_TBA_D2) called\n");
@@ -629,7 +629,7 @@ static void TAB1_TBA_D2_CB(const LgIndex_t *I)
 
 /**
 */
-static void TAB1_TBD_D2_CB(const LgIndex_t *I)
+static void TAB1_TBD_D2_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Deactivate callback for tab (TAB1_TBD_D2) called\n");

@@ -44,34 +44,34 @@ class GuiField_c
 {
 public:
 	GuiField_c();
-	GuiField_c(const GuiFieldType_e & Type,
-		const string & Label = "",
-		const string & Val = "",
+	GuiField_c(GuiFieldType_e const & Type,
+		string const & Label = "",
+		string const & Val = "",
 		const vector<void*> & CallbackFuntions = vector<void*>());
 	~GuiField_c();
 
-	const GuiFieldType_e GetType() const { return Type_m; }
-	const string GetLabel() const { return Label_m; }
-	const string GetSearchString() const { return InputVal_m; }
-	const int GetID(const int & IDNum = 0) const { return FieldID_m[IDNum]; }
+	GuiFieldType_e GetType() const { return Type_m; }
+	string GetLabel() const { return Label_m; }
+	string GetSearchString() const { return InputVal_m; }
+	int GetID(int IDNum = 0) const { return FieldID_m[IDNum]; }
 
-	const int GetReturnInt() const;
-	const double GetReturnDouble() const;
-	const string GetReturnString() const;
-	const bool GetReturnBool() const;
-	const vector<int> GetReturnIntVec() const;
-	const vector<string> GetReturnStringVec() const;
+	int GetReturnInt() const;
+	double GetReturnDouble() const;
+	string GetReturnString() const;
+	bool GetReturnBool() const;
+	vector<int> GetReturnIntVec() const;
+	vector<string> GetReturnStringVec() const;
 
-	void SetSearchString(const string & s){ InputVal_m = s; }
-	void AppendSearchString(const string & s){ InputVal_m += s; }
-	void SetID(const int FieldID, const int & IDNum = 0){ FieldID_m[IDNum] = FieldID; }
+	void SetSearchString(string const & s){ InputVal_m = s; }
+	void AppendSearchString(string const & s){ InputVal_m += s; }
+	void SetID(int const FieldID, int IDNum = 0){ FieldID_m[IDNum] = FieldID; }
 
-	void SetReturnInt(const int & Val);
-	void SetReturnDouble(const double & Val);
-	void SetReturnString(const string & Val);
-	void SetReturnBool(const bool & Val);
-	void SetReturnIntVec(const vector<int> & Val);
-	void SetReturnStringVec(const vector<string> & Val);
+	void SetReturnInt(int Val);
+	void SetReturnDouble(double const & Val);
+	void SetReturnString(string const & Val);
+	void SetReturnBool(bool Val);
+	void SetReturnIntVec(vector<int> const & Val);
+	void SetReturnStringVec(vector<string> const & Val);
 
 private:
 	void CheckIntType() const;
@@ -95,15 +95,15 @@ private:
 	vector<void*> CallbackFuntions_m;
 };
 
-typedef void(*CSMGuiReturnFunc_pf)(const bool GuiSuccess, 
-	const vector<GuiField_c> & Fields,
-	const vector<GuiField_c> PassthroughFields);
+typedef void(*CSMGuiReturnFunc_pf)(bool const GuiSuccess, 
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields);
 
-void CSMGui(const string & Title, 
-	const vector<GuiField_c> & Fields, 
+void CSMGui(string const & Title, 
+	vector<GuiField_c> const & Fields, 
 	CSMGuiReturnFunc_pf ReturnFunc, 
-	const AddOn_pa & InputAddOnID,
-	const vector<GuiField_c> PassthroughFields = vector<GuiField_c>());
+	AddOn_pa const & InputAddOnID,
+	vector<GuiField_c> const PassthroughFields = vector<GuiField_c>());
 
 void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID = NULL);
 void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID = NULL);

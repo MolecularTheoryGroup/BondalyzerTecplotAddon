@@ -92,15 +92,15 @@ namespace llvm {
 		typedef T value_type;
 
 		typedef T *iterator;
-		typedef const T *const_iterator;
+		typedef T const *const_iterator;
 
 		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 		typedef std::reverse_iterator<iterator> reverse_iterator;
 
 		typedef T &reference;
-		typedef const T &const_reference;
+		typedef T const &const_reference;
 		typedef T *pointer;
-		typedef const T *const_pointer;
+		typedef T const *const_pointer;
 
 		// forward iterator creation methods.
 		iterator begin() { return (iterator)this->BeginX; }
@@ -286,7 +286,7 @@ namespace llvm {
 			}
 		}
 
-		void resize(size_t N, const T &NV) {
+		void resize(size_t N, T const &NV) {
 			if (N < this->size()) {
 				this->destroy_range(this->begin() + N, this->end());
 				this->setEnd(this->begin() + N);
@@ -304,7 +304,7 @@ namespace llvm {
 				this->grow(N);
 		}
 
-		void push_back(const T &Elt) {
+		void push_back(T const &Elt) {
 			if (this->EndX < this->CapacityX) {
 			Retry:
 				new (this->end()) T(Elt);
@@ -347,7 +347,7 @@ namespace llvm {
 
 		/// append - Add the specified range to the end of the SmallVector.
 		///
-		void append(size_type NumInputs, const T &Elt) {
+		void append(size_type NumInputs, T const &Elt) {
 			// Grow allocated space if needed.
 			if (NumInputs > size_type(this->capacity_ptr() - this->end()))
 				this->grow(this->size() + NumInputs);
@@ -394,7 +394,7 @@ namespace llvm {
 			return(N);
 		}
 
-		iterator insert(iterator I, const T &Elt) {
+		iterator insert(iterator I, T const &Elt) {
 			if (I == this->end()) {  // Important special case for empty vector.
 				push_back(Elt);
 				return this->end() - 1;
@@ -415,7 +415,7 @@ namespace llvm {
 			goto Retry;
 		}
 
-		iterator insert(iterator I, size_type NumToInsert, const T &Elt) {
+		iterator insert(iterator I, size_type NumToInsert, T const &Elt) {
 			if (I == this->end()) {  // Important special case for empty vector.
 				append(NumToInsert, Elt);
 				return this->end() - 1;
@@ -515,17 +515,17 @@ namespace llvm {
 		}
 
 		const SmallVectorImpl
-			&operator=(const SmallVectorImpl &RHS);
+			&operator=(SmallVectorImpl const &RHS);
 
-		bool operator==(const SmallVectorImpl &RHS) const {
+		bool operator==(SmallVectorImpl const &RHS) const {
 			if (this->size() != RHS.size()) return false;
 			return std::equal(this->begin(), this->end(), RHS.begin());
 		}
-		bool operator!=(const SmallVectorImpl &RHS) const {
+		bool operator!=(SmallVectorImpl const &RHS) const {
 			return !(*this == RHS);
 		}
 
-		bool operator<(const SmallVectorImpl &RHS) const {
+		bool operator<(SmallVectorImpl const &RHS) const {
 			return std::lexicographical_compare(this->begin(), this->end(),
 				RHS.begin(), RHS.end());
 		}
@@ -545,7 +545,7 @@ namespace llvm {
 		}
 
 	private:
-		static void construct_range(T *S, T *E, const T &Elt) {
+		static void construct_range(T *S, T *E, T const &Elt) {
 			for (; S != E; ++S)
 				new (S)T(Elt);
 		}
@@ -637,7 +637,7 @@ namespace llvm {
 	}
 
 	template <typename T>
-	const SmallVectorImpl<T> &SmallVectorImpl<T>::operator=(const SmallVectorImpl<T> &RHS) {
+	SmallVectorImpl<T> const &SmallVectorImpl<T>::operator=(SmallVectorImpl<T> const &RHS) {
 		// Avoid self-assignment.
 		if (this == &RHS) return *this;
 
@@ -719,7 +719,7 @@ namespace llvm {
 		SmallVector() : SmallVectorImpl<T>(NumTsAvailable) {
 		}
 
-		explicit SmallVector(size_t Size, const T &Value = T())
+		explicit SmallVector(size_t Size, T const &Value = T())
 			: SmallVectorImpl<T>(NumTsAvailable) {
 			this->reserve(Size);
 			while (Size--)
@@ -731,12 +731,12 @@ namespace llvm {
 			this->append(S, E);
 		}
 
-		SmallVector(const SmallVector &RHS) : SmallVectorImpl<T>(NumTsAvailable) {
+		SmallVector(SmallVector const &RHS) : SmallVectorImpl<T>(NumTsAvailable) {
 			if (!RHS.empty())
 				SmallVectorImpl<T>::operator=(RHS);
 		}
 
-		const SmallVector &operator=(const SmallVector &RHS) {
+		SmallVector const &operator=(SmallVector const &RHS) {
 			SmallVectorImpl<T>::operator=(RHS);
 			return *this;
 		}
@@ -780,7 +780,7 @@ namespace llvm {
 		SmallVector() : SmallVectorImpl<T>(NumTsAvailable) {
 		}
 
-		explicit SmallVector(size_t Size, const T &Value = T())
+		explicit SmallVector(size_t Size, T const &Value = T())
 			: SmallVectorImpl<T>(NumTsAvailable) {
 			this->reserve(Size);
 			while (Size--)
@@ -792,12 +792,12 @@ namespace llvm {
 			this->append(S, E);
 		}
 
-		SmallVector(const SmallVector &RHS) : SmallVectorImpl<T>(NumTsAvailable) {
+		SmallVector(SmallVector const &RHS) : SmallVectorImpl<T>(NumTsAvailable) {
 			if (!RHS.empty())
 				SmallVectorImpl<T>::operator=(RHS);
 		}
 
-		const SmallVector &operator=(const SmallVector &RHS) {
+		SmallVector const &operator=(SmallVector const &RHS) {
 			SmallVectorImpl<T>::operator=(RHS);
 			return *this;
 		}

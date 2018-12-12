@@ -106,7 +106,7 @@ int Triangle::intersectWithRay(Point3d point1, Point3d point2) const
  *	ColorNum changes the color. There's 65 possible colors and you can get to them all by just iterating
  *	ColorNum.
  */
-const Boolean_t Triangle::debug_save_tecplot_zone(const string & ZoneName, const int & ColorNum) const{
+Boolean_t const Triangle::debug_save_tecplot_zone(string const & ZoneName, int ColorNum) const{
 	Boolean_t IsOk = (aIdx >= 0 && bIdx >= 0 && cIdx >= 0);
 	int ZoneNum = -1;
 

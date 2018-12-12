@@ -9,22 +9,25 @@
 #include <armadillo>
 using namespace arma;
 
-const vec LogSpace(const double & low, const double & high, const int & n){
+double dot2(const vec & v) 
+{ return dot(v, v); }
+
+vec const LogSpace(double const & low, double const & high, int n){
 	return exp(linspace(log(low), log(high), n));
 }
 
-double DistSqr(const vec & A, const vec & B) { 
+double DistSqr(vec const & A, vec const & B) { 
 	return sum(square(B - A)); 
 }
-double Distance(const vec & A, const vec & B) { 
+double Distance(vec const & A, vec const & B) { 
 	return norm(A - B); 
 }
 
-double VectorAngle(const vec3 & A, const vec3 & B){
+double VectorAngle(vec3 const & A, vec3 const & B){
 	return acos(dot(A, B) / (norm(A) * norm(B)));
 }
 
-const vec3 SphericalToCartesian(const double & r, const double & theta, const double & phi){
+vec3 const SphericalToCartesian(double const & r, double const & theta, double const & phi){
 	vec3 out;
 	double sinTheta = sin(theta);
 	out << sinTheta * cos(phi)
@@ -33,7 +36,7 @@ const vec3 SphericalToCartesian(const double & r, const double & theta, const do
 	return out * r;
 }
 
-const mat44		RotationMatrix(const double & Angle, vec3 Axis){
+const mat44		RotationMatrix(double const & Angle, vec3 Axis){
 	double L = norm(Axis);
 	double LSqr = L * L;
 	double L_sinAngle = L * sin(Angle), cosAngle = cos(Angle), OneMinusCosAngle = 1. - cosAngle;
@@ -83,13 +86,13 @@ const mat44		RotationMatrix(const double & Angle, vec3 Axis){
  *	Note that Point will be rotated around the origin, so
  *	remember to translate it to whereever it needs to be afterwards.
  */
-const vec3 Rotate(const vec3 & Point, const double & Angle, vec3 Axis){
+vec3 const Rotate(vec3 const & Point, double const & Angle, vec3 Axis){
 	mat44 RotMat = RotationMatrix(Angle, Axis);
 	vec4 TmpVec4 = RotMat * join_cols(Point, ones<vec>(1));
 	return vec3(TmpVec4.subvec(0, 2));
 }
 
-const double TriangleArea(const vec3 & A, const vec3 & B, const vec3 & C){
+double const TriangleArea(vec3 const & A, vec3 const & B, vec3 const & C){
 	vec3 AB = B - A, AC = C - A;
 // 
 	double M = norm(AB)*norm(AC);
@@ -126,7 +129,7 @@ const double TriangleArea(const vec3 & A, const vec3 & B, const vec3 & C){
  *	Calculate tetrahedron volume using squared edge lengths.
  *	Taken from    http://keisan.casio.com/exec/system/1329962711
  */
-const double TetVolume(const vector<double> & e2){
+double const TetVolume(vector<double> const & e2){
 	REQUIRE(e2.size() == 6);
 
 	double v = 0.0069444444444444 * (
@@ -152,7 +155,7 @@ const double TetVolume(const vector<double> & e2){
  *	the vertices of a hexahedron and an internal point.
  *	V is list of vertices, where 0 (i) is the internal point.
  */
-const double TetVolume(const vec3 & a, const vec3 & b, const vec3 & c, const vec3 & d){
+double const TetVolume(vec3 const & a, vec3 const & b, vec3 const & c, vec3 const & d){
 	return abs(dot(a - d, cross(b - d, c - d))) / 6.0;
 }
 
@@ -224,7 +227,7 @@ vector<vector<int> > TetInds = {
 	{ 0, 3, 4, 7 }, { 0, 4, 7, 8 },
 	{ 0, 5, 6, 7 }, { 0, 6, 7, 8 }
 };
-const double HexahedronInternalPointTetVolume(const vector<vec3> & V){
+double const HexahedronInternalPointTetVolume(vector<vec3> const & V){
 	REQUIRE(V.size() == 9);
 
 	double vol = 0.0;
@@ -236,17 +239,17 @@ const double HexahedronInternalPointTetVolume(const vector<vec3> & V){
 /*
  *	Calculate volume of parallelpiped using the lattice vector that defines it
  */
-const double ParallepipedVolume(const vector<vec3> & LV){
+double const ParallepipedVolume(vector<vec3> const & LV){
 	REQUIRE(LV.size() == 3);
 
 	return  abs(dot(LV[0], cross(LV[1], LV[2])));
 }
 
-const double ParallepipedVolume(const mat33 & LV){
+double const ParallepipedVolume(mat33 const & LV){
 	return det(LV);
 }
 
-const bool ParallelpidedPointIsInternal(const mat33 & LV, const vec3 & Origin, const vec3 & Pt){
+bool const ParallelpidedPointIsInternal(mat33 const & LV, vec3 const & Origin, vec3 const & Pt){
 	
 	vector<vec3> V(9);
 	V[0] = Pt;
@@ -268,7 +271,7 @@ const bool ParallelpidedPointIsInternal(const mat33 & LV, const vec3 & Origin, c
 /*
  *	Calculates the scalar triple product
  */
-const double ScTP(const vec3 & a, const vec3 & b, const vec3 & c){
+double const ScTP(vec3 const & a, vec3 const & b, vec3 const & c){
 	return dot(a, cross(b, c));
 }
 
@@ -276,11 +279,11 @@ const double ScTP(const vec3 & a, const vec3 & b, const vec3 & c){
  *	Calculates the barycentric coordinates of a point p in a tetrahedron
  *	defined by a-b-c-d
  */
-const vec4 BaryTet(const vec3 & a,
-	const vec3 & b,
-	const vec3 & c,
-	const vec3 & d,
-	const vec3 & p)
+vec4 const BaryTet(vec3 const & a,
+	vec3 const & b,
+	vec3 const & c,
+	vec3 const & d,
+	vec3 const & p)
 {
 	vec3 vap = p - a;
 	vec3 vbp = p - b;

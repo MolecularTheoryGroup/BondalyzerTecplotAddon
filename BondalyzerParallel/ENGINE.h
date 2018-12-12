@@ -38,7 +38,7 @@ enum BondalyzerCalcType_e{
 	BondalyzerCalcType_Invalid
 };
 
-const static vector<string> BondalyzerStepGUITitles = {
+static vector<string> const BondalyzerStepGUITitles = {
 	"critical points",
 	"bond paths",
 	"ring lines",
@@ -59,117 +59,117 @@ void GetAllClosedIsoSurfaces();
 void ConnectCPsGetUserInfo();
 void DrawEigenvectorArrowsGetUserInfo();
 class FieldDataPointer_c;
-void GetClosedIsoSurface(const int & IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
+void GetClosedIsoSurface(int IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
 void MakeSurfaceFromPathZonesGetUserInfo();
 void MakeSliceFromPointSelectionGetUserInfo();
 
 void GradientPathsOnSphereGetUserInfo();
 
-void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, const vector<GuiField_c> PassthroughFields = vector<GuiField_c>());
+void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, vector<GuiField_c> const PassthroughFields = vector<GuiField_c>());
 
 void VarNameFindReplaceGetUserInfo();
 void ZoneNameFindReplaceGetUserInfo();
 
 void GradientPathToolGetUserInfo();
 
-const Boolean_t FindCritPoints(const int & VolZoneNum,
-	const vector<int> & XYZVarNums,
-	const int & RhoVarNum,
-	const vector<int> & GradVarNums,
-	const vector<int> & HessVarNums,
-	const Boolean_t & IsPeriodic,
-	const double & CellSpacing);
+Boolean_t FindCritPoints(int VolZoneNum,
+	vector<int> const & XYZVarNums,
+	int RhoVarNum,
+	vector<int> const & GradVarNums,
+	vector<int> const & HessVarNums,
+	Boolean_t IsPeriodic,
+	double const & CellSpacing);
 
 void DeleteCPsGetUserInfo();
 void ExtractCPsGetUserInfo();
 void CombineCPZonesGetUserInfo();
 
-const Boolean_t BondalyzerBatch(const int & VolZoneNum,
-	const vector<int> & CPZoneNums,
-	const int & CPTypeVarNum,
-	const vector<int> & XYZVarNums,
-	const int & RhoVarNum,
-	const vector<int> & GradVarNums,
-	const vector<int> & HessVarNums,
-	const Boolean_t & IsPeriodic,
-	const int & RidgeFuncVarNum,
-	const vector<bool> & CalcSteps);
+Boolean_t BondalyzerBatch(int VolZoneNum,
+	vector<int> const & CPZoneNums,
+	int CPTypeVarNum,
+	vector<int> const & XYZVarNums,
+	int RhoVarNum,
+	vector<int> const & GradVarNums,
+	vector<int> const & HessVarNums,
+	Boolean_t IsPeriodic,
+	int RidgeFuncVarNum,
+	vector<bool> const & CalcSteps);
 
-const Boolean_t FindBondRingLines(const int & VolZoneNum,
-	const vector<int> & OtherCPZoneNums,
-	const int & SelectedCPZoneNum,
+Boolean_t FindBondRingLines(int VolZoneNum,
+	vector<int> const & OtherCPZoneNums,
+	int SelectedCPZoneNum,
 	vector<int> SelectedCPNums,
-	const int & CPTypeVarNum,
-	const CPType_e & CPType,
-	const vector<int> & XYZVarNums,
-	const int & RhoVarNum,
-	const vector<int> & GradVarNums,
-	const vector<int> & HessVarNums,
-	const Boolean_t & IsPeriodic);
+	int CPTypeVarNum,
+	CPType_e const & CPType,
+	vector<int> const & XYZVarNums,
+	int RhoVarNum,
+	vector<int> const & GradVarNums,
+	vector<int> const & HessVarNums,
+	Boolean_t IsPeriodic);
 
-const Boolean_t FindCageNuclearPaths(const int & VolZoneNum,
-	const vector<int> & OtherCPZoneNums,
-	const int & SelectedCPZoneNum,
+Boolean_t FindCageNuclearPaths(int VolZoneNum,
+	vector<int> const & OtherCPZoneNums,
+	int SelectedCPZoneNum,
 	vector<int> SelectedCPNums,
-	const int & CPTypeVarNum,
-	const vector<int> & XYZVarNums,
-	const int & RhoVarNum,
-	const vector<int> & GradVarNums,
-	const vector<int> & HessVarNums,
-	const Boolean_t & IsPeriodic);
+	int CPTypeVarNum,
+	vector<int> const & XYZVarNums,
+	int RhoVarNum,
+	vector<int> const & GradVarNums,
+	vector<int> const & HessVarNums,
+	Boolean_t IsPeriodic);
 
-const Boolean_t FindBondRingSurfaces(const int & VolZoneNum,
-	const vector<int> & OtherCPZoneNums,
-	const int & SelectedCPZoneNum,
+Boolean_t FindBondRingSurfaces(int VolZoneNum,
+	vector<int> const & OtherCPZoneNums,
+	int SelectedCPZoneNum,
 	vector<int> SelectedCPNums,
-	const int & CPTypeVarNum,
-	const CPType_e & CPType,
-	const vector<int> & XYZVarNums,
-	const int & RhoVarNum,
-	const vector<int> & GradVarNums,
-	const vector<int> & HessVarNums,
-	const int & RCSFuncVarNum,
-	const Boolean_t & IsPeriodic);
+	int CPTypeVarNum,
+	CPType_e const & CPType,
+	vector<int> const & XYZVarNums,
+	int RhoVarNum,
+	vector<int> const & GradVarNums,
+	vector<int> const & HessVarNums,
+	int RCSFuncVarNum,
+	Boolean_t IsPeriodic);
 
-void ExtractRadiusContourLinesToIOrderedPoints(const vector<int> & ZoneNums,
-	const vec3 & Origin, 
-	const double & Radius,
-	const vector<int> & XYZVarNums);
+void ExtractRadiusContourLinesToIOrderedPoints(vector<int> const & ZoneNums,
+	vec3 const & Origin, 
+	double const & Radius,
+	vector<int> const & XYZVarNums);
 
 void ExtractRSIntersectionsGetUserInfo();
 void ExtractSurfaceSphereIntersections(
-	const int & VolZoneNum,
-	const int & CPTypeVarNum,
-	const int & AllCPZoneNum,
-	const vector<int> & CPList,
-	const int & CPZoneNum,
-	const double & Radius,
-	const int & ResampleNumPoints,
-	const vector<int> & XYZVarNums,
+	int VolZoneNum,
+	int CPTypeVarNum,
+	int AllCPZoneNum,
+	vector<int> const & CPList,
+	int CPZoneNum,
+	double const & Radius,
+	int ResampleNumPoints,
+	vector<int> const & XYZVarNums,
 	vector<GradPath_c> & Intersections);
 
-const Boolean_t GBA_Generation(
-	const int & VolZoneNum,
-	const int & CPZoneNum,
-	const int & CPTypeVarNum,
-	const vector<int> & XYZVarNums,
-	const int & RhoVarNum,
-	const vector<int> & GradVarNums,
-	const vector<int> & HessVarNums,
-	const Boolean_t & IsPeriodic,
-	const vector<int> & SelectedCPNums,
-	const double & SphereRadius,
-	const int & RadiusMode,
-	const int & RefinementLevel,
-	const double & RhoCutoff,
-	const int & NumGBEdgePoints,
-	const int & GPNumPoints
+Boolean_t GBA_Generation(
+	int VolZoneNum,
+	int CPZoneNum,
+	int CPTypeVarNum,
+	vector<int> const & XYZVarNums,
+	int RhoVarNum,
+	vector<int> const & GradVarNums,
+	vector<int> const & HessVarNums,
+	Boolean_t IsPeriodic,
+	vector<int> const & SelectedCPNums,
+	double const & SphereRadius,
+	int RadiusMode,
+	int RefinementLevel,
+	double const & RhoCutoff,
+	int NumGBEdgePoints,
+	int GPNumPoints
 	);
 
-const Boolean_t CPNumbersMapBetweenZones(const int & AllCPsZoneNum,
-	const int & SelectedCPZoneNum,
-	const vector<int> & XYZVarNums,
-	const vector<int> & SelectedCPNums,
+Boolean_t CPNumbersMapBetweenZones(int AllCPsZoneNum,
+	int SelectedCPZoneNum,
+	vector<int> const & XYZVarNums,
+	vector<int> const & SelectedCPNums,
 	vector<int> & MappedCPNums);
 
 void TestFunction();

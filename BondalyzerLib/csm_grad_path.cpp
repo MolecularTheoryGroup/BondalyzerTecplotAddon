@@ -21,6 +21,7 @@
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_VOL_EXTENT_INDEX_WEIGHTS.h"
 #include "CSM_CRIT_POINTS.h"
+#include "CSM_FE_VOLUME.h"
 #include "CSM_GRAD_PATH.h"
 
 #include <armadillo>
@@ -32,22 +33,22 @@ using std::string;
 using std::to_string;
 
 
-int F2DGrad(const gsl_vector * pos, void * params, gsl_vector * GradValues);
-int DF2DGrad(const gsl_vector * pos, void * params, gsl_matrix * Jacobian);
-int FDF2DGrad(const gsl_vector * pos, void * params, gsl_vector * GradValues, gsl_matrix * Jacobian);
+int F2DGrad(gsl_vector const * pos, void * params, gsl_vector * GradValues);
+int DF2DGrad(gsl_vector const * pos, void * params, gsl_matrix * Jacobian);
+int FDF2DGrad(gsl_vector const * pos, void * params, gsl_vector * GradValues, gsl_matrix * Jacobian);
 
 /*
 *	Functions for GSL ODE solver.
 *	These are not a member functions because it's a pain to do
 *	member function with GSL.
 */
-int GP_ODE_Gradient(double t, const double pos[], double dydt[], void* params);
-int GP_ODE_Jacobian(double t, const double pos[], double *dfdy, double dydt[], void* params);
+int GP_ODE_Gradient(double t, double const pos[], double dydt[], void* params);
+int GP_ODE_Jacobian(double t, double const pos[], double *dfdy, double dydt[], void* params);
 
 /*
 *	GradPathParams_s methods
 */
-GradPathParams_s & GradPathParams_s::operator=(const GradPathParams_s & rhs)
+GradPathParams_s & GradPathParams_s::operator=(GradPathParams_s const & rhs)
 {
 	if (this == &rhs)
 		return *this;
@@ -65,8 +66,8 @@ GradPathParams_s & GradPathParams_s::operator=(const GradPathParams_s & rhs)
 	Direction = rhs.Direction;
 
 	return *this;
-}//	GradPathParams_s & GradPathParams_s::operator=(const GradPathParams_s & rhs)
-const Boolean_t GradPathParams_s::operator==(const GradPathParams_s & rhs) const
+}//	GradPathParams_s & GradPathParams_s::operator=(GradPathParams_s const & rhs)
+Boolean_t const GradPathParams_s::operator==(GradPathParams_s const & rhs) const
 {
 	Boolean_t AreEqual = (
 
@@ -84,7 +85,7 @@ const Boolean_t GradPathParams_s::operator==(const GradPathParams_s & rhs) const
 		);
 
 	return AreEqual;
-}// Boolean_t GradPathParams_s::operator==(const GradPathParams_s & rhs) const
+}// Boolean_t GradPathParams_s::operator==(GradPathParams_s const & rhs) const
 
 
 /*
@@ -112,8 +113,8 @@ GradPathBase_c::~GradPathBase_c()
 *	zone as a GradPath_c
 */
 GradPathBase_c::GradPathBase_c(EntIndex_t ZoneNum,
-	const vector<EntIndex_t> & XYZRhoVarNums,
-	const AddOn_pa & AddOnID)
+	vector<EntIndex_t> const & XYZRhoVarNums,
+	AddOn_pa const & AddOnID)
 {
 	m_GradPathMade = FALSE;
 	m_ZoneNum = ZoneNum;
@@ -169,7 +170,7 @@ GradPathBase_c::GradPathBase_c(EntIndex_t ZoneNum,
 /*
 *	Operator declarations
 */
-GradPathBase_c & GradPathBase_c::operator=(const GradPathBase_c & rhs)
+GradPathBase_c & GradPathBase_c::operator=(GradPathBase_c const & rhs)
 {
 	if (this == &rhs)
 		return *this;
@@ -196,8 +197,8 @@ GradPathBase_c & GradPathBase_c::operator=(const GradPathBase_c & rhs)
 	m_Length = rhs.m_Length;
 
 	return *this;
-}// GradPathBase_c & GradPathBase_c::operator=(const GradPathBase_c & rhs)
-const Boolean_t GradPathBase_c::IsSame(const GradPathBase_c & rhs) const
+}// GradPathBase_c & GradPathBase_c::operator=(GradPathBase_c const & rhs)
+Boolean_t GradPathBase_c::IsSame(GradPathBase_c const & rhs) const
 {
 	Boolean_t AreSame = (
 		m_RhoList == rhs.m_RhoList &&
@@ -219,11 +220,11 @@ const Boolean_t GradPathBase_c::IsSame(const GradPathBase_c & rhs) const
 
 	return AreSame;
 }
-const Boolean_t GradPathBase_c::operator==(const GradPathBase_c & rhs) const
+Boolean_t GradPathBase_c::operator==(GradPathBase_c const & rhs) const
 {
 	return IsSame(rhs);
 }
-GradPathBase_c & GradPathBase_c::operator+=(const GradPathBase_c & rhs)
+GradPathBase_c & GradPathBase_c::operator+=(GradPathBase_c const & rhs)
 {
 	if (m_XYZList.size() > 0 && rhs.GetCount() > 0){
 		double MinSqrDist = DistSqr(m_XYZList[GetCount() - 1], rhs[0]);
@@ -277,7 +278,7 @@ GradPathBase_c & GradPathBase_c::operator+=(const GradPathBase_c & rhs)
 	}
 	return *this;
 }
-const GradPathBase_c GradPathBase_c::operator+(const GradPathBase_c & rhs) const
+GradPathBase_c GradPathBase_c::operator+(GradPathBase_c const & rhs) const
 {
 	return GradPathBase_c(*this) += rhs;
 }
@@ -287,7 +288,7 @@ const GradPathBase_c GradPathBase_c::operator+(const GradPathBase_c & rhs) const
 *	Getter methods
 */
 
-const double GradPathBase_c::GetLength() {
+double GradPathBase_c::GetLength() {
 	if (m_Length >= 0)
 		return m_Length;
 
@@ -301,7 +302,7 @@ const double GradPathBase_c::GetLength() {
 	return m_Length;
 }
 
-const GradPathBase_c GradPathBase_c::SubGP(int BegPt, int EndPt) const{
+GradPathBase_c GradPathBase_c::SubGP(int BegPt, int EndPt) const{
 	if (0 > EndPt || EndPt >= m_NumGPPoints)
 		EndPt = m_NumGPPoints - 1;
 	if (0 > BegPt)
@@ -318,14 +319,14 @@ const GradPathBase_c GradPathBase_c::SubGP(int BegPt, int EndPt) const{
 	return Out;
 }
 
-const vec3 GradPathBase_c::ClosestPoint(const vec3 & CheckPt) const
+vec3 GradPathBase_c::ClosestPoint(vec3 const & CheckPt) const
 {
 	int iJunk;
 
 	return ClosestPoint(CheckPt, iJunk);
 }
 
-const vec3 GradPathBase_c::ClosestPoint(const vec3 & CheckPt, int & PtNum) const
+vec3 GradPathBase_c::ClosestPoint(vec3 const & CheckPt, int & PtNum) const
 {
 	vec3 ClosestPt;
 	if (IsMade()){
@@ -346,7 +347,7 @@ const vec3 GradPathBase_c::ClosestPoint(const vec3 & CheckPt, int & PtNum) const
 	return ClosestPt;
 }
 
-const Boolean_t GradPathBase_c::Resample(const int & NumPoints){
+Boolean_t GradPathBase_c::Resample(int NumPoints){
 	Boolean_t IsOk = m_GradPathMade && NumPoints > 1;
 
 	vector<vec3> NewXYZList;
@@ -354,8 +355,8 @@ const Boolean_t GradPathBase_c::Resample(const int & NumPoints){
 
 	int OldCount = GetCount();
 
-	if (IsOk && NumPoints < OldCount){
-// 	if (IsOk){
+// 	if (IsOk && NumPoints < OldCount){
+	if (IsOk){
 		NewXYZList.resize(NumPoints);
 
 		NewRhoList.resize(NumPoints);
@@ -441,7 +442,7 @@ const Boolean_t GradPathBase_c::Resample(const int & NumPoints){
 	return IsOk;
 }
 
-const Boolean_t GradPathBase_c::Reverse(){
+Boolean_t GradPathBase_c::Reverse(){
 	Boolean_t IsOk = m_GradPathMade;
 	if (IsOk){
 		vector<vec3> NewXYZList;
@@ -466,7 +467,7 @@ const Boolean_t GradPathBase_c::Reverse(){
 *	sharp bend can cut the corner at the bend, so
 *	this method avoids that.
 */
-GradPathBase_c & GradPathBase_c::ConcatenateResample(GradPathBase_c & rhs, const int & NumPoints)
+GradPathBase_c & GradPathBase_c::ConcatenateResample(GradPathBase_c & rhs, int NumPoints)
 {
 	int iJunk;
 
@@ -475,7 +476,7 @@ GradPathBase_c & GradPathBase_c::ConcatenateResample(GradPathBase_c & rhs, const
 	return *this;
 }
 
-GradPathBase_c & GradPathBase_c::ConcatenateResample(GradPathBase_c & rhs, const int & NumPoints, int & BrigePtNum)
+GradPathBase_c & GradPathBase_c::ConcatenateResample(GradPathBase_c & rhs, int NumPoints, int & BrigePtNum)
 {
 	double MyLength = GetLength();
 	double rhsLength = rhs.GetLength();
@@ -503,7 +504,7 @@ GradPathBase_c & GradPathBase_c::ConcatenateResample(GradPathBase_c & rhs, const
 *	In this version, at the intersection of the grad path and
 *	a sphere of r = Radius around Point.
 */
-const Boolean_t GradPathBase_c::Trim(const vec3 & Point, const double & Radius)
+Boolean_t GradPathBase_c::Trim(vec3 const & Point, double const & Radius)
 {
 	Boolean_t IsOk = IsMade();
 
@@ -631,7 +632,7 @@ const Boolean_t GradPathBase_c::Trim(const vec3 & Point, const double & Radius)
 	return IsOk;
 }
 
-void GradPathBase_c::PointAppend(const vec3 & Point, const double & Rho){
+void GradPathBase_c::PointAppend(vec3 const & Point, double const & Rho){
 
 	m_XYZList.push_back(Point);
 
@@ -643,7 +644,7 @@ void GradPathBase_c::PointAppend(const vec3 & Point, const double & Rho){
 }
 
 
-void GradPathBase_c::PointPrepend(const vec3 & Point, const double & Rho){
+void GradPathBase_c::PointPrepend(vec3 const & Point, double const & Rho){
 
 	m_XYZList.insert(m_XYZList.begin(), Point);
 
@@ -654,7 +655,7 @@ void GradPathBase_c::PointPrepend(const vec3 & Point, const double & Rho){
 	m_NumGPPoints++;
 }
 
-const EntIndex_t GradPathBase_c::SaveAsOrderedZone(const string & ZoneName, const ColorIndex_t MeshColor)
+EntIndex_t GradPathBase_c::SaveAsOrderedZone(string const & ZoneName, ColorIndex_t const MeshColor)
 {
 	Boolean_t IsOk = m_GradPathMade;
 
@@ -689,12 +690,12 @@ const EntIndex_t GradPathBase_c::SaveAsOrderedZone(const string & ZoneName, cons
 	else return -1;
 }
 
-const EntIndex_t GradPathBase_c::SaveAsOrderedZone(const string & ZoneName,
+EntIndex_t GradPathBase_c::SaveAsOrderedZone(string const & ZoneName,
 	vector<FieldDataType_e> & VarDataTypes,
-	const vector<int> & XYZVarNums,
-	const int & RhoVarNum,
-	const Boolean_t DoActivate,
-	const ColorIndex_t MeshColor)
+	vector<int> const & XYZVarNums,
+	int RhoVarNum,
+	Boolean_t const DoActivate,
+	ColorIndex_t const MeshColor)
 {
 	Boolean_t IsOk = (m_XYZList.size() > 0 && m_XYZList.size() == m_RhoList.size());
 
@@ -742,7 +743,7 @@ const EntIndex_t GradPathBase_c::SaveAsOrderedZone(const string & ZoneName,
 	return m_ZoneNum;
 }
 
-const Boolean_t GradPathBase_c::SaveAsCSV(const string & PathToFile, const Boolean_t & IncludeVars){
+Boolean_t GradPathBase_c::SaveAsCSV(string const & PathToFile, Boolean_t IncludeVars){
 	Boolean_t IsOk = TRUE;
 
 	std::ofstream Out(PathToFile.c_str(), std::ios::out | std::ios::trunc);
@@ -764,11 +765,11 @@ const Boolean_t GradPathBase_c::SaveAsCSV(const string & PathToFile, const Boole
 	return IsOk;
 }
 
-const vec3 GradPathBase_c::operator[](const int & i) const{
+vec3 GradPathBase_c::operator[](int i) const{
 	return m_XYZList[GetInd(i)];
 }
 
-const double GradPathBase_c::RhoAt(const int & i) const { return m_RhoList[GetInd(i)]; }
+double GradPathBase_c::RhoAt(int i) const { return m_RhoList[GetInd(i)]; }
 
 
 
@@ -804,20 +805,20 @@ GradPath_c::GradPath_c()
 /*
 *	Constructor for grad path that will make itself
 */
-GradPath_c::GradPath_c(const vec3 & StartPoint,
-	const StreamDir_e & Direction,
-	const int & NumGPPoints,
-	const GPTerminate_e & HowTerminate,
+GradPath_c::GradPath_c(vec3 const & StartPoint,
+	StreamDir_e const & Direction,
+	int NumGPPoints,
+	GPTerminate_e const & HowTerminate,
 	vec3 * TermPoint,
-	const vector<FieldDataPointer_c> & CPXYZPtrs,
+	vector<FieldDataPointer_c> const & CPXYZPtrs,
 	int * NumCPs,
 	double * TermPointRadius,
 	double * TermValue,
-	const vector<int> & MaxIJK,
-	const vec3 & MaxXYZ,
-	const vec3 & MinXYZ,
-	const vector<FieldDataPointer_c> & GradPtrs,
-	const FieldDataPointer_c & RhoPtr)
+	vector<int> const & MaxIJK,
+	vec3 const & MaxXYZ,
+	vec3 const & MinXYZ,
+	vector<FieldDataPointer_c> const & GradPtrs,
+	FieldDataPointer_c const & RhoPtr)
 {
 	m_GradPathReady = SetupGradPath(StartPoint,
 		Direction,
@@ -836,19 +837,20 @@ GradPath_c::GradPath_c(const vec3 & StartPoint,
 } //	GradPath_c::GradPath_c()
 
 
-GradPath_c::GradPath_c(const vec3 & StartPoint,
-	const StreamDir_e & Direction,
-	const int & NumGPPoints,
-	const GPType_e & GPType,
-	const GPTerminate_e & HowTerminate,
+GradPath_c::GradPath_c(vec3 const & StartPoint,
+	StreamDir_e const & Direction,
+	int NumGPPoints,
+	GPType_e const & GPType,
+	GPTerminate_e const & HowTerminate,
 	vec3 * TermPoint,
 	CritPoints_c * CPs,
 	double * TermPointRadius,
 	double * TermValue,
 	VolExtentIndexWeights_s & VolInfo,
-	const vector<FieldDataPointer_c> & HessPtrs,
-	const vector<FieldDataPointer_c> & GradPtrs,
-	const FieldDataPointer_c & RhoPtr)
+	vector<FieldDataPointer_c> const & HessPtrs,
+	vector<FieldDataPointer_c> const & GradPtrs,
+	FieldDataPointer_c const & RhoPtr,
+	FESurface_c const * Surf)
 {
 	m_GradPathReady = SetupGradPath(StartPoint,
 		Direction,
@@ -862,21 +864,22 @@ GradPath_c::GradPath_c(const vec3 & StartPoint,
 		VolInfo,
 		HessPtrs,
 		GradPtrs,
-		RhoPtr);
+		RhoPtr,
+		Surf);
 } //	GradPath_c::GradPath_c()
 
 GradPath_c::GradPath_c(EntIndex_t ZoneNum,
-	const vector<EntIndex_t> & XYZRhoVarNums,
-	const AddOn_pa & AddOnID) : GradPathBase_c(ZoneNum, XYZRhoVarNums, AddOnID){}
+	vector<EntIndex_t> const & XYZRhoVarNums,
+	AddOn_pa const & AddOnID) : GradPathBase_c(ZoneNum, XYZRhoVarNums, AddOnID){}
 
 /*
 *	Copy constructor
 */
-GradPath_c::GradPath_c(const GradPath_c & a) : GradPathBase_c()
+GradPath_c::GradPath_c(GradPath_c const & a) : GradPathBase_c()
 {
 	*this = a;
 }
-GradPath_c::GradPath_c(const GradPathBase_c & a) : GradPathBase_c()
+GradPath_c::GradPath_c(GradPathBase_c const & a) : GradPathBase_c()
 {
 	*this = a;
 }
@@ -888,7 +891,7 @@ GradPath_c::~GradPath_c()
 /*
 *	Operator declarations
 */
-GradPath_c & GradPath_c::operator=(const GradPath_c & rhs)
+GradPath_c & GradPath_c::operator=(GradPath_c const & rhs)
 {
 	if (this == &rhs)
 		return *this;
@@ -901,6 +904,7 @@ GradPath_c & GradPath_c::operator=(const GradPath_c & rhs)
 	m_CPXYZPtrs = rhs.m_CPXYZPtrs;
 	m_NumCPs = rhs.m_NumCPs;
 	m_CPs = rhs.m_CPs;
+	m_Surface = rhs.m_Surface;
 
 	m_TermPointRadiusSqr = rhs.m_TermPointRadiusSqr;
 	m_TermValue = rhs.m_TermValue;
@@ -909,8 +913,8 @@ GradPath_c & GradPath_c::operator=(const GradPath_c & rhs)
 	m_StartPoint = rhs.m_StartPoint;
 
 	return *this;
-}// GradPath_c & GradPath_c::operator=(const GradPath_c & rhs)
-GradPath_c & GradPath_c::operator=(const GradPathBase_c & rhs)
+}// GradPath_c & GradPath_c::operator=(GradPath_c const & rhs)
+GradPath_c & GradPath_c::operator=(GradPathBase_c const & rhs)
 {
 	if (this == &rhs)
 		return *this;
@@ -918,8 +922,8 @@ GradPath_c & GradPath_c::operator=(const GradPathBase_c & rhs)
 	GradPathBase_c::operator=(rhs);
 
 	return *this;
-}// GradPath_c & GradPath_c::operator=(const GradPath_c & rhs)
-const Boolean_t GradPath_c::operator==(const GradPath_c & rhs) const
+}// GradPath_c & GradPath_c::operator=(GradPath_c const & rhs)
+Boolean_t GradPath_c::operator==(GradPath_c const & rhs) const
 {
 	Boolean_t AreSame = this->IsSame(rhs);
 
@@ -928,6 +932,7 @@ const Boolean_t GradPath_c::operator==(const GradPath_c & rhs) const
 			m_CPXYZPtrs == rhs.m_CPXYZPtrs &&
 			m_NumCPs == rhs.m_NumCPs &&
 			m_CPs == rhs.m_CPs &&
+			m_Surface == rhs.m_Surface &&
 			m_TermPointRadiusSqr == rhs.m_TermPointRadiusSqr &&
 			m_TermValue == rhs.m_TermValue &&
 
@@ -955,20 +960,20 @@ const Boolean_t GradPath_c::operator==(const GradPath_c & rhs) const
 *	This is basically a constructor for a pre-constructed GP
 *	to assign everything needed for it to make itself.
 */
-const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
-	const StreamDir_e & Direction,
-	const int & NumGPPoints,
-	const GPTerminate_e & HowTerminate,
+Boolean_t GradPath_c::SetupGradPath(vec3 const & StartPoint,
+	StreamDir_e const & Direction,
+	int NumGPPoints,
+	GPTerminate_e const & HowTerminate,
 	vec3 * TermPoint,
-	const vector<FieldDataPointer_c> & CPXYZPtrs,
+	vector<FieldDataPointer_c> const & CPXYZPtrs,
 	int * NumCPs,
 	double * TermPointRadius,
 	double * TermValue,
-	const vector<int> & MaxIJK,
-	const vec3 & MaxXYZ,
-	const vec3 & MinXYZ,
-	const vector<FieldDataPointer_c> & GradPtrs,
-	const FieldDataPointer_c & RhoPtr)
+	vector<int> const & MaxIJK,
+	vec3 const & MaxXYZ,
+	vec3 const & MinXYZ,
+	vector<FieldDataPointer_c> const & GradPtrs,
+	FieldDataPointer_c const & RhoPtr)
 {
 	m_XYZList.swap(vector<vec3>());
 	m_RhoList.swap(vector<double>());
@@ -1039,19 +1044,20 @@ const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
 	return m_GradPathReady;
 }
 
-const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
-	const StreamDir_e & Direction,
-	const int & NumGPPoints,
-	const GPType_e & GPType,
-	const GPTerminate_e & HowTerminate,
+Boolean_t GradPath_c::SetupGradPath(vec3 const & StartPoint,
+	StreamDir_e const & Direction,
+	int NumGPPoints,
+	GPType_e const & GPType,
+	GPTerminate_e const & HowTerminate,
 	vec3 * TermPoint,
 	CritPoints_c * CPs,
 	double * TermPointRadius,
 	double * TermValue,
 	VolExtentIndexWeights_s & VolInfo,
-	const vector<FieldDataPointer_c> & HessPtrs,
-	const vector<FieldDataPointer_c> & GradPtrs,
-	const FieldDataPointer_c & RhoPtr)
+	vector<FieldDataPointer_c> const & HessPtrs,
+	vector<FieldDataPointer_c> const & GradPtrs,
+	FieldDataPointer_c const & RhoPtr,
+	FESurface_c const * Surf)
 {
 	m_XYZList.swap(vector<vec3>());
 	m_RhoList.swap(vector<double>());
@@ -1071,6 +1077,7 @@ const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
 	m_NumCPs = -1;
 
 	m_CPs = CPs;
+	m_Surface = Surf;
 
 	if (TermValue != NULL)
 		m_TermValue = *TermValue;
@@ -1121,7 +1128,7 @@ const Boolean_t GradPath_c::SetupGradPath(const vec3 & StartPoint,
 	return m_GradPathReady;
 }
 
-const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
+Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 	Boolean_t IsOk = m_GradPathReady && !m_GradPathMade;
 
 	StreamDir_e OldDir = m_ODE_Data.Direction;
@@ -1129,9 +1136,9 @@ const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 
 	gsl_odeiv2_system ODESys = { &GP_ODE_Gradient, &GP_ODE_Jacobian, m_ODE_NumDims, &m_ODE_Data };
 
-// 	const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk4;
-	const gsl_odeiv2_step_type * T = gsl_odeiv2_step_bsimp;
-// 	const gsl_odeiv2_step_type * T = gsl_odeiv2_step_msbdf;
+// 	gsl_odeiv2_step_type const * T = gsl_odeiv2_step_rk4;
+	gsl_odeiv2_step_type const * T = gsl_odeiv2_step_bsimp;
+// 	gsl_odeiv2_step_type const * T = gsl_odeiv2_step_msbdf;
 	gsl_odeiv2_step * s = gsl_odeiv2_step_alloc(T, m_ODE_NumDims);
 	gsl_odeiv2_control * c = gsl_odeiv2_control_y_new(1e-12, 1e-12);
 	gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc(m_ODE_NumDims);
@@ -1148,6 +1155,16 @@ const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 		double h = 0.01;
 
 		double y[3] = { m_StartPoint[0], m_StartPoint[1], m_StartPoint[2] };
+
+		int SurfLastProjectedElem = -1;
+		bool SurfProjectionFound;
+
+		if (m_Surface != NULL && m_Surface->IsMade()){
+			if (!m_Surface->ProjectPointToSurface(y, m_StartPoint, SurfLastProjectedElem, SurfProjectionFound)){
+				TecUtilDialogErrMsg("Projection of point to FESurface failed");
+			}
+			for (int i = 0; i < 3; ++i) y[i] = m_StartPoint[i];
+		}
 
 		vec3 NewPoint, PtIm1 = m_StartPoint, PtI;
 
@@ -1209,6 +1226,13 @@ const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 			Status = gsl_odeiv2_evolve_apply(e, c, s, &ODESys, &tInit, tFinal, &h, y);
 
 			if (Status == GSL_SUCCESS || Status == GSL_EDOM){
+				if (m_Surface != NULL && m_Surface->IsMade()) {
+					if (!m_Surface->ProjectPointToSurface(y, PtI, SurfLastProjectedElem, SurfProjectionFound)) {
+						TecUtilDialogErrMsg("Projection of point to FESurface failed");
+					}
+					for (int i = 0; i < 3; ++i) y[i] = PtI[i];
+				}
+				
 				PtI = y;
 
 				if (m_GPType != GPType_Classic && m_GPType != GPType_Invalid){
@@ -1378,7 +1402,7 @@ const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 // 								}
 // 							}
 // 						}
-						for (const auto & SaddleTypeNum : CPSaddleTypeNums){
+						for (auto const & SaddleTypeNum : CPSaddleTypeNums){
 							for (int SaddleCPNum = 0; SaddleCPNum < m_CPs->NumCPs(SaddleTypeNum) && !PointFound; ++SaddleCPNum){
 								int TotCPNum = m_CPs->GetTotOffsetFromTypeNumOffset(SaddleTypeNum, SaddleCPNum);
 								if (TotCPNum != m_StartEndCPNum[0]){
@@ -1516,7 +1540,7 @@ const Boolean_t GradPath_c::SeedInDirection(const StreamDir_e & Direction){
 	return IsOk;
 }
 
-const Boolean_t GradPath_c::Seed(const bool DoResample){
+Boolean_t GradPath_c::Seed(bool const DoResample){
 	Boolean_t IsOk = m_GradPathReady && !m_GradPathMade;
 
 
@@ -1575,7 +1599,7 @@ const Boolean_t GradPath_c::Seed(const bool DoResample){
 *	degrades performance, or to use template function-style casting,
 *	which is scary and still uses static.
 */
-int GP_ODE_Gradient(double t, const double pos[], double dydt[], void* params)
+int GP_ODE_Gradient(double t, double const pos[], double dydt[], void* params)
 {
 	GradPathParams_s *ODE_Data = reinterpret_cast<GradPathParams_s*>(params);
 
@@ -1630,7 +1654,7 @@ int GP_ODE_Gradient(double t, const double pos[], double dydt[], void* params)
 /*
 *	Jacobian for GSL ODE solver to use.
 */
-int GP_ODE_Jacobian(double t, const double pos[], double *dfdy, double dydt[], void* params)
+int GP_ODE_Jacobian(double t, double const pos[], double *dfdy, double dydt[], void* params)
 {
 	GradPathParams_s *ODE_Data = reinterpret_cast<GradPathParams_s*>(params);
 
@@ -1686,7 +1710,7 @@ int GP_ODE_Jacobian(double t, const double pos[], double *dfdy, double dydt[], v
 } //	int GP_ODE_Jacobian()
 
 
-const double GradPath_c::RhoByCurrentIndexAndWeights(){
+double GradPath_c::RhoByCurrentIndexAndWeights(){
 	double Rho = 0;
 	for (int i = 0; i < 8; ++i){
 		Rho += m_ODE_Data.VolZoneInfo.Weights[i] * m_ODE_Data.RhoPtr[m_ODE_Data.VolZoneInfo.Index[i]];
@@ -1702,7 +1726,7 @@ const double GradPath_c::RhoByCurrentIndexAndWeights(){
 /*
 *	Function to return the actual function (gradient) value
 */
-int F2DGrad(const gsl_vector * pos, void * params, gsl_vector * GradValues){
+int F2DGrad(gsl_vector const * pos, void * params, gsl_vector * GradValues){
 	MultiRootParams_s * RootParams = reinterpret_cast<MultiRootParams_s*>(params);
 
 	vec3 ThreePoint = Transform2dTo3d(pos->data, *RootParams->BasisVectors, *RootParams->Origin);
@@ -1731,7 +1755,7 @@ int F2DGrad(const gsl_vector * pos, void * params, gsl_vector * GradValues){
 /*
 *	Function to return the derivatives (jacobian matrix of gradient, ie Hessian of rho)
 */
-int DF2DGrad(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
+int DF2DGrad(gsl_vector const * pos, void * params, gsl_matrix * Jacobian){
 	MultiRootParams_s * RootParams = reinterpret_cast<MultiRootParams_s*>(params);
 
 	vec3 ThreePoint = Transform2dTo3d(pos->data, *RootParams->BasisVectors, *RootParams->Origin);
@@ -1759,7 +1783,7 @@ int DF2DGrad(const gsl_vector * pos, void * params, gsl_matrix * Jacobian){
 /*
 *	Function to return both grad and dgrad (function and derivatives)
 */
-int FDF2DGrad(const gsl_vector * pos, void * params, gsl_vector * GradValues, gsl_matrix * Jacobian){
+int FDF2DGrad(gsl_vector const * pos, void * params, gsl_vector * GradValues, gsl_matrix * Jacobian){
 
 	int Status = F2DGrad(pos, params, GradValues);
 
@@ -1769,7 +1793,7 @@ int FDF2DGrad(const gsl_vector * pos, void * params, gsl_vector * GradValues, gs
 	return Status;
 }
 
-const Boolean_t CPInNormalPlane(vec3 & StartPt, const vec3 & PlaneBasis, MultiRootObjects_s & MR){
+Boolean_t CPInNormalPlane(vec3 & StartPt, vec3 const & PlaneBasis, MultiRootObjects_s & MR){
 	Boolean_t IsOk = TRUE;
 
 	vector<vec3> BV(2);
@@ -1876,10 +1900,10 @@ const Boolean_t CPInNormalPlane(vec3 & StartPt, const vec3 & PlaneBasis, MultiRo
 *	a pair of gradient paths straddle an irreducible bundle boundary
 *	based on the angles of the last step of the paths.
 */
-const Boolean_t GPsStraddleIB(const GradPath_c & GP1,
-	const GradPath_c & GP2,
-	const double & IBCheckAngle,
-	const double & IBCheckDistRatio)
+Boolean_t GPsStraddleIB(GradPath_c const & GP1,
+	GradPath_c const & GP2,
+	double const & IBCheckAngle,
+	double const & IBCheckDistRatio)
 {
 	if (GP1.GetCount() > 1 && GP2.GetCount() > 1
 		&& IBCheckAngle > 0 && IBCheckDistRatio > 0){
@@ -1912,9 +1936,9 @@ NEBGradPath_c::~NEBGradPath_c()
 {
 }
 
-NEBGradPath_c::NEBGradPath_c(const vec3 & StartPt,
-	const vec3 & EndPt,
-	const unsigned int & NumPts)
+NEBGradPath_c::NEBGradPath_c(vec3 const & StartPt,
+	vec3 const & EndPt,
+	unsigned int NumPts)
 {
 	m_XYZList.reserve(NumPts);
 	m_RhoList.resize(NumPts);
@@ -1933,9 +1957,9 @@ NEBGradPath_c::NEBGradPath_c(const vec3 & StartPt,
 }
 
 
-const Boolean_t NEBGradPath_c::Relax(const double & StepRatio,
-	const double & Tol,
-	const unsigned int MaxIter,
+Boolean_t NEBGradPath_c::Relax(double const & StepRatio,
+	double const & Tol,
+	unsigned int const MaxIter,
 	MultiRootParams_s & Params)
 {
 	REQUIRE(StepRatio >= 0.0 && StepRatio <= 1.0);
@@ -1996,9 +2020,9 @@ const Boolean_t NEBGradPath_c::Relax(const double & StepRatio,
 
 
 void StitchPaths(
-	const vector<int> &     L,       // indices of points in P
-	const vector<int> &     R,
-	const vector<vec3> &     P,
+	vector<int> const &     L,       // indices of points in P
+	vector<int> const &     R,
+	vector<vec3> const &     P,
 	vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
 	)
 {
@@ -2028,10 +2052,10 @@ void StitchPaths(
 }
 
 void StitchCapPaths(
-	const vector<int> &     L,       // indices of points in P
-	const vector<int> &     R,
-	const vector<int> &		C,       // indices of points in the cap, C. that go from L[-1] to R[-1]
-	const vector<vec3> &     P,
+	vector<int> const &     L,       // indices of points in P
+	vector<int> const &     R,
+	vector<int> const &		C,       // indices of points in the cap, C. that go from L[-1] to R[-1]
+	vector<vec3> const &     P,
 	vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
 	)
 {

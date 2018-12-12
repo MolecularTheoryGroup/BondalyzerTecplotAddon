@@ -98,7 +98,7 @@ static void Dialog1Init_CB(void)
 
 /**
 */
-static LgIndex_t  FileName_TF_D1_CB(const char *S)
+static LgIndex_t  FileName_TF_D1_CB(char const *S)
 {
     LgIndex_t IsOk = 1;
     TecUtilLockStart(AddOnID);
@@ -176,7 +176,7 @@ static void Dialog2CancelButton_CB(void)
 
 /**
 */
-static LgIndex_t  XStart_TF_D2_CB(const char *S)
+static LgIndex_t  XStart_TF_D2_CB(char const *S)
 {
     double XStart;
     LgIndex_t IsOk = 1;
@@ -196,7 +196,7 @@ static LgIndex_t  XStart_TF_D2_CB(const char *S)
 
 /**
 */
-static LgIndex_t  YStart_TF_D2_CB(const char *S)
+static LgIndex_t  YStart_TF_D2_CB(char const *S)
 {
     double YStart;
     LgIndex_t IsOk = 1;
@@ -216,7 +216,7 @@ static LgIndex_t  YStart_TF_D2_CB(const char *S)
 
 /**
 */
-static LgIndex_t  XDelta_TF_D2_CB(const char *S)
+static LgIndex_t  XDelta_TF_D2_CB(char const *S)
 {
     double XDelta;
     LgIndex_t IsOk = 1;
@@ -240,7 +240,7 @@ static LgIndex_t  XDelta_TF_D2_CB(const char *S)
 
 /**
 */
-static LgIndex_t  YDelta_TF_D2_CB(const char *S)
+static LgIndex_t  YDelta_TF_D2_CB(char const *S)
 {
     double YDelta;
     LgIndex_t IsOk = 1;
@@ -318,7 +318,7 @@ static void Dialog2Init_CB(void)
 
 /**
 */
-static LgIndex_t  IMax_TF_D2_CB(const char *S)
+static LgIndex_t  IMax_TF_D2_CB(char const *S)
 {
     int IMax;
     LgIndex_t IsOk = 1;
@@ -343,7 +343,7 @@ static LgIndex_t  IMax_TF_D2_CB(const char *S)
 
 /**
 */
-static LgIndex_t  JMax_TF_D2_CB(const char *S)
+static LgIndex_t  JMax_TF_D2_CB(char const *S)
 {
     int JMax;
     LgIndex_t IsOk = 1;

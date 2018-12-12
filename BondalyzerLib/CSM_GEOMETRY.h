@@ -11,40 +11,47 @@ using namespace arma;
 
 using std::vector;
 
-const bool CSMArrow(const vec3 & Origin,
-	const vec3 & Dir,
-	const double & Length,
-	const double & Radius,
-	const double & ArrowheadLengthRatio,
-	const double & ArrowheadRadiusRatio,
+bool CSMArrow(vec3 const & Origin,
+	vec3 const & Dir,
+	double const & Length,
+	double const & Radius,
+	double const & ArrowheadLengthRatio,
+	double const & ArrowheadRadiusRatio,
 	vector<vec3> & Nodes,
 	vector<vector<int> > & ElemList);
 
-const mat getPoints(const mat & Edge, const int & NumPts);
-mat cubTrans(const mat & e1, const mat & e2, const mat & e3);
-const mat cubTrans_func(const mat & abc,
-	const vec & s,
-	const vec & t,
-	const vec & u);
-const double cubJacobian(mat & abc, const double & s, const double & t, const double & u);
-void rquad(const int & N, const double & k, vec & x, vec & w);
-const vector<vec> tetraquad(const int & N, const mat & Verts);
-const vector<vec> GetWeightsPoints(const int & N);
+mat getPoints(mat const & Edge, int NumPts);
+mat cubTrans(mat const & e1, mat const & e2, mat const & e3);
+mat cubTrans_func(mat const & abc,
+	vec const & s,
+	vec const & t,
+	vec const & u);
+double cubJacobian(mat & abc, double const & s, double const & t, double const & u);
+void rquad(int N, double const & k, vec & x, vec & w);
+vector<vec> tetraquad(int N, mat const & Verts);
+vector<vec> GetWeightsPoints(int N);
 
 void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
-	const int & nPts,
+	int nPts,
 	VolExtentIndexWeights_s & VolInfo,
-	const vector<FieldDataPointer_c> & VarPtrs,
+	vector<FieldDataPointer_c> const & VarPtrs,
 	vector<double> & IntVals,
-	const bool ContainsBondPath = false);
+	bool const ContainsBondPath = false);
 
-const bool GetSortedParameterEdgeMidpoints(const vector<vector<int> > & TriElems,
-	const vector<vec3> & NodeList,
+bool GetSortedParameterEdgeMidpoints(vector<vector<int> > const & TriElems,
+	vector<vec3> const & NodeList,
 	vector<vec3> & SortedEdgeMidpoints,
 	vector<vector<int> > & PerimeterEdges);
 
-void GetTriElementConnectivityList(const vector<vector<int> > * ElemListPtr,
+void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 	vector<vector<int> > & ElemConnectivity,
-	const int & NumSharedCorners);
+	int NumSharedCorners);
+
+string GetEdgeString(int ei, int ej);
+
+Boolean_t Vec3PathResample(vector<vec3> const & OldXYZList, int NumPoints, vector<vec3> & NewXYZList);
+
+bool ProjectedPointToTriangleIsInterior(vec3 const & P0, vec3 & TP, vec3 const & T1, vec3 const & T2, vec3 const & T3);
+double PointDistanceToTriangleSquared(vec3 const & P, vec3 & ClosestPoint, vec3 const & T1, vec3 const & T2, vec3 const & T3, bool RecordPoint = true);
 
 #endif

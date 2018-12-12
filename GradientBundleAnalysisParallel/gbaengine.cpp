@@ -59,21 +59,21 @@ using std::chrono::high_resolution_clock;
 using std::chrono::duration;
 using std::chrono::duration_cast;
 
-const double DivergentGPMaxTerminalDotProduct = cos(170. * PI / 180.);
+double const DivergentGPMaxTerminalDotProduct = cos(170. * PI / 180.);
 
-const string LogName = "GBA_log";
-const int LogSizeMB = 5;
-const int LogNumLogs = 10;
+string const LogName = "GBA_log";
+int const LogSizeMB = 5;
+int const LogNumLogs = 10;
 
 enum RadMode{
 	ABSOLUTERADIUS = 1,
 	MINCPDISTRATIO
 };
 
-const string GetNucleusNameForCP(const vec3 & CPPt, const vector<int> XYZVarNums = { 1,2,3 }, const double & DistCutoff = 0.1)
+string GetNucleusNameForCP(vec3 const & CPPt, vector<int> const XYZVarNums = { 1,2,3 }, double const & DistCutoff = 0.1)
 {
 	REQUIRE(XYZVarNums.size() == 3);
-	for (const auto & i : XYZVarNums) REQUIRE(i > 0);
+	for (auto const & i : XYZVarNums) REQUIRE(i > 0);
 	REQUIRE(DistCutoff > 0);
 
 	double MinDist = DBL_MAX, TmpDist;
@@ -572,7 +572,7 @@ void MainFunction(){
 									 *	to make sure there are not two intersections at the same point
 									 */
 
-									for (const GradPath_c & OldGP : IntGPs){
+									for (GradPath_c const & OldGP : IntGPs){
 										double IntIntDist = Distance(TmpGP[-1], OldGP[-1]);
 										if (IntIntDist < 0.1){
 											IntValid = FALSE;
@@ -930,7 +930,7 @@ void MainFunction(){
 				TecUtilVarGetName(i+1, &cstr);
 				string str = cstr;
 				TecUtilStringDealloc(&cstr);
-				for (const auto & s : IntVarPrefixes) {
+				for (auto const & s : IntVarPrefixes) {
 					if (str.length() >= s.length()){
 						int j = str.compare(0, s.length(), s);
 						if (j == 0){
@@ -941,6 +941,7 @@ void MainFunction(){
 				}
 			}
 			SurfZoneNum = Sphere.SaveAsTriFEZone(NucleusName != "" ? NucleusName + " Sphere" : "Sphere (" + CPString + ")", DataTypes, DataLocs, XYZVarNums);
+
 			Set TmpSet(SurfZoneNum);
 			TecUtilZoneSetMesh(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
 			TecUtilZoneSetContour(SV_SHOW, TmpSet.getRef(), 0.0, TRUE);
@@ -1018,7 +1019,7 @@ void MainFunction(){
 				AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone);
 				AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.GBA.SphereCPNum, to_string(CPNum));
 				string MovedPointNumsStr = "";
-				for (const auto & i : MovedPointNums){
+				for (auto const & i : MovedPointNums){
 					MovedPointNumsStr += to_string(i+1) + ","; // +1 to switch from base-0 to base-1 so the node nums match with resulting zone
 				}
 				AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.GBA.SphereConstrainedNodeNums, MovedPointNumsStr);
@@ -1030,6 +1031,8 @@ void MainFunction(){
 				AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.GBA.PointsPerGP, to_string(NumSTPoints));
 				AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.GBA.SourceZoneNum, to_string(CPZoneNum));
 				AuxDataZoneSetItem(SurfZoneNum, CSMAuxData.GBA.SourceNucleusName, NucleusName);
+				AuxDataZoneSetItem(Sphere.GetZoneNum(), CSMAuxData.GBA.SphereRadius, to_string(Radius));
+				AuxDataZoneSetItem(Sphere.GetZoneNum(), CSMAuxData.GBA.SphereRadiusCPDistRatio, to_string(UserRadius));
 			}
 		}
 
@@ -2121,6 +2124,7 @@ void MainFunction(){
 
 			Sphere = FESurface_c(Sphere.GetZoneNum(), VolZoneNum, XYZVarNums, IntVarNumList, true);
 
+
 			/*
 			 *	Save any divergent GBs as zones in order to integrate them, then integrate them.
 			 *	Also integrate the sphere here, but only if divergent GBs were found.
@@ -2183,11 +2187,12 @@ void MainFunction(){
 
 				}
 
+
 				/*
 				 *	Now delete the zones
 				 */
 				Set DelZones;
-				for (const auto & i : TempGBs) {
+				for (auto const & i : TempGBs) {
 					if (i.IsMade())
 						DelZones += i.GetZoneNum();
 				}
@@ -2243,8 +2248,6 @@ void MainFunction(){
 				IntVarNameList.push_back("Volume");
 			AuxDataZoneSetItem(Sphere.GetZoneNum(), CSMAuxData.GBA.AtomicBasinIntegrationVariables, VectorToString(IntVarNameList, ","));
 			AuxDataZoneSetItem(Sphere.GetZoneNum(), CSMAuxData.GBA.AtomicBasinIntegrationValues, VectorToString(TotalList, ","));
-			AuxDataZoneSetItem(Sphere.GetZoneNum(), CSMAuxData.GBA.SphereRadius, to_string(Radius));
-			AuxDataZoneSetItem(Sphere.GetZoneNum(), CSMAuxData.GBA.SphereRadiusCPDistRatio, to_string(UserRadius));
 
 
 			TecUtilDataLoadBegin();
@@ -2310,7 +2313,7 @@ void MainFunction(){
 
 // 		double IntSum = 0;
 // 
-// 		for (const auto & i : FEVolumes){
+// 		for (auto const & i : FEVolumes){
 // 			IntSum += i.IntVolume(20, CPPos);
 // 		}
 // 
@@ -2629,11 +2632,11 @@ void GradPathTest(){
 	TecUtilLockFinish(AddOnID);
 }
 
-void ElemWiseGradPath(const int & StartingElem, 
-						const int & DirNum, // 0 for downhill, 1 for uphill
-						const vector<vector<int> > & ElemConnectivity,
-						const vector<vector<double> > & ElemIntVals, 
-						const int & BasinVarNum, 
+void ElemWiseGradPath(int StartingElem, 
+						int DirNum, // 0 for downhill, 1 for uphill
+						vector<vector<int> > const & ElemConnectivity,
+						vector<vector<double> > const & ElemIntVals, 
+						int BasinVarNum, 
 						vector<vector<int> > & TerminalMinMaxIndices)
 {
 	int CurrentElem = StartingElem;
@@ -2674,16 +2677,16 @@ void ElemWiseGradPath(const int & StartingElem,
 
 		iter++;
 	}
-	for (const int & i : IntermediateElems) TerminalMinMaxIndices[i][DirNum] = IntermediateElems.back();
+	for (int i : IntermediateElems) TerminalMinMaxIndices[i][DirNum] = IntermediateElems.back();
 
 	REQUIRE(iter < ElemConnectivity.size());
 
 	return;
 }
 
-void GetSphereBasinIntegrations(const FESurface_c & Sphere,
-									const vector<vector<double> > & ElemIntVals,
-									const int & BasinVarNum,
+void GetSphereBasinIntegrations(FESurface_c const & Sphere,
+									vector<vector<double> > const & ElemIntVals,
+									int BasinVarNum,
 									vector<vector<int> > & MinMaxIndices,
 									vector<vector<vector<double> > > & BasinIntVals,
 									vector<vector<vector<vec3> > > & BasinNodes,
@@ -2698,7 +2701,7 @@ void GetSphereBasinIntegrations(const FESurface_c & Sphere,
 		to generate an element connectivity list.
 		Two elements are neighbors if they share an edge.
 	*/
-	auto * NodeConnectivityPtr = Sphere.GetConnectivityListPtr();
+	auto * NodeConnectivityPtr = Sphere.GetNodeConnectivityListPtr();
 	auto * ElemListPtr = Sphere.GetElemListPtr();
 	auto * XYZListPtr = Sphere.GetXYZListPtr();
 
@@ -2760,7 +2763,7 @@ void GetSphereBasinIntegrations(const FESurface_c & Sphere,
 		TmpSmoothElemIntVals = SmoothElemIntVals;
 #pragma omp parallel for
 		for (int i = 0; i < NumElems; ++i) {
-			for (const int & j : ElemConnectivity[i]) {
+			for (int j : ElemConnectivity[i]) {
 				SmoothElemIntVals[0][i] += TmpSmoothElemIntVals[0][j];
 			}
 			SmoothElemIntVals[0][i] /= double(ElemConnectivity[i].size() + 1);
@@ -2778,7 +2781,7 @@ void GetSphereBasinIntegrations(const FESurface_c & Sphere,
 		 */
 #pragma omp parallel for
 		for (int Dir = 0; Dir < 2; ++Dir) {
-			for (const auto & i : TerminalMinMaxIndices) {
+			for (auto const & i : TerminalMinMaxIndices) {
 				if (std::find(MinMaxIndices[Dir].begin(), MinMaxIndices[Dir].end(), i[Dir]) == MinMaxIndices[Dir].end())
 					MinMaxIndices[Dir].push_back(i[Dir]);
 			}
@@ -2829,7 +2832,7 @@ void GetSphereBasinIntegrations(const FESurface_c & Sphere,
 					}
 					BasinElems[Dir][te].push_back(vector<int>());
 					BasinElems[Dir][te].back().reserve(3);
-					for (const int & ei : ElemListPtr->at(e)) {
+					for (int ei : ElemListPtr->at(e)) {
 						if (NewNodeNums[ei] < 0) {
 							NewNodeNums[ei] = BasinNodes[Dir][te].size();
 							BasinNodes[Dir][te].push_back(XYZListPtr->at(ei));
@@ -2977,7 +2980,7 @@ void FindSphereBasins() {
 			if (AuxDataZoneGetItem(Sphere.GetZoneNum(), CSMAuxData.GBA.SphereConstrainedNodeIntersectCPNames, TmpStr)) {
 				SphereConstrainedNodeNames = SplitString(TmpStr, ",");
 				vector<string> strVec;
-				for (const auto & i : SphereConstrainedNodeNames) {
+				for (auto const & i : SphereConstrainedNodeNames) {
 					if (i.length() > 0) {
 						strVec.push_back(i);
 					}
@@ -3074,7 +3077,7 @@ void FindSphereBasins() {
 			int NumGPPts;
 			TecGUITextFieldGetLgIndex(TFSTPts_TF_T1_1, &NumGPPts);
 
-			for (const auto & i : SphereConstrainedNodeCPNums) {
+			for (auto const & i : SphereConstrainedNodeCPNums) {
 				/*
 					*	Now get the bond path half for this node
 					*/
@@ -3120,7 +3123,7 @@ void FindSphereBasins() {
 					std::set<int> ConstrainedNodeNums(SphereConstrainedGPNodeNums.begin(), SphereConstrainedGPNodeNums.end());
 					bool ContainsConstrainedNode = false;
 					for (int e = 0; e < BasinPerimeterEdges.size() && !ContainsConstrainedNode; ++e) {
-						for (const int & ei : BasinPerimeterEdges[e]) {
+						for (int ei : BasinPerimeterEdges[e]) {
 							if (ConstrainedNodeNums.count(SphereNodeNums[i][j][ei]) > 0) {
 								ContainsConstrainedNode = true;
 								break;
@@ -3192,7 +3195,7 @@ void FindSphereBasins() {
 									/*
 										*	Now we've got the two vectors to use to seed the neighboring gradient paths
 										*/
-									for (const auto & seedPt : TmpSeedPts) {
+									for (auto const & seedPt : TmpSeedPts) {
 										TmpGPPtrs.push_back(new GradPath_c);
 										TmpGPPtrs.back()->SetupGradPath(SphereConstrainedNodeGPs[n][-1] + (seedPt * 0.5),
 											StreamDir_Reverse,

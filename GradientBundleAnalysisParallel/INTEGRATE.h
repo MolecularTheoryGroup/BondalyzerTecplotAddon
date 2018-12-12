@@ -12,13 +12,13 @@ static vector<string> IntPrecisionLabels = { "Coarse", "Normal", "Fine", "Finer"
 
 // void GBAIntegrationPrepareGUI();
 
-const int GetRecommendedIntPrecision();
+int GetRecommendedIntPrecision();
 
-const Boolean_t PerformIntegration(const vector<string> & AtomNameList,
-	const vector<string> & IntVarNameList,
-	const vector<int> & IntVarNumList,
-	const Boolean_t & IntegrateVolume,
-	const int & IntResolution,
-	const Boolean_t & ActiveGBsOnly);
+Boolean_t PerformIntegration(vector<string> const & AtomNameList,
+	vector<string> const & IntVarNameList,
+	vector<int> const & IntVarNumList,
+	Boolean_t IntegrateVolume,
+	int IntResolution,
+	Boolean_t ActiveGBsOnly);
 
 #endif

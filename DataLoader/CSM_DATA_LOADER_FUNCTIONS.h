@@ -69,12 +69,12 @@ struct T41Var_s{
 	~T41Var_s();
 
 	void Set(const char* iT41Name, const char* iName, const char* iBaseName, Boolean_t UseForIsoSurfaceDisplay);
-	void SetAB(const string &TempVarName);
+	void SetAB(string const &TempVarName);
 	void SetAB(ab_e In);
-	void SetType(const string &TypeStr);
+	void SetType(string const &TypeStr);
 	void SetType(VarType_e In);
-	const Boolean_t operator== (const T41Var_s & T2) const;
-	const Boolean_t operator!= (const T41Var_s & T2) const;
+	Boolean_t operator== (T41Var_s const & T2) const;
+	Boolean_t operator!= (T41Var_s const & T2) const;
 };
 /*
 *	Atom group structure for storing the atomic positions and charges of
@@ -102,29 +102,29 @@ struct AtomGroup_s{
 	vector<double> Charges;
 
 	AtomGroup_s(){}
-	AtomGroup_s(const string & AtomTypeName);
+	AtomGroup_s(string const & AtomTypeName);
 	void AddPosition(vec3 & Position);
 };
 
-const string GetAtomStr(const int & AtomNum);
+string GetAtomStr(int AtomNum);
 
 //	Checks if a line in the input text file is the start of a new block
-int IsVarLine(const string &CheckLine);
+int IsVarLine(string const &CheckLine);
 //	Searching the datatype list for a datatype
-Boolean_t IsInDataTypeList(const vector<T41Var_s> &SearchVec, const T41Var_s &ToFind);
+Boolean_t IsInDataTypeList(vector<T41Var_s> const &SearchVec, T41Var_s const &ToFind);
 //	Searching a list of strings for a string
-Boolean_t VectorContainsString(const vector<string> &SearchVec, const string &ToFind);
+Boolean_t VectorContainsString(vector<string> const &SearchVec, string const &ToFind);
 //	Populate the list that associates atoms with their respective colors.
 //	Uses ADF as the basis for atom colors.
 void PopulateAtomColorList(vector<AtomColor_s> &AtomColorList);
 //	Provides the correct color based on an atom's name.
-const ColorIndex_t GetAtomColor(const vector<AtomColor_s> &AtomColorList, const string &AtomName);
+ColorIndex_t GetAtomColor(vector<AtomColor_s> const &AtomColorList, string const &AtomName);
 //	Creates the list of types outputable by densf and inputs their properties
 int PopulateTypeList(vector<T41Var_s> &TypeList);
 
-const Boolean_t CreateAtomZonesFromAtomGroupList(const vector<AtomGroup_s> & AtomGroupList,
-	const vector<string> & XYZVarNames,
+Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroupList,
+	vector<string> const & XYZVarNames,
 	vector<FieldDataType_e> & VarDataTypes,
-	const int & GroupIndex);
+	int GroupIndex);
 
 #endif

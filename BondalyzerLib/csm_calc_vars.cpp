@@ -31,10 +31,10 @@ using std::stringstream;
 /*
 *	These indices are used for second-order derivative calculations.
 */
-static const vector<vector<int> > ValInds = { { 0, 1, 3, 4 }, { 1, 3 }, { 2, 3, 4 }, { 0, 1, 2 } };
+static vector<vector<int> > const ValInds = { { 0, 1, 3, 4 }, { 1, 3 }, { 2, 3, 4 }, { 0, 1, 2 } };
 
 
-void CalcGradGradMagForDataset(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
+void CalcGradGradMagForDataset(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 
 	vector<string> GradXYZMagStr = CSMVarName.DensGradVec;
 	GradXYZMagStr.push_back(CSMVarName.DensGradMag);
@@ -199,13 +199,13 @@ void CalcGradGradMagForDataset(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	TecUtilLockFinish(AddOnID);
 }
 
-const Boolean_t CalcGradForRegularVar(const vector<int> & IJKMax,
-	const vec3 & DelXYZ,
-	const Boolean_t & IsPeriodic,
-	const FieldDataPointer_c & VarReadPtr,
-	const vector<FieldDataPointer_c> & VarWritePtrs,
-	const string & VarName,
-	const AddOn_pa & AddOnID)
+Boolean_t CalcGradForRegularVar(vector<int> const & IJKMax,
+	vec3 const & DelXYZ,
+	Boolean_t IsPeriodic,
+	FieldDataPointer_c const & VarReadPtr,
+	vector<FieldDataPointer_c> const & VarWritePtrs,
+	string const & VarName,
+	AddOn_pa const & AddOnID)
 {
 	Boolean_t TaskQuit = FALSE;
 
@@ -261,11 +261,11 @@ const Boolean_t CalcGradForRegularVar(const vector<int> & IJKMax,
 	return !TaskQuit;
 }
 
-const Boolean_t CalcMagForRegularVectorVar(const vector<int> & IJKMax,
-	const vector<FieldDataPointer_c> & VarReadPtrs,
-	const FieldDataPointer_c & VarWritePtr,
-	const string & VarName,
-	const AddOn_pa & AddOnID)
+Boolean_t CalcMagForRegularVectorVar(vector<int> const & IJKMax,
+	vector<FieldDataPointer_c> const & VarReadPtrs,
+	FieldDataPointer_c const & VarWritePtr,
+	string const & VarName,
+	AddOn_pa const & AddOnID)
 {
 	Boolean_t TaskQuit = FALSE;
 
@@ -312,17 +312,17 @@ const Boolean_t CalcMagForRegularVectorVar(const vector<int> & IJKMax,
 	return !TaskQuit;
 }
 
-void CalcGradForNode(const int & ii,
-	const int & jj,
-	const int & kk,
-	const vec3 & DelXYZx2,
-	const vec3 & DelXYZx12,
+void CalcGradForNode(int ii,
+	int jj,
+	int kk,
+	vec3 const & DelXYZx2,
+	vec3 const & DelXYZx12,
 	vector<double> & Vals,
 	vector<int> & DirInd,
-	const int & StartDir,
-	const vector<int> & IJKMax,
-	const Boolean_t & IsPeriodic,
-	const FieldDataPointer_c & VarReadPtr,
+	int StartDir,
+	vector<int> const & IJKMax,
+	Boolean_t IsPeriodic,
+	FieldDataPointer_c const & VarReadPtr,
 	vec3 & OutValues)
 {
 	for (int Dir = 0; Dir < 3; ++Dir){
@@ -388,15 +388,15 @@ void CalcGradForNode(const int & ii,
 
 		switch (Dir){
 			case 0:
-				for (const int & i : ValInds[Method])
+				for (int i : ValInds[Method])
 					Vals[i] = VarReadPtr[IndexFromIJK(DirInd[i], jj, kk, IJKMax[0], IJKMax[1], IJKMax[2], IsPeriodic) - 1];
 				break;
 			case 1:
-				for (const int & i : ValInds[Method])
+				for (int i : ValInds[Method])
 					Vals[i] = VarReadPtr[IndexFromIJK(ii, DirInd[i], kk, IJKMax[0], IJKMax[1], IJKMax[2], IsPeriodic) - 1];
 				break;
 			case 2:
-				for (const int & i : ValInds[Method])
+				for (int i : ValInds[Method])
 					Vals[i] = VarReadPtr[IndexFromIJK(ii, jj, DirInd[i], IJKMax[0], IJKMax[1], IJKMax[2], IsPeriodic) - 1];
 				break;
 		}
@@ -464,15 +464,15 @@ void CalcGradForNode(const int & ii,
 
 
 
-void CalcGradForPoint(const vec3 & Point,
-	const vec3 & DelXYZ,
+void CalcGradForPoint(vec3 const & Point,
+	vec3 const & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const mat33 & DirVects,
-	const int & StartDir,
-	const Boolean_t & IsPeriodic,
+	mat33 const & DirVects,
+	int StartDir,
+	Boolean_t IsPeriodic,
 	vec & OutValues,
-	const FieldDataPointer_c & VarReadPtr,
-	const GPType_e & CalcType,
+	FieldDataPointer_c const & VarReadPtr,
+	GPType_e const & CalcType,
 	void * Params)
 {
 	double Vals[5];
@@ -546,7 +546,7 @@ void CalcGradForPoint(const vec3 & Point,
 		*	points in the current direction.
 		*/
 
-		for (const int & i : ValInds[Method]){
+		for (int i : ValInds[Method]){
 			switch (CalcType){
 				case GPType_NormalPlaneEberlyCP:
 					Vals[i] = Eberly1RidgeFunction(Points[i], 0.0, TRUE, *reinterpret_cast<MultiRootParams_s*>(Params));
@@ -580,17 +580,17 @@ void CalcGradForPoint(const vec3 & Point,
 	}
 }
 
-void CalcHessForNode(const int & ii,
-	const int & jj,
-	const int & kk,
-	const vec3 & DelXYZx2,
-	const vec3 & DelXYZx12,
+void CalcHessForNode(int ii,
+	int jj,
+	int kk,
+	vec3 const & DelXYZx2,
+	vec3 const & DelXYZx12,
 	vector<double> & Vals,
 	vector<int> & DirInd,
-	const vector<int> & IJKMax,
-	const Boolean_t & IsPeriodic,
-	const FieldDataPointer_c & ScalarReadPtr,
-	const vector<FieldDataPointer_c> & GradReadPtrs,
+	vector<int> const & IJKMax,
+	Boolean_t IsPeriodic,
+	FieldDataPointer_c const & ScalarReadPtr,
+	vector<FieldDataPointer_c> const & GradReadPtrs,
 	mat33 & Hess)
 {
 	vector<vec3> GradValues(3);
@@ -693,15 +693,15 @@ void CalcHessForNode(const int & ii,
 
 			switch (iDir){
 				case 0:
-					for (const int & i : ValInds[Method])
+					for (int i : ValInds[Method])
 						CalcGradForNode(DirInd[i], jj, kk, DelXYZx2, DelXYZx12, TmpVals, TmpInd, iDir, IJKMax, IsPeriodic, ScalarReadPtr, Grad[i]);
 					break;
 				case 1:
-					for (const int & i : ValInds[Method])
+					for (int i : ValInds[Method])
 						CalcGradForNode(ii, DirInd[i], kk, DelXYZx2, DelXYZx12, TmpVals, TmpInd, iDir, IJKMax, IsPeriodic, ScalarReadPtr, Grad[i]);
 					break;
 				case 2:
-					for (const int & i : ValInds[Method])
+					for (int i : ValInds[Method])
 						CalcGradForNode(ii, jj, DirInd[i], DelXYZx2, DelXYZx12, TmpVals, TmpInd, iDir, IJKMax, IsPeriodic, ScalarReadPtr, Grad[i]);
 					break;
 			}
@@ -734,14 +734,14 @@ void CalcHessForNode(const int & ii,
 	}
 }
 
-void CalcHessForPoint(const vec3 & Point,
-	const vec3 & DelXYZ,
+void CalcHessForPoint(vec3 const & Point,
+	vec3 const & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const mat33 & DirVects,
-	const Boolean_t & IsPeriodic,
+	mat33 const & DirVects,
+	Boolean_t IsPeriodic,
 	mat & OutValues,
-	const FieldDataPointer_c & VarReadPtr,
-	const GPType_e & CalcType,
+	FieldDataPointer_c const & VarReadPtr,
+	GPType_e const & CalcType,
 	void * Params)
 {
 	vec3 Points[5], Grad[5];
@@ -814,7 +814,7 @@ void CalcHessForPoint(const vec3 & Point,
 		*	points in the current direction.
 		*/
 
-		for (const int & i : ValInds[Method]){
+		for (int i : ValInds[Method]){
 			CalcGradForPoint(Points[i], DelXYZ, VolInfo, DirVects, iDir, IsPeriodic, Grad[i], VarReadPtr, CalcType, Params);
 		}
 
@@ -850,13 +850,13 @@ void CalcHessForPoint(const vec3 & Point,
 	}
 }
 
-void CalcHessFor3DPoint(const vec3 & Point,
-	const vec3 & DelXYZ,
+void CalcHessFor3DPoint(vec3 const & Point,
+	vec3 const & DelXYZ,
 	VolExtentIndexWeights_s & VolInfo,
-	const Boolean_t & IsPeriodic,
+	Boolean_t IsPeriodic,
 	mat33 & Hess,
-	const vector<FieldDataPointer_c> & VarReadPtrs,
-	const GPType_e & CalcType,
+	vector<FieldDataPointer_c> const & VarReadPtrs,
+	GPType_e const & CalcType,
 	void * Params)
 {
 	vector<vec3> GradValues(3);
@@ -886,7 +886,7 @@ void CalcHessFor3DPoint(const vec3 & Point,
 	}
 }
 
-void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
+void CalcHessForDataSet(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 	TecUtilLockStart(AddOnID);
 
 	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
@@ -1037,7 +1037,7 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		HessPtrs[i].GetWritePtr(VolZoneNum, NewVarNum);
 	}
 
-	const string TmpStr = "Calculating Hessian of rho";
+	string const TmpStr = "Calculating Hessian of rho";
 	StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 	int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
@@ -1093,9 +1093,9 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 	TecUtilLockFinish(AddOnID);
 }
 
-const Boolean_t CalcEigenSystemForNode(const int & ii,
-	const int & jj,
-	const int & kk,
+Boolean_t CalcEigenSystemForNode(int ii,
+	int jj,
+	int kk,
 	vec3 & EigenValues,
 	mat33 & EigenVectors,
 	MultiRootParams_s & RootParams)
@@ -1198,7 +1198,7 @@ const Boolean_t CalcEigenSystemForNode(const int & ii,
 	return IsOk;
 }
 
-const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
+Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 	vec & EigenValues,
 	mat & EigenVectors,
 	MultiRootParams_s & RootParams)
@@ -1335,7 +1335,7 @@ const Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 	return IsOk;
 }
 
-void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
+void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 	TecUtilLockStart(AddOnID);
 
 	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
@@ -1482,7 +1482,7 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 		VarPtrs[i].GetWritePtr(VolZoneNum, NewVarNum);
 	}
 
-	const string TmpStr = "Calculating Eigen system";
+	string const TmpStr = "Calculating Eigen system";
 	StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 	int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
@@ -1533,8 +1533,8 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, const AddOn_pa & AddOnID){
 }
 
 void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
-	const Boolean_t & NormalizeGrad,
-	const AddOn_pa & AddOnID)
+	Boolean_t NormalizeGrad,
+	AddOn_pa const & AddOnID)
 {
 	TecUtilLockStart(AddOnID);
 
@@ -1674,7 +1674,7 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 		VarPtrs[i].GetWritePtr(VolZoneNum, NewVarNum);
 	}
 
-	const string TmpStr = "Calculating dot products of Hessian eigenvectors with gradient of rho";
+	string const TmpStr = "Calculating dot products of Hessian eigenvectors with gradient of rho";
 	StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 	int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
@@ -1719,7 +1719,7 @@ void CalcEigenvecDotGradForPoint(vec3 Point,
 	vec3 & DotProducts,
 	vec3 & EigenValues,
 	mat33 & EigenVectors,
-	const Boolean_t & NormalizeGrad,
+	Boolean_t NormalizeGrad,
 	MultiRootParams_s & RootParams)
 {
 	vec3 Gradient;
@@ -1748,7 +1748,7 @@ void CalcEigenvecDotGradForPoint(vec3 Point,
 
 void CalcEigenvecDotGradForPoint(vec3 Point,
 	vec3 & DotProducts,
-	const Boolean_t & NormalizeGrad,
+	Boolean_t NormalizeGrad,
 	MultiRootParams_s & RootParams)
 {
 	vec3 EigenValues;
@@ -1773,9 +1773,9 @@ void CalcEigenvecDotGradForPoint(vec3 Point,
 *	return 1 - x, where x is the dot product of the most positive eigen value's
 *	eigen vector with the gradient.
 */
-const double Eberly1RidgeFunction(vec3 & Point,
-	const double & RhoCutoff,
-	const Boolean_t & NormalizeGrad,
+double Eberly1RidgeFunction(vec3 & Point,
+	double const & RhoCutoff,
+	Boolean_t NormalizeGrad,
 	MultiRootParams_s & RootParams)
 {
 	double Val = 0.0;
@@ -1804,9 +1804,9 @@ const double Eberly1RidgeFunction(vec3 & Point,
 	return Val;
 }
 
-const double Eberly2RidgeFunction(vec3 & Point,
-	const double & RhoCutoff,
-	const Boolean_t & NormalizeGrad,
+double Eberly2RidgeFunction(vec3 & Point,
+	double const & RhoCutoff,
+	Boolean_t NormalizeGrad,
 	MultiRootParams_s & RootParams)
 {
 	double Val = 0.0;
@@ -1835,7 +1835,7 @@ const double Eberly2RidgeFunction(vec3 & Point,
 	return Val;
 }
 
-const double NEBForceFunction(vec3 & Point,
+double NEBForceFunction(vec3 & Point,
 	MultiRootParams_s & RootParams)
 {
 	double Val = 0.0;
@@ -1862,7 +1862,7 @@ const double NEBForceFunction(vec3 & Point,
 	return Val;
 }
 
-void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const double & RhoCutoff){
+void CalcEberlyFunctions(Boolean_t IsPeriodic, AddOn_pa const & AddOnID, double const & RhoCutoff){
 	TecUtilLockStart(AddOnID);
 
 	EntIndex_t VolZoneNum = ZoneNumByName(CSMZoneName.FullVolume);
@@ -1999,7 +1999,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 		FieldDataPointer_c VarPtr;
 		VarPtr.GetWritePtr(VolZoneNum, NewVarNum);
 
-		const string TmpStr = "Calculate Eberly 1-ridge function";
+		string const TmpStr = "Calculate Eberly 1-ridge function";
 		StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 		int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
@@ -2062,7 +2062,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 		FieldDataPointer_c VarPtr;
 		VarPtr.GetWritePtr(VolZoneNum, NewVarNum);
 
-		const string TmpStr = "Calculate Eberly 2-ridge function";
+		string const TmpStr = "Calculate Eberly 2-ridge function";
 		StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
 
 		int NumCompleted = 0, NumTotal = VolInfo.MaxIJK[2] / numCPU;
@@ -2099,7 +2099,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, const AddOn_pa & AddOnID, const d
 	TecUtilLockFinish(AddOnID);
 }
 
-void MapAllVarsToAllZones(const AddOn_pa & AddOnID)
+void MapAllVarsToAllZones(AddOn_pa const & AddOnID)
 {
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
@@ -3497,7 +3497,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	TecUtilLockFinish(Opt.AddOnID);
 }
 
-const vector<double> LogLevels(double Min, double Max)
+vector<double> LogLevels(double Min, double Max)
 {
 	vector<double> LevelVector;
 	double BaseValue;
@@ -3551,12 +3551,12 @@ const vector<double> LogLevels(double Min, double Max)
 	return LevelVector;
 }
 
-void GaussianBlur(const Boolean_t & IsPeriodic,
-	const AddOn_pa & AddOnID,
-	const EntIndex_t & ZoneNum,
-	const EntIndex_t & VarNum,
-	const string & NewVarName,
-	const double & Sigma)
+void GaussianBlur(Boolean_t IsPeriodic,
+	AddOn_pa const & AddOnID,
+	EntIndex_t const & ZoneNum,
+	EntIndex_t const & VarNum,
+	string const & NewVarName,
+	double const & Sigma)
 {
 	FieldDataPointer_c Var;
 	Var.GetReadPtr(ZoneNum, VarNum);
@@ -3634,9 +3634,9 @@ void GaussianBlur(const Boolean_t & IsPeriodic,
 // }
 // 
 
-const vec3 Transform2dTo3d(const vec2 & TwoPt,
-	const mat33 & BasisVectors,
-	const vec3 & Origin)
+vec3 Transform2dTo3d(vec2 const & TwoPt,
+	mat33 const & BasisVectors,
+	vec3 const & Origin)
 {
 	vec3 ThreePt(Origin);
 	for (int i = 0; i < 2; ++i){

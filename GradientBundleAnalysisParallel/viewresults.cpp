@@ -35,7 +35,7 @@ using std::stoi;
 using std::ofstream;
 
 
-const string GBADelim = " | ";
+string const GBADelim = " | ";
 void GBAResultViewerPopulateGBs() {
 	/*
 	*	Populate list of gradient bundles
@@ -58,7 +58,7 @@ void GBAResultViewerPopulateGBs() {
 			GBNameMap.insert(TmpStr);
 		}
 	}
-	for (const auto & i : GBNameMap)
+	for (auto const & i : GBNameMap)
 		TecGUIListAppendItem(MLSelGB_MLST_T3_1, i.c_str());
 }
 
@@ -133,7 +133,7 @@ void GBAResultViewerSelectSphere(){
 		for (int i = 1; i <= TecUtilDataSetGetNumVars(); ++i) {
 			char *VarName, *CheckStr;
 			if (TecUtilVarGetName(i, &VarName)) {
-				for (const string & Str : IntCheckStrs) {
+				for (string const & Str : IntCheckStrs) {
 					CheckStr = std::strstr(VarName, Str.c_str());
 					if (CheckStr != NULL) {
 						// Integration variable found. Now make sure it's not bit type for sphere zone.
@@ -148,7 +148,7 @@ void GBAResultViewerSelectSphere(){
 		}
 
 		if (IntVarNames.size() > 0) {
-			for (const string & i : IntVarNames)
+			for (string const & i : IntVarNames)
 				TecGUIListAppendItem(SLSelVar_SLST_T3_1, i.c_str());
 			TecGUIListSetSelectedItem(SLSelVar_SLST_T3_1, SelectedVarNum);
 		}
@@ -237,7 +237,7 @@ void GBAResultViewerSelectIntVar(){
 				*/
 				double NegCloseToZero = -DBL_MAX,
 					PosCloseToZero = DBL_MAX;
-				for (const int & ZoneNum : SphereZoneNums){
+				for (int ZoneNum : SphereZoneNums){
 					FieldData_pa TmpRef = TecUtilDataValueGetReadableNativeRef(ZoneNum, VarNum);
 					if (VALID_REF(TmpRef)){
 						vector<int> MaxIJK(3);
@@ -248,7 +248,7 @@ void GBAResultViewerSelectIntVar(){
 						else
 							TmpVals.resize(MaxIJK[1]);
 						TecUtilDataValueArrayGetByRef(TmpRef, 1, TmpVals.size(), (void*)TmpVals.data());
-						for (const double & Val : TmpVals){
+						for (double const & Val : TmpVals){
 							if (Val < 0.0 && Val > NegCloseToZero)
 								NegCloseToZero = Val;
 							else if (Val > 0 && Val < PosCloseToZero)
@@ -414,9 +414,9 @@ void GBAResultViewerSelectCondensedGBs() {
 		}
 
 		if (IsOk) {
-			for (const auto & i : ActivateSetSet)
+			for (auto const & i : ActivateSetSet)
 				ActivateSet += i;
-			for (const auto & i : DeactivateSetSet)
+			for (auto const & i : DeactivateSetSet)
 				if (ActivateSetSet.count(i) == 0)
 					DeactivateSet += i;
 			TecUtilZoneSetActive(ActivateSet.getRef(), AssignOp_PlusEquals);
@@ -1019,7 +1019,7 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 	TecUtilLockFinish(AddOnID);
 }
 
-const vec3 GetElemMidPoint(const int & ZoneNum, const int & ElemNum){
+vec3 GetElemMidPoint(int ZoneNum, int ElemNum){
 	int NodeNums[3];
 	for (int i = 0; i < 3; ++i) NodeNums[i] = TecUtilDataNodeGetByZone(ZoneNum, ElemNum, i + 1);
 
@@ -1031,9 +1031,9 @@ const vec3 GetElemMidPoint(const int & ZoneNum, const int & ElemNum){
 	return Nodes[0] /= 3.0;
 }
 
-void SelectGBsInRegion(const int SphereZoneNum,
-	const int InteriorElemNum,
-	const int GroupNumberToWrite)
+void SelectGBsInRegion(int const SphereZoneNum,
+	int const InteriorElemNum,
+	int const GroupNumberToWrite)
 {
 	/*
 	 *	Check that provided zone number is correct and corresponds to a GBA sphere zone
@@ -1145,7 +1145,7 @@ void SelectGBsInRegion(const int SphereZoneNum,
 	ZonesToActivate.reserve(ElemsToActivate.size());
 	Set ZoneSet;
 
-	for (const auto & e : ElemsToActivate){
+	for (auto const & e : ElemsToActivate){
 		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
 			if (TecUtilZoneIsFiniteElement(z)
 				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
@@ -1209,7 +1209,7 @@ void ExportGBAData(){
 					for (int VarNum = 1; VarNum <= TecUtilDataSetGetNumVars(); ++VarNum) {
 						char *VarName, *CheckStr;
 						if (TecUtilVarGetName(VarNum, &VarName)) {
-							for (const string & Str : IntCheckStrs) {
+							for (string const & Str : IntCheckStrs) {
 								CheckStr = std::strstr(VarName, Str.c_str());
 								if (CheckStr != NULL) {
 									string TmpStr = VarName;
@@ -1290,7 +1290,7 @@ void ExportGBAData(){
 										}
 
 										OutFile << "\nZone Name,Zone#,GB#";
-										for (const string & i : IntVarNames)
+										for (string const & i : IntVarNames)
 											OutFile << "," << i;
 										OutFile << '\n';
 
@@ -1300,7 +1300,7 @@ void ExportGBAData(){
 												TecUtilZoneGetName(ZoneNum + i + 1, &GBZoneName);
 												OutFile << GBZoneName << "," << ZoneNum + i + 1 << "," << i + 1;
 												TecUtilStringDealloc(&GBZoneName);
-												for (const auto & j : Ptrs)
+												for (auto const & j : Ptrs)
 													OutFile << std::setprecision(16) << std::scientific << "," << j[i];
 												OutFile << "\n";
 											}
@@ -1478,16 +1478,16 @@ void ExportGBAData(){
 						 */
 						OutFile << "Atom,Zone name,Zone number,";
 						// and the variable names
-						for (const string & s : VarNameSet)
+						for (string const & s : VarNameSet)
 							OutFile << s << ",";
 						OutFile << endl;
 
 						/*
 						 *	Now all the values
 						 */
-						for (const string & abStr : BaderAtomSet){
+						for (string const & abStr : BaderAtomSet){
 							OutFile << abStr << "," << CPNames[abStr][0] << "," << GBSphereZoneNums[abStr][0] << ",";
-							for (const string & varStr : VarNameSet){
+							for (string const & varStr : VarNameSet){
 								if (VarVals[abStr].count(varStr) > 0)
 									OutFile << std::setprecision(16) << VarVals[abStr][varStr];
 
@@ -1514,16 +1514,16 @@ void ExportGBAData(){
 							*/
 						OutFile << "Special gradient bundle,Contributing atoms,Atom sphere zone numbers,Defined using variable,";
 						// and the variable names
-						for (const string & s : VarNameSet)
+						for (string const & s : VarNameSet)
 							OutFile << s << ",";
 						OutFile << endl;
 
 						/*
 							*	Now all the values
 							*/
-						for (const string & sgpStr : SpecialGradientBundleSet) {
+						for (string const & sgpStr : SpecialGradientBundleSet) {
 							OutFile << SplitString(sgpStr, GBADelim)[0] << "," << VectorToString(CPNames[sgpStr], "-") << "," << VectorToString(GBSphereZoneNums[sgpStr],"-") << "," << DefiningVars[sgpStr] << ",";
-							for (const string & varStr : VarNameSet) {
+							for (string const & varStr : VarNameSet) {
 								if (VarVals[sgpStr].count(varStr) > 0)
 									OutFile << std::setprecision(16) << VarVals[sgpStr][varStr];
 
@@ -1550,16 +1550,16 @@ void ExportGBAData(){
 							*/
 						OutFile << "Atom,Condensed basin information,Zone number,Atom sphere zone number,Defined using variable,";
 						// and the variable names
-						for (const string & s : VarNameSet)
+						for (string const & s : VarNameSet)
 							OutFile << s << ",";
 						OutFile << endl;
 
 						/*
 							*	Now all the values
 							*/
-						for (const string & cbStr : CondensedBasinSet) {
+						for (string const & cbStr : CondensedBasinSet) {
 							OutFile << CPNames[cbStr][0] << "," << SplitString(cbStr, GBADelim)[0] << "," << CondensedBasinZoneNums[cbStr] << GBSphereZoneNums[cbStr][0] << "," << DefiningVars[cbStr] << ",";
-							for (const string & varStr : VarNameSet) {
+							for (string const & varStr : VarNameSet) {
 								if (VarVals[cbStr].count(varStr) > 0)
 									OutFile << std::setprecision(16) << VarVals[cbStr][varStr];
 

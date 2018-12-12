@@ -161,7 +161,7 @@ bool MeshData::is_inside(Point3d p)
 {
 	int intersectCount = 0;
 	Point3d farPoint(-1000, -1000, -1000); //todo: verify this makes sense as the far point of the intersection ray
-	for (const Triangle & t : triangles)
+	for (Triangle const & t : triangles)
 	{
 		if (t.isFront && t.intersectWithRay(p, farPoint) == 1)
 			intersectCount++;
@@ -183,7 +183,7 @@ void MeshData::debug_print_data()
 
 void MeshData::debug_print_points_from_vector()
 {
-	for (const Point3d & point : points)
+	for (Point3d const & point : points)
 	{
 		cout.precision(15);
 		cout << point.x << "," << point.y << "," << point.z << endl;

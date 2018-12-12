@@ -24,7 +24,7 @@ using std::to_string;
 using namespace arma;
 
 
-const vector<string> ListGetSelectedStrings(const LgIndex_t & ListID){
+vector<string> ListGetSelectedStrings(LgIndex_t ListID){
 	LgIndex_t * SelItemNums;
 	LgIndex_t NumSelItems;
 
@@ -41,7 +41,7 @@ const vector<string> ListGetSelectedStrings(const LgIndex_t & ListID){
 	return StrList;
 }
 
-const vector<int> ListGetSelectedItemNums(const LgIndex_t & ListID){
+vector<int> ListGetSelectedItemNums(LgIndex_t ListID){
 	LgIndex_t * SelItemNums;
 	LgIndex_t NumSelItems;
 
@@ -68,8 +68,8 @@ void ListPopulateWithVarNames(LgIndex_t ListID){
 	}
 }
 
-const vec3 GetCoordsFromListItem(const LgIndex_t & ItemIndex, 
-	const LgIndex_t & ListIndex,
+vec3 GetCoordsFromListItem(LgIndex_t ItemIndex, 
+	LgIndex_t ListIndex,
 	string* ItemFullString,
 	string* ItemNameString,
 	int* ItemNumber,

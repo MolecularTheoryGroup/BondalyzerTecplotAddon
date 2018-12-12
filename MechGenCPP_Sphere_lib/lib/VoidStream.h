@@ -17,7 +17,7 @@ struct VoidStream
 struct VoidStream
 {
     //VoidStream() { }
-    template <class T> inline VoidStream& operator<<(const T &inVal)
+    template <class T> inline VoidStream& operator<<(T const &inVal)
     { return *this; }
     //inline VoidStream& operator<<(std::ostream& (*inVal)(std::ostream&))
     //{ return *this; }
