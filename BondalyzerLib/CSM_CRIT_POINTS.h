@@ -36,6 +36,15 @@ enum CPType_e{
 
 	CPType_Invalid = -99
 };
+enum CPTypeNum_e {
+	CPTypeNum_Invalid = -1,
+	CPTypeNum_Nuclear,
+	CPTypeNum_Bond,
+	CPTypeNum_Ring,
+	CPTypeNum_Cage,
+	CPTypeNum_RingFF,
+	CPTypeNum_CageFF
+};
 
 // static char const CPTypeList[] = { -3, -1, 1, 3, 11, 13 };
 static vector<CPType_e> const CPTypeList = { CPType_Nuclear, CPType_Bond, CPType_Ring, CPType_Cage, CPType_RingFF, CPType_CageFF };
@@ -52,6 +61,7 @@ static vector<int> const CPPrincDirInds = {
 };
 
 static vector<int> const CPSaddleTypeNums = { 1, 2 };
+static vector<int> const CPNearFieldTypes = { 0, 1, 2, 3 };
 
 static vector<ColorIndex_t> const CPColorList = { White_C, Red_C, Green_C, Cyan_C, Custom5_C, Custom6_C };
 
@@ -71,7 +81,7 @@ public:
 		vector<int> const & XYZVarNums,
 		int CPTypeVarNum,
 		int RhoVarNum = -1, 
-		MultiRootParams_s *MR = NULL);
+		MultiRootParams_s *MR = nullptr);
 	~CritPoints_c();
 
 	/*
@@ -86,12 +96,12 @@ public:
 
 	int NumCPs() const { return m_TotNumCPs; }
 	int NumCPs(int TypeNum) const { return m_NumCPs[TypeNum]; }
-	int NumAtoms() const { return m_NumCPs[0]; }
-	int NumBonds() const { return m_NumCPs[1]; }
-	int NumRings() const { return m_NumCPs[2]; }
-	int NumCages() const { return m_NumCPs[3]; }
-	int NumFFRings() const { return m_NumCPs[4]; }
-	int NumFFCages() const { return m_NumCPs[5]; }
+	int NumAtoms() const { return m_NumCPs[CPTypeNum_Nuclear]; }
+	int NumBonds() const { return m_NumCPs[CPTypeNum_Bond]; }
+	int NumRings() const { return m_NumCPs[CPTypeNum_Ring]; }
+	int NumCages() const { return m_NumCPs[CPTypeNum_Cage]; }
+	int NumFFRings() const { return m_NumCPs[CPTypeNum_RingFF]; }
+	int NumFFCages() const { return m_NumCPs[CPTypeNum_CageFF]; }
 	int NumDimensions() const { return m_Dimensions; }
 
 	vector<int> GetTypeNumOffsetFromTotOffset(int TotOffset) const;

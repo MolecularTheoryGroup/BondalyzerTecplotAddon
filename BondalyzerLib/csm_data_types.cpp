@@ -1,6 +1,7 @@
 
 #include <cmath>
 #include <vector>
+#include <string>
 
 #include "TECADDON.h"
 
@@ -8,6 +9,9 @@
 
 #include <armadillo>
 using namespace arma;
+
+using std::string;
+using std::to_string;
 
 double dot2(const vec & v) 
 { return dot(v, v); }
@@ -305,4 +309,8 @@ vec4 const BaryTet(vec3 const & a,
 	bary << va6*v6 << vb6*v6 << vc6*v6 << vd6*v6;
 
 	return bary;
+}
+
+string GetEdgeString(int ei, int ej) {
+	return (ei < ej ? to_string(ei) + "," + to_string(ej) : to_string(ej) + "," + to_string(ei));
 }

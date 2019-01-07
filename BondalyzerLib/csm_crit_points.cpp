@@ -106,7 +106,7 @@ CritPoints_c::CritPoints_c(int CPZoneNum,
 		for (int d = 0; d < 3; ++d) m_XYZ[ind].back()[d] = XYZPtrs[d][iCP];
 	}
 
-	if (MR != NULL){
+	if (MR != nullptr){
 		vec3 EigVals;
 		mat33 EigVecs;
 
@@ -1142,9 +1142,9 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 	if (StartIJK[2] == 1)
 		StatusDrop(VolInfo.AddOnID);
 
-	if (MR.s != NULL)
+	if (MR.s != nullptr)
 		gsl_multiroot_fdfsolver_free(MR.s);
-	// 	if (MR.pos != NULL)
+	// 	if (MR.pos != nullptr)
 	// 		gsl_vector_free(MR.pos);
 
 	return IsOk;
@@ -1353,25 +1353,25 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 							100,
 							GPType_Classic,
 							GPTerminate_AtRhoValue,
-							NULL,
+							nullptr,
 							&ThreadCPs[ThreadNum],
-							NULL,
+							nullptr,
 							&RhoCutoff,
 							*RootParams[ThreadNum].VolInfo,
 							*RootParams[ThreadNum].HessPtrs,
 							*RootParams[ThreadNum].GradPtrs,
 							*RootParams[ThreadNum].RhoPtr);
 
-						// 						vector<FieldDataPointer_c> const * junkPtrs = NULL;
+						// 						vector<FieldDataPointer_c> const * junkPtrs = nullptr;
 						// 						GradPath_c GP(
 						// 							CellMinXYZ[ThreadNum],
 						// 							(StreamDir_e)s,
 						// 							100,
 						// 							GPType_Classic,
 						// 							GPTerminate_AtRhoValue,
-						// 							NULL,
+						// 							nullptr,
 						// 							&ThreadCPs[ThreadNum],
-						// 							NULL,
+						// 							nullptr,
 						// 							&RhoCutoff,
 						// 							*RootParams[ThreadNum].VolInfo,
 						// 							*junkPtrs,
@@ -1441,8 +1441,8 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 
 	StatusDrop(VolInfo.AddOnID);
 
-	for (auto & m : MR)	if (m.s != NULL) gsl_multiroot_fdfsolver_free(m.s);
-	// 	if (MR.pos != NULL)
+	for (auto & m : MR)	if (m.s != nullptr) gsl_multiroot_fdfsolver_free(m.s);
+	// 	if (MR.pos != nullptr)
 	// 		gsl_vector_free(MR.pos);
 
 	if (IsOk){

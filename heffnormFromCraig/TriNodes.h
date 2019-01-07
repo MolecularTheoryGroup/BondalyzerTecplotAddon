@@ -47,6 +47,17 @@ public:
                 return m_v3 < other.m_v3;
         }
     }
+
+	int operator[](int i) const {
+		switch (i) {
+		case 0:
+			return m_v1;
+		case 1:
+			return m_v2;
+		case 2:
+			return m_v3;
+		}
+	}
 };
 
 typedef Index3 TriNodes;

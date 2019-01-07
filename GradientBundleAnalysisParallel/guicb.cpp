@@ -26,7 +26,7 @@
 #include "GBAENGINE.h"
 #include "INTEGRATE.h"
 #include "VIEWRESULTS.h"
-#include "CSM_GUI.h"
+#include "CSM_GBAGUI.h"
 
 #include "GUICB.h"
 
@@ -272,7 +272,8 @@ static void BTNRun_BTN_T1_1_CB(void)
 	if (NumSelected > 0){
 		GBAProcessSystemDeleteCPLabels();
 		TecGUIDialogDrop(Dialog1Manager);
-		MainFunction();
+// 		MainFunction();
+		NewMainFunction();
 		GBAResultViewerPrepareGUI();
 // 		GBATabNumber = 3;
 // 		Boolean_t DoIntegration = TecGUIToggleGet(TGLInt_TOG_T1_1);
@@ -565,7 +566,7 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 				ElemNum = SearchVectorForString(ElementNameList, ZoneName);
 			if (ElemNum >= 0){
 				int NumPts;
-				TecUtilZoneGetIJK(ZoneNum, &NumPts, NULL, NULL);
+				TecUtilZoneGetIJK(ZoneNum, &NumPts, nullptr, nullptr);
 				for (int Counter = 1; Counter <= NumPts; ++Counter){
 					TecGUIListAppendItem(MLSelCPs_MLST_T1_1, string(ZoneName + " " + to_string(Counter)).c_str());
 				}
@@ -715,7 +716,7 @@ void GBAProcessSystemLabelSelectedCPs(){
 		for (int i = 0; i < NumSelected; ++i){
 			string CPName;
 // 			
-			vec3 CPXYZ = GetCoordsFromListItem(SelectedCPs[i], MLSelCPs_MLST_T1_1, &CPName, NULL, NULL, NULL, NULL, &NumCPs);
+			vec3 CPXYZ = GetCoordsFromListItem(SelectedCPs[i], MLSelCPs_MLST_T1_1, &CPName, nullptr, nullptr, nullptr, nullptr, &NumCPs);
 			vec3 XYZGrid;
 			TecUtilConvert3DPositionToGrid(CPXYZ[0], CPXYZ[1], CPXYZ[2], &XYZGrid[0], &XYZGrid[1], &XYZGrid[2]);
 

@@ -16,9 +16,9 @@ using namespace arma;
 using std::vector;
 
 #define GP_NumPointsBufferFactor	0.2
-#define GP_StallPointCount			50
-#define GP_StallNumPointsToCheck	50
-#define GP_StallPointDistTol		1e-3
+#define GP_StallPointCount			8
+#define GP_StallNumPointsToCheck	8
+#define GP_StallPointDistTol		1e-8
 #define GP_MaxNumPoints				10000
 #define GP_PlaneCPStallCount		30
 #define GP_PlaneCPMaxIter			100
@@ -149,6 +149,7 @@ public:
 
 	vec3 ClosestPoint(vec3 const & rhs) const;
 	vec3 ClosestPoint(vec3 const & rhs, int & PtNum) const;
+	bool GetSphereIntersectionPoint(vec3 const & Center, double const & Radius, vec3 & IntersectionPoint) const;
 
 private:
 
@@ -221,7 +222,7 @@ public:
 		vector<FieldDataPointer_c> const & HessPtrs,
 		vector<FieldDataPointer_c> const & GradPtrs,
 		FieldDataPointer_c const & RhoPtr,
-		FESurface_c const * Surf = NULL);
+		FESurface_c const * Surf = nullptr);
 
 	/* 
 	 * Constructor for grad path from existing i-ordered zone
@@ -235,6 +236,7 @@ public:
 	*/
 	GradPath_c(GradPath_c const & rhs);
 	GradPath_c(GradPathBase_c const & rhs);
+
 	~GradPath_c();
 
 	/*
@@ -280,7 +282,7 @@ public:
 		vector<FieldDataPointer_c> const & HessPtrs,
 		vector<FieldDataPointer_c> const & GradPtrs,
 		FieldDataPointer_c const & RhoPtr,
-		FESurface_c const * Surf = NULL);
+		FESurface_c const * Surf = nullptr);
 
 	Boolean_t Seed(bool const DoResample = true);
 	Boolean_t SetMixingFactor(double const & MixFactor){
@@ -291,6 +293,9 @@ public:
 
 		return TRUE;
 	}
+
+
+	Boolean_t ReinterpolateRhoValuesFromVolume(VolExtentIndexWeights_s * VolInfo = nullptr);
 
 private:
 	//Boolean_t SetIndexAndWeightsForPoint(vec3 & Point);
@@ -366,6 +371,9 @@ public:
 private:
 
 };
+
+
+GradPath_c ConcatenateResample(vector<GradPath_c> GPList, int NumPoints);
 
 /*
 *	Redo of path stitching algorithm, formally TryPolyLines

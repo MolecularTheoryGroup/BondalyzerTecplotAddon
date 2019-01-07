@@ -9,7 +9,6 @@
 
 using std::vector;
 
-
 class FESurface_c
 {
 public:
@@ -72,7 +71,8 @@ public:
 	Boolean_t IntResultsReady() const { return m_IntegrationResultsReady; }
 	vector<double> GetIntResults() const;
 	int GetZoneNum() const { return m_ZoneNum; }
-	vector<vector<double> > GetTriSphereIntValsByElem(vector<double> * SphereTriangleAreas = NULL) const { return TriSphereIntValsByElem(SphereTriangleAreas); }
+	vector<vector<double> > GetTriSphereIntValsByElem(vector<double> * SphereTriangleAreas = nullptr) const { return TriSphereIntValsByElem(SphereTriangleAreas); }
+	vector<double> TriSphereElemAreas() const;
 
 
 	vector<vec3> GetSphereIntersectionPath(vec3 const & SphereCenter, double const & SphereRadius);
@@ -119,6 +119,8 @@ public:
 	Boolean_t MakeFromNodeElemList(vector<vec3> const & P, vector<vector<int> > const & T);
 
 	Boolean_t Refine();
+
+	int GetClosestNodeToPoint(vec3 const & Point) const;
 	/*
 	*	Two methods to make the 3- and 4-sided
 	*	FE volumes from gradient paths.
@@ -162,7 +164,7 @@ private:
 		vec3 const & T_P2,
 		vec3 const & R_P1,
 		vec3 const & R_P0) const;
-	vector<vector<double> > TriSphereIntValsByElem(vector<double> * SphereTriangleAreas = NULL) const;
+	vector<vector<double> > TriSphereIntValsByElem(vector<double> * SphereTriangleAreas = nullptr) const;
 	Boolean_t CalcMaxNodeDistSqr();
 	Boolean_t DistSqrToSurfaceNodeWithinTolerance(vec3 const & CheckPt,
 		double & NewDistSqrUnderTol,
@@ -175,7 +177,7 @@ private:
 		int MinDistNodeNum,
 		int SubDivideLevel,
 		Boolean_t IntegrateVolume);
-	vector<int> TriangleEdgeMidPointSubdivide(int TriNum);
+// 	vector<int> TriangleEdgeMidPointSubdivide(int TriNum);
 	void RefineTriElems(vector<int> const & TriNumList);
 // 	void TriPolyLines(bool const ConnectBeginningAndEndGPs = true);
 	void RemoveDupicateNodes();
@@ -247,7 +249,7 @@ class Domain_c
 public:
 	Domain_c(){}
 	Domain_c(vector<int> const & V, FESurface_c *Vol){ Setup(V, Vol); }
-	~Domain_c(){ m_Vol = NULL; }
+	~Domain_c(){ m_Vol = nullptr; }
 	void Setup(vector<int> const & V, FESurface_c *Vol);
 
 	double Weight() const;
@@ -260,7 +262,7 @@ private:
 
 	vector<int> m_V;
 	vector<vector<int> > m_E;
-	FESurface_c *m_Vol = NULL;
+	FESurface_c *m_Vol = nullptr;
 };
 
 

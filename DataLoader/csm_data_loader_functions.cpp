@@ -359,7 +359,7 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 	Boolean_t IsOk = (AtomGroupList.size() > 0 && XYZVarNames.size() == 3);
 
 	for (int GroupNum = 0; GroupNum < AtomGroupList.size() && IsOk; ++GroupNum){
-		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : NULL);
+		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : nullptr);
 
 		if (IsOk){
 			EntIndex_t ZoneNum = TecUtilDataSetGetNumZones();
@@ -379,16 +379,16 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 			Set_pa TempSet = TecUtilSetAlloc(TRUE);
 			TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
 
-			TecUtilZoneSetScatter(SV_SHOW, TempSet, NULL, TRUE);
-			TecUtilZoneSetScatter(SV_COLOR, TempSet, NULL, GetAtomColor(AtomColorList, AtomGroupList[GroupNum].Name));
-			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(2 * sqrt(AtomGroupList[GroupNum].Charges[0]), 8), NULL);
+			TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
+			TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, GetAtomColor(AtomColorList, AtomGroupList[GroupNum].Name));
+			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(2 * sqrt(AtomGroupList[GroupNum].Charges[0]), 8), 0);
 			TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
 
-			TecUtilZoneSetMesh(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetContour(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetVector(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetShade(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, NULL, FALSE);
+			TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
 
 			TecUtilSetDealloc(&TempSet);
 		}

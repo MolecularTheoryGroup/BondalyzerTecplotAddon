@@ -4,12 +4,15 @@
 #include "ArgList.h"
 
 #include <armadillo>
+#include <string>
 
 #include "CSM_FIELD_DATA_POINTER.h"
 #include "CSM_VOL_EXTENT_INDEX_WEIGHTS.h"
 
 using namespace arma;
 using namespace tecplot::toolbox;
+
+using std::to_string;
 
 /*
 *	Begin methods for FieldDataPointer_c
@@ -169,7 +172,7 @@ Boolean_t FieldDataPointer_c::GetReadPtr(int ZoneNum, int VarNum){
 
 	if (m_IsReady){
 		TecUtilDataValueGetReadableRawPtr(ZoneNum, VarNum, &m_VoidPtr, &m_FDType);
-		m_IsReady = (m_VoidPtr != NULL && m_FDType != FieldDataType_Invalid);
+		m_IsReady = (m_VoidPtr != nullptr && m_FDType != FieldDataType_Invalid);
 	}
 	if (m_IsReady){
 		m_Zone = ZoneNum;
@@ -229,7 +232,7 @@ Boolean_t FieldDataPointer_c::GetWritePtr(int ZoneNum, int VarNum){
 
 	if (m_IsReady){
 		TecUtilDataValueGetWritableRawPtr(ZoneNum, VarNum, &m_VoidPtr, &m_FDType);
-		m_IsReady = (m_VoidPtr != NULL && m_FDType != FieldDataType_Invalid);
+		m_IsReady = (m_VoidPtr != nullptr && m_FDType != FieldDataType_Invalid);
 	}
 	if (m_IsReady){
 		m_Zone = ZoneNum;
@@ -359,4 +362,50 @@ Boolean_t FieldVecPointer_c::GetWritePtr(int ZoneNum, vector<int> const & VarNum
 }
 void FieldVecPointer_c::Close(){
 	for (int i = 0; i < 3; ++i) Ptrs[i].Close();
+}
+
+
+Boolean_t const GetReadPtrsForZone(int ZoneNum,
+	int RhoVarNum,
+	vector<int> const & GradVarNums,
+	vector<int> const & HessVarNums,
+	FieldDataPointer_c & RhoPtr,
+	vector<FieldDataPointer_c> & GradPtrs,
+	vector<FieldDataPointer_c> & HessPtrs)
+{
+	TecUtilPleaseWait("Loading data", TRUE);
+
+	Boolean_t IsOk = TRUE;
+
+	int NumZones = TecUtilDataSetGetNumZones();
+	int NumVars = TecUtilDataSetGetNumVars();
+
+	REQUIRE(ZoneNum > 0 && ZoneNum <= NumZones);
+	REQUIRE(RhoVarNum > 0 && RhoVarNum <= NumVars);
+	REQUIRE(GradVarNums.size() == 3 || GradVarNums.size() == 0);
+	for (auto const & i : GradVarNums) REQUIRE(i > 0 && i <= NumVars);
+	REQUIRE(HessVarNums.size() == 6 || HessVarNums.size() == 0);
+	for (auto const & i : HessVarNums) REQUIRE(i > 0 && i <= NumVars);
+
+	RhoPtr.Close();
+	GradPtrs.resize(GradVarNums.size());
+	HessPtrs.resize(HessVarNums.size());
+
+
+	if (!RhoPtr.GetReadPtr(ZoneNum, RhoVarNum)) {
+		TecUtilDialogErrMsg(string("Failed to get rho read pointer (zone " + to_string(ZoneNum) + ", var " + to_string(RhoVarNum) + ")").c_str());
+		IsOk = FALSE;
+	}
+	for (int i = 0; i < GradVarNums.size() && IsOk; ++i) if (!GradPtrs[i].GetReadPtr(ZoneNum, GradVarNums[i])) {
+		TecUtilDialogErrMsg(string("Failed to get gradient read pointer (zone " + to_string(ZoneNum) + ", var " + to_string(GradVarNums[i]) + ")").c_str());
+		IsOk = FALSE;
+	}
+	for (int i = 0; i < HessVarNums.size() && IsOk; ++i) if (!HessPtrs[i].GetReadPtr(ZoneNum, HessVarNums[i])) {
+		TecUtilDialogErrMsg(string("Failed to get hessian read pointer (zone " + to_string(ZoneNum) + ", var " + to_string(HessVarNums[i]) + ")").c_str());
+		IsOk = FALSE;
+	}
+
+	TecUtilPleaseWait("Loading data", FALSE);
+
+	return IsOk;
 }

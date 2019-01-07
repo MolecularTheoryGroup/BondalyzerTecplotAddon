@@ -86,9 +86,9 @@ void GetADFASCIITape41FileName(){
 
 	FileNameStr.clear();
 
-	char* FileName = NULL;
-	TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, "ADF Tape41 ASCII", NULL, "*.txt");
-	if (FileName != NULL)
+	char* FileName = nullptr;
+	TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, "ADF Tape41 ASCII", nullptr, "*.txt");
+	if (FileName != nullptr)
 		LoadADFTape41ASCIIData(FileName);
 	TecUtilStringDealloc(&FileName);
 	TecUtilLockFinish(AddOnID);
@@ -126,12 +126,12 @@ LoaderStatus_e GetTape41FileNames(Boolean_t IsADFFile){
 	LoaderStatus_e Status = Loading;
 	StringList_pa FileNames = TecUtilStringListAlloc();
 	if (IsADFFile){
-		IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "ADF Tape41", NULL, "*.t41");
+		IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "ADF Tape41", nullptr, "*.t41");
 	}
 	else{
-		IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "BAND Tape41", NULL, "*.t41");
+		IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "BAND Tape41", nullptr, "*.t41");
 	}
-	if (IsOk && FileNames != NULL){
+	if (IsOk && FileNames != nullptr){
 		FileNameStrs.resize(TecUtilStringListGetCount(FileNames));
 		for (int i = 1; i <= FileNameStrs.size() && Status != LoaderFailed; ++i){
 			if (i == 1){
@@ -187,9 +187,9 @@ Boolean_t GetCHGCARFileName(){
 
 	if (IsOk){
 
-		char* FileName = NULL;
-		TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, "VASP CHGCAR", NULL, "*CHGCAR");
-		if (FileName != NULL){
+		char* FileName = nullptr;
+		TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, "VASP CHGCAR", nullptr, "*CHGCAR");
+		if (FileName != nullptr){
 			FileNameStrs.push_back(FileName);
 			TecUtilStringDealloc(&FileName);
 		}
@@ -231,9 +231,9 @@ Boolean_t GetAECCARFileNames(){
 
 		if (IsOk){
 
-			char* FileName = NULL;
-			TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, TmpStrs[i].c_str(), NULL, TmpStrs2[i].c_str());
-			if (FileName != NULL){
+			char* FileName = nullptr;
+			TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, TmpStrs[i].c_str(), nullptr, TmpStrs2[i].c_str());
+			if (FileName != nullptr){
 				FileNameStrs.push_back(FileName);
 				TecUtilStringDealloc(&FileName);
 			}
@@ -478,8 +478,8 @@ Boolean_t LoadVASPData(){
 		 *	in the block of data is found again
 		 */
 		char* TmpCStr = strtok(FileData.data(), " \n");
-		while (TmpCStr != NULL && NextValue.compare(TmpCStr))
-			TmpCStr = strtok(NULL, " \n");
+		while (TmpCStr != nullptr && NextValue.compare(TmpCStr))
+			TmpCStr = strtok(nullptr, " \n");
 
 		/*
 		 *	Now simply parse through the char array, saving each
@@ -495,7 +495,7 @@ Boolean_t LoadVASPData(){
 // 				return FALSE;
 // 			}
 // 			Charge[i] = atof(TmpCStr);
-// 			TmpCStr = strtok(NULL, " \n");
+// 			TmpCStr = strtok(nullptr, " \n");
 // 		}
 
 		for (int k = 0; k < Mz; ++k){
@@ -507,9 +507,9 @@ Boolean_t LoadVASPData(){
 				return FALSE;
 			}
 			for (int j = 0; j < My; ++j){
-				for (int i = 0; i < Mx && TmpCStr != NULL; ++i){
+				for (int i = 0; i < Mx && TmpCStr != nullptr; ++i){
 					Charge[k][j][i] = atof(TmpCStr);
-					TmpCStr = strtok(NULL, " \n");
+					TmpCStr = strtok(nullptr, " \n");
 				}
 			}
 		}
@@ -534,14 +534,14 @@ Boolean_t LoadVASPData(){
 		 *	If this is found, parse the char array
 		 *	and save the values as with the charge density.
 		 */
-		while (TmpCStr != NULL){
+		while (TmpCStr != nullptr){
 			if (!Title1.compare(TmpCStr)){
 				IsPolar = TRUE;
 				TecUtilMemoryChangeNotify(ArrayMemoryKB);
 // 				Diff.resize(NumPts, BlankValue);
 				Diff.resize(Mz, vector<vector<double> >(My, vector<double>(Mx, BlankValue)));
 				StatusLaunch("Reading data...", AddOnID, TRUE);
-				TmpCStr = strtok(NULL, " \n");
+				TmpCStr = strtok(nullptr, " \n");
 
 // 				for (int i = 0; i < NumPts; ++i){
 // 					if (!SetPercent(i + CurPt, NumPtsTotal, "Reading data... Spin Density", AddOnID)){
@@ -552,7 +552,7 @@ Boolean_t LoadVASPData(){
 // 						return FALSE;
 // 					}
 // 					Diff[i] = atof(TmpCStr);
-// 					TmpCStr = strtok(NULL, " \n");
+// 					TmpCStr = strtok(nullptr, " \n");
 // 				}
 
 				for (int k = 0; k < Mz; ++k){
@@ -564,9 +564,9 @@ Boolean_t LoadVASPData(){
 						return FALSE;
 					}
 					for (int j = 0; j < My; ++j){
-						for (int i = 0; i < Mx && TmpCStr != NULL; ++i){
+						for (int i = 0; i < Mx && TmpCStr != nullptr; ++i){
 							Diff[k][j][i] = atof(TmpCStr);
-							TmpCStr = strtok(NULL, " \n");
+							TmpCStr = strtok(nullptr, " \n");
 						}
 					}
 				}
@@ -584,7 +584,7 @@ Boolean_t LoadVASPData(){
 
 				break;
 			}
-			TmpCStr = strtok(NULL, "\n");
+			TmpCStr = strtok(nullptr, "\n");
 		}
 
 		/*
@@ -972,7 +972,7 @@ Boolean_t LoadVASPData(){
 					Set_pa TempSet = TecUtilSetAlloc(TRUE);
 					TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
 
-					TecUtilZoneSetScatter(SV_SHOW, TempSet, NULL, TRUE);
+					TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
 
 					/*
 					 *	If the file came from VASP5 then atom types are known, so 
@@ -981,18 +981,18 @@ Boolean_t LoadVASPData(){
 					 *	so that the 1st and 65th atom types will have the same color.
 					 */
 					if (HasAtomTypes)
-						TecUtilZoneSetScatter(SV_COLOR, TempSet, NULL, AtomGroupList[GroupNum].AtomColor);
+						TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, AtomGroupList[GroupNum].AtomColor);
 					else
-						TecUtilZoneSetScatter(SV_COLOR, TempSet, NULL, ColorIndex_t(ColorCount++ % 64));
+						TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, ColorIndex_t(ColorCount++ % 64));
 
-					TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, TmpDbl, NULL);
+					TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, TmpDbl, 0);
 					TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
 
-					TecUtilZoneSetMesh(SV_SHOW, TempSet, NULL, FALSE);
-					TecUtilZoneSetContour(SV_SHOW, TempSet, NULL, FALSE);
-					TecUtilZoneSetVector(SV_SHOW, TempSet, NULL, FALSE);
-					TecUtilZoneSetShade(SV_SHOW, TempSet, NULL, FALSE);
-					TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, NULL, FALSE);
+					TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
+					TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+					TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+					TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+					TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
 
 					TecUtilZoneSetActive(TempSet, AssignOp_PlusEquals);
 
@@ -1553,16 +1553,16 @@ int LoadADFTape41ASCIIData(char* FileNameCStr)
 		Set_pa TempSet = TecUtilSetAlloc(TRUE);
 		TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
 
-		TecUtilZoneSetScatter(SV_SHOW, TempSet, NULL, TRUE);
-		TecUtilZoneSetScatter(SV_COLOR, TempSet, NULL, GetAtomColor(AtomColorList, AtomGroupList[GroupNum].Name));
-		TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, 2*sqrt(AtomGroupList[GroupNum].Charges[0]), NULL);
+		TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
+		TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, GetAtomColor(AtomColorList, AtomGroupList[GroupNum].Name));
+		TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, 2*sqrt(AtomGroupList[GroupNum].Charges[0]), 0);
 		TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
 
-		TecUtilZoneSetMesh(SV_SHOW, TempSet, NULL, FALSE);
-		TecUtilZoneSetContour(SV_SHOW, TempSet, NULL, FALSE);
-		TecUtilZoneSetVector(SV_SHOW, TempSet, NULL, FALSE);
-		TecUtilZoneSetShade(SV_SHOW, TempSet, NULL, FALSE);
-		TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, NULL, FALSE);
+		TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
+		TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+		TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+		TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+		TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
 		
 
 		TecUtilSetDealloc(&TempSet);
@@ -2162,7 +2162,7 @@ void LoadADFTape41Data(){
 
 	TecUtilLockStart(AddOnID);
 
-	LgIndex_t *SelectedVarNumsArray = NULL;
+	LgIndex_t *SelectedVarNumsArray = nullptr;
 	LgIndex_t NumSelected = -1;
 	TecGUIListGetSelectedItems(MLT41LoadVa_MLST_D1, &SelectedVarNumsArray, &NumSelected);
 
@@ -2536,16 +2536,16 @@ void LoadADFTape41Data(){
 				Set_pa TempSet = TecUtilSetAlloc(TRUE);
 				TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
 
-				TecUtilZoneSetScatter(SV_SHOW, TempSet, NULL, TRUE);
-				TecUtilZoneSetScatter(SV_COLOR, TempSet, NULL, GetAtomColor(AtomColorList, AtomGroupList[GroupNum].Name));
-				TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(2 * sqrt(AtomGroupList[GroupNum].Charges[0]), 8), NULL);
+				TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
+				TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, GetAtomColor(AtomColorList, AtomGroupList[GroupNum].Name));
+				TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(2 * sqrt(AtomGroupList[GroupNum].Charges[0]), 8), 0);
 				TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
 
-				TecUtilZoneSetMesh(SV_SHOW, TempSet, NULL, FALSE);
-				TecUtilZoneSetContour(SV_SHOW, TempSet, NULL, FALSE);
-				TecUtilZoneSetVector(SV_SHOW, TempSet, NULL, FALSE);
-				TecUtilZoneSetShade(SV_SHOW, TempSet, NULL, FALSE);
-				TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, NULL, FALSE);
+				TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
+				TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+				TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+				TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+				TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
 
 				TecUtilSetDealloc(&TempSet);
 			}
@@ -2712,7 +2712,7 @@ void LoadBANDTape41Data(){
 	int numCPU = sysinfo.dwNumberOfProcessors;
 	omp_set_num_threads(numCPU);
 
-	LgIndex_t *SelectedVarNumsArray = NULL;
+	LgIndex_t *SelectedVarNumsArray = nullptr;
 	LgIndex_t NumSelected = -1;
 	TecGUIListGetSelectedItems(MLT41LoadVa_MLST_D1, &SelectedVarNumsArray, &NumSelected);
 
@@ -3117,18 +3117,18 @@ void LoadBANDTape41Data(){
 			Set_pa TempSet = TecUtilSetAlloc(TRUE);
 			TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
 
-			TecUtilZoneSetScatter(SV_SHOW, TempSet, NULL, TRUE);
+			TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
 
-			TecUtilZoneSetScatter(SV_COLOR, TempSet, NULL, AtomGroupList[GroupNum].AtomColor);
+			TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, AtomGroupList[GroupNum].AtomColor);
 
-			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(8, 2 * sqrt(TmpDbl)), NULL);
+			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(8, 2 * sqrt(TmpDbl)), 0);
 			TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
 
-			TecUtilZoneSetMesh(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetContour(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetVector(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetShade(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, NULL, FALSE);
+			TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
 
 			TecUtilZoneSetActive(TempSet, AssignOp_PlusEquals);
 
@@ -3428,7 +3428,7 @@ void MakeDensfScriptForZones(){
 	* Get dataset info
 	*/
 	EntIndex_t NumZones;
-	TecUtilDataSetGetInfo(&TmpName, &NumZones, NULL);
+	TecUtilDataSetGetInfo(&TmpName, &NumZones, nullptr);
 	string DataSetName = TmpName;
 	TecUtilStringDealloc(&TmpName);
 
@@ -3641,7 +3641,7 @@ vector<string> SelectDensfTape41Folder(){
 	StringList_pa StrList;
 	if (IsOk){
 
-		IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &StrList, "Tape41 file(s)", NULL, "*.t41");
+		IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &StrList, "Tape41 file(s)", nullptr, "*.t41");
 	}
 
 	if (IsOk){
@@ -3922,13 +3922,13 @@ Boolean_t LoadADFTape21(){
 	/*
 	 *	Get the Tape21 file path
 	 */
-	char* FileName = NULL;
-	IsOk = TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, "ADF Tape21", NULL, "*.t21");
+	char* FileName = nullptr;
+	IsOk = TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileName, "ADF Tape21", nullptr, "*.t21");
 
 	/*
 	 *	Open the Tape21 file
 	 */
-	if (IsOk && FileName != NULL){
+	if (IsOk && FileName != nullptr){
 		FileNameStr = FileName;
 		IsOk = (openKFFile(&GlobalKFFile, const_cast<char*>(FileNameStr.c_str())) > 0);
 	}
@@ -4044,7 +4044,7 @@ Boolean_t LoadADFTape21(){
 					IsOk = TecUtilDataSetAddZone((T21Prefix + FullName).c_str(), VarLen, 1, 1, ZoneType_Ordered, TypeVec.data());
 					ZoneNum = TecUtilDataSetGetNumZones();
 
-					FieldData_pa DataRef = NULL;
+					FieldData_pa DataRef = nullptr;
 					if (IsOk){
 						TecUtilSetAddMember(ZoneSet, ZoneNum, TRUE);
 						DataRef = TecUtilDataValueGetWritableNativeRef(ZoneNum, ImportDataVarNum);
@@ -4206,16 +4206,16 @@ Boolean_t LoadADFTape21(){
 			Set_pa TempSet = TecUtilSetAlloc(TRUE);
 			TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
 
-			TecUtilZoneSetScatter(SV_SHOW, TempSet, NULL, TRUE);
-			TecUtilZoneSetScatter(SV_COLOR, TempSet, NULL, A.AtomColor);
-			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(2 * sqrt(A.Charges[0]), 8), NULL);
+			TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
+			TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, A.AtomColor);
+			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(2 * sqrt(A.Charges[0]), 8), 0);
 			TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
 
-			TecUtilZoneSetMesh(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetContour(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetVector(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetShade(SV_SHOW, TempSet, NULL, FALSE);
-			TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, NULL, FALSE);
+			TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+			TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
 
 			TecUtilSetDealloc(&TempSet);
 		}
@@ -4303,7 +4303,7 @@ Boolean_t LoadADFTape21(){
 			if (IsOk){
 				TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
 
-				TecUtilZoneSetMesh(SV_SHOW, TempSet, NULL, TRUE);
+				TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, TRUE);
 				TecUtilZoneSetMesh(SV_COLOR, TempSet, 0.0, Black_C);
 				if (BondTypePtr[BNum] == static_cast<int>(BondTypePtr[BNum]))
 					TecUtilZoneSetMesh(SV_LINEPATTERN, TempSet, 0.0, LinePattern_Solid);
@@ -4311,11 +4311,11 @@ Boolean_t LoadADFTape21(){
 					TecUtilZoneSetMesh(SV_LINEPATTERN, TempSet, 0.0, LinePattern_LongDash);
 				TecUtilZoneSetMesh(SV_LINETHICKNESS, TempSet, BondTypePtr[BNum] * 0.5, 0);
 
-				TecUtilZoneSetScatter(SV_SHOW, TempSet, NULL, FALSE);
-				TecUtilZoneSetContour(SV_SHOW, TempSet, NULL, FALSE);
-				TecUtilZoneSetVector(SV_SHOW, TempSet, NULL, FALSE);
-				TecUtilZoneSetShade(SV_SHOW, TempSet, NULL, FALSE);
-				TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, NULL, FALSE);
+				TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, FALSE);
+				TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+				TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+				TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+				TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
 			}
 
 			TecUtilSetDealloc(&TempSet);
@@ -4435,16 +4435,16 @@ Boolean_t LoadADFTape21(){
 							Set_pa TempSet = TecUtilSetAlloc(TRUE);
 							TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
 
-							TecUtilZoneSetScatter(SV_SHOW, TempSet, NULL, TRUE);
-							TecUtilZoneSetScatter(SV_COLOR, TempSet, NULL, A.AtomColor);
-							TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MAX(MIN(sqrt(AvgChg), 8), 1), NULL);
+							TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
+							TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, A.AtomColor);
+							TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MAX(MIN(sqrt(AvgChg), 8), 1), 0);
 							TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
 
-							TecUtilZoneSetMesh(SV_SHOW, TempSet, NULL, FALSE);
-							TecUtilZoneSetContour(SV_SHOW, TempSet, NULL, FALSE);
-							TecUtilZoneSetVector(SV_SHOW, TempSet, NULL, FALSE);
-							TecUtilZoneSetShade(SV_SHOW, TempSet, NULL, FALSE);
-							TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, NULL, FALSE);
+							TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
+							TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+							TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+							TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+							TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
 
 							TecUtilSetDealloc(&TempSet);
 						}
@@ -4669,12 +4669,12 @@ void LoadGaussianCubeFiles()
 	omp_set_num_threads(numCPU);
 
 	StringList_pa FileNames = TecUtilStringListAlloc();
-	Boolean_t IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "Gaussian Formatted Cube File", NULL, "*.cube");
+	Boolean_t IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "Gaussian Formatted Cube File", nullptr, "*.cube");
 
 	Boolean_t UseExistingVolZone = FALSE;
 	FileNameStrs.clear();
 
-	if (IsOk && FileNames != NULL){
+	if (IsOk && FileNames != nullptr){
 		FileNameStrs.resize(TecUtilStringListGetCount(FileNames));
 		for (int i = 1; i <= FileNameStrs.size(); ++i){
 			if (i == 1){
@@ -4960,8 +4960,8 @@ void LoadGaussianCubeFiles()
 			 */
 
 			char* TmpCStr = strtok(CubeFileContents.data(), " \n");
-			while (TmpCStr != NULL && FirstVal.compare(TmpCStr))
-				TmpCStr = strtok(NULL, " \n");
+			while (TmpCStr != nullptr && FirstVal.compare(TmpCStr))
+				TmpCStr = strtok(nullptr, " \n");
 
 			/*
 			 *	Make dataset and volume zone if necessary
@@ -5089,10 +5089,10 @@ void LoadGaussianCubeFiles()
 								Val = Origin[Dir] + dot(TmpIJK, LatticeVector.col(Dir));
 								Ptrs[Dir].Write(Index, Val);
 							}
-							for (VarNum = 3; VarNum < NumVarBlocks + 3 && TmpCStr != NULL; ++VarNum){
+							for (VarNum = 3; VarNum < NumVarBlocks + 3 && TmpCStr != nullptr; ++VarNum){
 								Val = atof(TmpCStr);
 								Ptrs[VarNum].Write(Index, Val);
-								TmpCStr = strtok(NULL, " \n");
+								TmpCStr = strtok(nullptr, " \n");
 							}
 							++TmpIJK[2];
 						}
@@ -5110,10 +5110,10 @@ void LoadGaussianCubeFiles()
 									}
 								}
 
-								for (int jVar = 0; jVar < VarUserNames[VarNameIndices[GaussVarNum][iVar]].size() && TmpCStr != NULL; ++jVar){
+								for (int jVar = 0; jVar < VarUserNames[VarNameIndices[GaussVarNum][iVar]].size() && TmpCStr != nullptr; ++jVar){
 									Val = atof(TmpCStr);
 									Ptrs[VarNum + jVar].Write(Index, Val);
-									TmpCStr = strtok(NULL, " \n");
+									TmpCStr = strtok(nullptr, " \n");
 								}
 								++TmpIJK[2];
 							}
@@ -5128,7 +5128,7 @@ void LoadGaussianCubeFiles()
 
 			StatusDrop(AddOnID);
 
-			if (TmpCStr == NULL 
+			if (TmpCStr == nullptr 
 				&& (TmpIJK[0] < IJK[0] || TmpIJK[1] < IJK[1] || TmpIJK[2] < IJK[2]))
 			{
 				TecUtilDialogErrMsg(string("Failed to load Gaussian file: " + CubeFileName).c_str());
@@ -5295,12 +5295,12 @@ void LoadTurboMoleCubeFiles()
 	omp_set_num_threads(numCPU);
 
 	StringList_pa FileNames = TecUtilStringListAlloc();
-	Boolean_t IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "TurboMole Cube File", NULL, "*.cub");
+	Boolean_t IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "TurboMole Cube File", nullptr, "*.cub");
 
 	Boolean_t UseExistingVolZone = FALSE;
 	FileNameStrs.clear();
 
-	if (IsOk && FileNames != NULL){
+	if (IsOk && FileNames != nullptr){
 		FileNameStrs.resize(TecUtilStringListGetCount(FileNames));
 		for (int i = 1; i <= FileNameStrs.size(); ++i){
 			if (i == 1){
@@ -5538,8 +5538,8 @@ void LoadTurboMoleCubeFiles()
 			*/
 
 			char* TmpCStr = strtok(CubeFileContents.data(), " \n");
-			while (TmpCStr != NULL && FirstVal.compare(TmpCStr))
-				TmpCStr = strtok(NULL, " \n");
+			while (TmpCStr != nullptr && FirstVal.compare(TmpCStr))
+				TmpCStr = strtok(nullptr, " \n");
 
 			/*
 			*	Make dataset and volume zone if necessary
@@ -5613,7 +5613,7 @@ void LoadTurboMoleCubeFiles()
 			if (!ReplaceDataSet){
 				VarNum = VarNumByName(VarName);
 				if (VarNum <= 0){
-					IsOk = TecUtilDataSetAddVar(VarName.c_str(), NULL);
+					IsOk = TecUtilDataSetAddVar(VarName.c_str(), nullptr);
 					if (IsOk){
 						VarNum = TecUtilDataSetGetNumVars();
 						IsOk = (VarNum > 0);
@@ -5661,7 +5661,7 @@ void LoadTurboMoleCubeFiles()
 // 						}
 						Val = atof(TmpCStr);
 						VarPtr.Write(Index, Val);
-						TmpCStr = strtok(NULL, " \n");
+						TmpCStr = strtok(nullptr, " \n");
 
 						++TmpIJK[2];
 					}
@@ -5674,7 +5674,7 @@ void LoadTurboMoleCubeFiles()
 
 			StatusDrop(AddOnID);
 
-			if (TmpCStr == NULL
+			if (TmpCStr == nullptr
 				&& (TmpIJK[0] < IJK[0] || TmpIJK[1] < IJK[1] || TmpIJK[2] < IJK[2]))
 			{
 				TecUtilDialogErrMsg(string("Failed to load TurboMole file: " + CubeFileName).c_str());
@@ -5833,7 +5833,7 @@ Boolean_t LoadBinaryPLTFileData(){
 
 	StringList_pa FileNames;
 
-	LoadSuccess = TecUtilDialogGetFileNames(SelectFileOption_ReadMultiFile, &FileNames, "TurboMole PLT", NULL, "*.plt");
+	LoadSuccess = TecUtilDialogGetFileNames(SelectFileOption_ReadMultiFile, &FileNames, "TurboMole PLT", nullptr, "*.plt");
 
 	if (LoadSuccess){
 		FileNameStrs.resize(TecUtilStringListGetCount(FileNames));

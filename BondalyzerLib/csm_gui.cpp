@@ -34,7 +34,7 @@ bool CSMGuiMultiListIsPointSelect;
 int CSMGuiPointSelectZoneNum = -1;
 static string const CSMGuiPointSelectDelim = ": ";
 vector<Text_ID> CSMGuiPointLabelIDs;
-Set_pa CSMGuiActiveZones = NULL;
+Set_pa CSMGuiActiveZones = nullptr;
 bool CSMGuiProbeFirstInstall = true;
 bool CSMGuiDeleteLabelsRunning = false;
 MouseButtonMode_e CSMGuiMouseMode = MouseButtonMode_Invalid;
@@ -231,7 +231,7 @@ vec3 const GetPointCoordsFromListItem(int ItemIndex,
 
 void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID);
 void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
-	if (AddOnID == NULL) AddOnID = &CSMGuiAddOnID;
+	if (AddOnID == nullptr) AddOnID = &CSMGuiAddOnID;
 	TecUtilLockStart(*AddOnID);
 	CSMGuiLock();
 	if (CSMGuiMultiListID != BADDIALOGID){
@@ -366,7 +366,7 @@ void CSMGuiPointSelectButtonCB()
 		if (CSMGuiProbeFirstInstall){
 // 			CSMGUIDeleteCPLabels();
 			CSMGuiProbeFirstInstall = false;
-			if (CSMGuiActiveZones != NULL)
+			if (CSMGuiActiveZones != nullptr)
 				TecUtilSetDealloc(&CSMGuiActiveZones);
 			TecUtilZoneGetActive(&CSMGuiActiveZones);
 			CSMGuiMouseMode = TecUtilMouseGetCurrentMode();
@@ -421,7 +421,7 @@ void CSMGuiMultiListInvertSelectionButtonCallBack(){
 
 	TecUtilArrayDealloc((void**)&SelectedNums);
 
-	CSMGuiPointSelectMultiListCallback(NULL);
+	CSMGuiPointSelectMultiListCallback(nullptr);
 	TecUtilLockFinish(CSMGuiAddOnID);
 }
 
@@ -440,14 +440,14 @@ void CSMGuiMultiListSelectAllButtonCallBack(){
 		CSMGuiMultiListDeselectAll();
 	}
 
-	CSMGuiPointSelectMultiListCallback(NULL);
+	CSMGuiPointSelectMultiListCallback(nullptr);
 	TecUtilLockFinish(CSMGuiAddOnID);
 }
 
 void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID){
 	if (CSMGuiPointLabelIDs.size() > 0){
 // 		CSMGuiDeleteLabelsRunning = true;
-		if (AddOnID == NULL) AddOnID = &CSMGuiAddOnID;
+		if (AddOnID == nullptr) AddOnID = &CSMGuiAddOnID;
 		TecUtilLockStart(*AddOnID);
 		MouseButtonMode_e MouseMode = TecUtilMouseGetCurrentMode();
 		TecUtilDrawGraphics(FALSE);
@@ -476,12 +476,12 @@ void DialogCloseButtonCB(){
 	CSMGuiSuccess = false;
 	CSMGuiProbeFirstInstall = true;
 
-	if (CSMGuiActiveZones != NULL){
+	if (CSMGuiActiveZones != nullptr){
 		if (!TecUtilSetIsEmpty(CSMGuiActiveZones)){
 			SetValueReturnCode_e ReturnCode = TecUtilZoneSetActive(CSMGuiActiveZones, AssignOp_Equals);
 			TecUtilSetDealloc(&CSMGuiActiveZones);
 		}
-		CSMGuiActiveZones = NULL;
+		CSMGuiActiveZones = nullptr;
 	}
 	if (TecUtilMouseGetCurrentMode() == MouseButtonMode_Probe && CSMGuiMouseMode != MouseButtonMode_Invalid){
 		if (CSMGuiMouseMode == MouseButtonMode_Probe) TecUtilMouseSetMode(MouseButtonMode_RotateRollerBall);
@@ -504,12 +504,12 @@ void DialogOKButtonCB(){
 
 	TecUtilLockStart(CSMGuiAddOnID);
 
-	if (CSMGuiActiveZones != NULL){
+	if (CSMGuiActiveZones != nullptr){
 		if (!TecUtilSetIsEmpty(CSMGuiActiveZones)){
 			SetValueReturnCode_e ReturnCode = TecUtilZoneSetActive(CSMGuiActiveZones, AssignOp_Equals);
 			TecUtilSetDealloc(&CSMGuiActiveZones);
 		}
-		CSMGuiActiveZones = NULL;
+		CSMGuiActiveZones = nullptr;
 	}
 	if (TecUtilMouseGetCurrentMode() == MouseButtonMode_Probe && CSMGuiMouseMode != MouseButtonMode_Invalid){
 		if (CSMGuiMouseMode == MouseButtonMode_Probe) TecUtilMouseSetMode(MouseButtonMode_RotateRollerBall);
@@ -748,7 +748,7 @@ void CSMLaunchGui(string const & Title,
 		else H += (2 * VertSpacing) * NumFields[t];
 	}
 
-	CSMGuiDialogManager = TecGUIDialogCreateModeless(MAINDIALOGID, W, H, Title.c_str(), NULL, DialogCloseButtonCB, NULL);
+	CSMGuiDialogManager = TecGUIDialogCreateModeless(MAINDIALOGID, W, H, Title.c_str(), nullptr, DialogCloseButtonCB, nullptr);
 
 	int fNum = 0;
 
@@ -840,7 +840,7 @@ void CSMLaunchGui(string const & Title,
 			else if (t <= Gui_Radio){
 				vector<string> Choices = SplitString(f.GetSearchString(), ",");
 				vector<const char*> ChoicesCStr(5);
-				for (int i = 0; i < 5; ++i) ChoicesCStr[i] = (i < Choices.size() ? Choices[i].c_str() : NULL);
+				for (int i = 0; i < 5; ++i) ChoicesCStr[i] = (i < Choices.size() ? Choices[i].c_str() : nullptr);
 
 				f.SetID(TecGUIRadioBoxAdd(CSMGuiDialogManager, xTmp, Y, wTmp, (LineHeight + VertSpacing) * Choices.size(),
 					ChoicesCStr[0], ChoicesCStr[1], ChoicesCStr[2], ChoicesCStr[3], ChoicesCStr[4], IntCallbackDoNothing));

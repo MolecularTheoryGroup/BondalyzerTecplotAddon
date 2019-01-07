@@ -9,6 +9,7 @@
 using std::vector;
 using std::string;
 
+void NewMainFunction();
 void MainFunction();
 void GradPathTest();
 

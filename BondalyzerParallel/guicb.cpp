@@ -490,7 +490,7 @@ static void Dialog2Init_CB(void)
 	 */
 
 	EntIndex_t NumZones, NumVars;
-	Boolean_t IsOk = TecUtilDataSetGetInfo(NULL, &NumZones, &NumVars);
+	Boolean_t IsOk = TecUtilDataSetGetInfo(nullptr, &NumZones, &NumVars);
 
 	/*
 	 *	Populate lists of variables

@@ -135,7 +135,7 @@ void GBAResultViewerSelectSphere(){
 			if (TecUtilVarGetName(i, &VarName)) {
 				for (string const & Str : IntCheckStrs) {
 					CheckStr = std::strstr(VarName, Str.c_str());
-					if (CheckStr != NULL) {
+					if (CheckStr != nullptr) {
 						// Integration variable found. Now make sure it's not bit type for sphere zone.
 						if (TecUtilDataValueGetType(SphereZoneNum, i) != FieldDataType_Bit) {
 							IntVarNames.push_back(VarName);
@@ -1211,7 +1211,7 @@ void ExportGBAData(){
 						if (TecUtilVarGetName(VarNum, &VarName)) {
 							for (string const & Str : IntCheckStrs) {
 								CheckStr = std::strstr(VarName, Str.c_str());
-								if (CheckStr != NULL) {
+								if (CheckStr != nullptr) {
 									string TmpStr = VarName;
 									std::replace(TmpStr.begin(), TmpStr.end(), ',', '.');
 									IntVarNames.push_back(TmpStr);
@@ -1453,7 +1453,7 @@ void ExportGBAData(){
 					 *	Now write it all out.
 					 */
 					char *cstr;
-					TecUtilDataSetGetInfo(&cstr, NULL, NULL);
+					TecUtilDataSetGetInfo(&cstr, nullptr, nullptr);
 					string dataSetName = cstr;
 					TecUtilStringDealloc(&cstr);
 					ofstream OutFile(string(FolderName + "/" + dataSetName + "_Atomic_Basins.csv"));

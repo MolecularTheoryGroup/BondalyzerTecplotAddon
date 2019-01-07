@@ -39,7 +39,7 @@
     <ClInclude Include="INTEGRATE.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CSM_GUI.h">
+    <ClInclude Include="CSM_GBAGUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -68,7 +68,7 @@
     <ClCompile Include="integrate.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="csm_gui.cpp">
+    <ClCompile Include="csm_gbagui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

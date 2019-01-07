@@ -9,6 +9,8 @@
 #include <string>
 #include <map>
 #include <set>
+#include <unordered_set>
+#include <queue>
 #include <stdio.h>
 
 #include "GSM_GEOMETRY.h"
@@ -839,7 +841,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
  		 *	with it.
  		 */
  		IsDegenerate.resize(NumGPs, false);
- 		GradPath_c * DegenGP = NULL;
+ 		GradPath_c * DegenGP = nullptr;
  		for (int i = 0; i < NumGPs - 1; ++i){
  			for (int j = i + 1; j < NumGPs; ++j){
  				if (sum(GPi[i]->XYZAt(0) == GPi[j]->XYZAt(0)) == 3){
@@ -1225,12 +1227,14 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 				*	If checking for degenerate tet points, do it here and quit if point(s) are degenerate.
 				*/
 				bool TetDegen = false;
-				if (ContainsBondPath || (TermAtPoint && !NotTerminated)) for (int i = 0; i < 3 && !TetDegen; ++i){
-					for (int j = i + 1; j < 4 && !TetDegen; ++j){
-						if (sum(*Vptr[VI[tet[i]]] == *Vptr[VI[tet[j]]]) == 3)
-							TetDegen = true;
+// 				if (ContainsBondPath || (TermAtPoint && !NotTerminated)) {
+					for (int i = 0; i < 3 && !TetDegen; ++i) {
+						for (int j = i + 1; j < 4 && !TetDegen; ++j) {
+							if (sum(*Vptr[VI[tet[i]]] == *Vptr[VI[tet[j]]]) == 3)
+								TetDegen = true;
+						}
 					}
-				}
+// 				}
 
 				if (TetDegen) 
 					continue;
@@ -1268,6 +1272,474 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 }
 
 
+/*
+ *	Same as above, but assuming that gradient bundles have either 3 or 4 gradient
+ *	paths.
+ *	Used for GBA after adding the ring surfaces triangulation update code. No graadient 
+ *	paths are seeded down the edges of triangular sphere elements, so there's always
+ *	3 or 4 GPs.
+ */
+void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
+	int nPts,
+	VolExtentIndexWeights_s & VolInfo,
+	vector<FieldDataPointer_c> const & VarPtrs,
+	vector<double> & IntVals,
+	vec3 const * BondCPPos)
+{
+	auto GPs = GPsIn;
+	REQUIRE(GPs.size() == 3 || GPs.size() == 4);
+	for (auto const * p : GPs) {
+		REQUIRE(p->IsMade() && p->GetCount() > 3);
+	}
+
+	if (IntVals.size() != VarPtrs.size() + 1)
+		IntVals.resize(VarPtrs.size() + 1, 0);
+
+	/*
+	*	We're stepping down the GPs according to values of rho.
+	*	We'll assume that they all either terminate at the same rho value or critical point.
+	*	Even if they don't terminate at the same rho value, we'll assume that the termination of any GP will be at a sufficiently low rho value
+	*		such that most properties of interest have converged.
+	*	Also assuming that GPs go "downhill" from a GBA sphere around a nuclear CP.
+	*	At end of each loop, confirm that there is at least one more point in each grad path, otherwise exit.
+	*/
+	bool NotTerminated = true;
+
+	// Used in avoiding very small volume polyhedra.
+	double NewStepCutoffRatio = 0.7;
+
+	unsigned int NumGPs = GPs.size();
+
+	/*
+	*	If ContainsBondPath, then need to know which GPs correspond to the bond path, because they're
+	*	degenerate until the bond point is reached.
+	*	We'll use another vector of GP pointers to control which GPs are used. For GBs that do not
+	*	contain a bond path, this doesn't change anything.
+	*
+	*	This adds two cases to the function: a special case that happens when the GPs split after
+	*	the bond point, and another typical case that happens for the remainder of the function
+	*	once the full set of GPs is in use.
+	*
+	*	The special case is easy to deal with. The triangulation of the "top" polygon results in
+	*	both trigonal prisms and tetrahedra, and the tetrahedra are easy to identify because they
+	*	correspond to triangles in the triangulation with an edge corresponding to degenerate GPs.
+	*	Triangles without a degenerate GP edge will form trigonal prisms.
+	*
+	*	The second case requires no special treatment.
+	*
+	*	First, get the indices of non-degenerate GPs.
+	*/
+	vector<GradPath_c*> GPi = GPs;
+	int BondPointNodeNum = -1;
+	int DegenGPNumFull = -1, DegenGPNum;
+	vector<vector<int> > T2;
+	vector<bool> IsDegenerate;
+	vector<unsigned int> OldIndexList;
+
+	bool ContainsBondPath = (BondCPPos != nullptr);
+
+	if (ContainsBondPath) {
+		// Find the pair of GPs that include the bond path by checking for
+		// which GPs contain the bond point.
+		vector<vec3> ClosestPtsToBondPt(NumGPs);
+		vector<int> ClosestPtNumsToBondPt(NumGPs, -1);
+		IsDegenerate.resize(NumGPs, false);
+		GradPath_c * DegenGP = nullptr;
+		for (int i = 0; i < NumGPs - 1; ++i) {
+			if (ClosestPtNumsToBondPt[i] < 0)
+				ClosestPtsToBondPt[i] = GPs[i]->ClosestPoint(*BondCPPos, ClosestPtNumsToBondPt[i]);
+			if (approx_equal(ClosestPtsToBondPt[i], *BondCPPos, "absdiff", 0.01)) {
+				for (int j = i + 1; j < NumGPs; ++j) {
+					if (ClosestPtNumsToBondPt[j] < 0)
+						ClosestPtsToBondPt[j] = GPs[j]->ClosestPoint(*BondCPPos, ClosestPtNumsToBondPt[j]);
+					if (approx_equal(ClosestPtsToBondPt[i], *BondCPPos, "absdiff", 0.01)){
+						IsDegenerate[j] = true;
+						if (DegenGPNumFull < 0) {
+							DegenGP = GPi[i];
+							DegenGPNumFull = i;
+						}
+						break;
+					}
+				}
+				break;
+			}
+		}
+		GPs.clear();
+		for (int i = 0; i < NumGPs; ++i) {
+			if (!IsDegenerate[i]) {
+				if (i == DegenGPNumFull) DegenGPNum = GPs.size();
+				GPs.push_back(GPi[i]);
+			}
+		}
+		BondPointNodeNum = ClosestPtNumsToBondPt[DegenGPNumFull];
+
+		NumGPs = GPs.size();
+	}
+
+
+
+	// Maintain index numbers for each path
+	vector<unsigned int> IndexList(NumGPs, 1);
+
+	// For storing the "top" and "bottom" planes of intermediate polyhedrons
+	vector<vector<vec3> > Planes(2, vector<vec3>(NumGPs));
+
+	// Get initial plane
+	for (int i = 0; i < NumGPs; ++i) {
+		Planes[0][i] = GPs[i]->XYZAt(0);
+	}
+
+
+	double ChkDistSqr, TmpDistSqr;
+
+	/*
+	 *	Because the triangulation of each plane can change as we
+	 *	move down the GB, we need to find a triangulation to use
+	 *	throughout the entire process.
+	 *	If we're in an open system then many of the GBs will terminate
+	 *	at a threshold value of rho. In this case we can use the
+	 *	terminal plane to determine the triangulation.
+	 *	If the GB terminates at a cage CP then the process of finding
+	 *	a good plane to use for the triangulation becomes more complicated,
+	 *	so we'll just punt and use the triangulation from the halfway plane
+	 *	according to the number of points in the first GP.
+	 *
+	 *	There's a special case for GBs that terminate at a point, but it's easy to
+	 *	deal with. The triangulation
+	 *	will result in tetrahedra that can be immediately integrated rather than
+	 *	trigonal prisms.
+	 */
+
+	 /*
+	  * Check to see if the GB terminates at a point (i.e. cage CP) by
+	  * testing for degenerate terminal points.
+	  */
+	double TermCheckDist = 0.01,
+		AvgTermDist = 0.0;// (sum(GPs[0]->XYZAt(-1) == GPs[1]->XYZAt(-1)) == 3);
+	double Denom = 0.0;
+	for (int i = 0; i < GPs.size() - 1; ++i) {
+		Denom += GPs.size() - (i + 1);
+		for (int j = i + 1; j < GPs.size(); ++j) {
+			AvgTermDist += Distance(GPs[i]->XYZAt(-1), GPs[j]->XYZAt(-1));
+		}
+	}
+	AvgTermDist /= Denom;
+	bool TermAtPoint = (AvgTermDist < TermCheckDist);
+
+	vector<vector<int> > T;
+
+	if (ContainsBondPath) {
+		/*
+		 *	For a bond path coincident GB, need to use the triangulation from the polygon
+		 *	immediately after the bond point passed.
+		 *	Then the triangulation used before the bond point is the mapping of the triangulation
+		 *	from after.
+		 */
+		vector<unsigned int> TmpIndices(GPi.size(), 1);
+
+
+		vector<vec3> TmpPlane(GPi.size());
+		//  		if (TermAtPoint){
+					/*
+					*	Get the polygon triangulation immediately after the bond point is passed
+					*/
+		TmpIndices[DegenGPNum] = GPi[DegenGPNum]->RhoAt(BondPointNodeNum + 1);
+		if (!GetIsoRhoGPPoints(GPi, TmpIndices, DegenGPNum, TmpPlane, NewStepCutoffRatio, true)) {
+			TecUtilDialogErrMsg("GP(s) terminated too close to bond point rho value");
+		}
+
+		// Connect the minimum distance nodes to form the triangulation of the iso-plane
+		// after the bond point.
+
+		if (DistSqr(TmpPlane[0], TmpPlane[2]) < DistSqr(TmpPlane[1], TmpPlane[3])){
+			T2 = {
+				{ 0, 1, 2},
+				{ 0, 2, 3}
+			};
+		}
+		else{
+			T2 = {
+				{ 0, 1, 3},
+				{ 1, 2, 3}
+			};
+		}
+
+// 		T2 = TriangulatePolygon(TmpPlane);
+
+		/*
+		 * Now map the triangulation back to the degenerate GP case.
+		 * Do this by including only triangles that have an edge of degenerate nodes,
+		 * and then update those that don't, changing the degenerate indices to DegenGPNum.
+		 */
+		bool TriIsDegenerate;
+		for (auto const & t : T2) {
+			bool EdgeIsDegenerate = false;
+			for (int i = 0; i < 3 && !EdgeIsDegenerate; ++i) {
+				EdgeIsDegenerate = true;
+				for (int e = 0; e < 2; ++e) {
+					EdgeIsDegenerate = (EdgeIsDegenerate && (IsDegenerate[t[(i + e) % 3]] || t[(i + e) % 3] == DegenGPNumFull));
+				}
+			}
+			if (!EdgeIsDegenerate) {
+				T.push_back(t);
+				for (int & i : T.back()) if (IsDegenerate[i]) i = DegenGPNum;
+			}
+		}
+
+		/*
+		 *	The nondegenerate triangulation points to vertex indices of the full GP set,
+		 *	so need to update it for the reduced set.
+		 *
+		 *	First, get the offset of each vertex index.
+		 */
+
+		vector<int> IndOffsets(GPi.size(), 0);
+		int vOffset = 0;
+		for (int i = 0; i < GPi.size(); ++i) {
+			if (IsDegenerate[i]) vOffset++;
+			IndOffsets[i] = vOffset;
+		}
+		for (auto & t : T) for (int & i : t) i -= IndOffsets[i];
+	}
+	else {
+		if (TermAtPoint) {
+			vector<unsigned int> TmpIndices(NumGPs, 1);
+			TmpIndices[0] = GPs[0]->GetCount() / 2;
+			if (!GetIsoRhoGPPoints(GPs, TmpIndices, 0, Planes[1], NewStepCutoffRatio)) {
+				TecUtilDialogErrMsg("GP(s) terminated too close to halfway value of first GP (GB terminating at cage point)");
+			}
+		}
+		else {
+			for (int i = 0; i < NumGPs; ++i) {
+				Planes[1][i] = GPs[i]->XYZAt(-1);
+			}
+		}
+
+		/*
+		*	Now triangulate Planes[1].
+		*/
+// 		T = TriangulatePolygon(Planes[1]);
+		T = { {0,1,2} };
+	}
+
+#ifdef _DEBUG
+	int Iter = 0;
+	vector<vector<double> > IntValList;
+#endif
+
+	/*
+	*	Main loop
+	*/
+	while (NotTerminated) {
+		vector<vec3*> Vptr;
+		int MinGPNum = -1;
+
+
+		if (ContainsBondPath && T.size() != T2.size()) {
+			/*
+			 *	Haven't reached the bond point yet, so keep track of the old indices in case
+			 *	the bond point is reached.
+			 */
+			OldIndexList = IndexList;
+		}
+
+		ChkDistSqr = DBL_MAX;
+
+		/*
+		*	Loop over GPs to find the GP with the shortest current line segment
+		*/
+		for (int i = 0; i < NumGPs; ++i) {
+			TmpDistSqr = DistSqr(Planes[0][i], GPs[i]->XYZAt(IndexList[i]));
+			if (TmpDistSqr < ChkDistSqr) {
+				ChkDistSqr = TmpDistSqr;
+				MinGPNum = i;
+			}
+		}
+
+		/*
+			*	Get corresponding isoRho points from the rest of the GPs and update the IndexList values accordingly.
+			*/
+		NotTerminated = GetIsoRhoGPPoints(GPs, IndexList, MinGPNum, Planes[1], NewStepCutoffRatio);
+
+		/*
+		*	If end of GP has been reached then the end of all the GPs will be used.
+		*/
+		if (!NotTerminated) {
+			for (int i = 0; i < NumGPs; ++i) Planes[1][i] = GPs[i]->XYZAt(-1);
+		}
+
+		if (ContainsBondPath
+			&& NumGPs != GPi.size()
+			&& IndexList[DegenGPNum] >= BondPointNodeNum + 1) {
+			/*
+			*	The function just passed the bond point, so need to deal with
+			*	the special transition case and set things up so the rest of
+			*	the function works.
+			*
+			*	For the special case we need to switch to the post bond point triangulation
+			*	(T2) and the full set of gradient paths (GPi), and get a new set of indices
+			*	to bring the degenerate grad paths to where they need to be, since we were
+			*	working only with the degenerate grad path of lowest index up until this
+			*	iteration of the loop.
+			*
+			*	This can result in a few iterations where zero volume tetrahedra are produced,
+			*	but that's not a big deal and not worth dealing with; just let them evaluate
+			*	to a zero volume integral.
+			*/
+			GPs = GPi;
+			NumGPs = GPs.size();
+			IndexList.resize(NumGPs, 1);
+			int vi = 0;
+			for (int i = 0; i < NumGPs; ++i) {
+				if (IsDegenerate[i]) {
+					IndexList[i] = OldIndexList[DegenGPNum];
+				}
+				else {
+					IndexList[i] = OldIndexList[vi++];
+				}
+			}
+			NotTerminated = GetIsoRhoGPPoints(GPs, IndexList, MinGPNum, Planes[1], NewStepCutoffRatio, true);
+			T = T2;
+
+			/*
+			 *	Need to update Planes[0] so that the indices references in the
+			 *	original triangulation, that included all the GPs, are correct.
+			 */
+			vector<vec3> TmpPlane(NumGPs);
+			vi = 0;
+			for (int i = 0; i < NumGPs; ++i) {
+				if (IsDegenerate[i]) {
+					TmpPlane[i] = Planes[0][DegenGPNum];
+				}
+				else {
+					TmpPlane[i] = Planes[0][vi++];
+				}
+			}
+			Planes[0] = TmpPlane;
+		}
+
+
+		Vptr.reserve(Planes[0].size() + Planes[1].size());
+		for (auto & p : Planes) for (auto & v : p) Vptr.push_back(&v);
+
+
+#ifdef _DEBUG
+		// Save each plane as scatter
+		for (int i = 0; i < 2; ++i) {
+			// 			SaveVec3VecAsScatterZone(Planes[i], to_string(Iter + 1) + "Plane" + to_string(i + 1), ColorIndex_t(i % 7), { 1, 2, 3 });
+		}
+		int tColor = 0;
+#endif
+
+		for (auto const & t : T) {
+#ifdef _DEBUG
+			// Save triangle as scatter
+			vector<vec3> tv;
+			// 			for (int i = 0; i < 3; ++i) tv.push_back(Planes[1][t[i]]);
+						// 			SaveVec3VecAsScatterZone(tv, to_string(Iter + 1) + "Tri " + to_string(tColor), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+			tColor++;
+#endif
+			// 			if (ContainsBondPath && )
+						/*
+						*	Use the triangulation to form the smaller polyhedra (either prisms or tets).
+						*	Only the vertex indices will be stored, where zero through (NumGPs-1) are the Planes[1]
+						*	vertices and NumGPs through 2*NumGPs-1 are Planes[0] (so index 5 in Planes[0] would have
+						*	index 5 + NumGPs in its polyhedron.
+						*
+						*	Each edge of the triangle will become a quadrilateral face of the resulting trigonal prism.
+						*	The prism will be divided into three tetrahedra according to the vertex index-based scheme
+						*	described in https://www.researchgate.net/profile/Julien_Dompierre/publication/221561839_How_to_Subdivide_Pyramids_Prisms_and_Hexahedra_into_Tetrahedra/links/0912f509c0b7294059000000/How-to-Subdivide-Pyramids-Prisms-and-Hexahedra-into-Tetrahedra.pdf?_sg%5B0%5D=d8hb2mSqOn8bMAMT9j7qeJSmt1LQMpm6e6wYw56TZlf5zUvn6hPON0p1o70xAeqVlOlgDlxK8dFWTrc4ENeghQ.2_L7UztfcTV4BIZrkyuj8t7fW8qYHgFr845e7-9IahcCYeAa-OArmNheBT5motwFWsgIMtEI_6kx5sftMTkU9Q&_sg%5B1%5D=uepkYtIkj8JbJ7neHScBUzt8DB3aVwHkOgcXVPlgizlmEQyIDIAjT_rZtzmx_5DUSy2pJLhQsM9-kHPAIu69Z4o8z3fe2VjWQBxSn6wOhois.2_L7UztfcTV4BIZrkyuj8t7fW8qYHgFr845e7-9IahcCYeAa-OArmNheBT5motwFWsgIMtEI_6kx5sftMTkU9Q&_iepl=
+						*	Basically, the lowest index vertex has a new edge along the two quadrilateral faces in which
+						*	it appears, then the remaining quadrilateral face is split again according to the indices of
+						*	its vertices.
+						*
+						*	We'll start by adding a layer of indirection such that the prism's "first" vertex is always
+						*	the vertex of lowest index.
+						*/
+
+			vector<unsigned int> VI(6);
+			int MinCorner = INT_MAX;
+			for (int i : t) MinCorner = MIN(MinCorner, i);
+			for (int i = 0; i < 3; ++i) {
+				VI[i] = t[(MinCorner + i) % 3];
+				VI[i + 3] = VI[i] + NumGPs;
+			}
+
+#ifdef _DEBUG
+			vector<vec3> hexv;
+			// 			for (auto const & i : VI){
+			// 				int PlaneNum = (i < NumGPs ? 0 : 1);
+			// 				hexv.push_back(Planes[PlaneNum][i % NumGPs]);
+			// 			}
+			// 			SaveVec3VecAsScatterZone(hexv, to_string(Iter + 1) + "Hex " + to_string(tColor + 1), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+#endif
+
+			/*
+			*	Which of the two sets of tetrahedra will result depends entirely on the indicices
+			*	of the quadrilateral face opposite VI[0], so it's an easy code.
+			*/
+			int TetSetNum = int(MIN(VI[1], VI[5]) < MIN(VI[2], VI[4]));
+
+			/*
+			*	Now loop over the three tets to compute their integral
+			*/
+#ifdef _DEBUG
+			// for coloring tets
+			int tetColor = 0;
+#endif // _DEBUG
+
+			for (auto const & tet : IntTetInds[TetSetNum])
+			{
+
+				/*
+				*	If checking for degenerate tet points, do it here and quit if point(s) are degenerate.
+				*/
+				bool TetDegen = false;
+				// 				if (ContainsBondPath || (TermAtPoint && !NotTerminated)) {
+				for (int i = 0; i < 3 && !TetDegen; ++i) {
+					for (int j = i + 1; j < 4 && !TetDegen; ++j) {
+						if (sum(*Vptr[VI[tet[i]]] == *Vptr[VI[tet[j]]]) == 3)
+							TetDegen = true;
+					}
+				}
+				// 				}
+
+				if (TetDegen)
+					continue;
+
+				vector<unsigned int> Ind(4);
+				for (int i = 0; i < 4; ++i) Ind[i] = VI[tet[i]];
+
+#ifdef _DEBUG
+				// Save tet as scatter
+				vector<vec3> tetv;
+				for (auto const & i : tet) {
+					// 					int PlaneNum = (VI[i] < NumGPs ? 0 : 1);
+					// 					tetv.push_back(Planes[PlaneNum][VI[i] % NumGPs]);
+					tetv.push_back(*Vptr[VI[i]]);
+				}
+				// 				SaveTetVec3VecAsFEZone(tetv, to_string(Iter + 1) + " Tet " + to_string(tColor) + " " + to_string(tetColor), ColorIndex_t(tetColor % 7), { 1, 2, 3 });
+				tetColor++;
+				IntValList.push_back(IntVals);
+				int valSize = IntValList.size();
+#endif // _DEBUG
+
+				IntTet(Vptr, Ind, nPts, VarPtrs, VolInfo, IntVals);
+			}
+		}
+
+		Planes[0] = Planes[1];
+
+#ifdef _DEBUG
+		Iter++;
+		// 		if (Iter > 20) break;
+#endif
+	}
+
+	return;
+}
+
+
 void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 	vector<vector<int> > & ElemConnectivity,
 	int NumSharedCorners)
@@ -1296,10 +1768,6 @@ void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 			}
 		}
 	}
-}
-
-string GetEdgeString(int ei, int ej) {
-	return (ei < ej ? to_string(ei) + "," + to_string(ej) : to_string(ej) + "," + to_string(ei));
 }
 
 bool GetPerimeterEdges(vector<vector<int> > const & TriElems, vector<vec3> const & TriNodes, vector<vector<int> > & PerimeterEdges) {
@@ -1953,4 +2421,393 @@ else
 ClosestPoint = T1 + s * edge0 + t * edge1;
 return Distance(ClosestPoint, P);
 
+}
+
+void TriangleEdgeMidPointSubdivide(
+	vector<vec3> & nodes,
+	vector<vector<int> > & elems,
+	int TriNum,
+	vector<int> & newTriNums)
+{
+	vector<int> NewNodes(3);
+	newTriNums.resize(4);
+	newTriNums[0] = TriNum;
+	int ni = nodes.size();
+	int ti = elems.size();
+	for (int i = 0; i < 3; ++i) {
+		nodes.push_back(
+			(
+				nodes[elems[TriNum][i]]
+				+ nodes[elems[TriNum][(i + 1) % 3]]
+				) / 2.
+		);
+		NewNodes[i] = ni++;
+		newTriNums[i + 1] = ti++;
+	}
+	elems.push_back(vector<int>({ elems[TriNum][1], NewNodes[1], NewNodes[0] }));
+	elems.push_back(vector<int>({ elems[TriNum][2], NewNodes[2], NewNodes[1] }));
+	elems.push_back(NewNodes);
+	elems[TriNum] = vector<int>({ elems[TriNum][0], NewNodes[0], NewNodes[2] });
+	return;
+}
+
+
+/*
+ *	Perform midpoint subdivision for all triangular
+ *	elements that contain nodeNum.
+ */
+void TriangleMidPointSubdivide(
+	vector<vec3> & nodes,
+	vector<vector<int> > & tris,
+	vector<std::set<int> > & trisOfNode,
+	int triNum,
+	int & newNodeNum,
+	vector<int> & newTriNums,
+	vec3 * newNode = nullptr)
+{
+	newTriNums.clear();
+
+	auto t = tris[triNum];
+
+	for (auto ni : t){
+		trisOfNode[ni].erase(triNum);
+	}
+
+	newNodeNum = nodes.size();
+	if (newNode != nullptr){
+		nodes.push_back(*newNode);
+	}
+	else {
+		nodes.push_back((nodes[t[0]] + nodes[t[1]] + nodes[t[2]]) / 3.0);
+	}
+
+	newTriNums.push_back(tris.size());
+	tris.push_back({ t[0], t[1], newNodeNum });
+	newTriNums.push_back(tris.size());
+	tris.push_back({ t[1], t[2], newNodeNum });
+	newTriNums.push_back(triNum);
+	tris[triNum] = { t[2], t[0], newNodeNum };
+
+	// Update triOfNode
+	trisOfNode.resize(nodes.size());
+	for (auto const & ti : newTriNums) {
+		for (auto ni : tris[ti]) {
+			trisOfNode[ni].insert(ti);
+		}
+	}
+
+}
+
+
+/*
+ *	Perform edge midpoint subdivision for all triangular
+ *	elements that contain nodeNum.
+ */
+void TriangleEdgeMidPointSubdivideAroundNodes(
+	vector<vec3> & nodes,
+	vector<vector<int> > & tris,
+	vector<std::set<int> > & trisOfNode,
+	vector<int> const & nodeNums,
+	vector<int> & newNodeNums,
+	vector<int> & newTriNums)
+{
+	newNodeNums.clear();
+	newTriNums.clear();
+	// Get list of unique triangles, each with their edges,
+	// and unique edges, with the node index of their midpoint.
+	std::map<int, vector<std::pair<int, int> > > TriEdgeMap;
+	std::map<std::pair<int, int>, int> EdgeMidpointNodeNumMap;
+	for (auto ni : nodeNums) {
+		for (auto ti : trisOfNode[ni]) {
+			for (int ci = 0; ci < 3; ++ci) {
+				int c1 = tris[ti][ci],
+					c2 = tris[ti][(ci + 1) % 3];
+				std::pair<int, int> e(c1 < c2 ? std::make_pair(c1, c2) : std::make_pair(c2, c1));
+				TriEdgeMap[ti].push_back(e);
+				if (EdgeMidpointNodeNumMap.count(e) == 0) {
+					nodes.push_back((nodes[c1] + nodes[c2]) * 0.5);
+					newNodeNums.push_back(nodes.size() - 1);
+					EdgeMidpointNodeNumMap[e] = newNodeNums.back();
+				}
+			}
+		}
+	}
+
+	// Update tris
+	for (auto const & t : TriEdgeMap){
+		// Remove old triangle index from trisOfNode
+		for (auto ni : tris[t.first]) trisOfNode[ni].erase(t.first);
+
+		// Three new corner elements made from the existing corner
+		// and two connected edge midpoints.
+		// Existing triangle is replaced with the new midpoint nodes.
+		for (int ci = 0; ci < 3; ++ci){
+			tris.push_back({
+				tris[t.first][ci],
+				EdgeMidpointNodeNumMap[t.second[ci]],
+				EdgeMidpointNodeNumMap[t.second[(ci+2) % 3]]
+				}
+			);
+			newTriNums.push_back(tris.size() - 1);
+		}
+		for (int ci = 0; ci < 3; ++ci){
+			tris[t.first][ci] = EdgeMidpointNodeNumMap[t.second[ci]];
+		}
+		newTriNums.push_back(t.first);
+	}
+
+	// Update triOfNode
+	trisOfNode.resize(nodes.size());
+	for (auto const & ti : newTriNums){
+		for (auto ni : tris[ti]){
+			trisOfNode[ni].insert(ti);
+		}
+	}
+
+}
+
+/*
+ * Updates a spherical triangulation using a set of constraint nodes (and segments)
+ * such that the resulting spherical triangulation has nodes on each of the constraint nodes
+ * and, if constraint segments are provided, no edges that cross constraint edges.
+ */
+void UpdateSubdivideSphericalTriangulationWithConstraintNodesAndSegments(
+											vector<vec3> const & inNodes, // input sphere nodes
+											vector<vector<int> > const & inTris, // input sphere triangular elements in terms of node indices
+											vec3 const & sphereCenter,
+											double const & sphereRadius,
+											vector<vector<vec3> > & constraintNodes, // input 2d vector<vector<int>>; constraint nodes organized by segments
+											vector<vec3> & outNodes, // new sphere nodes
+											vector<vector<int> > & outTris, // new sphere elements in terms of outNodes indices
+											std::map<int, int> & outNodeConstraintNodeIndices, // indicates which constraintNode each outNode corresponds to (-1 if none or corresponds to segment)
+											std::map<int, int> & outNodeConstraintSegmentIndices) // indicates which constraint segment each outNode corresponds to (-1 if no correspondance to any constraint)
+{
+	outNodes = inNodes;
+	outTris = inTris;
+ 
+ 	/*
+ 	 *	We'll keep a reverse element list; a list of triangles
+ 	 *	for each node.
+ 	 */
+ 	vector<std::set<int> > trisOfNode(inNodes.size());
+ 	for (int ti = 0; ti < inTris.size(); ++ti){
+ 		for (auto ni : inTris[ti]){
+ 			trisOfNode[ni].insert(ti);
+ 		}
+ 	}
+
+	/*
+	 *	The segments of constraint nodes can share endpoints.
+	 *	We'll check for duplicates and only use unique constraint
+	 *	node positions.
+	 */
+	std::set<std::pair<int,int> > dupConstraintNodes;
+	bool CheckForCoincidentConstraintNodes = false;
+	for (auto const & i : constraintNodes){
+		if (i.size() > 1){
+			CheckForCoincidentConstraintNodes = true;
+			break;
+		}
+	}
+	/*
+	 	*	Check for nearly equal intersection path segment endpoints,
+	 	*	i.e. where two paths intersect.
+	 	*	These intersections should only occur at a bond-path-sphere intersection point,
+	 	*	at which there is already a constrained sphere node, so when path intersections are
+	 	*	found, move all the coincident points to the closest node on the sphere.
+	 	*/
+	if (CheckForCoincidentConstraintNodes) {
+		/*
+	 *	Get average sphere triangulation edge length so that we can
+	 *	resample intersection paths at roughly the same spacing.
+	 *	I'll do this by looping over triangles, which will double count every
+	 *	edge so the average should still be valid.
+	 */
+		double SphereEdgeLenMean = 0.0;
+		int SphereNumEdges = 0;
+		for (auto const & t : outTris) {
+			for (int i = 0; i < 3; ++i) {
+				SphereEdgeLenMean += Distance(outNodes[t[i]], outNodes[t[(i + 1) % 3]]);
+				SphereNumEdges++;
+			}
+		}
+		SphereEdgeLenMean /= (double)SphereNumEdges;
+		double CoincidentCheckEpsilon = SphereEdgeLenMean * 0.1;
+		CoincidentCheckEpsilon *= CoincidentCheckEpsilon;
+		for (int i = 0; i < constraintNodes.size() - 1; ++i) {
+			vector<std::pair<int, int> > CoincidentPointIndices;
+			for (int j = i + 1; j < constraintNodes.size(); ++j) {
+				if (DistSqr(constraintNodes[i][0], constraintNodes[j][0]) <= CoincidentCheckEpsilon) {
+					CoincidentPointIndices.push_back(std::make_pair(i, 0));
+					CoincidentPointIndices.push_back(std::make_pair(j, 0));
+				}
+				else if (DistSqr(constraintNodes[i][0], constraintNodes[j].back()) <= CoincidentCheckEpsilon) {
+					CoincidentPointIndices.push_back(std::make_pair(i, 0));
+					CoincidentPointIndices.push_back(std::make_pair(j, constraintNodes[j].size() - 1));
+				}
+				else if (DistSqr(constraintNodes[i].back(), constraintNodes[j][0]) <= CoincidentCheckEpsilon) {
+					CoincidentPointIndices.push_back(std::make_pair(i, constraintNodes[i].size() - 1));
+					CoincidentPointIndices.push_back(std::make_pair(j, 0));
+				}
+				else if (DistSqr(constraintNodes[i].back(), constraintNodes[j].back()) <= CoincidentCheckEpsilon) {
+					CoincidentPointIndices.push_back(std::make_pair(i, constraintNodes[i].size() - 1));
+					CoincidentPointIndices.push_back(std::make_pair(j, constraintNodes[j].size() - 1));
+				}
+			}
+
+			if (CoincidentPointIndices.size() > 0) {
+				int SphereNodeNum = -1;
+				for (auto const & p : CoincidentPointIndices) {
+					dupConstraintNodes.insert(p);
+					double MinNodeDistSqr = DBL_MAX;
+					double TmpNodeDistSqr;
+					int MinNodeIndex = -1;
+					for (int ni = 0; ni < outNodes.size(); ++ni) {
+						TmpNodeDistSqr = DistSqr(constraintNodes[p.first][p.second], outNodes[ni]);
+						if (TmpNodeDistSqr < MinNodeDistSqr) {
+							MinNodeDistSqr = TmpNodeDistSqr;
+							MinNodeIndex = ni;
+						}
+					}
+					if (MinNodeIndex >= 0) {
+						// 					if (SphereNodeNum >= 0){
+						// 						if (SphereNodeNum != MinNodeIndex) {
+						// 							TecUtilDialogErrMsg("Coincident intersection path endpoints do not share same closest sphere node!");
+						// 						}
+						// 					}
+						// 					else{
+						// 						SphereNodeNum = MinNodeIndex;
+						// 					}
+						constraintNodes[p.first][p.second] = outNodes[MinNodeIndex];
+					}
+				}
+			}
+		}
+	}
+ 
+ 	/*
+ 	 *	First match constraintNodes to closest inNodes.
+ 	 *	We'll loop over inNodes for each constraintNode to
+ 	 *	find the minimum Euclidean distance.
+ 	 *	If a single inNode is the closest node for two or more
+ 	 *	constraintNodes, then subdivide all the triangles
+ 	 *	it's a part of.
+ 	 *	We'll store which constraintNode each sphere node
+ 	 *	was closest to so that we can recheck all of the 
+ 	 *	constraintNodes the sphere node was closest to
+ 	 *	after subdividing.
+ 	 */
+ 	std::queue<std::pair<int,int> > checkConstraintSegNodeNums;
+ 	for (int segNum = 0; segNum < constraintNodes.size(); ++segNum) {
+ 		for (int nodeNum = 0; nodeNum < constraintNodes[segNum].size(); ++nodeNum) {
+			std::pair<int, int> p(segNum, nodeNum);
+ 			checkConstraintSegNodeNums.push(p);
+ 		}
+ 	}
+
+ 	while (!checkConstraintSegNodeNums.empty()){
+ 		auto c = constraintNodes[checkConstraintSegNodeNums.front().first][checkConstraintSegNodeNums.front().second];
+ 
+ 		//  Get closest sphere node
+ 		double MinDistSqr = DBL_MAX, TmpDistSqr;
+ 		int minI = -1;
+ 		for (int ni = 0; ni < outNodes.size(); ++ni) {
+ 			TmpDistSqr = DistSqr(c, outNodes[ni]);
+ 			if (TmpDistSqr < MinDistSqr) {
+ 				minI = ni;
+ 				MinDistSqr = TmpDistSqr;
+ 			}
+ 		}
+ 		if (minI >= 0) {
+ 			if (outNodeConstraintNodeIndices.count(minI) > 0 && dupConstraintNodes.count(checkConstraintSegNodeNums.front()) == 0) {
+ 				// Sphere node is closest to two or more, so subdivide elements of node
+// 				vector<int> newNodeNums;
+// 				TriangleEdgeMidPointSubdivideAroundNodes(outNodes, outTris, trisOfNode, { minI }, newNodeNums, vector<int>());
+// 
+// 				// Project new points back to sphere radius
+//  				for (auto ni : newNodeNums){
+// 					outNodes[ni] = sphereCenter + normalise(outNodes[ni] - sphereCenter) * sphereRadius;
+//  				}
+
+				int triNum, newNodeNum;
+				MinDistSqr = DBL_MAX;
+				for (auto ti : trisOfNode[minI]) {
+					TmpDistSqr = DistSqr(c, (outNodes[outTris[ti][0]] + outNodes[outTris[ti][1]] + outNodes[outTris[ti][2]]) / 3.0);
+					if (TmpDistSqr < MinDistSqr){
+						MinDistSqr = TmpDistSqr;
+						triNum = ti;
+					}
+				}
+
+				TriangleMidPointSubdivide(outNodes, outTris, trisOfNode, triNum, newNodeNum, vector<int>(), &c);
+				outNodes[newNodeNum] = sphereCenter + normalise(outNodes[newNodeNum] - sphereCenter) * sphereRadius;
+ 
+ 				// Add both constraint nodes close to sphere node back onto queue
+ 				checkConstraintSegNodeNums.push(std::make_pair(outNodeConstraintSegmentIndices[minI],outNodeConstraintNodeIndices[minI]));
+//  				checkConstraintSegNodeNums.push(checkConstraintSegNodeNums.front());
+ 
+				// Reset constraint node index for sphere node
+				outNodeConstraintNodeIndices.erase(minI);
+				outNodeConstraintSegmentIndices.erase(minI);
+ 			}
+ 			else {
+ 				outNodeConstraintSegmentIndices[minI] = checkConstraintSegNodeNums.front().first;
+ 				outNodeConstraintNodeIndices[minI] = checkConstraintSegNodeNums.front().second;
+ 			}
+ 		}
+ 
+ 		checkConstraintSegNodeNums.pop();
+ 	}
+
+	// Now for constraint node move the closest sphere node to it
+//  	for (int ni = 0; ni < outNodes.size(); ++ni){
+// 		if (outNodeConstraintNodeIndices.count(ni) > 0) {
+// 			outNodes[ni] = constraintNodes[outNodeConstraintSegmentIndices[ni]][outNodeConstraintNodeIndices[ni]];
+// 		}
+//  	}
+
+	std::map<int, int>::const_iterator ni, si = outNodeConstraintSegmentIndices.cbegin();
+	for (ni = outNodeConstraintNodeIndices.cbegin(); ni != outNodeConstraintNodeIndices.cend(); ++ni){
+		outNodes[ni->first] = constraintNodes[si->second][ni->second];
+		si++;
+	}
+}
+
+void TriangulatedSphereJiggleMesh(vector<vec3> & Nodes,
+	vector<std::set<int> > const & NodeConnectivity,
+	vector<bool> const & NodeIsConstrained,
+	vec3 const & SphereCenter,
+	double const & SphereRadius)
+{
+	vector<vec3> OldNodes = Nodes;
+
+	int NumNodes = OldNodes.size();
+#pragma omp parallel for
+	for (int ni = 0; ni < NumNodes; ++ni) {
+		if (!NodeIsConstrained[ni]) {
+			vec3 MidPt = zeros(3);
+			for (auto nj : NodeConnectivity[ni])
+				MidPt += OldNodes[nj];
+
+			MidPt /= (double)NodeConnectivity[ni].size();
+			MidPt = SphereCenter + normalise(MidPt - SphereCenter) * SphereRadius;
+			Nodes[ni] = MidPt;
+		}
+	}
+}
+
+void GetMeshNodeConnectivity(vector<vector<int> > const & Elems,
+	int NumNodes,
+	vector<std::set<int> > & NodeConnectivity)
+{
+	NodeConnectivity.clear();
+	NodeConnectivity.resize(NumNodes);
+
+	for (auto const & e : Elems){
+		for (int ci = 0; ci < e.size(); ++ci){
+			for (int cj = 1; cj <= 2; ++cj){
+				NodeConnectivity[e[ci]].insert(e[(ci + cj) % e.size()]);
+			}
+		}
+	}
 }

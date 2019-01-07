@@ -128,9 +128,9 @@ void BuildTab3_1(LgIndex_t  Parent)
                                         296,
                                  "log",
                                  "linear",
-                                 (char *)NULL,
-                                 (char *)NULL,
-                                 (char *)NULL,
+                                 (char *)nullptr,
+                                 (char *)nullptr,
+                                 (char *)nullptr,
                                  RBLogLin_RADIO_T3_1_CB);
 
   RBCntSrc_RADIO_T3_1 = TecGUIRadioBoxAdd(Tab3_1Manager,
@@ -140,9 +140,9 @@ void BuildTab3_1(LgIndex_t  Parent)
                                         296,
                                  "selected",
                                  "all",
-                                 (char *)NULL,
-                                 (char *)NULL,
-                                 (char *)NULL,
+                                 (char *)nullptr,
+                                 (char *)nullptr,
+                                 (char *)nullptr,
                                  RBCntSrc_RADIO_T3_1_CB);
 
   LBLCntSrc_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
@@ -335,9 +335,9 @@ void BuildTab1_1(LgIndex_t  Parent)
                                          296,
                                  "Absolute",
                                  "Fraction of min CP dist.",
-                                 (char *)NULL,
-                                 (char *)NULL,
-                                 (char *)NULL,
+                                 (char *)nullptr,
+                                 (char *)nullptr,
+                                 (char *)nullptr,
                                  RBRadMode_RADIO_T1_1_CB);
 
   TFCutoff_TF_T1_1 = TecGUITextFieldAdd(Tab1_1Manager,
@@ -444,7 +444,7 @@ void BuildDialog1(LgIndex_t  ParentDialog)
                                              "Gradient Bundle Analysis",
                                              Dialog1Init_CB,
                                              Dialog1CloseButton_CB,
-                                             NULL)
+                                             nullptr)
 ;  TAB1_TB_D1 = TecGUITabAdd(Dialog1Manager,
                           54,
                           182,

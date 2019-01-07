@@ -14,7 +14,7 @@
 
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_CRIT_POINTS.h"
-#include "CSM_GUI.h"
+#include "CSM_GBAGUI.h"
 
 using std::vector;
 using std::string;
@@ -86,17 +86,17 @@ vec3 GetCoordsFromListItem(LgIndex_t ItemIndex,
 	string ItemName = ItemString.substr(0, ItemString.find_last_of(' '));
 	ItemNum = stoi(ItemString.substr(ItemString.find_last_of(' '), ItemString.length()));
 
-	if (ItemFullString != NULL)
+	if (ItemFullString != nullptr)
 		*ItemFullString = ItemString;
-	if (ItemNameString != NULL)
+	if (ItemNameString != nullptr)
 		*ItemNameString = ItemName;
-	if (ItemNumber != NULL)
+	if (ItemNumber != nullptr)
 		*ItemNumber = ItemNum;
 
 	EntIndex_t ItemZoneNum = -1;
 	
 	if (SearchVectorForString(CPNameList, ItemName) >= 0 && ItemName.find_first_of(' ') == string::npos){
-		if (IsCP != NULL)
+		if (IsCP != nullptr)
 			*IsCP = true;
 		ItemZoneNum = ZoneNumByName(string("Critical Points"));
 		EntIndex_t CPVarNum = VarNumByName(string("CritPointType"));
@@ -104,7 +104,7 @@ vec3 GetCoordsFromListItem(LgIndex_t ItemIndex,
 		int Ranks[4] = { -3, -1, 1, 3 };
 		LgIndex_t IJK[3];
 		vector<int> NumCPs;
-		if (NumberOfCPs != NULL && NumberOfCPs->size() == 4)
+		if (NumberOfCPs != nullptr && NumberOfCPs->size() == 4)
 			NumCPs = *NumberOfCPs;
 		else{
 			NumCPs = { 0, 0, 0, 0 };
@@ -113,7 +113,7 @@ vec3 GetCoordsFromListItem(LgIndex_t ItemIndex,
 					NumCPs[i] = stoi(AuxDataZoneGetItem(ItemZoneNum, CCDataNumCPs[i]));
 				}
 			}
-			if (NumberOfCPs != NULL)
+			if (NumberOfCPs != nullptr)
 				*NumberOfCPs = NumCPs;
 		}
 
@@ -129,7 +129,7 @@ vec3 GetCoordsFromListItem(LgIndex_t ItemIndex,
 		}
 	}
 	else{
-		if (IsCP != NULL)
+		if (IsCP != nullptr)
 			*IsCP = false;
 		for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones() && ItemZoneNum < 0; ++ZoneNum){
 			char* ZoneNameCStr;
@@ -143,7 +143,7 @@ vec3 GetCoordsFromListItem(LgIndex_t ItemIndex,
 		}
 	}
 
-	if (ZoneNumber != NULL)
+	if (ZoneNumber != nullptr)
 		*ZoneNumber = ItemZoneNum;
 
 	EntIndex_t XYZVarNums[3] = { -1, -1, -1 };

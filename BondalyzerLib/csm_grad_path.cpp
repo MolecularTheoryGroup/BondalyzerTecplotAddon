@@ -124,12 +124,12 @@ GradPathBase_c::GradPathBase_c(EntIndex_t ZoneNum,
 		TecUtilLockFinish(AddOnID);
 		return;
 	}
-	if (!TecUtilZoneIsActive(ZoneNum)){
-		Set_pa TmpSet = TecUtilSetAlloc(FALSE);
-		TecUtilSetAddMember(TmpSet, ZoneNum, FALSE);
-		TecUtilZoneSetActive(TmpSet, AssignOp_PlusEquals);
-		TecUtilSetDealloc(&TmpSet);
-	}
+// 	if (!TecUtilZoneIsActive(ZoneNum)){
+// 		Set_pa TmpSet = TecUtilSetAlloc(FALSE);
+// 		TecUtilSetAddMember(TmpSet, ZoneNum, FALSE);
+// 		TecUtilZoneSetActive(TmpSet, AssignOp_PlusEquals);
+// 		TecUtilSetDealloc(&TmpSet);
+// 	}
 
 	LgIndex_t MaxIJK[3];
 	TecUtilZoneGetIJK(ZoneNum, &MaxIJK[0], &MaxIJK[1], &MaxIJK[2]);
@@ -245,26 +245,36 @@ GradPathBase_c & GradPathBase_c::operator+=(GradPathBase_c const & rhs)
 			MinPair = 4;
 		}
 
+		int offset = 0; // used to 
+
 		switch (MinPair){
 			case 1:
-				m_XYZList.insert(m_XYZList.end(), rhs.m_XYZList.cbegin(), rhs.m_XYZList.cend());
-				m_RhoList.insert(m_RhoList.end(), rhs.m_RhoList.cbegin(), rhs.m_RhoList.cend());
+				if (approx_equal(this->XYZAt(-1), rhs.XYZAt(0), "absdiff", 0.01)) 
+					offset = 1;
+				m_XYZList.insert(m_XYZList.end(), rhs.m_XYZList.cbegin() + offset, rhs.m_XYZList.cend());
+				m_RhoList.insert(m_RhoList.end(), rhs.m_RhoList.cbegin() + offset, rhs.m_RhoList.cend());
 				m_StartEndCPNum[1] = rhs.m_StartEndCPNum[1];
 				break;
 			case 2:
-				m_XYZList.insert(m_XYZList.end(), rhs.m_XYZList.crbegin(), rhs.m_XYZList.crend());
-				m_RhoList.insert(m_RhoList.end(), rhs.m_RhoList.crbegin(), rhs.m_RhoList.crend());
+				if (approx_equal(this->XYZAt(-1), rhs.XYZAt(-1), "absdiff", 0.01))
+					offset = 1;
+				m_XYZList.insert(m_XYZList.end(), rhs.m_XYZList.crbegin() + offset, rhs.m_XYZList.crend());
+				m_RhoList.insert(m_RhoList.end(), rhs.m_RhoList.crbegin() + offset, rhs.m_RhoList.crend());
 				m_StartEndCPNum[1] = rhs.m_StartEndCPNum[0];
 				break;
 			case 3:
-				m_XYZList.insert(m_XYZList.begin(), rhs.m_XYZList.crbegin(), rhs.m_XYZList.crend());
-				m_RhoList.insert(m_RhoList.begin(), rhs.m_RhoList.crbegin(), rhs.m_RhoList.crend());
+				if (approx_equal(this->XYZAt(0), rhs.XYZAt(-1), "absdiff", 0.01))
+					offset = 1;
+				m_XYZList.insert(m_XYZList.begin(), rhs.m_XYZList.crbegin() + offset, rhs.m_XYZList.crend());
+				m_RhoList.insert(m_RhoList.begin(), rhs.m_RhoList.crbegin() + offset, rhs.m_RhoList.crend());
 				m_StartEndCPNum[0] = m_StartEndCPNum[1];
 				m_StartEndCPNum[1] = rhs.m_StartEndCPNum[1];
 				break;
 			case 4:
-				m_XYZList.insert(m_XYZList.begin(), rhs.m_XYZList.cbegin(), rhs.m_XYZList.cend());
-				m_RhoList.insert(m_RhoList.begin(), rhs.m_RhoList.cbegin(), rhs.m_RhoList.cend());
+				if (approx_equal(this->XYZAt(0), rhs.XYZAt(0), "absdiff", 0.01))
+					offset = 1;
+				m_XYZList.insert(m_XYZList.begin(), rhs.m_XYZList.cbegin() + offset, rhs.m_XYZList.cend());
+				m_RhoList.insert(m_RhoList.begin(), rhs.m_RhoList.cbegin() + offset, rhs.m_RhoList.cend());
 				m_StartEndCPNum[0] = m_StartEndCPNum[1];
 				m_StartEndCPNum[1] = rhs.m_StartEndCPNum[0];
 				break;
@@ -303,13 +313,8 @@ double GradPathBase_c::GetLength() {
 }
 
 GradPathBase_c GradPathBase_c::SubGP(int BegPt, int EndPt) const{
-	if (0 > EndPt || EndPt >= m_NumGPPoints)
-		EndPt = m_NumGPPoints - 1;
-	if (0 > BegPt)
-		BegPt = 0;
-	else if (BegPt > EndPt)
-		BegPt = EndPt;
-	REQUIRE(0 <= BegPt && BegPt <= EndPt && EndPt < m_NumGPPoints);
+	BegPt = GetInd(BegPt);
+	EndPt = GetInd(EndPt);
 
 	GradPathBase_c Out = *this;
 	Out.m_XYZList.assign(m_XYZList.begin() + BegPt, m_XYZList.begin() + EndPt + 1);
@@ -496,6 +501,32 @@ GradPathBase_c & GradPathBase_c::ConcatenateResample(GradPathBase_c & rhs, int N
 	Concatenate(NewRHS);
 
 	return *this;
+}
+
+GradPath_c ConcatenateResample(vector<GradPath_c> GPList, int NumPoints)
+{
+	vector<double> LenghtList;
+	vector<int> NumPointsList;
+	for (auto gp : GPList)	LenghtList.push_back(gp.GetLength());
+
+	double TotalLength = 0.0;
+	for (auto l : LenghtList) TotalLength += l;
+
+	for (int li = 0; li < LenghtList.size() - 1; ++li)
+		NumPointsList.push_back(LenghtList[li] / TotalLength * double(NumPoints));
+
+	int TotNumPoints = 0;
+	for (auto n : NumPointsList) TotNumPoints += n;
+	NumPointsList.push_back(NumPoints - TotNumPoints);
+
+	GradPath_c GP = GPList[0];
+	GP.Resample(NumPointsList[0]);
+	for (int i = 1; i < GPList.size(); ++i){
+		GPList[i].Resample(NumPointsList[i]);
+		GP += GPList[i];
+	}
+
+	return GP;
 }
 
 
@@ -705,7 +736,7 @@ EntIndex_t GradPathBase_c::SaveAsOrderedZone(string const & ZoneName,
 
 			if (VarDataTypes.size() == TecUtilDataSetGetNumVars())
 				IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), GetCount(), 1, 1, ZoneType_Ordered, VarDataTypes.data());
-			else IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), GetCount(), 1, 1, ZoneType_Ordered, NULL);
+			else IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), GetCount(), 1, 1, ZoneType_Ordered, nullptr);
 
 			if (IsOk){
 				m_ZoneNum = TecUtilDataSetGetNumZones();
@@ -984,19 +1015,19 @@ Boolean_t GradPath_c::SetupGradPath(vec3 const & StartPoint,
 	m_ODE_Data.Direction = Direction;
 	m_HowTerminate = HowTerminate;
 
-	if (TermPoint != NULL)
+	if (TermPoint != nullptr)
 		m_TermPoint = *TermPoint;
-	if (TermPointRadius != NULL)
+	if (TermPointRadius != nullptr)
 		m_TermPointRadiusSqr = (*TermPointRadius * *TermPointRadius);
 
-	m_CPs = NULL;
+	m_CPs = nullptr;
 
 	m_CPXYZPtrs = CPXYZPtrs;
 
-	if (NumCPs != NULL)
+	if (NumCPs != nullptr)
 		m_NumCPs = *NumCPs;
 
-	if (TermValue != NULL)
+	if (TermValue != nullptr)
 		m_TermValue = *TermValue;
 
 	m_ODE_Data.VolZoneInfo.MaxIJK = MaxIJK;
@@ -1021,11 +1052,11 @@ Boolean_t GradPath_c::SetupGradPath(vec3 const & StartPoint,
 
 	if (m_GradPathReady){
 		if (HowTerminate == GPTerminate_AtPoint || HowTerminate == GPTerminate_AtPointRadius)
-			m_GradPathReady = (TermPoint != NULL && TermPointRadius != NULL);
+			m_GradPathReady = (TermPoint != nullptr && TermPointRadius != nullptr);
 		else if (HowTerminate == GPTerminate_AtRhoValue)
-			m_GradPathReady = (TermValue != NULL);
+			m_GradPathReady = (TermValue != nullptr);
 		else if (HowTerminate == GPTerminate_AtCP || m_HowTerminate == GPTerminate_AtCPRadius){
-			m_GradPathReady = (CPXYZPtrs.size() == 3 && TermPointRadius != NULL && NumCPs != NULL);
+			m_GradPathReady = (CPXYZPtrs.size() == 3 && TermPointRadius != nullptr && NumCPs != nullptr);
 			if (m_GradPathReady){
 				for (int i = 0; i < 3 && m_GradPathReady; ++i){
 					m_GradPathReady = CPXYZPtrs[i].IsReady();
@@ -1069,9 +1100,9 @@ Boolean_t GradPath_c::SetupGradPath(vec3 const & StartPoint,
 	m_HowTerminate = HowTerminate;
 	m_GPType = GPType;
 
-	if (TermPoint != NULL)
+	if (TermPoint != nullptr)
 		m_TermPoint = *TermPoint;
-	if (TermPointRadius != NULL)
+	if (TermPointRadius != nullptr)
 		m_TermPointRadiusSqr = (*TermPointRadius * *TermPointRadius);
 
 	m_NumCPs = -1;
@@ -1079,7 +1110,7 @@ Boolean_t GradPath_c::SetupGradPath(vec3 const & StartPoint,
 	m_CPs = CPs;
 	m_Surface = Surf;
 
-	if (TermValue != NULL)
+	if (TermValue != nullptr)
 		m_TermValue = *TermValue;
 
 	m_ODE_Data.VolZoneInfo = VolInfo;
@@ -1106,11 +1137,11 @@ Boolean_t GradPath_c::SetupGradPath(vec3 const & StartPoint,
 
 	if (m_GradPathReady){
 		if (HowTerminate == GPTerminate_AtPoint || HowTerminate == GPTerminate_AtPointRadius)
-			m_GradPathReady = (TermPoint != NULL && TermPointRadius != NULL);
+			m_GradPathReady = (TermPoint != nullptr && TermPointRadius != nullptr);
 		else if (HowTerminate == GPTerminate_AtRhoValue)
-			m_GradPathReady = (TermValue != NULL);
+			m_GradPathReady = (TermValue != nullptr);
 		else if (HowTerminate == GPTerminate_AtCP || m_HowTerminate == GPTerminate_AtCPRadius){
-			m_GradPathReady = (m_CPs != NULL && TermPointRadius != NULL && m_CPs->NumCPs() > 0);
+			m_GradPathReady = (m_CPs != nullptr && TermPointRadius != nullptr && m_CPs->NumCPs() > 0);
 			if (m_GradPathReady) m_NumCPs = m_CPs->NumCPs();
 		}
 	}
@@ -1140,8 +1171,10 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 	gsl_odeiv2_step_type const * T = gsl_odeiv2_step_bsimp;
 // 	gsl_odeiv2_step_type const * T = gsl_odeiv2_step_msbdf;
 	gsl_odeiv2_step * s = gsl_odeiv2_step_alloc(T, m_ODE_NumDims);
-	gsl_odeiv2_control * c = gsl_odeiv2_control_y_new(1e-12, 1e-12);
+	gsl_odeiv2_control * c = gsl_odeiv2_control_y_new(1e-7, 1e-9);
 	gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc(m_ODE_NumDims);
+
+
 
 	// 	gsl_odeiv2_driver * ODEDriver;
 	// 	ODEDriver = gsl_odeiv2_driver_alloc_yp_new(&ODESys, gsl_odeiv2_step_rk2, 1e-3, 1e-2, 0);
@@ -1159,7 +1192,7 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 		int SurfLastProjectedElem = -1;
 		bool SurfProjectionFound;
 
-		if (m_Surface != NULL && m_Surface->IsMade()){
+		if (m_Surface != nullptr && m_Surface->IsMade()){
 			if (!m_Surface->ProjectPointToSurface(y, m_StartPoint, SurfLastProjectedElem, SurfProjectionFound)){
 				TecUtilDialogErrMsg("Projection of point to FESurface failed");
 			}
@@ -1226,7 +1259,7 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 			Status = gsl_odeiv2_evolve_apply(e, c, s, &ODESys, &tInit, tFinal, &h, y);
 
 			if (Status == GSL_SUCCESS || Status == GSL_EDOM){
-				if (m_Surface != NULL && m_Surface->IsMade()) {
+				if (m_Surface != nullptr && m_Surface->IsMade()) {
 					if (!m_Surface->ProjectPointToSurface(y, PtI, SurfLastProjectedElem, SurfProjectionFound)) {
 						TecUtilDialogErrMsg("Projection of point to FESurface failed");
 					}
@@ -1347,11 +1380,16 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 				}
 				else if (m_HowTerminate == GPTerminate_AtCP || m_HowTerminate == GPTerminate_AtCPRadius){
 					Boolean_t PointFound = FALSE;
-					if (m_CPs == NULL){
+					if (m_CPs == nullptr){
 						for (int CPNum = 0; CPNum < m_NumCPs && !PointFound; ++CPNum){
 							if (CPNum != m_StartEndCPNum[0]){
-								for (int i = 0; i < 3; ++i){
-									NewPoint[i] = m_CPXYZPtrs[i][CPNum];
+								if (m_CPXYZPtrs.size() == 3) {
+									for (int i = 0; i < 3; ++i) {
+										NewPoint[i] = m_CPXYZPtrs[i][CPNum];
+									}
+								}
+								else{
+									NewPoint = m_CPs->GetXYZ(CPNum);
 								}
 								double PointRadiusSqr = DistSqr(PtI, NewPoint);
 								if (PointRadiusSqr <= m_TermPointRadiusSqr){
@@ -1402,16 +1440,20 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 // 								}
 // 							}
 // 						}
-						for (auto const & SaddleTypeNum : CPSaddleTypeNums){
-							for (int SaddleCPNum = 0; SaddleCPNum < m_CPs->NumCPs(SaddleTypeNum) && !PointFound; ++SaddleCPNum){
-								int TotCPNum = m_CPs->GetTotOffsetFromTypeNumOffset(SaddleTypeNum, SaddleCPNum);
+						for (auto const & CPTypeNum : CPNearFieldTypes) {
+							double CheckRadiusSqr = m_TermPointRadiusSqr;
+// 							if (m_HowTerminate != GPTerminate_AtCPRadius && CPTypeNum == CPTypeNum_Nuclear) {
+// 								CheckRadiusSqr = 4 * sqrt(m_TermPointRadiusSqr);
+// 								CheckRadiusSqr *= CheckRadiusSqr;
+// 							}
+							for (int CPNum = 0; CPNum < m_CPs->NumCPs(CPTypeNum) && !PointFound; ++CPNum){
+								int TotCPNum = m_CPs->GetTotOffsetFromTypeNumOffset(CPTypeNum, CPNum);
 								if (TotCPNum != m_StartEndCPNum[0]){
-									NewPoint = m_CPs->GetXYZ(SaddleTypeNum, SaddleCPNum);
+									NewPoint = m_CPs->GetXYZ(CPTypeNum, CPNum);
 									double PointRadiusSqr = DistSqr(PtI, NewPoint);
-									if (PointRadiusSqr <= m_TermPointRadiusSqr){
+									if (PointRadiusSqr <= CheckRadiusSqr){
 										if (m_HowTerminate == GPTerminate_AtCPRadius){
 											double OldRadius = Distance(PtIm1, NewPoint);
-
 											NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (sqrt(PointRadiusSqr) - OldRadius));
 										}
 
@@ -1501,9 +1543,9 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 		gsl_odeiv2_control_free(c);
 		gsl_odeiv2_step_free(s);
 
-		if (m_GPType && MR.s != NULL)
+		if (m_GPType && MR.s != nullptr)
 			gsl_multiroot_fdfsolver_free(MR.s);
-		// 	if (m_GPType && MR.pos != NULL)
+		// 	if (m_GPType && MR.pos != nullptr)
 		// 		gsl_vector_free(MR.pos);
 
 		if (m_StartEndCPNum[1] < 0 && (m_HowTerminate == GPTerminate_AtCP || m_HowTerminate == GPTerminate_AtCPRadius)){
@@ -1513,9 +1555,14 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 			Boolean_t PointFound = FALSE;
 			for (int CPNum = 0; CPNum < m_NumCPs && !PointFound; ++CPNum){
 				if (CPNum != m_StartEndCPNum[0]){
-					if (m_CPs == NULL){
-						for (int i = 0; i < 3; ++i){
-							NewPoint[i] = m_CPXYZPtrs[i][CPNum];
+					if (m_CPs == nullptr){
+						if (m_CPXYZPtrs.size() == 3) {
+							for (int i = 0; i < 3; ++i) {
+								NewPoint[i] = m_CPXYZPtrs[i][CPNum];
+							}
+						}
+						else{
+							NewPoint = m_CPs->GetXYZ(CPNum);
 						}
 					}
 					else{
@@ -1555,11 +1602,13 @@ Boolean_t GradPath_c::Seed(bool const DoResample){
 		for (int i = 0; i < 2 && IsOk; ++i){
 			GPs[i].SetStartEndCPNum(-1, 0);
 			IsOk = GPs[i].SeedInDirection((StreamDir_e)i);
-			for (int j = 0; j < 2; ++j)
-			if (GPs[i].m_StartEndCPNum[j] >= 0 && VectorGetElementNum(EndCPNums, GPs[i].m_StartEndCPNum[j]) < 0)
-				EndCPNums.push_back(GPs[i].m_StartEndCPNum[j]);
-			*this += GPs[i];
+			for (int j = 0; j < 2; ++j) {
+				if (GPs[i].m_StartEndCPNum[j] >= 0 && VectorGetElementNum(EndCPNums, GPs[i].m_StartEndCPNum[j]) < 0)
+					EndCPNums.push_back(GPs[i].m_StartEndCPNum[j]);
+			}
+// 			*this += GPs[i];
 		}
+		*this = GPs[0] + GPs[1];
 		std::sort(EndCPNums.begin(), EndCPNums.end());
 		for (int i = 0; i < 2 - EndCPNums.size(); ++i) EndCPNums.push_back(-1);
 		m_StartEndCPNum[0] = EndCPNums.size() > 1 ? EndCPNums[1] : -1;
@@ -1574,7 +1623,18 @@ Boolean_t GradPath_c::Seed(bool const DoResample){
 }
 
 
+Boolean_t GradPath_c::ReinterpolateRhoValuesFromVolume(VolExtentIndexWeights_s * VolInfo){
+	if (!m_ODE_Data.RhoPtr.IsReady())
+		return FALSE;
 
+	if (VolInfo != nullptr)
+		m_ODE_Data.VolZoneInfo = *VolInfo;
+	for (int i = 0; i < m_XYZList.size(); ++i){
+		m_RhoList[i] = ValAtPointByPtr(m_XYZList[i], m_ODE_Data.VolZoneInfo, m_ODE_Data.RhoPtr);
+	}
+
+	return TRUE;
+}
 
 /*
 *	Private Methods
@@ -1632,7 +1692,7 @@ int GP_ODE_Gradient(double t, double const pos[], double dydt[], void* params)
 			}
 		}
 		else{
-			CalcGradForPoint(TmpVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, NULL);
+			CalcGradForPoint(TmpVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, nullptr);
 		}
 
 		if (ODE_Data->Direction == StreamDir_Reverse)
@@ -1687,10 +1747,10 @@ int GP_ODE_Jacobian(double t, double const pos[], double *dfdy, double dydt[], v
 			}
 		}
 		else{
-			CalcGradForPoint(PosVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, NULL);
+			CalcGradForPoint(PosVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, 0, ODE_Data->VolZoneInfo.IsPeriodic, TmpGrad, ODE_Data->RhoPtr, GPType_Invalid, nullptr);
 		}
 
-		CalcHessForPoint(PosVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, ODE_Data->VolZoneInfo.IsPeriodic, JacMat, ODE_Data->RhoPtr, GPType_Classic, NULL);
+		CalcHessForPoint(PosVec, ODE_Data->VolZoneInfo.DelXYZ, ODE_Data->VolZoneInfo, ODE_Data->VolZoneInfo.BasisNormalized, ODE_Data->VolZoneInfo.IsPeriodic, JacMat, ODE_Data->RhoPtr, GPType_Classic, nullptr);
 
 		for (int i = 0; i < 3; ++i)
 			dydt[i] = TmpGrad[i];
@@ -2123,4 +2183,50 @@ void StitchCapPaths(
 			}
 		}
 	}
+}
+
+bool GradPathBase_c::GetSphereIntersectionPoint(vec3 const & Center, double const & Radius, vec3 & IntersectionPoint) const{
+	if (!this->IsMade()) {
+		TecUtilDialogErrMsg("Unmade gradient path being checked for sphere intersection");
+		return false;
+	}
+	/*
+	 *	Since this is a check for intersection now with an arbitrary sphere, but
+	 *	one with a nuclear CP at its center, any gradient path can intersect at most one time.
+	 *	First verify that the path as a whole intersects the sphere (i.e. one end lies within
+	 *	the radius).
+	 */
+
+	double RadSqr = Radius * Radius;
+	double BegDistSqr = DistSqr(Center, this->XYZAt(0)),
+		EndDistSqr = DistSqr(Center, this->XYZAt(-1));
+
+	if ((BegDistSqr < RadSqr && EndDistSqr < RadSqr)
+		|| (BegDistSqr >= RadSqr && EndDistSqr >= RadSqr))
+		return false;
+
+	/*
+	 *	Binary search on the grad path to find the point just inside the radius.
+	 */
+	int L = 0, R = this->m_XYZList.size() - 1, M;
+	double TmpDistSqr;
+	while (L != R){
+		M = ceil(double(L + R) * 0.5);
+		TmpDistSqr = DistSqr(Center, this->XYZAt(M));
+		if (TmpDistSqr < RadSqr)
+			R = M - 1;
+		else
+			L = M;
+	}
+	/*
+	 *	Now m_XYZList[L] is just inside the radius, so interpolate
+	 *	to get the intersection point.
+	 */
+	double LDist = Distance(Center, this->XYZAt(L)),
+		RDist = Distance(Center, this->XYZAt(L + 1)),
+		Ratio = (Radius - LDist) / (RDist - LDist);
+
+	IntersectionPoint = this->XYZAt(L) + (this->XYZAt(L + 1) - this->XYZAt(L)) * Ratio;
+
+	return true;
 }

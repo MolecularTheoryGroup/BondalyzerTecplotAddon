@@ -122,7 +122,7 @@ Node* CritPointGraph::GetNode(unsigned long _ID)
 		}
 	}
 	//throw NoSuchNode;
-	return NULL;
+	return nullptr;
 }
 
 void CritPointGraph::AddEdgeToNode(Node* _node, unsigned long _ID)

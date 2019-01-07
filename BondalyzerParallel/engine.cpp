@@ -19,6 +19,8 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cmath>
+#include <map>
+#include <set>
 
 #include <omp.h>
 
@@ -61,6 +63,7 @@ using namespace tecplot::toolbox;
 
 using std::string;
 using std::to_string;
+using std::stoi;
 using std::vector;
 using std::stringstream;
 using std::ofstream;
@@ -75,14 +78,14 @@ struct MinFuncParams_GPLengthInPlane{
 	int NumGPPoints = -1;
 	GPType_e GPType = GPType_Invalid;
 	GPTerminate_e GPTerminate = GPTerminate_Invalid;
-	vec3 * TermPoint = NULL;
-	CritPoints_c * CPs = NULL;
-	double * TermPointRadius = NULL;
-	double * TermValue = NULL;
-	VolExtentIndexWeights_s * VolInfo = NULL;
-	vector<FieldDataPointer_c> const * HessPtrs = NULL;
-	vector<FieldDataPointer_c> const * GradPtrs = NULL;
-	FieldDataPointer_c const * RhoPtr = NULL;
+	vec3 * TermPoint = nullptr;
+	CritPoints_c * CPs = nullptr;
+	double * TermPointRadius = nullptr;
+	double * TermValue = nullptr;
+	VolExtentIndexWeights_s * VolInfo = nullptr;
+	vector<FieldDataPointer_c> const * HessPtrs = nullptr;
+	vector<FieldDataPointer_c> const * GradPtrs = nullptr;
+	FieldDataPointer_c const * RhoPtr = nullptr;
 
 	GradPath_c GP;
 
@@ -99,14 +102,14 @@ struct MinFuncParams_GPLengthSpherical{
 	int NumGPPoints = -1;
 	GPType_e GPType = GPType_Invalid;
 	GPTerminate_e GPTerminate = GPTerminate_Invalid;
-	vec3 * TermPoint = NULL;
-	CritPoints_c * CPs = NULL;
-	double * TermPointRadius = NULL;
-	double * TermValue = NULL;
-	VolExtentIndexWeights_s * VolInfo = NULL;
-	vector<FieldDataPointer_c> const * HessPtrs = NULL;
-	vector<FieldDataPointer_c> const * GradPtrs = NULL;
-	FieldDataPointer_c const * RhoPtr = NULL;
+	vec3 * TermPoint = nullptr;
+	CritPoints_c * CPs = nullptr;
+	double * TermPointRadius = nullptr;
+	double * TermValue = nullptr;
+	VolExtentIndexWeights_s * VolInfo = nullptr;
+	vector<FieldDataPointer_c> const * HessPtrs = nullptr;
+	vector<FieldDataPointer_c> const * GradPtrs = nullptr;
+	FieldDataPointer_c const * RhoPtr = nullptr;
 
 	GradPath_c GP;
 
@@ -156,6 +159,15 @@ static double const Tolerance_GPLengthInPlane = 1e-5;
 static double const Tolerance_DivergentGPInnerProd = -0.9;
 
 BondalyzerCalcType_e CurrentCalcType;
+
+enum GBATriangulatedSphereNodeElemType_e
+{
+	NETypeInvalid = -1,
+	NETypeC, // goes to cage cp, system boundary, or rho cutoff
+	NETypeR, // goes along a ring surface to a ring cp, then to a cage cp or rho cutoff
+	NETypeB, // goes along bond path
+	NETypeRB // B type on same elem as R type
+};
 
 
 void RefineActiveZones(){
@@ -584,7 +596,7 @@ void GetClosedIsoSurface(int IsoZoneNum, vector<FieldDataPointer_c> const & IsoR
 		 * Make new zone with single connected component
 		 */
 
-		if (!TecUtilDataSetAddZone(string(IsoZoneName + string(": Subzone ") + to_string(SubZoneNum++)).c_str(), NumNewNodes, NewElems.size(), IsoIJK[2], IsoZoneType, NULL)){
+		if (!TecUtilDataSetAddZone(string(IsoZoneName + string(": Subzone ") + to_string(SubZoneNum++)).c_str(), NumNewNodes, NewElems.size(), IsoIJK[2], IsoZoneType, nullptr)){
 			TecUtilDialogErrMsg("Failed to make new iso zone. Quitting.");
 			return;
 		}
@@ -1220,50 +1232,7 @@ void ZoneNameFindReplaceGetUserInfo(){
 	CSMGui("Zone name: find replace", Fields, ZoneNameFindReplaceReturnUserInfo, AddOnID);
 }
 
-Boolean_t const GetReadPtrsForZone(int ZoneNum,
-	int RhoVarNum,
-	vector<int> const & GradVarNums,
-	vector<int> const & HessVarNums,
-	FieldDataPointer_c & RhoPtr,
-	vector<FieldDataPointer_c> & GradPtrs,
-	vector<FieldDataPointer_c> & HessPtrs)
-{
-	TecUtilPleaseWait("Loading data", TRUE);
 
-	Boolean_t IsOk = TRUE;
-
-	int NumZones = TecUtilDataSetGetNumZones();
-	int NumVars = TecUtilDataSetGetNumVars();
-
-	REQUIRE(ZoneNum > 0 && ZoneNum <= NumZones);
-	REQUIRE(RhoVarNum > 0 && RhoVarNum <= NumVars);
-	REQUIRE(GradVarNums.size() == 3 || GradVarNums.size() == 0);
-	for (auto const & i : GradVarNums) REQUIRE(i > 0 && i <= NumVars);
-	REQUIRE(HessVarNums.size() == 6 || HessVarNums.size() == 0);
-	for (auto const & i : HessVarNums) REQUIRE(i > 0 && i <= NumVars);
-
-	RhoPtr.Close();
-	GradPtrs.resize(GradVarNums.size());
-	HessPtrs.resize(HessVarNums.size());
-
-
-	if (!RhoPtr.GetReadPtr(ZoneNum, RhoVarNum)) {
-		TecUtilDialogErrMsg(string("Failed to get rho read pointer (zone " + to_string(ZoneNum) + ", var " + to_string(RhoVarNum) + ")").c_str());
-		IsOk = FALSE;
-	}
-	for (int i = 0; i < GradVarNums.size() && IsOk; ++i) if (!GradPtrs[i].GetReadPtr(ZoneNum, GradVarNums[i])){
-		TecUtilDialogErrMsg(string("Failed to get gradient read pointer (zone " + to_string(ZoneNum) + ", var " + to_string(GradVarNums[i]) + ")").c_str());
-		IsOk = FALSE;
-	}
-	for (int i = 0; i < HessVarNums.size() && IsOk; ++i) if (!HessPtrs[i].GetReadPtr(ZoneNum, HessVarNums[i])){
-		TecUtilDialogErrMsg(string("Failed to get hessian read pointer (zone " + to_string(ZoneNum) + ", var " + to_string(HessVarNums[i]) + ")").c_str());
-		IsOk = FALSE;
-	}
-
-	TecUtilPleaseWait("Loading data", FALSE);
-
-	return IsOk;
-}
 
 
 Boolean_t FindCritPoints(int VolZoneNum,
@@ -1492,7 +1461,7 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 		for (int d = -1; d < 2; d += 2){
 			StartPoint = AllCPs.GetXYZ(TypeInd, CPInd) + AllCPs.GetPrincDir(TypeInd, CPInd) * StartPointOffset * static_cast<double>(d);
 
-			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
 			GPs.back().SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, CPInd), 0);
 
 		}
@@ -1794,7 +1763,7 @@ Boolean_t FindCageNuclearPaths(int VolZoneNum,
 
 		for (vec3 & Pt : SeedPoints){
 			Pt += AllCPs.GetXYZ(TypeInd, SelectedCPNums[iCP] - 1);
-			GPs.push_back(GradPath_c(Pt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.push_back(GradPath_c(Pt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
 			GPs.back().SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, SelectedCPNums[iCP] - 1), 0);
 		}
 
@@ -1847,7 +1816,7 @@ Boolean_t FindCageNuclearPaths(int VolZoneNum,
 			GPParams.NumGPPoints = NumGPPts;
 			GPParams.GPType = GPType_Classic;
 			GPParams.GPTerminate = GPTerminate_AtCP;
-			GPParams.TermPoint = NULL;
+			GPParams.TermPoint = nullptr;
 			GPParams.CPs = &AllCPs;
 			GPParams.TermPointRadius = &TermRadius;
 			GPParams.TermValue = &RhoCutoff;
@@ -1862,7 +1831,7 @@ Boolean_t FindCageNuclearPaths(int VolZoneNum,
 			GPParams.EndCPNum = EndCPNums[iGP];
 
 			gsl_multimin_fminimizer_type const *T = gsl_multimin_fminimizer_nmsimplex2;
-			gsl_multimin_fminimizer *s = NULL;
+			gsl_multimin_fminimizer *s = nullptr;
 			gsl_vector *ss, *x;
 			gsl_multimin_function minex_func;
 
@@ -2124,7 +2093,7 @@ Boolean_t const GradientPathsOnSphere(int NumSphereGPs,
 
 		for (vec3 & Pt : SeedPoints){
 			Pt += AllCPs.GetXYZ(CPTypeIndOffset[0], CPTypeIndOffset[1]);
-			GPs.push_back(GradPath_c(Pt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.push_back(GradPath_c(Pt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
 			GPs.back().SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(CPTypeIndOffset[0], CPTypeIndOffset[1]), (CPTypeIndOffset[0] == 0 ? 1 : 0));
 		}
 
@@ -2543,7 +2512,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 		GPParams.NumGPPoints = NumGPPts;
 		GPParams.GPType = GPType_Classic;
 		GPParams.GPTerminate = GPTerminate_AtCP;
-		GPParams.TermPoint = NULL;
+		GPParams.TermPoint = nullptr;
 		GPParams.CPs = &AllCPs;
 		GPParams.TermPointRadius = &TermRadius;
 		GPParams.TermValue = &RhoCutoff;
@@ -2576,7 +2545,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 
 			StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
 
-			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
 			GPs.back().SetStartEndCPNum(GPParams.StartCPNum, 0);
 		}
 
@@ -2708,7 +2677,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 							Iter++;
 							AlphaGuess = (AlphaLower + AlphaUpper) * 0.5;
 							StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, AlphaGuess, GPParams.RotAxis);
-							GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+							GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 							GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 							GP.Seed(false);
 							if (AllCPs.GetTypeFromTotOffset(GP.GetStartEndCPNum(EndCPPosition)) == SecondaryTermType){
@@ -2765,7 +2734,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 								Iter++;
 								RotAngle = AlphaGuess + (AngleStep * AngleFactor * SmallAngleFactor * static_cast<double>(MinGPDir));
 								StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
-								GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+								GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 								GP.Seed(false);
 								if (GP.GetStartEndCPNum(EndCPPosition) == TermCPNum){
@@ -2812,7 +2781,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 								Iter++;
 								RotAngle += (AngleStep * AngleFactor * SmallAngleFactor * static_cast<double>(MinGPDir));
 								StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
-								GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+								GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 								GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 								GP.Seed(false);
 								if (GP.GetStartEndCPNum(EndCPPosition) == TermCPNum){
@@ -2896,7 +2865,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 			vector<vec3> TmpStartPoints(3);
 			for (int j = 0; j < 3; ++j){
 				TmpStartPoints[j] = GPParams.StartPointOrigin + Rotate(StartVec, MinFunc_AlphaLowMidHigh[i][j], GPParams.RotAxis);
-				GradPath_c GP(TmpStartPoints[j], GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+				GradPath_c GP(TmpStartPoints[j], GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 
 				GP.SetStartEndCPNum(GPParams.StartCPNum, 0);
 				GP.Seed(false);
@@ -2958,7 +2927,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 			*/
 
 // 			SGPsPerCP[iCP][i] = reinterpret_cast<MinFuncParams_GPLengthInPlane*>(F.params)->GP;
-			SGPsPerCP[iCP][i].SetupGradPath(GPParams.StartPointOrigin + Rotate(StartVec, MinFunc_AlphaLowMidHigh[i][1], GPParams.RotAxis), GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+			SGPsPerCP[iCP][i].SetupGradPath(GPParams.StartPointOrigin + Rotate(StartVec, MinFunc_AlphaLowMidHigh[i][1], GPParams.RotAxis), GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 			SGPsPerCP[iCP][i].SetStartEndCPNum(GPParams.StartCPNum, 0);
 			SGPsPerCP[iCP][i].Seed(false);
 			if (GPDir != StreamDir_Both) SGPsPerCP[iCP][i].PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
@@ -3008,11 +2977,11 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 					 */
 
 					SaddleCPSupplementGPs[i][0].SetupGradPath(PtUp, GPDir, NumGPPts,
-						GPType_Classic, GPTerminate_AtRhoValue, NULL,
+						GPType_Classic, GPTerminate_AtRhoValue, nullptr,
 						&AllCPs, &TermRadius, &RhoCutoff, VolInfo,
 						HessPtrs, GradPtrs, RhoPtr);
 					SaddleCPSupplementGPs[i][1].SetupGradPath(PtDn, GPDir, NumGPPts,
-						GPType_Classic, GPTerminate_AtRhoValue, NULL,
+						GPType_Classic, GPTerminate_AtRhoValue, nullptr,
 						&AllCPs, &TermRadius, &RhoCutoff, VolInfo,
 						HessPtrs, GradPtrs, RhoPtr);
 					for (GradPath_c & GP : SaddleCPSupplementGPs[i]){
@@ -3029,11 +2998,11 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 					*/
 
 					SaddleCPSupplementGPs[i][0].SetupGradPath(PtDn, GPDir, NumGPPts,
-					GPType_Classic, GPTerminate_AtRhoValue, NULL,
+					GPType_Classic, GPTerminate_AtRhoValue, nullptr,
 					&AllCPs, &TermRadius, &RhoCutoff, VolInfo,
 					HessPtrs, GradPtrs, RhoPtr);
 					SaddleCPSupplementGPs[i][1].SetupGradPath(PtUp, GPDir, NumGPPts,
-						GPType_Classic, GPTerminate_AtRhoValue, NULL,
+						GPType_Classic, GPTerminate_AtRhoValue, nullptr,
 						&AllCPs, &TermRadius, &RhoCutoff, VolInfo,
 						HessPtrs, GradPtrs, RhoPtr);
 					for (GradPath_c & GP : SaddleCPSupplementGPs[i]){
@@ -3177,7 +3146,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 						for (double const & iRCS : AvgMinNum){
 							double aRCS = iRCS * AngleStep;
 							StartPoint = GPParams.StartPointOrigin + Rotate(GPParams.RotVec, aRCS, GPParams.RotAxis);
-							GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+							GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 							GP.SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, cpNum), 0);
 							GP.Seed(false);
 							GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
@@ -3297,7 +3266,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 				for (int j = 1; j < NumSepGPs; ++j){
 					double RotAngle = SGPSeedAngles[i] + SepAngleStep * static_cast<double>(j);
 					StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
-					GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtRhoValue, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+					GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtRhoValue, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 					GP.SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, cpNum), 0);
 					GP.Seed(false);
 					GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
@@ -3365,7 +3334,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 				for (int j = jLow; j <= jHigh; ++j){
 					double RotAngle = SGPSeedAngles[0] + AngleStep * static_cast<double>(j);
 					StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
-					GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtRhoValue, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+					GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtRhoValue, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 					GP.SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, cpNum), 0);
 					GP.Seed(false);
 					GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
@@ -3397,7 +3366,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 			for (int j = 0; j < NumCircleGPs; ++j){
 				double RotAngle = AngleStep * static_cast<double>(j);
 				StartPoint = GPParams.StartPointOrigin + Rotate(StartVec, RotAngle, GPParams.RotAxis);
-				GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtRhoValue, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+				GradPath_c GP(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtRhoValue, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 				GP.SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, cpNum), 0);
 				GP.Seed(false);
 				GP.PointPrepend(GPParams.StartPointOrigin, AllCPs.GetRho(TypeInd, cpNum));
@@ -3569,7 +3538,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 
 			StartPoint = AllCPs.GetXYZ(TypeInd, cpNum) + Rotate(StartVec, RotAngle, AllCPs.GetPrincDir(TypeInd, cpNum));
 
-			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, NULL, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
 			GPs.back().SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(TypeInd, cpNum), 0);
 
 		}
@@ -3651,7 +3620,7 @@ void ConnectCPsReturnUserInfo(bool const GuiSuccess,
 
 			vector<vector<int> > StartEndCPTypeAndOffset(2);
 			string ZoneName = "Line " + MakeStringFromCPNums({ CPNums[i]-1, CPNums[j]-1 }, CPs, StartEndCPTypeAndOffset);
-			Boolean_t IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), NumPts, 1, 1, ZoneType_Ordered, NULL);
+			Boolean_t IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), NumPts, 1, 1, ZoneType_Ordered, nullptr);
 			FieldVecPointer_c XYZPtr;
 			IsOk = IsOk && XYZPtr.GetWritePtr(TecUtilDataSetGetNumZones(), XYZVarNums);
 			if (IsOk){
@@ -4630,7 +4599,7 @@ void TestFunction(){
 // 	for (int i = 0; i < 6; ++i) HessPtrs[i].GetReadPtr(1, VarNum++);
 // 
 // 	double RhoCutoff = 1e-3;
-// 	GradPath_c GP(StartPoint, StreamDir_Forward, 200, GPType_Classic, GPTerminate_AtRhoValue, NULL, NULL, NULL, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+// 	GradPath_c GP(StartPoint, StreamDir_Forward, 200, GPType_Classic, GPTerminate_AtRhoValue, nullptr, nullptr, nullptr, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 // 
 // 	GP.Seed(true);
 // 
@@ -4647,7 +4616,7 @@ void TestFunction(){
 // 	for (int i = 0; i < 2; ++i) for (int j = 0; j < 2; ++j) Nodes[i * 2 + j] << i << j << 0;
 // 	vector<int> Elems = { 1, 2, 4, 3 };
 // 
-// 	TecUtilDataSetAddZone("test zone", 4, 1, 4, ZoneType_FEQuad, NULL);
+// 	TecUtilDataSetAddZone("test zone", 4, 1, 4, ZoneType_FEQuad, nullptr);
 // 	int ZoneNum = TecUtilDataSetGetNumZones();
 // 
 // 	TecUtilDataLoadBegin();
@@ -4834,13 +4803,31 @@ void TestFunction(){
 // 	Surf.GeneratePointElementDistanceCheckData();
 // 	double TermVal = 0.001;
 // 
-// 	GradPath_c SurfGP({ -0.649,-0.672,-0.166 }, StreamDir_Reverse, 1000, GPType_Classic, GPTerminate_AtRhoValue, NULL, NULL, NULL, &TermVal, VolInfo, vector<FieldDataPointer_c>(), vector<FieldDataPointer_c>(), RhoPtr, &Surf);
+// 	GradPath_c SurfGP({ -0.649,-0.672,-0.166 }, StreamDir_Reverse, 1000, GPType_Classic, GPTerminate_AtRhoValue, nullptr, nullptr, nullptr, &TermVal, VolInfo, vector<FieldDataPointer_c>(), vector<FieldDataPointer_c>(), RhoPtr, &Surf);
 // 
 // 	SurfGP.Seed(false);
 // 	if (SurfGP.IsMade()) SurfGP.SaveAsOrderedZone("SurfGradPath", Green_C);
 // 
 // 	TecUtilLockFinish(AddOnID);
 // 	return;
+// 	
+
+	/*
+	 *	test split string with blank removal
+	 */
+// vector<string> out = SplitString("381,357,375,,345,944,1329,", ",", false, true);
+// out = SplitString("381,357,375,,345,944,1329,", ",", false, false);
+// out = SplitString("381,357,375,,345,944,1329,", ",", true);
+// vector<int> outi = SplitStringInt("381,357,375,,345,944,1329,");
+// outi = SplitStringInt("381,357,375,,345,944,1329,");
+// outi = SplitStringInt("381,357,375,,345,944,1329,");
+// vector<double> outd = SplitStringDbl("381,357,375,,345,944,1329,");
+// outd = SplitStringDbl("381,357,375,,345,944,1329,");
+// outd = SplitStringDbl("381,357,375,,345,944,1329,");
+
+
+
+	
 
 	/*
 	 *	test surface-sphere intersection function for file Z:\Tecplot\StorageWorkspace\2018_11_GBS-sphere-triangulationupdate\Al43.lpk
@@ -4855,9 +4842,41 @@ void TestFunction(){
 
 	double SphereRadius = stod(AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereRadius));
 
-	FESurface_c Sphere(SphereZoneNum, { 1,2,3 });
-	vector<vec3> const * SphereXYZPtr = Sphere.GetXYZListPtr();
-	vector<vector<int> > const * SphereElemListPtr = Sphere.GetElemListPtr();
+	/*
+	*	Test gradpath_c sphere intersection code
+	*/
+// 	vec3 IntPoint;
+// 	bool DoesIntersect = GradPath_c(21, { 1,2,3,4 }, AddOnID).GetSphereIntersectionPoint(SphereCenter, SphereRadius, IntPoint);
+// 	SaveVec3VecAsScatterZone({ IntPoint });
+// 	DoesIntersect = GradPath_c(22, { 1,2,3,4 }, AddOnID).GetSphereIntersectionPoint(SphereCenter, SphereRadius, IntPoint);
+// 	return;
+	/*
+	 *	end test gradpath_c sphere intersection code
+	 */
+
+	FESurface_c OldSphere(SphereZoneNum, { 1,2,3 });
+	vector<vec3> const * SphereXYZPtr = OldSphere.GetXYZListPtr();
+	vector<vector<int> > const * SphereElemListPtr = OldSphere.GetElemListPtr();
+
+
+// 	auto tmpNodes = *SphereXYZPtr;
+// 	auto tmpElems = *SphereElemListPtr;
+// 	vector<std::set<int> > trisOfNode(tmpNodes.size());
+// 	for (int ti = 0; ti < tmpElems.size(); ++ti) {
+// 		for (auto ni : tmpElems[ti]) {
+// 			trisOfNode[ni].insert(ti);
+// 		}
+// 	}
+// 	vector<int> newNodeNums, newElemNums;
+// 
+// 	TriangleEdgeMidPointSubdivideAroundNodes(tmpNodes, tmpElems, trisOfNode, { 0 }, newNodeNums, newElemNums);
+// 	FESurface_c tmpSphere(tmpNodes, tmpElems);
+// 	tmpSphere.SaveAsTriFEZone({ 1,2,3 }, "refined sphere");
+// 	TecUtilZoneSetActive(Set(tmpSphere.GetZoneNum()).getRef(), AssignOp_Equals);
+// 
+// 	TecUtilLockFinish(AddOnID);
+// 	return;
+
 
 	/*
 	 *	Get average sphere triangulation edge length so that we can 
@@ -4875,12 +4894,40 @@ void TestFunction(){
 	}
 	SphereEdgeLenMean /= (double)SphereNumEdges;
 
-	vector<vector<vec3> > AllIntPoints;
-	vector<int> IntZoneNums;
+	vector<vector<vec3> > AllIntSurfPoints;
+	vector<int> IntSurfZoneNums;
 	vector<FESurface_c> IntSurfs;
+	vector<vector<GradPath_c> > IntSurfRingCagePaths;
 
-	TecUtilPleaseWait("finding ring surface intersections", TRUE);
+	CritPoints_c CPs(CPZoneNum, { 1,2,3 }, 5, 4);
+	VolExtentIndexWeights_s VolInfo;
+	GetVolInfo(1, { 1,2,3 }, FALSE, VolInfo);
+	FieldDataPointer_c RhoPtr;
+	vector<FieldDataPointer_c> GradPtrs, HessPtrs;
+	GetReadPtrsForZone(1, 4, { 6,7,8 }, { 9,10,11,12,13,14 }, RhoPtr, GradPtrs, HessPtrs);
 
+	MultiRootParams_s MR;
+	MR.VolInfo = &VolInfo;
+	MR.IsPeriodic = FALSE;
+	MR.HasGrad = TRUE;
+	MR.HasHess = TRUE;
+	MR.RhoPtr = &RhoPtr;
+	MR.GradPtrs = &GradPtrs;
+	MR.HessPtrs = &HessPtrs;
+	MR.BasisVectors = &VolInfo.BasisVectors;
+
+
+	vector<VolExtentIndexWeights_s> ThVolInfo(omp_get_num_procs(), VolInfo);
+
+
+	/*
+	 *	Get sphere intersecting ring surfaces and bond paths
+	 */
+
+	vector<vec3> IntersectingBondPathPoints;
+	vector<GradPath_c> IntersectingBondPaths;
+
+// 	for (int z : {182, 249}){
 	for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
 		if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRSSegment)){
 			FESurface_c Surf(z, { 1,2,3 });
@@ -4897,6 +4944,62 @@ void TestFunction(){
 					Surf.GeneratePointElementDistanceCheckData();
 					IntSurfs.push_back(Surf);
 
+					/*
+					 *	Get the ring-cage paths originating at the ring point.
+					 *	Repeat the generation of the pair of ring path segments
+					 *	with increasing distance of the seed point in each direction
+					 *	until they terminate in different directions.
+					 *	
+					 */
+					int CPNum = -1;
+					for (int i = 0; i < 3; ++i) {
+						if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZFSCornerCPTypes[i], "Ring")) {
+							CPNum = stoi(AuxDataZoneGetItem(z, CSMAuxData.CC.ZFSCornerCPNumStrs[i])) - 1;
+							break;
+						}
+					}
+					if (CPNum >= 0) {
+						vec3 CPPos, PrincDir;
+						CPPos = CPs.GetXYZ(CPTypeNum_Ring, CPNum);
+						vec3 EigVals;
+						mat33 EigVecs;
+						CalcEigenSystemForPoint(CPPos, EigVals, EigVecs, MR);
+						PrincDir = EigVecs.col(0);
+						double TermRadius = 0.1;
+
+						int CPGlobalNum = CPs.GetTotOffsetFromTypeNumOffset(CPTypeNum_Ring, CPNum);
+						double CPRho = ValAtPointByPtr(CPPos, VolInfo, RhoPtr);
+
+						IntSurfRingCagePaths.push_back(vector<GradPath_c>(2));
+
+						double iter = 1;
+						double offset = 0.02;
+						double dPdt = 1;
+						while (dPdt > 0) {
+							double dir = -1.0;
+							for (auto & GP : IntSurfRingCagePaths.back()) {
+								vec3 SeedPt = CPPos + (PrincDir * offset * iter * dir);
+								GP.SetupGradPath(
+									SeedPt,
+									StreamDir_Reverse, 100, GPType_Classic, GPTerminate_AtCP, nullptr,
+									&CPs, &TermRadius, nullptr, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+								GP.SetStartEndCPNum(CPGlobalNum, 0);
+								GP.Seed();
+								GP.PointPrepend(CPPos, CPRho);
+
+								GP.SaveAsOrderedZone("ring path for zone " + to_string(z) + " with offset of " + to_string(offset * iter * dir), Green_C);
+								TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+								dir += 2.0;
+							}
+							dPdt = dot(IntSurfRingCagePaths.back()[0].XYZAt(-1) - IntSurfRingCagePaths.back()[0].XYZAt(-2), IntSurfRingCagePaths.back()[1].XYZAt(-1) - IntSurfRingCagePaths.back()[1].XYZAt(-2));
+							iter++;
+						}
+					}
+					else {
+						TecUtilDialogErrMsg("Failed to find ring CP for sphere-intersecting SZFS zone");
+					}
+
 					/* 
 					 * Now project each point back to the sphere radius
 					 */
@@ -4905,171 +5008,262 @@ void TestFunction(){
 					}
 
 // 					SaveVec3VecAsScatterZone(IntPoints, string("Intersection of zone " + to_string(z)));
-					AllIntPoints.push_back(IntPoints);
-					IntZoneNums.push_back(z);
+					AllIntSurfPoints.push_back(IntPoints);
+					IntSurfZoneNums.push_back(z);
 				}
 			}
-// 			break;
+		}
+		else if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPathSegment)){
+			vec3 IntPoint;
+			GradPath_c TmpGP(z, { 1,2,3,4 }, AddOnID);
+			if (TmpGP.GetSphereIntersectionPoint(SphereCenter, SphereRadius, IntPoint)){
+				IntersectingBondPathPoints.push_back(IntPoint);
+				IntersectingBondPaths.push_back(TmpGP);
+			}
 		}
 	}
 
-	/*
-	 *	Check for nearly equal intersection path segment endpoints,
-	 *	i.e. where two paths intersect.
-	 *	These intersections should only occur at a bond-path-sphere intersection point,
-	 *	at which there is already a constrained sphere node, so when path intersections are
-	 *	found, move all the coincident points to the closest node on the sphere.
-	 */
-	double CoincidentCheckEpsilon = SphereEdgeLenMean * 0.1;
-	CoincidentCheckEpsilon *= CoincidentCheckEpsilon;
-	for (int i = 0; i < AllIntPoints.size() - 1; ++i) {
-		vector<std::pair<int, int> > CoincidentPointIndices;
-		for (int j = i+1; j < AllIntPoints.size(); ++j){
-			if (DistSqr(AllIntPoints[i][0], AllIntPoints[j][0]) <= CoincidentCheckEpsilon){
-				CoincidentPointIndices.push_back(std::pair<int, int>(i, 0));
-				CoincidentPointIndices.push_back(std::pair<int, int>(j, 0));
-			}
-			else if (DistSqr(AllIntPoints[i][0], AllIntPoints[j].back()) <= CoincidentCheckEpsilon) {
-				CoincidentPointIndices.push_back(std::pair<int, int>(i, 0));
-				CoincidentPointIndices.push_back(std::pair<int, int>(j, AllIntPoints[j].size() - 1));
-			}
-			else if (DistSqr(AllIntPoints[i].back(), AllIntPoints[j][0]) <= CoincidentCheckEpsilon) {
-				CoincidentPointIndices.push_back(std::pair<int, int>(i, AllIntPoints[i].size() - 1));
-				CoincidentPointIndices.push_back(std::pair<int, int>(j, 0));
-			}
-			else if (DistSqr(AllIntPoints[i].back(), AllIntPoints[j].back()) <= CoincidentCheckEpsilon) {
-				CoincidentPointIndices.push_back(std::pair<int, int>(i, AllIntPoints[i].size() - 1));
-				CoincidentPointIndices.push_back(std::pair<int, int>(j, AllIntPoints[j].size() - 1));
-			}
-		}
-
-		if (CoincidentPointIndices.size() > 0){
-			int SphereNodeNum = -1;
-			for (auto const & p : CoincidentPointIndices){
-				double MinNodeDistSqr = DBL_MAX;
-				double TmpNodeDistSqr;
-				int MinNodeIndex = -1;
-				for (int ni = 0; ni < SphereXYZPtr->size(); ++ni){
-					TmpNodeDistSqr = DistSqr(AllIntPoints[p.first][p.second], SphereXYZPtr->at(ni));
-					if (TmpNodeDistSqr < MinNodeDistSqr){
-						MinNodeDistSqr = TmpNodeDistSqr;
-						MinNodeIndex = ni;
-					}
-				}
-				if (MinNodeIndex >= 0){
-// 					if (SphereNodeNum >= 0){
-// 						if (SphereNodeNum != MinNodeIndex) {
-// 							TecUtilDialogErrMsg("Coincident intersection path endpoints do not share same closest sphere node!");
-// 						}
-// 					}
-// 					else{
-// 						SphereNodeNum = MinNodeIndex;
-// 					}
-					AllIntPoints[p.first][p.second] = SphereXYZPtr->at(MinNodeIndex);
-				}
-			}
-		}
-
-		SaveVec3VecAsScatterZone(AllIntPoints[i], string("Intersection of zone " + to_string(IntZoneNums[i])));
-	}
-	SaveVec3VecAsScatterZone(AllIntPoints.back(), string("Intersection of zone " + to_string(IntZoneNums.back())));
-
+// 	/*
+// 	 *	12/26/2018
+// 	 *	Craig's triangulation update code has a problem where some of the 
+// 	 *	ring surface intersection points aren't being recorded properly
+// 	 *	so that their corresponding gradient bundles can be created
+// 	 *	correctly.
+// 	 *	Rather than try to fix that code or manually identify intersection
+// 	 *	nodes, I'll just workaround the need for the triangulation update
+// 	 *	in the first place.
+// 	 *	In order to know which sphere nodes are on ring surface-sphere 
+// 	 *	intersections I just need to make sure that there's at least
+// 	 *	one preexisting node on the sphere that can be moved to each
+// 	 *	of the intersection points, so I just need to move the closest 
+// 	 *	sphere node to each intersection node. If a single sphere node
+// 	 *	is closest to two or more intersection nodes, subdivide the
+// 	 *	neighborhood of the sphere node until each intersection node
+// 	 *	gets its own sphere node.
+// 	 */
+// 
+// 	/*
+// 	 *	First, perform this process for the bond path intersections,
+// 	 *  because a sphere point that moves to a bond path is allowed 
+// 	 *  to be associated with more than one ring surface intersection
+// 	 *  point but not more than one bond path intersection point.
+// 	 */
+// 
+//  	vector<vec3> NewNodes;
+//  	vector<vector<int> > NewElems;
+// 	std::map<int,int> outRingConstraintNodeIndices, outRingConstraintSegmentIndices, outBondConstraintNodeIndices;
+//  	vector<vector<vec3> > InIntersectingBondPathPoints;
+//  	for (auto p : IntersectingBondPathPoints){
+//  		InIntersectingBondPathPoints.push_back({ p });
+//  	}
+//  	
+//  	UpdateSubdivideSphericalTriangulationWithConstraintNodesAndSegments(*SphereXYZPtr, *SphereElemListPtr, SphereCenter, SphereRadius, InIntersectingBondPathPoints, NewNodes, NewElems, outBondConstraintNodeIndices, outRingConstraintSegmentIndices);
+//  
+// 	vector<vec3> outConstrainedNodes;
+//  	for (auto const & i : outBondConstraintNodeIndices) {
+// 		outConstrainedNodes.push_back(NewNodes[i.first]);
+//  	}
+//  	SaveVec3VecAsScatterZone(outConstrainedNodes, "bond nodes", Red_C);
+// 
+// 	TecUtilDialogMessageBox("before updating triangulation for ring surfaces", MessageBoxType_Information);
+// 
+// 	UpdateSubdivideSphericalTriangulationWithConstraintNodesAndSegments(NewNodes, NewElems, SphereCenter, SphereRadius, AllIntSurfPoints, NewNodes, NewElems, outRingConstraintNodeIndices, outRingConstraintSegmentIndices);
+// 
+// 	outConstrainedNodes.clear();
+// 	for (auto const & i : outRingConstraintNodeIndices) {
+// 		outConstrainedNodes.push_back(NewNodes[i.first]);
+// 	}
+// 	SaveVec3VecAsScatterZone(outConstrainedNodes, "ring nodes", Green_C);
+//  
+//  	FESurface_c NewSphere(NewNodes, NewElems);
+//  
+//  	if (NewSphere.IsMade()) {
+//  		NewSphere.SaveAsTriFEZone({ 1,2,3 }, "UpdatedSphere");
+//  		TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_Equals);
+//  	}
+//  	else {
+//  		TecUtilDialogErrMsg("Failed to create updated triangulation");
+//  	}
+// 
+// 	TecUtilLockFinish(AddOnID);
 // 	return;
-
-	vector<tpcsm::Vec3> initialNodeXYZs(SphereXYZPtr->size());
-	for (int i = 0; i < initialNodeXYZs.size(); ++i)
-		initialNodeXYZs[i] = tpcsm::Vec3(SphereXYZPtr->at(i)[0], SphereXYZPtr->at(i)[1], SphereXYZPtr->at(i)[2]);
-
-	vector<TriNodes> initialTriangleNodes(SphereElemListPtr->size());
-	for (int i = 0; i < initialTriangleNodes.size(); ++i)
-		initialTriangleNodes[i] = TriNodes(SphereElemListPtr->at(i)[0], SphereElemListPtr->at(i)[1], SphereElemListPtr->at(i)[2]);
-
-	tpcsm::Vec3 SphereCenterVec(SphereCenter[0], SphereCenter[1], SphereCenter[2]);
-
-	vector<tpcsm::Vec3> constraintNodes;
-	vector<Edge> constraintSegments;
-	vector<int> constraintSegmentSurfNums;
-	for (int j = 0; j < AllIntPoints.size(); ++j) {
-		vector<vec3> IntPoints = AllIntPoints[j];
-		constraintNodes.push_back(tpcsm::Vec3(IntPoints[0][0], IntPoints[0][1], IntPoints[0][2]));
-		for (int i = 1; i < IntPoints.size(); ++i) {
-			constraintNodes.push_back(tpcsm::Vec3(IntPoints[i][0], IntPoints[i][1], IntPoints[i][2]));
-			constraintSegments.push_back(Edge(constraintNodes.size() - 2, constraintNodes.size() - 1));
-			constraintSegmentSurfNums.push_back(j);
+// 
+ 	/*
+ 	 *	Check for nearly equal intersection path segment endpoints,
+ 	 *	i.e. where two paths intersect.
+ 	 *	These intersections should only occur at a bond-path-sphere intersection point,
+ 	 *	at which there is already a constrained sphere node, so when path intersections are
+ 	 *	found, move all the coincident points to the closest node on the sphere.
+ 	 */
+ 	double CoincidentCheckEpsilon = SphereEdgeLenMean * 0.2;
+ 	CoincidentCheckEpsilon *= CoincidentCheckEpsilon;
+ 	for (int i = 0; i < AllIntSurfPoints.size() - 1; ++i) {
+ 		vector<std::pair<int, int> > CoincidentPointIndices;
+ 		for (int j = i+1; j < AllIntSurfPoints.size(); ++j){
+ 			if (DistSqr(AllIntSurfPoints[i][0], AllIntSurfPoints[j][0]) <= CoincidentCheckEpsilon){
+ 				CoincidentPointIndices.push_back(std::pair<int, int>(i, 0));
+ 				CoincidentPointIndices.push_back(std::pair<int, int>(j, 0));
+ 			}
+ 			else if (DistSqr(AllIntSurfPoints[i][0], AllIntSurfPoints[j].back()) <= CoincidentCheckEpsilon) {
+ 				CoincidentPointIndices.push_back(std::pair<int, int>(i, 0));
+ 				CoincidentPointIndices.push_back(std::pair<int, int>(j, AllIntSurfPoints[j].size() - 1));
+ 			}
+ 			else if (DistSqr(AllIntSurfPoints[i].back(), AllIntSurfPoints[j][0]) <= CoincidentCheckEpsilon) {
+ 				CoincidentPointIndices.push_back(std::pair<int, int>(i, AllIntSurfPoints[i].size() - 1));
+ 				CoincidentPointIndices.push_back(std::pair<int, int>(j, 0));
+ 			}
+ 			else if (DistSqr(AllIntSurfPoints[i].back(), AllIntSurfPoints[j].back()) <= CoincidentCheckEpsilon) {
+ 				CoincidentPointIndices.push_back(std::pair<int, int>(i, AllIntSurfPoints[i].size() - 1));
+ 				CoincidentPointIndices.push_back(std::pair<int, int>(j, AllIntSurfPoints[j].size() - 1));
+ 			}
+ 		}
+ 
+ 		if (CoincidentPointIndices.size() > 0){
+ 			int SphereNodeNum = -1;
+ 			for (auto const & p : CoincidentPointIndices){
+ 				double MinNodeDistSqr = DBL_MAX;
+ 				double TmpNodeDistSqr;
+ 				int MinNodeIndex = -1;
+ 				for (int ni = 0; ni < SphereXYZPtr->size(); ++ni){
+ 					TmpNodeDistSqr = DistSqr(AllIntSurfPoints[p.first][p.second], SphereXYZPtr->at(ni));
+ 					if (TmpNodeDistSqr < MinNodeDistSqr){
+ 						MinNodeDistSqr = TmpNodeDistSqr;
+ 						MinNodeIndex = ni;
+ 					}
+ 				}
+ 				if (MinNodeIndex >= 0){
+ // 					if (SphereNodeNum >= 0){
+ // 						if (SphereNodeNum != MinNodeIndex) {
+ // 							TecUtilDialogErrMsg("Coincident intersection path endpoints do not share same closest sphere node!");
+ // 						}
+ // 					}
+ // 					else{
+ // 						SphereNodeNum = MinNodeIndex;
+ // 					}
+ 					AllIntSurfPoints[p.first][p.second] = SphereXYZPtr->at(MinNodeIndex);
+ 				}
+ 			}
+ 		}
+ 
+ 		SaveVec3VecAsScatterZone(AllIntSurfPoints[i], string("Intersection of zone " + to_string(IntSurfZoneNums[i])), White_C);
+ // 		SetZoneStyle({}, ZoneStyle_Path, Blue_C, 0.2);
+ 	}
+ 	SaveVec3VecAsScatterZone(AllIntSurfPoints.back(), string("Intersection of zone " + to_string(IntSurfZoneNums.back())), White_C);
+ // 	SetZoneStyle({}, ZoneStyle_Path, Blue_C, 0.2);
+ 
+ // 	return;
+ 
+ 	vector<tpcsm::Vec3> initialNodeXYZs(SphereXYZPtr->size());
+ 	for (int i = 0; i < initialNodeXYZs.size(); ++i)
+ 		initialNodeXYZs[i] = tpcsm::Vec3(SphereXYZPtr->at(i)[0], SphereXYZPtr->at(i)[1], SphereXYZPtr->at(i)[2]);
+ 
+ 	vector<TriNodes> initialTriangleNodes(SphereElemListPtr->size());
+ 	for (int i = 0; i < initialTriangleNodes.size(); ++i)
+ 		initialTriangleNodes[i] = TriNodes(SphereElemListPtr->at(i)[0], SphereElemListPtr->at(i)[1], SphereElemListPtr->at(i)[2]);
+ 
+ 	tpcsm::Vec3 SphereCenterVec(SphereCenter[0], SphereCenter[1], SphereCenter[2]);
+ 
+ 	vector<tpcsm::Vec3> constraintNodes;
+ 	vector<Edge> constraintSegments;
+ 	vector<int> constraintSegmentSurfNums;
+ 	for (int j = 0; j < AllIntSurfPoints.size(); ++j) {
+ 		vector<vec3> IntPoints = AllIntSurfPoints[j];
+ 		constraintNodes.push_back(tpcsm::Vec3(IntPoints[0][0], IntPoints[0][1], IntPoints[0][2]));
+ 		for (int i = 1; i < IntPoints.size(); ++i) {
+ 			constraintNodes.push_back(tpcsm::Vec3(IntPoints[i][0], IntPoints[i][1], IntPoints[i][2]));
+ 			constraintSegments.push_back(Edge(constraintNodes.size() - 2, constraintNodes.size() - 1));
+ 			constraintSegmentSurfNums.push_back(j);
+ 		}
+ 	}
+ 
+ 	/*
+ 	 *	Need to remove duplicate constraint nodes and update edge connectivity to reflect the change.
+ 	 */
+ 	vector<int> nodeIndices(constraintNodes.size());
+ 	for (int i = 0; i < nodeIndices.size(); ++i)
+ 		nodeIndices[i] = i;
+ 	vector<tpcsm::Vec3> tmpNodes;
+ 	tmpNodes.reserve(constraintNodes.size());
+ 	for (int ni = 0; ni < constraintNodes.size() - 1; ++ni){
+ 		bool isFound = false;
+ 		for (int nj = ni + 1; nj < constraintNodes.size(); ++nj){
+ 			if (constraintNodes[nodeIndices[ni]] == constraintNodes[nodeIndices[nj]]){
+ 				/*
+ 				 *	duplicate node found, so search through edges, changing nj to ni when found.
+ 				 */
+ 				for (auto & e : constraintSegments){
+ 					if (e.first == nj)
+ 						e.first = ni;
+ 
+ 					if (e.second == nj)
+ 						e.second = ni;
+ 				}
+ 				nodeIndices[nj] = nodeIndices[ni];
+ 				isFound = true;
+ 			}
+ 		}
+ 	}
+ 	/* 
+ 	 * Now need to make the new list of nodes and update the edges again to reflect this.
+ 	 */
+ 	for (int ni = 0; ni < constraintNodes.size(); ++ni){
+ 		if (nodeIndices[ni] == ni){
+ 			/*
+ 			 *	Node is not duplicate
+ 			 */
+ 			tmpNodes.push_back(constraintNodes[ni]);
+ 			for (auto & e : constraintSegments){
+ 				if (e.first == ni)
+ 					e.first = tmpNodes.size() - 1;
+ 
+ 				if (e.second == ni)
+ 					e.second = tmpNodes.size() - 1;
+ 			}
+ 		}
+ 	}
+ 	constraintNodes = tmpNodes;
+ 
+ 	/*
+ 	 *	Now move nodes on the sphere that are sufficiently close to a constraint node
+ 	 *	to eliminate the ugly triangles that result when two points are very close.
+ 	 */
+ // 	for (auto & n : initialNodeXYZs){
+ // 		for (auto & p : constraintNodes){
+ // 			if ((p - n).getNormSquared() <= CoincidentCheckEpsilon){
+ // 				n = p;
+ // 				break;
+ // 			}
+ // 		}
+ // 	}
+ 
+ 	vector<bool> NodeMoved(initialNodeXYZs.size(), false);
+ 	for (auto & p : constraintNodes) {
+ 		double MinDistSqr = DBL_MAX, TmpDistSqr;
+ 		int MinI;
+ 		for (int ni = 0; ni < initialNodeXYZs.size(); ++ni) {
+ 			auto n = initialNodeXYZs[ni];
+ 			TmpDistSqr = (p - n).getNormSquared();
+ 			if (TmpDistSqr < MinDistSqr) {
+ 				MinDistSqr = TmpDistSqr;
+ 				MinI = ni;
+ 			}
+ 		}
+		if (!NodeMoved[MinI]) {
+			NodeMoved[MinI] = true;
+			initialNodeXYZs[MinI] = p;
 		}
-	}
+ 	}
 
-	/*
-	 *	Need to remove duplicate constraint nodes and update edge connectivity to reflect the change.
-	 */
-	vector<int> nodeIndices(constraintNodes.size());
-	for (int i = 0; i < nodeIndices.size(); ++i)
-		nodeIndices[i] = i;
-	vector<tpcsm::Vec3> tmpNodes;
-	tmpNodes.reserve(constraintNodes.size());
-	for (int ni = 0; ni < constraintNodes.size() - 1; ++ni){
-		bool isFound = false;
-		for (int nj = ni + 1; nj < constraintNodes.size(); ++nj){
-			if (constraintNodes[nodeIndices[ni]] == constraintNodes[nodeIndices[nj]]){
-				/*
-				 *	duplicate node found, so search through edges, changing nj to ni when found.
-				 */
-				for (auto & e : constraintSegments){
-					if (e.first == nj)
-						e.first = ni;
-
-					if (e.second == nj)
-						e.second = ni;
-				}
-				nodeIndices[nj] = nodeIndices[ni];
-				isFound = true;
-			}
-		}
-	}
-	/* 
-	 * Now need to make the new list of nodes and update the edges again to reflect this.
-	 */
-	for (int ni = 0; ni < constraintNodes.size(); ++ni){
-		if (nodeIndices[ni] == ni){
-			/*
-			 *	Node is not duplicate
-			 */
-			tmpNodes.push_back(constraintNodes[ni]);
-			for (auto & e : constraintSegments){
-				if (e.first == ni)
-					e.first = tmpNodes.size() - 1;
-
-				if (e.second == ni)
-					e.second = tmpNodes.size() - 1;
-			}
-		}
-	}
-	constraintNodes = tmpNodes;
-
-	/*
-	 *	Now move nodes on the sphere that are sufficiently close to a constraint node
-	 *	to eliminate the ugly triangles that result when two points are very close.
-	 */
-	for (auto & n : initialNodeXYZs){
-		for (auto & p : constraintNodes){
-			if ((p - n).getNormSquared() <= CoincidentCheckEpsilon){
-				n = p;
-				break;
-			}
-		}
-	}
-
-
-	/*
-	 *	Update triangulation to include ring surface intersections as edges
-	 */
-	TecUtilPleaseWait("updating triangulation", TRUE);
-
-	vector<tpcsm::Vec3> OutXYZs;
-	vector<Index_t> OutConstrinedSegmentIndices;
-	vector<TriNodes> OutTris;
-	const char* StatusMessage;
-
+ 
+ 	/*
+ 	 *	Update triangulation to include ring surface intersections as edges
+ 	 */
+ 
+ 	vector<tpcsm::Vec3> OutXYZs;
+ 	vector<Index_t> OutConstrinedSegmentIndices;
+ 	vector<TriNodes> OutTris;
+ 	char const * StatusMessage;
+ 
 	if (tpcsm::updateSphericalTriangulation(initialNodeXYZs,
 		initialTriangleNodes,
 		SphereCenterVec,
@@ -5080,54 +5274,679 @@ void TestFunction(){
 		OutXYZs,
 		OutConstrinedSegmentIndices,
 		OutTris,
-		StatusMessage)){
+		StatusMessage))
+	{
 
-		vector<vec3> NewNodes(OutXYZs.size());
-		for (int i = 0; i < NewNodes.size(); ++i)
-			NewNodes[i] << OutXYZs[i].x() << OutXYZs[i].y() << OutXYZs[i].z();
+		vector<vec3> SphereNodes(OutXYZs.size());
+		for (int i = 0; i < SphereNodes.size(); ++i)
+			SphereNodes[i] << OutXYZs[i].x() << OutXYZs[i].y() << OutXYZs[i].z();
 
-		vector<vector<int> > NewElems(OutTris.size());
+		vector<vector<int> > SphereElems(OutTris.size());
 		for (int i = 0; i < OutTris.size(); ++i)
-			NewElems[i] = { OutTris[i].v1(), OutTris[i].v2(), OutTris[i].v3() };
+			SphereElems[i] = { OutTris[i].v1(), OutTris[i].v2(), OutTris[i].v3() };
 
-		FESurface_c NewSphere(NewNodes, NewElems);
+		FESurface_c Sphere(SphereNodes, SphereElems);
 
-		if (NewSphere.IsMade()){
-			NewSphere.SaveAsTriFEZone({ 1,2,3 }, "UpdatedSphere");
+		if (Sphere.IsMade()) {
+			Sphere.SaveAsTriFEZone({ 1,2,3 }, "UpdatedSphere");
+			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+		}
+		else {
+			TecUtilDialogErrMsg("Failed to create updated triangulation");
 		}
 
 		/*
-		 *	seed surface gradient paths for all the nodes that 
+		 *	seed surface gradient paths for all the nodes that
 		 *	fall on constraint edges.
 		 */
 
-		TecUtilPleaseWait("seeding surface GPs on ring surfaces", TRUE);
+		 // 
+		 // 		for (int i = 0; i < OutConstrinedSegmentIndices.size(); ++i){
+		 // 			if (OutConstrinedSegmentIndices[i] >= 0) {
+		 // 				int ConstrainedSegNum = i,
+		 // 					ConstrainedSegSurfNum = constraintSegmentSurfNums[OutConstrinedSegmentIndices[i]];
+		 // 				if (ConstrainedSegSurfNum < IntSurfs.size()){
+		 // 					FESurface_c * SurfPtr = &IntSurfs[ConstrainedSegSurfNum];
+		 // 					GradPath_c GP(NewNodes[i], StreamDir_Both, 500, GPType_Classic, GPTerminate_AtBoundary, nullptr, nullptr, nullptr, nullptr, VolInfo, vector<FieldDataPointer_c>(), vector<FieldDataPointer_c>(), RhoPtr, SurfPtr);
+		 // 					GP.Seed();
+		 // 					if (GP.IsMade()){
+		 // 						GP.SaveAsOrderedZone(string("SurfGP node " + to_string(i) + " cSegNum " + to_string(i) + " surfNum " + to_string(ConstrainedSegSurfNum) + " surfZoneNum " + to_string(SurfPtr->GetZoneNum())), Green_C);
+		 // 					}
+		 // 				}
+		 // 			}
+		 // 		}
+		 // 		
 
-		VolExtentIndexWeights_s VolInfo;
-  		GetVolInfo(1, { 1,2,3 }, FALSE, VolInfo);
-  		FieldDataPointer_c RhoPtr;
-  		GetReadPtrsForZone(1, 4, vector<int>(), vector<int>(), RhoPtr, vector<FieldDataPointer_c>(), vector<FieldDataPointer_c>());
+				/*
+				 *	Now we need to seed the gradient paths from the nodes and along the
+				 *	edges of the triangular mesh.
+				 *	***actually, don't put gradient paths along the edges. It introduces
+				 *		unnecessary complexity, makes the algorithm much more expensive,
+				 *		and only captures a little bit more information about the curvature
+				 *		of the zero flux surfaces formed from stitching the gradient
+				 *		paths together.
+				 *		This also simplifies the tetrahedral decomposition used in the
+				 *		integration code.
+				 *		The information lost by excluding edges can be recovered while only using
+				 *		the nodes of triangles by simply refining the triangulation.
+				 *
+				 *	There are three types of nodes, according to the treatment of the paths
+				 *	they form:
+				 *		C type:		Paths that terminate at a cage CP or at a rho cutoff
+				 *					require no special treatment.
+				 *		R type:		Paths that coincide with a ring surface become will be seeded
+				 *					as surface paths and terminate at a ring point, then
+				 *					then split into the two halves of the ring path away from the
+				 *					ring point to the cage.
+				 *		B type:		Paths that coincide with a bond path will be replaced with the
+				 *					bond path, then a new gradient path will be seeded away from
+				 *					the bond point in the bond plane (interatomic surface) for each
+				 *					of the nodes that share an edge with the node of the original
+				 *					path.
+				 *
+				 *	We'll store all the gradient paths in a single vector and keep a new list of triangles
+				 *	where each triangle is defined by the indices of the gradient paths that correspond to
+				 *	its nodes.
+				 *	R, and B type nodes will result in new gradient paths being added to the list.
+				 */
 
-		for (int i = 0; i < OutConstrinedSegmentIndices.size(); ++i){
-			if (OutConstrinedSegmentIndices[i] >= 0) {
-				int ConstrainedSegNum = i,
-					ConstrainedSegSurfNum = constraintSegmentSurfNums[OutConstrinedSegmentIndices[i]];
-				if (ConstrainedSegSurfNum < IntSurfs.size()){
-					FESurface_c * SurfPtr = &IntSurfs[ConstrainedSegSurfNum];
-					GradPath_c GP(NewNodes[i], StreamDir_Both, 500, GPType_Classic, GPTerminate_AtBoundary, NULL, NULL, NULL, NULL, VolInfo, vector<FieldDataPointer_c>(), vector<FieldDataPointer_c>(), RhoPtr, SurfPtr);
-					GP.Seed();
-					if (GP.IsMade()){
-						GP.SaveAsOrderedZone(string("SurfGP node " + to_string(i) + " cSegNum " + to_string(i) + " surfNum " + to_string(ConstrainedSegSurfNum) + " surfZoneNum " + to_string(SurfPtr->GetZoneNum())), Green_C);
+				 /*
+				  *	Find nodes on new sphere that correspond to the bond path intersections
+				  *	with the original sphere.
+				  */
+		std::unordered_map<int, GradPath_c> IntBondPathSegments; // stored according to intersecting node index
+		for (int bi = 0; bi < IntersectingBondPathPoints.size(); ++bi) {
+			IntBondPathSegments[Sphere.GetClosestNodeToPoint(IntersectingBondPathPoints[bi])] = IntersectingBondPaths[bi];
+		}
+
+		int NumNodes = SphereNodes.size(),
+			NumElems = SphereElems.size();
+
+		// Store type of each node
+		vector<GBATriangulatedSphereNodeElemType_e> NodeTypes(NumNodes, NETypeInvalid), ElemTypes(NumElems, NETypeInvalid);
+
+
+		// First get all node types;
+//  #pragma omp parallel for
+		for (int ni = 0; ni < NumNodes; ++ni) {
+			if (IntBondPathSegments.count(ni) > 0)
+				NodeTypes[ni] = NETypeB;
+			else if (OutConstrinedSegmentIndices[ni] >= 0)
+				NodeTypes[ni] = NETypeR;
+			else {
+				NodeTypes[ni] = NETypeC;
+				for (int i = 0; i < constraintNodes.size(); ++i) {
+
+					if ((constraintNodes[i] - OutXYZs[ni]).getNormSquared() < CoincidentCheckEpsilon) {
+						for (int j = 0; j < constraintSegments.size(); ++j) {
+							if (constraintSegments[j].first == i || constraintSegments[j].second == i) {
+								OutConstrinedSegmentIndices[ni] = j;
+								NodeTypes[ni] = NETypeR;
+								break;
+							}
+						}
+					}
+					if (NodeTypes[ni] == NETypeR)
+						break;
+				}
+			}
+		}
+
+		// Get all element types
+#pragma omp parallel for
+		for (int ti = 0; ti < NumElems; ++ti) {
+			for (int ni : SphereElems[ti]) {
+				ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[ni]);
+			}
+		}
+
+		// #if defined _DEBUG
+		vector<int> BNodes, RNodes, CNodes;
+		for (int i = 0; i < NumNodes; ++i) {
+			if (NodeTypes[i] == NETypeB) BNodes.push_back(i);
+			else if (NodeTypes[i] == NETypeR) RNodes.push_back(i);
+			else if (NodeTypes[i] == NETypeC) CNodes.push_back(i);
+		}
+		int TotalNodes = BNodes.size() + RNodes.size() + CNodes.size();
+
+		TecUtilZoneSetActive(Set(Sphere.GetZoneNum()).getRef(), AssignOp_Equals);
+
+		vector<vector<int> > v = { BNodes, RNodes, CNodes };
+		vector<string> s = { "B nodes", "R nodes", "C nodes" };
+		vector<ColorIndex_t> c = { Red_C, Green_C, Red_C };
+		for (int i = 0; i < 3; ++i) {
+			auto vi = v[i];
+			vector<vec3> Vec3Vec;
+			for (auto i : vi) Vec3Vec.push_back(SphereNodes[i]);
+			SaveVec3VecAsScatterZone(Vec3Vec, s[i], c[i]);
+		}
+
+		// #endif
+	   //  		TecUtilLockFinish(AddOnID);
+	   //  		return;
+
+	   //  #define SUPERDEBUG
+#ifdef SUPERDEBUG
+		vector<int> ElemTodo = { 6675 };
+		std::set<int> NodesTodo;
+		for (int ti : ElemTodo) {
+			for (int ni : SphereElems[ti])
+				NodesTodo.insert(ni);
+		}
+		vector<int> NodesTodoVec(NodesTodo.begin(), NodesTodo.end());
+#endif
+
+		/*
+		 *	Setup and seed all type C and R paths.
+		 *	R paths will be combined with the ring path segments found above.
+		 *	We need R and C paths in order to get B and RB paths.
+		 */
+		vector<GradPath_c> GradPaths(NumNodes);
+		double TermRadius = 0.05;
+		double TermVal = 0.001;
+
+#ifdef SUPERDEBUG
+		for (int nii = 0; nii < NodesTodoVec.size(); ++nii) {
+			int ni = NodesTodoVec[nii];
+#else
+#pragma omp parallel for schedule(dynamic)
+		for (int ni = 0; ni < NumNodes; ++ni) {
+#endif
+			int ThNum = omp_get_thread_num();
+			if (NodeTypes[ni] == NETypeC) {
+				GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Both, 100, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &TermRadius, &TermVal, ThVolInfo[ThNum], HessPtrs, GradPtrs, RhoPtr);
+				GradPaths[ni].Seed();
+				// GradPaths[ni].SaveAsOrderedZone(string("C path for node " + to_string(ni)), Blue_C);
+			}
+			else if (NodeTypes[ni] == NETypeR) {
+				int SurfNum = constraintSegmentSurfNums[OutConstrinedSegmentIndices[ni]];
+				GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, 100, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &TermRadius, &TermVal, ThVolInfo[ThNum], HessPtrs, GradPtrs, RhoPtr, &IntSurfs[SurfNum]);
+				GradPaths[ni].Seed();
+				GradPath_c GP(SphereNodes[ni], StreamDir_Forward, 100, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &TermRadius, &TermVal, ThVolInfo[ThNum], HessPtrs, GradPtrs, RhoPtr);
+				GP.Seed();
+				GradPaths[ni] += GP.SubGP(1, -1);
+
+				// 				GradPaths[ni].SaveAsOrderedZone(string("R path for node " + to_string(ni)), Cyan_C);
+			}
+			else continue;
+
+			if (GradPaths[ni].IsMade() && GradPaths[ni].RhoAt(0) < GradPaths[ni].RhoAt(-1)) GradPaths[ni].Reverse();
+
+			if (GradPaths[ni].RhoAt(0) <= GradPaths[ni].RhoAt(1))
+				GradPaths[ni].PointPrepend(GradPaths[ni].XYZAt(0), GradPaths[ni].RhoAt(0) + 1);
+		}
+		// 		for (int ni = 0; ni < GradPaths.size(); ++ni){
+		// 			if (GradPaths[ni].IsMade()){
+		// 				if (NodeTypes[ni] <= NodeTypeR){
+		// 					GradPaths[ni].SaveAsOrderedZone(string(NodeTypes[ni] == NodeTypeC ? "C" : "R") + string(" path for node ") + to_string(ni), NodeTypes[ni] == NodeTypeC ? Blue_C : Green_C);
+		// 				}
+		// 			}
+		// 		}
+
+			   /*
+				*	Now we can get the B paths.
+				*	We'll do this by looping over triangles because the selection of B  paths
+				*	is determined by the paths of the other two nodes on the triangle.
+				*	Start with serial pass to growNewElemGradPathInd, then another in parallel to
+				*	seed all the paths.
+				*/
+		std::unordered_map<int, vec3> BNodeSeedPts;
+		std::unordered_map<int, int> BNodeBondCPNums;
+		std::unordered_map<int, GradPath_c const*> BNodeBondPathPtrs;// , BNodeRingPathPtrs;
+ // 		std::unordered_map<int, FESurface_c const *> BNodeRingSurfPtrs;
+
+		vector<vector<int> > NewElemGradPathInd(SphereElems);
+#ifdef SUPERDEBUG
+		for (int ti : ElemTodo) {
+#else
+		for (int ti = 0; ti < SphereElems.size(); ++ti) {
+#endif
+			/*
+			 *	For each corner, check if it's type R or B.
+			 *	If type R then just need to update the triangle
+			 *	to point to the correct R path.
+			 *	If B, need to construct GPs to finish the paths,
+			 *	using information from the neighboring GPs.
+			 */
+			auto * tri = &NewElemGradPathInd[ti];
+			for (int c1 = 0; c1 < 3; ++c1) {
+				/*
+				 *	First pass over triangle to check for R type nodes
+				 *	to update them to the correct side.
+				 *	There could be 0, 1, or 2 R type nodes on the triangle.
+				 *	If 1, can use the guaranteed C type node to find the correct
+				 *	ring path.
+				 *	If 2, can check both ring paths for each node to find the pair
+				 *  whose end points are closest together.
+				 *  Also if 2 then we'll do them both together, so can break after
+				 *  they're found.
+				 */
+
+
+				if (NodeTypes[SphereElems[ti].at(c1)] == NETypeR && SphereElems[ti][c1] == tri->at(c1)) {
+
+					for (int ei = 1; ei < 3; ++ei) {
+						int c2 = (c1 + ei) % 3;
+
+						string logStr = "elem " + to_string(ti) + ", node " + to_string(SphereElems[ti].at(c1)) + "-" + to_string(SphereElems[ti].at(c2)) + ": ";
+						/*
+						 *	Check to see if this corner is R type
+						 */
+						if (ElemTypes[ti] == NETypeB && NodeTypes[SphereElems[ti].at(c2)] == NETypeR) {
+							/*
+							 * Both corners c1 and c2 are R type.
+							 * They each correspond to a pair of ring path segments.
+							 * Because these are two corners of a triangle, two of the four
+							 * ring path segments must terminate at (or near) the same cage CP,
+							 * while the other two go off to different cage CPs.
+							 * We'll find the correct ring path segments by finding the pair with the nearest
+							 * end points.
+							 */
+							int minI, minJ, SurfNumI, SurfNumJ;
+							SurfNumI = constraintSegmentSurfNums[OutConstrinedSegmentIndices[SphereElems[ti].at(c1)]];
+							SurfNumJ = constraintSegmentSurfNums[OutConstrinedSegmentIndices[SphereElems[ti].at(c2)]];
+							double MinDistSqr = DBL_MAX;
+							for (int ii = 0; ii < 2; ++ii) {
+								for (int jj = 0; jj < 2; ++jj) {
+									double TmpDistSqr = DistSqr(IntSurfRingCagePaths[SurfNumI][ii].XYZAt(-1),
+										IntSurfRingCagePaths[SurfNumJ][jj].XYZAt(-1));
+									if (TmpDistSqr < MinDistSqr) {
+										MinDistSqr = TmpDistSqr;
+										minI = ii;
+										minJ = jj;
+										// 										IntSurfRingCagePaths[SurfNumI][minI].SaveAsOrderedZone(logStr + "R neighbor surfI min path");
+										// 										TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+										// 										IntSurfRingCagePaths[SurfNumJ][minJ].SaveAsOrderedZone(logStr + "R neighbor surfJ min path");
+										// 										TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+									}
+									else {
+										// 										IntSurfRingCagePaths[SurfNumI][ii].SaveAsOrderedZone(logStr + "R neighbor surfI not min path");
+										// 										TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+										// 										IntSurfRingCagePaths[SurfNumJ][jj].SaveAsOrderedZone(logStr + "R neighbor surfJ not min path");
+										// 										TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+									}
+								}
+							}
+							/*
+							 *	Now the correct R paths for this triangle are those specified
+							 *	by minI and minJ
+							 */
+
+
+							 // 							IntSurfRingCagePaths[SurfNumI][minI].SaveAsOrderedZone(logStr + "R neighbor c1 ring path");
+							 // 							TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+							 // 							IntSurfRingCagePaths[SurfNumJ][minJ].SaveAsOrderedZone(logStr + "R neighbor c2 ring path");
+							 // 							TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+
+							GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti].at(c1)], IntSurfRingCagePaths[SurfNumI][minI] }, 100));
+							tri->at(c1) = GradPaths.size() - 1;
+							//  							GradPaths.back().SaveAsOrderedZone(logStr + "R neighbor c1 new path");
+							//  							TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+							GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti].at(c2)], IntSurfRingCagePaths[SurfNumJ][minJ] }, 100));
+							tri->at(c2) = GradPaths.size() - 1;
+							//  							GradPaths.back().SaveAsOrderedZone(logStr + "R neighbor c2 new path");
+							//  							TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+							break;
+						}
+						else if (NodeTypes[SphereElems[ti].at(c2)] == NETypeR && NodeTypes[SphereElems[ti].at((c2 + 1) % 3)] == NETypeR) {
+							/*
+							 *	All three nodes of the triangle are type R, meaning the
+							 *	gradient bundle has edges going to two different cages
+							 *	(It's impossible for a triangle to go to three different
+							 *	rings, so it has to be two).
+							 *
+							 *	In this case we'll just look for the cage CP (last point
+							 *	of ring path segment) that's closest to the ring cps (midpoint of the
+							 *	end points of the ring surface paths) for all three nodes.
+							 *	This seems like an OK test since the cage point needs to be
+							 *	present (otherwise couldn't have two rings this close to each
+							 *	other) and is the common terminus of the correct paths, where
+							 *	the other two cage points are not common among the correct paths.
+							 */
+
+							 // Get midpoint of ring points;
+							vec3 MidPt;
+							for (int ni : SphereElems[ti]) {
+								MidPt += GradPaths[ni].XYZAt(-1);
+							}
+							MidPt /= SphereElems[ti].size();
+
+							// Get which ring path segments terminate closer to the ring cp midpoint
+							// and add that path.
+							for (int ni = 0; ni < SphereElems[ti].size(); ++ni) {
+								double MinDistSqr = DBL_MAX, TmpDistSqr;
+								int MinPathNum;
+								int SurfNum = constraintSegmentSurfNums[OutConstrinedSegmentIndices[SphereElems[ti].at(ni)]];
+								for (int ii = 0; ii < 2; ++ii) {
+									TmpDistSqr = DistSqr(IntSurfRingCagePaths[SurfNum][ii].XYZAt(-1), MidPt);
+									if (TmpDistSqr < MinDistSqr) {
+										MinDistSqr = TmpDistSqr;
+										MinPathNum = ii;
+									}
+								}
+								GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][ni]], IntSurfRingCagePaths[SurfNum][MinPathNum] }, 100));
+								tri->at(ni) = GradPaths.size() - 1;
+							}
+
+							break;
+						}
+						else if (NodeTypes[SphereElems[ti].at(c2)] == NETypeC) {
+							/*
+							 *	Just need to check the two ring paths to see which terminates
+							 *	closer to the neighbor GP
+							 */
+							double MinDistSqr = DBL_MAX;
+							int SurfNum = constraintSegmentSurfNums[OutConstrinedSegmentIndices[SphereElems[ti].at(c1)]];
+							int minI;
+							for (int ii = 0; ii < 2; ++ii) {
+								double TmpDistSqr = DistSqr(IntSurfRingCagePaths[SurfNum][ii].XYZAt(-1), GradPaths[SphereElems[ti].at(c2)].XYZAt(-1));
+								if (TmpDistSqr < MinDistSqr) {
+									MinDistSqr = TmpDistSqr;
+									minI = ii;
+								}
+							}
+
+							//  							IntSurfRingCagePaths[SurfNum][minI].SaveAsOrderedZone(logStr + "C neighbor c2 ring path");
+							//  							TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+							GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti].at(c1)], IntSurfRingCagePaths[SurfNum][minI] }, 100));
+							tri->at(c1) = GradPaths.size() - 1;
+							//  							GradPaths.back().SaveAsOrderedZone(logStr + "C neighbor c2 new path");
+							//  							TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+							break;
+						}
+						else continue;
 					}
 				}
 			}
 		}
-	}
 
-	TecUtilPleaseWait("finding ring surface intersections", FALSE);
+#ifdef SUPERDEBUG
+		for (int ti : ElemTodo) {
+#else
+		for (int ti = 0; ti < SphereElems.size(); ++ti) {
+#endif
+			/*
+			 * Second pass over triangle corners to setup the B type
+			 * nodes now that we have the C and R type paths.
+			 */
+			auto * tri = &NewElemGradPathInd[ti];
+			for (int c1 = 0; c1 < 3; ++c1) {
+				if (NodeTypes[SphereElems[ti].at(c1)] == NETypeB) {
+					/*
+					 *	Type B or RB found, so need to  determine where to
+					 *	seed gradient paths in the interatomic surface for
+					 *	the bond path. We'll get the GPs for the
+					 *	other two corners of the triangle and find the closest point
+					 *	to the bond point and use that to determine the seed direction.
+					 */
+					GradPath_c const * BPPtr = &IntBondPathSegments[SphereElems[ti].at(c1)];
+					int BondCPNum;
+					for (int bi = 0; bi < CPs.NumBonds(); ++bi) {
+						if (sum(CPs.GetXYZ(CPTypeNum_Bond, bi) == BPPtr->XYZAt(0)) == 3) {
+							BondCPNum = CPs.GetTotOffsetFromTypeNumOffset(CPTypeNum_Bond, bi);
+							break;
+						}
+					}
+
+					int NewGPNums[2];
+
+					for (int ei = 1; ei <= 2; ++ei) {
+						int c2 = (c1 + ei) % 3;
+
+
+						string logStr = "elem " + to_string(ti) + ", node " + to_string(SphereElems[ti].at(c1)) + "-" + to_string(SphereElems[ti].at(c2)) + ": ";
+
+						//  						GradPath_c(*BPPtr).SaveAsOrderedZone(logStr + "bond path used", Red_C);
+						//  						TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+						//  						GradPath_c(GradPaths[tri->at(c2)]).SaveAsOrderedZone(logStr + "neighbor path used");
+						//  						TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+						vec3 EigenValues;
+						mat33 EigenVectors;
+						CalcEigenSystemForPoint(BPPtr->XYZAt(0), EigenValues, EigenVectors, MR);
+
+						vec3 ClosestPt = GradPaths[tri->at(c2)].ClosestPoint(BPPtr->XYZAt(0)),
+							// 							v1 = BPPtr->XYZAt(1) - BPPtr->XYZAt(0),
+							v1 = EigenVectors.col(2) + BPPtr->XYZAt(0),
+							v2 = ClosestPt - BPPtr->XYZAt(0),
+							v3 = cross(v1, v2);
+
+						// 						for (auto v : { v1,v2,v3 }){
+						// 							SaveVec3VecAsScatterZone({
+						// 								ClosestPt,
+						// 								ClosestPt + normalise(v)
+						// 								},
+						// 								logStr + "v123 first pass");
+						// 							SetZoneStyle();
+						// 						}
+						// 
+						// 						SaveVec3VecAsScatterZone({ ClosestPt }, logStr + "closest point on neighbor path");
+						// 						SetZoneStyle();
+
+						// 						v1 = normalise(v1);
+						// 						v3 = normalise(v3);
+						v2 = normalise(cross(v1, v3));
+
+						// 						for (auto v : { v1,v2,v3 }) {
+						// 							SaveVec3VecAsScatterZone({
+						// 								ClosestPt,
+						// 								ClosestPt + normalise(v)
+						// 								},
+						// 								logStr + "v123 second pass");
+						// 							SetZoneStyle();
+						// 						}
+
+						vec3 SeedPt = BPPtr->XYZAt(0) + v2 * 0.01;
+						if (DistSqr(SeedPt, ClosestPt) > DistSqr(BPPtr->XYZAt(0), ClosestPt))
+							SeedPt = BPPtr->XYZAt(0) + v2 * (-0.01);
+
+						// 						vec3 SeedPt = v1 * 0.01;
+						// 						double SeedTheta = PI * 0.5;
+						// 						vec4 TmpVec4 = join_cols(SeedPt, ones<vec>(1));
+						// 						TmpVec4 = RotationMatrix(SeedTheta, v3) * TmpVec4;
+						// 						SeedPt = vec3(TmpVec4.subvec(0, 2)) + BPPtr->XYZAt(0);
+
+						// 						SaveVec3VecAsScatterZone({ SeedPt }, logStr + "seed point");
+						// 						SetZoneStyle();
+
+						FESurface_c const * SurfPtr = nullptr;
+						GradPath_c const * RPPtr = nullptr;
+						if (NodeTypes[SphereElems[ti][c2]] == NETypeR) {
+							ElemTypes[ti] = NETypeRB;
+							int SurfNum = constraintSegmentSurfNums[OutConstrinedSegmentIndices[SphereElems[ti][c2]]];
+							SurfPtr = &IntSurfs[SurfNum];
+							/*
+							 * Need to get the correct ring path segment to finish off the GP
+							 */
+							for (int ii = 0; ii < 2; ++ii) {
+								if (approx_equal(IntSurfRingCagePaths[SurfNum][ii].XYZAt(-1), GradPaths[tri->at(c2)].XYZAt(-1), "absdiff", 0.01)) {
+									RPPtr = &IntSurfRingCagePaths[SurfNum][ii];
+									break;
+								}
+							}
+							if (RPPtr == nullptr) {
+								TecUtilDialogErrMsg("Failed to find ring cage path to complete atom-bond-ring-cage path");
+							}
+
+							//  							GradPath_c(*RPPtr).SaveAsOrderedZone(logStr + "ring path used", Cyan_C);
+							//  							TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+							//  							FESurface_c(*SurfPtr).SaveAsTriFEZone({ 1,2,3 }, logStr + "ring surface used");
+						}
+
+						GradPath_c GP(SeedPt, StreamDir_Reverse, 100, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &TermRadius, &TermVal, VolInfo, HessPtrs, GradPtrs, RhoPtr, SurfPtr);
+						// 						GradPath_c GP(SeedPt, StreamDir_Reverse, 100, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &TermRadius, &TermVal, VolInfo, HessPtrs, GradPtrs, RhoPtr, nullptr);
+						GP.SetStartEndCPNum(BondCPNum, 0);
+						GP.Seed();
+						//  						GradPath_c(GP).SaveAsOrderedZone(logStr + "new path", Green_C);
+						//  						TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+						vector<GradPath_c> GPList = { GP.SubGP(1, -1) };
+
+						string tmpStr;
+						if (NodeTypes[SphereElems[ti][c2]] == NETypeR) {
+							GPList.push_back(*RPPtr);
+							//  							tmpStr += "+ ring-cage";
+							//  							ConcatenateResample(GPList, 100).SaveAsOrderedZone(logStr + "new " + tmpStr + " path", Cyan_C);
+							//  							TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+						}
+						GPList.push_back(*BPPtr);
+						// 						tmpStr += "+ bond-nuclear";
+
+						GP = ConcatenateResample(GPList, 100);
+						//  						GP.SaveAsOrderedZone(logStr + "new " + tmpStr + " path", Red_C);
+						//  						TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+
+						if (GP.RhoAt(0) < GP.RhoAt(-1))
+							GP.Reverse();
+
+						GradPaths.push_back(GP);
+						int GPInd = GradPaths.size() - 1;
+						NewGPNums[ei - 1] = GPInd;
+						// 						if (ei == 1)
+						// 							tri->at(c1) = GPInd;
+						// 						else
+						// 							tri->insert(tri->begin() + c1, GPInd);
+
+						// 							GP.SaveAsOrderedZone(string("B path for elem " + to_string(ti) + ", node " + to_string(tri->back())), Red_C);
+
+						BNodeBondCPNums[GPInd] = BondCPNum;
+						BNodeSeedPts[GPInd] = SeedPt;
+						BNodeBondPathPtrs[GPInd] = BPPtr;
+						// 						BNodeRingPathPtrs[GPInd] = RPPtr;
+						// 						BNodeRingSurfPtrs[GPInd] = SurfPtr;
+					}
+
+					tri->insert(tri->begin() + c1, NewGPNums[1]);
+					tri->at(c1 + 1) = NewGPNums[0];
+
+					// 					for (auto ni : NewElemGradPathInd[ti]){
+					// 						if (GradPaths[ni].IsMade()) {
+					// 							GradPaths[ni].SaveAsOrderedZone("elem " + to_string(ti), Blue_C);
+					// 							TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+					// 						}
+					// 						else
+					// 							TecUtilDialogErrMsg(string("grad path(s) for elem " + to_string(ti) + " not made").c_str());
+					// 					}
+
+					break;
+				}
+			}
+		}
+
+		// 		NumNodes = GradPaths.size();
+		// #pragma omp parallel for schedule(dynamic)
+		// 		for (int ni = 0; ni < NumNodes; ++ni){
+		// 			if (BNodeSeedPts.count(ni) > 0 && !GradPaths[ni].IsMade()){
+		// 				int ThreadNum = omp_get_thread_num();
+		// 				GradPaths[ni].SetupGradPath(BNodeSeedPts[ni], StreamDir_Reverse, 100, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &TermRadius, &TermVal, ThVolInfo[ThreadNum], HessPtrs, GradPtrs, RhoPtr, BNodeRingSurfPtrs[ni]);
+		// 				GradPaths[ni].SetStartEndCPNum(BNodeBondCPNums[ni], 0);
+		// 				GradPaths[ni].Seed();
+		// 				GradPath_c const *BPPtr = BNodeBondPathPtrs[ni],
+		// 					*RPPtr = BNodeRingPathPtrs[ni];
+		// 				GradPaths[ni].PointPrepend(BPPtr->XYZAt(0), BPPtr->RhoAt(0));
+		// 				GradPaths[ni] += *BPPtr;
+		// 				if (RPPtr != nullptr)
+		// 					GradPaths[ni] += *RPPtr;
+		// 				if (GradPaths[ni].RhoAt(0) < GradPaths[ni].RhoAt(-1))
+		// 					GradPaths[ni].Reverse();
+		// 			}
+		// 		}
+
+
+		// 		TecUtilLockFinish(AddOnID);
+		// 		return;
+
+			   /*
+				* We now have all the gradient paths completed in a single vector,
+				* and a representation of the gradient bundles in terms of the
+				* gradient path indices in the correct order.
+				* Now simply loop over each triangle, creating a gradient bundle for it.
+				*/
+
+		vector<FESurface_c> GradientBundles(NewElemGradPathInd.size());
+		NumElems = NewElemGradPathInd.size();
+
+		vector<vector<GradPath_c*> > GPPtrList(NewElemGradPathInd.size());
+
+		double const DivergentGPMaxTerminalDotProduct = cos(170. * PI / 180.);
+
+// 		int NumGPs = GradPaths.size();
+// #pragma omp parallel for schedule(dynamic)
+// 		for (int ni = 0; ni < NumGPs; ++ni) {
+// 			int ThNum = omp_get_thread_num();
+// 			GradPaths[ni].ReinterpolateRhoValuesFromVolume(&ThVolInfo[ThNum]);
+// 		}
+ 
+ #ifdef SUPERDEBUG
+ 		for (int ti : ElemTodo) {
+ #else
+ #pragma omp parallel for schedule(dynamic)
+ 		for (int ti = 0; ti < NumElems; ++ti) {
+ #endif
+ 			vector<GradPath_c*> GPPtrs;
+			for (auto ni : NewElemGradPathInd[ti]) {
+				GPPtrs.push_back(&GradPaths[ni]);
+			}
+ 			GradientBundles[ti].MakeFromGPs(GPPtrs, true, true);
+ 
+ 			GPPtrList[ti] = GPPtrs;
+ 		}
+ 
+ 		vector<string> ElemTypeStrs = { "C","R","Bo","RB" };
+ #ifdef SUPERDEBUG
+ 		for (int ti : ElemTodo) {
+ #else
+ 		for (int ti = 0; ti < NumElems; ++ti) {
+ #endif
+ 			string tmpStr = ElemTypeStrs[ElemTypes[ti]] + "_elem " + to_string(ti) + ", ";
+ //  			for (int ni = 0; ni < GPPtrList[ti].size(); ++ni) {
+ //  				if (GPPtrList[ti][ni]->IsMade()) {
+ //  					GPPtrList[ti][ni]->SaveAsOrderedZone(tmpStr + "corner " + to_string(ni));
+ //  					SetZoneStyle({}, ZoneStyle_Path, Green_C, 0.4);
+ //  					TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+ //  				}
+ //  			}
+ 			if (GradientBundles[ti].IsMade()) {
+ 				GradientBundles[ti].SaveAsTriFEZone({ 1,2,3 }, tmpStr + "GB");
+				SetZoneStyle({}, ZoneStyle_Surface, ElemTypes[ti] >= NETypeR ? ColorIndex_t(ti % 10) : White_C);
+ 				TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+				TecUtilZoneSetContour(SV_SHOW, Set(TecUtilDataSetGetNumZones()).getRef(), 0.0, FALSE);
+ 			}
+
+			// Check that no GPs are deviating and that rho for GPs is monotonically decreasing
+			for (int gpi = 0; gpi < GPPtrList[ti].size(); ++gpi) {
+				GradPath_c *GP1 = GPPtrList[ti][gpi], *GP2 = GPPtrList[ti][(gpi + 1) % GPPtrList[ti].size()];
+				if (GP1->IsMade() && GP2->IsMade()){
+					if (Distance(GP1->XYZAt(-1), GP2->XYZAt(-1)) > 0.5 && abs(dot(GP1->XYZAt(-1) - GP1->XYZAt(-1), GP2->XYZAt(-1) - GP2->XYZAt(-1))) < DivergentGPMaxTerminalDotProduct){
+						TecUtilDialogErrMsg(string("deviating GPs for element " + to_string(ti)).c_str());
+					}
+				}
+				else{
+					TecUtilDialogErrMsg(string("unmade GPs for element " + to_string(ti)).c_str());
+				}
+				for (int i = 0; i < GP1->GetCount() - 1; ++i){
+					if (GP1->RhoAt(i) < GP1->RhoAt(i+1)){
+						string tmpStr = "rho not monotonically decreasing for GP" + to_string(gpi) + " of element " + to_string(ti) + ": ";
+						tmpStr += to_string(GP1->RhoAt(i)) + " at point " + to_string(i) + ", " + to_string(GP1->RhoAt(i + 1)) + " at point " + to_string(i + 1);
+						GP1->SaveAsOrderedZone(tmpStr);
+// 						TecUtilDialogErrMsg(tmpStr.c_str());
+						break;
+					}
+				}
+			}
+ 		}
+ 	}
+ 	
 	
 
 	TecUtilLockFinish(AddOnID);
+	return;
 }
 
 struct GradientPathToolData_s{
@@ -5173,8 +5992,7 @@ void STDCALL GradientPathToolProbeCB(Boolean_t WasSuccessful,
 	CSMGuiLock();
 
 	
-	double TermValue = 0;
-	GradPath_c GP(Pt, GPToolData.Dir, 1000, GPType_Classic, GPTerminate_AtRhoValue, NULL, NULL, NULL, &TermValue, GPToolData.VolInfo, GPToolData.HessPtrs, GPToolData.GradPtrs, GPToolData.RhoPtr);
+	GradPath_c GP(Pt, GPToolData.Dir, 1000, GPType_Classic, GPTerminate_AtBoundary, nullptr, nullptr, nullptr, nullptr, GPToolData.VolInfo, GPToolData.HessPtrs, GPToolData.GradPtrs, GPToolData.RhoPtr);
 	GP.Seed(false);
 	GP.SaveAsOrderedZone();
 

@@ -186,16 +186,16 @@ struct VolExtentIndexWeights_s;
 
 struct MultiRootParams_s{
 	GPType_e CalcType = GPType_Invalid;
-	VolExtentIndexWeights_s * VolInfo = NULL;
+	VolExtentIndexWeights_s * VolInfo = nullptr;
 	Boolean_t IsPeriodic;
 	Boolean_t HasGrad;
 	Boolean_t HasHess;
-	FieldDataPointer_c const * RhoPtr = NULL;
-	vector<FieldDataPointer_c> const * GradPtrs = NULL;
-	vector<FieldDataPointer_c> const * HessPtrs = NULL;
-	mat33 const * BasisVectors = NULL;
-	vec3 * Origin = NULL;
-	vec3 * EquilPos = NULL;
+	FieldDataPointer_c const * RhoPtr = nullptr;
+	vector<FieldDataPointer_c> const * GradPtrs = nullptr;
+	vector<FieldDataPointer_c> const * HessPtrs = nullptr;
+	mat33 const * BasisVectors = nullptr;
+	vec3 * Origin = nullptr;
+	vec3 * EquilPos = nullptr;
 	int Index = -1;
 
 	double KDisp = 0.0, KGrad = 0.0;
@@ -212,6 +212,8 @@ enum CompDir_e{
 	LessThan = 1,
 	GreaterThan
 };
+
+string GetEdgeString(int ei, int ej);
 
 
 #endif

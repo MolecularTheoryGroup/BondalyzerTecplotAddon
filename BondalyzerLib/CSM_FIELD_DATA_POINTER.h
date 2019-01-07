@@ -34,21 +34,21 @@ public:
 	FieldDataType_e FDType() const { return m_FDType; }
 	ValueLocation_e ValueLocation() const { return m_ValueLocation; }
 private:
-	void* m_VoidPtr = NULL;
+	void* m_VoidPtr = nullptr;
 
-	const bool* m_ReadBitPtr = NULL;
-	const Byte_t* m_ReadBytePtr = NULL;
-	const Int16_t* m_ReadInt16Ptr = NULL;
-	const Int32_t* m_ReadInt32Ptr = NULL;
-	const float_t* m_ReadFltPtr = NULL;
-	const double_t* m_ReadDblPtr = NULL;
+	const bool* m_ReadBitPtr = nullptr;
+	const Byte_t* m_ReadBytePtr = nullptr;
+	const Int16_t* m_ReadInt16Ptr = nullptr;
+	const Int32_t* m_ReadInt32Ptr = nullptr;
+	const float_t* m_ReadFltPtr = nullptr;
+	const double_t* m_ReadDblPtr = nullptr;
 
-	bool* m_WriteBitPtr = NULL;
-	Byte_t* m_WriteBytePtr = NULL;
-	Int16_t* m_WriteInt16Ptr = NULL;
-	Int32_t* m_WriteInt32Ptr = NULL;
-	float_t* m_WriteFltPtr = NULL;
-	double_t* m_WriteDblPtr = NULL;
+	bool* m_WriteBitPtr = nullptr;
+	Byte_t* m_WriteBytePtr = nullptr;
+	Int16_t* m_WriteInt16Ptr = nullptr;
+	Int32_t* m_WriteInt32Ptr = nullptr;
+	float_t* m_WriteFltPtr = nullptr;
+	double_t* m_WriteDblPtr = nullptr;
 
 	int m_MaxIJK[3];
 	unsigned int m_Size = 0;
@@ -88,6 +88,14 @@ public:
 private:
 	FieldDataPointer_c Ptrs[3];
 };
+
+Boolean_t const GetReadPtrsForZone(int ZoneNum,
+	int RhoVarNum,
+	vector<int> const & GradVarNums,
+	vector<int> const & HessVarNums,
+	FieldDataPointer_c & RhoPtr,
+	vector<FieldDataPointer_c> & GradPtrs,
+	vector<FieldDataPointer_c> & HessPtrs);
 
 
 #endif // !CSMFIELDDATAPOINTER_H_

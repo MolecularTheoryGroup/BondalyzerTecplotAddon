@@ -198,9 +198,9 @@ void BuildTab1_1(LgIndex_t  Parent)
                                          298,
                                  "Selected zone",
                                  "All zones",
-                                 (char *)NULL,
-                                 (char *)NULL,
-                                 (char *)NULL,
+                                 (char *)nullptr,
+                                 (char *)nullptr,
+                                 (char *)nullptr,
                                  VolOrZone_RADIO_T1_1_CB);
 
   SelZone_OPT_T1_1 = TecGUIOptionMenuAdd(Tab1_1Manager,

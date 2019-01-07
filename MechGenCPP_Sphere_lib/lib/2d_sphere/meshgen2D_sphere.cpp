@@ -585,5 +585,9 @@ MeshStatus_e meshgen2D_sphere(double Radius,
   Params.AdjListCounts.clear();
   Params.TriAdjListCounts.clear();
 
+  NumPtsIn = Params.NumPts;
+  NumTriIn = Params.NumTri;
+  NumEdgesIn = numedges;
+
   return MeshStatus;
 }

@@ -76,10 +76,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(ProjectDir)$(PlatformTarget)\$(Configuration)\</OutDir>
     <ExtensionsToDeleteOnClean>Elem*csv;$(ExtensionsToDeleteOnClean)</ExtensionsToDeleteOnClean>
+    <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(ProjectDir)$(PlatformTarget)\$(Configuration)\</OutDir>
     <ExtensionsToDeleteOnClean>Elem*csv;$(ExtensionsToDeleteOnClean)</ExtensionsToDeleteOnClean>
+    <EnableManagedIncrementalBuild>true</EnableManagedIncrementalBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -105,12 +107,13 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>false</SDLCheck>
-      <AdditionalIncludeDirectories>$(TEC_360_2013R1)\Include;$(SolutionDir)MechGenCPP_Sphere_lib\lib\2d_sphere;$(SolutionDir)MechGenCPP_Sphere_lib\lib;$(SolutionDir)..\gsl-1.16;$(SolutionDir)BondalyzerLib;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(TEC_360_2013R1)\Include;$(SolutionDir)MechGenCPP_Sphere_lib\lib\2d_sphere;$(SolutionDir)MechGenCPP_Sphere_lib\lib;$(SolutionDir)..\gsl-1.16;$(SolutionDir)BondalyzerLib;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
-      <MultiProcessorCompilation>false</MultiProcessorCompilation>
-      <MinimalRebuild>true</MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <MinimalRebuild>false</MinimalRebuild>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <PreprocessorDefinitions>_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -154,16 +157,17 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
-      <AdditionalIncludeDirectories>$(TEC_360_2013R1)\Include;$(SolutionDir)MechGenCPP_Sphere_lib\lib\2d_sphere;$(SolutionDir)MechGenCPP_Sphere_lib\lib;$(SolutionDir)..\gsl-1.16;$(SolutionDir)BondalyzerLib;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(TEC_360_2013R1)\Include;$(SolutionDir)MechGenCPP_Sphere_lib\lib\2d_sphere;$(SolutionDir)MechGenCPP_Sphere_lib\lib;$(SolutionDir)..\gsl-1.16;$(SolutionDir)BondalyzerLib;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OpenMPSupport>true</OpenMPSupport>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
-      <MinimalRebuild>true</MinimalRebuild>
+      <MinimalRebuild>false</MinimalRebuild>
       <DisableSpecificWarnings>4996;4244</DisableSpecificWarnings>
       <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -180,7 +184,7 @@
   <ItemGroup>
     <ClInclude Include="ADDGLBL.h" />
     <ClInclude Include="ADDONVER.h" />
-    <ClInclude Include="CSM_GUI.h" />
+    <ClInclude Include="CSM_GBAGUI.h" />
     <ClInclude Include="GBAENGINE.h" />
     <ClInclude Include="GUICB.h" />
     <ClInclude Include="GUIDEFS.h" />
@@ -189,7 +193,7 @@
     <ClInclude Include="ZONEVARINFO.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="csm_gui.cpp" />
+    <ClCompile Include="csm_gbagui.cpp" />
     <ClCompile Include="gbaengine.cpp" />
     <ClCompile Include="guibld.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -216,6 +220,9 @@
       <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
       <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <ProjectReference Include="..\heffnormFromCraig\heffnormFromCraig.vcxproj">
+      <Project>{60f40e44-dc16-4d19-a0f7-2427dc1da8d9}</Project>
     </ProjectReference>
     <ProjectReference Include="..\MechGenCPP_Sphere_lib\MechGenCPP_Sphere.vcxproj">
       <Project>{2e435a33-3cf7-45f8-80f7-a9fbf37c941c}</Project>

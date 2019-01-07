@@ -2267,7 +2267,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	*	Get dataset info
 	*/
 	EntIndex_t NumZones, NumVars;
-	Boolean_t IsOk = TecUtilDataSetGetInfo(NULL, &NumZones, &NumVars);
+	Boolean_t IsOk = TecUtilDataSetGetInfo(nullptr, &NumZones, &NumVars);
 	if (!IsOk){
 		TecUtilDialogErrMsg("Failed to get dataset information");
 		TecUtilLockFinish(Opt.AddOnID);

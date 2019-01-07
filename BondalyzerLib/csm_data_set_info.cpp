@@ -14,6 +14,8 @@
 #include <ratio>
 
 #include "TECADDON.h"
+#include "Set.h"
+
 #include "CSM_DATA_SET_INFO.h"
 
 
@@ -23,6 +25,8 @@ using std::chrono::duration;
 using std::chrono::duration_cast;
 
 using std::stringstream;
+
+using tecplot::toolbox::Set;
 
 int StatusNumValues;
 int StatusMaxNumValues = 20;
@@ -66,18 +70,65 @@ int SearchVectorForString(vector<string> const & Vec, string const & SearchStrin
 	return -1;
 }
 
-vector<string> SplitString(string const &s, string const & delim) {
-	vector<string> tokens;
-	auto start = 0U;
-	auto end = s.find(delim);
-	while (end != std::string::npos){
-		tokens.push_back(s.substr(start, end - start));
-		start = end + delim.length();
-		end = s.find(delim, start);
-	}
-	tokens.push_back(s.substr(start, s.length() - start));
-// 	if (tokens.size() == 0) tokens.push_back(s);
-	return tokens;
+/*
+ *	template split string function, except it doesn't know the type of the items to be split in the string
+ *	so it can't know the type of the return vector. I hoped it would get that from the variable
+ *	receiving the return of the function call, but I guess not, and even if that worked, you could break it
+ *	by returning to an auto type variable.
+ */
+// template <class T>
+// vector<T> SplitString(string const &s, string const & delim, bool RemoveAllBlanks, bool RemoveBlankAtEnd)
+// {
+// 	stringstream ss1(s), ss2;
+// 	string tok;
+// 	vector<T> out;
+// 	if (RemoveAllBlanks) {
+// 		while (std::getline(ss1, tok, delim)) {
+// 			if (tok.length() > 0){
+// 				ss2.str(tok);
+// 				out.push_back();
+// 				ss2 >> out.back();
+// 			}
+// 		}
+// 	}
+// 	else{
+// 		while (std::getline(ss1, tok, delim)) {
+// 			ss2.str(tok);
+// 			out.push_back();
+// 			ss2 >> out.back();
+// 		}
+// 	}
+// 	if (RemoveBlankAtEnd && out.back() == T())
+// 		out.pop_back();
+// 
+// 	return out;
+// }
+
+vector<string> SplitString(string const &s, string const & delim, bool RemoveAllBlanks, bool RemoveBlankAtEnd) {
+  	vector<string> tokens;
+  	auto start = 0U;
+  	auto end = s.find(delim);
+	if (RemoveAllBlanks) {
+		RemoveBlankAtEnd = true;
+  		while (end != std::string::npos) {
+  			if (end - start > 0) {
+  				tokens.push_back(s.substr(start, end - start));
+  			}
+  			start = end + delim.length();
+  			end = s.find(delim, start);
+  		}
+  	}
+  	else {
+  		while (end != std::string::npos) {
+  			tokens.push_back(s.substr(start, end - start));
+  			start = end + delim.length();
+  			end = s.find(delim, start);
+  		}
+  	}
+  	if (!RemoveBlankAtEnd || s.length() - start > 0)
+  		tokens.push_back(s.substr(start, s.length() - start));
+  // 	if (tokens.size() == 0) tokens.push_back(s);
+  	return tokens;
 }
 
 vector<int> SplitStringInt(string const &s, string const & delim) {
@@ -85,10 +136,13 @@ vector<int> SplitStringInt(string const &s, string const & delim) {
 	auto start = 0U;
 	auto end = s.find(delim);
 	while (end != std::string::npos) {
-		tokens.push_back(stoi(s.substr(start, end - start)));
+		if (end - start > 0) {
+			tokens.push_back(stoi(s.substr(start, end - start)));
+		}
 		start = end + delim.length();
 		end = s.find(delim, start);
 	}
+
 	if (s.length() - start > 0)
 		tokens.push_back(stoi(s.substr(start, s.length() - start)));
 	// 	if (tokens.size() == 0) tokens.push_back(s);
@@ -100,7 +154,9 @@ vector<double> SplitStringDbl(string const &s, string const & delim) {
 	auto start = 0U;
 	auto end = s.find(delim);
 	while (end != std::string::npos) {
-		tokens.push_back(stod(s.substr(start, end - start)));
+		if (end - start > 0) {
+			tokens.push_back(stod(s.substr(start, end - start)));
+		}
 		start = end + delim.length();
 		end = s.find(delim, start);
 	}
@@ -203,7 +259,7 @@ string AuxDataMakeStringValidName(string Str){
 	*/
 
 void AuxDataCopy(int SourceNum, int DestNum, bool IsZone){
-	AuxData_pa SourcePtr = NULL, DestPtr = NULL;
+	AuxData_pa SourcePtr = nullptr, DestPtr = nullptr;
 
 	if (IsZone){
 		SourcePtr = TecUtilAuxDataZoneGetRef(SourceNum);
@@ -214,7 +270,7 @@ void AuxDataCopy(int SourceNum, int DestNum, bool IsZone){
 		DestPtr = TecUtilAuxDataVarGetRef(DestNum);
 	}
 
-	if (SourcePtr != NULL && DestPtr != NULL){
+	if (SourcePtr != nullptr && DestPtr != nullptr){
 		int NumItems = TecUtilAuxDataGetNumItems(SourcePtr);
 		for (int i = 1; i <= NumItems; ++i){
 			char *name, *value;
@@ -234,7 +290,7 @@ Boolean_t AuxDataZoneHasItem(int ZoneNum, string const & CheckString)
 	Boolean_t ZoneOK = TRUE;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	ZoneOK = (TempAuxData != NULL);
+	ZoneOK = (TempAuxData != nullptr);
 	if (ZoneOK){
 		char* TempCStr;
 		AuxDataType_e ADTJunk;
@@ -250,7 +306,7 @@ Boolean_t AuxDataZoneItemMatches(int ZoneNum, string const & AuxDataName, string
 	Boolean_t ZoneOK = TRUE;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	ZoneOK = (TempAuxData != NULL);
+	ZoneOK = (TempAuxData != nullptr);
 	if (ZoneOK){
 		char* TempCStr;
 		AuxDataType_e ADTJunk;
@@ -269,11 +325,11 @@ string AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName)
 {
 	Boolean_t ZoneOK = TRUE;
 
-	char* TempCStr = NULL;
+	char* TempCStr = nullptr;
 	string TmpStr = "-1";
 
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	ZoneOK = (TempAuxData != NULL);
+	ZoneOK = (TempAuxData != nullptr);
 	if (ZoneOK){
 		AuxDataType_e ADTJunk;
 		Boolean_t BJunk;
@@ -291,10 +347,10 @@ Boolean_t AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName, string & V
 {
 	Boolean_t ZoneOK = TRUE;
 
-	char* TempCStr = NULL;
+	char* TempCStr = nullptr;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	ZoneOK = (TempAuxData != NULL);
+	ZoneOK = (TempAuxData != nullptr);
 	if (ZoneOK){
 		AuxDataType_e ADTJunk;
 		Boolean_t BJunk;
@@ -316,7 +372,7 @@ vector<string> AuxDataZoneGetList(int ZoneNum, string const & AuxDataName, strin
 Boolean_t AuxDataZoneSetItem(int ZoneNum, string const & AuxDataName, string const & AuxDataValue)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	Boolean_t IsOk = (TempAuxData != NULL);
+	Boolean_t IsOk = (TempAuxData != nullptr);
 	if (IsOk){
 		IsOk = TecUtilAuxDataSetStrItem(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str(), AuxDataValue.c_str(), TRUE);
 	}
@@ -326,7 +382,7 @@ Boolean_t AuxDataZoneSetItem(int ZoneNum, string const & AuxDataName, string con
 Boolean_t AuxDataZoneDeleteItemByName(int ZoneNum, string const & AuxDataName)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	Boolean_t IsOk = (TempAuxData != NULL);
+	Boolean_t IsOk = (TempAuxData != nullptr);
 	if (IsOk){
 		IsOk = TecUtilAuxDataDeleteItemByName(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str());
 	}
@@ -336,7 +392,7 @@ Boolean_t AuxDataZoneDeleteItemByName(int ZoneNum, string const & AuxDataName)
 Boolean_t AuxDataDataSetDeleteItemByName(string const & AuxDataName)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
-	Boolean_t IsOk = (TempAuxData != NULL);
+	Boolean_t IsOk = (TempAuxData != nullptr);
 	if (IsOk){
 		IsOk = TecUtilAuxDataDeleteItemByName(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str());
 	}
@@ -347,11 +403,11 @@ string AuxDataDataSetGetItem(string const & AuxDataName)
 {
 	Boolean_t ZoneOK = TRUE;
 
-	char* TempCStr = NULL;
+	char* TempCStr = nullptr;
 	string TmpStr;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
-	ZoneOK = (TempAuxData != NULL);
+	ZoneOK = (TempAuxData != nullptr);
 	if (ZoneOK){
 		AuxDataType_e ADTJunk;
 		Boolean_t BJunk;
@@ -369,10 +425,10 @@ Boolean_t AuxDataDataSetGetItem(string const & AuxDataName, string & Value)
 {
 	Boolean_t ZoneOK = TRUE;
 
-	char* TempCStr = NULL;
+	char* TempCStr = nullptr;
 
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
-	ZoneOK = (TempAuxData != NULL);
+	ZoneOK = (TempAuxData != nullptr);
 	if (ZoneOK){
 		AuxDataType_e ADTJunk;
 		Boolean_t BJunk;
@@ -390,7 +446,7 @@ Boolean_t AuxDataDataSetGetItem(string const & AuxDataName, string & Value)
 Boolean_t AuxDataDataSetSetItem(string const & AuxDataName, string const & AuxDataValue)
 {
 	AuxData_pa TempAuxData = TecUtilAuxDataDataSetGetRef();
-	Boolean_t IsOk = (TempAuxData != NULL);
+	Boolean_t IsOk = (TempAuxData != nullptr);
 	if (IsOk){
 		IsOk = TecUtilAuxDataSetStrItem(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str(), AuxDataValue.c_str(), TRUE);
 	}
@@ -856,7 +912,7 @@ Boolean_t SaveVec3VecAsScatterZone(vector<vec3> const & VecVec,
 	Boolean_t IsOk = VecVec.size() > 0;
 	if (IsOk){
 
-		TecUtilDataSetAddZone(ZoneName.c_str(), VecVec.size(), 1, 1, ZoneType_Ordered, NULL);
+		TecUtilDataSetAddZone(ZoneName.c_str(), VecVec.size(), 1, 1, ZoneType_Ordered, nullptr);
 // 		for (int i = 0; i < VecVec.size(); ++i){
 // 			for (int dir = 0; dir < 3; ++dir){
 // 				TecUtilDataValueSetByZoneVar(TecUtilDataSetGetNumZones(), XYZVarNums[dir], i + 1, VecVec[i][dir]);
@@ -901,7 +957,7 @@ Boolean_t SaveTetVec3VecAsFEZone(vector<vec3> const & Verts,
 	Boolean_t IsOk = Verts.size() == 4;
 	if (IsOk){
 
-		TecUtilDataSetAddZone(ZoneName.c_str(), Verts.size(), 1, 1, ZoneType_FETetra, NULL);
+		TecUtilDataSetAddZone(ZoneName.c_str(), Verts.size(), 1, 1, ZoneType_FETetra, nullptr);
 		// 		for (int i = 0; i < VecVec.size(); ++i){
 		// 			for (int dir = 0; dir < 3; ++dir){
 		// 				TecUtilDataValueSetByZoneVar(TecUtilDataSetGetNumZones(), XYZVarNums[dir], i + 1, VecVec[i][dir]);
@@ -943,4 +999,90 @@ Boolean_t SaveTetVec3VecAsFEZone(vector<vec3> const & Verts,
 		TecUtilSetDealloc(&TmpSet);
 	}
 	return IsOk;
+}
+
+
+void SetZoneStyle(vector<int> ZoneNums,
+	CSMZoneStyle_e ZoneStyle,
+	ColorIndex_t Color,
+	double const Size)
+{
+	if (ZoneNums.size() == 0) ZoneNums.push_back(0);
+	for (auto ZoneNum : ZoneNums) {
+		if (ZoneNum <= 0 || ZoneNum > TecUtilDataSetGetNumZones()) {
+			ZoneNum = TecUtilDataSetGetNumZones();
+		}
+		if (ZoneNum <= 0)
+			return;
+
+		int IMaxPathCutoff = 100;
+
+		if (ZoneStyle == ZoneStyle_Invalid) {
+			int I, J, K;
+			TecUtilZoneGetIJK(ZoneNum, &I, &J, &K);
+			if (TecUtilZoneIsOrdered(ZoneNum)) {
+				if (J > 1)
+					if (K > 1)
+						ZoneStyle = ZoneStyle_Volume;
+					else
+						ZoneStyle = ZoneStyle_Surface;
+				else if (I > IMaxPathCutoff)
+					ZoneStyle = ZoneStyle_Path;
+				else
+					ZoneStyle = ZoneStyle_Points;
+			}
+			else if (TecUtilZoneIsFiniteElement(ZoneNum)) {
+				if (K == 1)
+					ZoneStyle = ZoneStyle_Points;
+				else if (K == 2)
+					ZoneStyle = ZoneStyle_Path;
+				else if (K >= 3) {
+					ZoneType_e ZoneType = TecUtilZoneGetType(ZoneNum);
+					if (ZoneType == ZoneType_FETriangle
+						|| ZoneType == ZoneType_FEQuad
+						|| ZoneType == ZoneType_FEPolygon)
+					{
+						ZoneStyle = ZoneStyle_Surface;
+					}
+					else if (ZoneType == ZoneType_FETetra
+						|| ZoneType == ZoneType_FEBrick
+						|| ZoneType == ZoneType_FEPolyhedron)
+					{
+						ZoneStyle = ZoneStyle_Volume;
+					}
+				}
+			}
+		}
+
+		ColorIndex_t ColorDefault = Black_C;
+
+		Set ZoneSet(ZoneNum);
+
+		if (ZoneStyle <= ZoneStyle_Points) {
+			double SizeDefault = 0.5;
+			TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, ZoneSet.getRef(), GeomShape_Sphere);
+			TecUtilZoneSetScatter(SV_FRAMESIZE, ZoneSet.getRef(), (Size > 0 ? Size : SizeDefault), 0);
+			TecUtilZoneSetScatter(SV_COLOR, ZoneSet.getRef(), 0, (Color != InvalidColor_C ? Color : ColorDefault));
+		}
+		else if (ZoneStyle <= ZoneStyle_Path) {
+			double SizeDefault = 0.2;
+			TecUtilZoneSetScatter(SV_SHOW, ZoneSet.getRef(), 0, FALSE);
+			TecUtilZoneSetMesh(SV_SHOW, ZoneSet.getRef(), 0, TRUE);
+			TecUtilZoneSetMesh(SV_COLOR, ZoneSet.getRef(), 0, (Color != InvalidColor_C ? Color : ColorDefault));
+			TecUtilZoneSetMesh(SV_LINETHICKNESS, ZoneSet.getRef(), (Size > 0 ? Size : SizeDefault), 0);
+		}
+		else if (ZoneStyle <= ZoneStyle_Surface) {
+			ColorDefault = Cyan_C;
+			TecUtilZoneSetScatter(SV_SHOW, ZoneSet.getRef(), 0, FALSE);
+			TecUtilZoneSetShade(SV_SHOW, ZoneSet.getRef(), 0, TRUE);
+			TecUtilZoneSetShade(SV_COLOR, ZoneSet.getRef(), 0, (Color != InvalidColor_C ? Color : ColorDefault));
+		}
+		else if (ZoneStyle <= ZoneStyle_Volume) {
+			double SizeDefault = 0.1;
+			TecUtilZoneSetScatter(SV_SHOW, ZoneSet.getRef(), 0, FALSE);
+			TecUtilZoneSetEdgeLayer(SV_SHOW, ZoneSet.getRef(), 0, TRUE);
+			TecUtilZoneSetEdgeLayer(SV_LINETHICKNESS, ZoneSet.getRef(), (Size > 0 ? Size : SizeDefault), 0);
+			TecUtilZoneSetEdgeLayer(SV_COLOR, ZoneSet.getRef(), 0, (Color != InvalidColor_C ? Color : ColorDefault));
+		}
+	}
 }

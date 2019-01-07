@@ -1,5 +1,5 @@
-#ifndef CSMGUI_H_
-#define CSMGUI_H_
+#ifndef CSMGBAGUI_H_
+#define CSMGBAGUI_H_
 
 #include <string>
 #include <vector>
@@ -32,12 +32,12 @@ vector<int> ListGetSelectedItemNums(LgIndex_t ListID);
 void ListPopulateWithVarNames(LgIndex_t ListID);
 vec3 GetCoordsFromListItem(LgIndex_t ItemIndex,
 	LgIndex_t ListIndex,
-	string* ItemFullString = NULL,
-	string* ItemNameString = NULL,
-	int* ItemNumber = NULL,
-	int* ZoneNumber = NULL,
-	bool* IsCP = NULL,
-	vector<int>* NumberOfCPs = NULL);
+	string* ItemFullString = nullptr,
+	string* ItemNameString = nullptr,
+	int* ItemNumber = nullptr,
+	int* ZoneNumber = nullptr,
+	bool* IsCP = nullptr,
+	vector<int>* NumberOfCPs = nullptr);
 
 
 #endif

@@ -3,6 +3,8 @@
 #define CSMGEOMETRY_H_
 
 #include <vector>
+#include <map>
+#include <set>
 #include <armadillo>
 
 #define SAVE_INT_OBJECTS
@@ -38,6 +40,13 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 	vector<double> & IntVals,
 	bool const ContainsBondPath = false);
 
+void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPs,
+	int nPts,
+	VolExtentIndexWeights_s & VolInfo,
+	vector<FieldDataPointer_c> const & VarPtrs,
+	vector<double> & IntVals,
+	vec3 const * BondCPPos = nullptr);
+
 bool GetSortedParameterEdgeMidpoints(vector<vector<int> > const & TriElems,
 	vector<vec3> const & NodeList,
 	vector<vec3> & SortedEdgeMidpoints,
@@ -53,5 +62,38 @@ Boolean_t Vec3PathResample(vector<vec3> const & OldXYZList, int NumPoints, vecto
 
 bool ProjectedPointToTriangleIsInterior(vec3 const & P0, vec3 & TP, vec3 const & T1, vec3 const & T2, vec3 const & T3);
 double PointDistanceToTriangleSquared(vec3 const & P, vec3 & ClosestPoint, vec3 const & T1, vec3 const & T2, vec3 const & T3, bool RecordPoint = true);
+
+void TriangleEdgeMidPointSubdivide(
+	vector<vec3> & nodes, 
+	vector<vector<int> > & elems, 
+	int TriNum,
+	vector<int> & newTriNums);
+void TriangleEdgeMidPointSubdivideAroundNodes(
+	vector<vec3> & nodes,
+	vector<vector<int> > & tris,
+	vector<std::set<int> > & trisOfNode,
+	vector<int> const & nodeNums,
+	vector<int> & newNodeNums,
+	vector<int> & newTriNums);
+void UpdateSubdivideSphericalTriangulationWithConstraintNodesAndSegments(
+	vector<vec3> const & inNodes, // input sphere nodes
+	vector<vector<int> > const & inTris, // input sphere triangular elements in terms of node indices
+	vec3 const & sphereCenter,
+	double const & sphereRadius,
+	vector<vector<vec3> > & constraintNodes, // input 2d vector<vector<int>>; constraint nodes organized by segments
+	vector<vec3> & outNodes, // new sphere nodes
+	vector<vector<int> > & outTris, // new sphere elements in terms of outNodes indices
+	std::map<int, int> & outNodeConstraintNodeIndices, // indicates which constraintNode each outNode corresponds to (-1 if none or corresponds to segment)
+	std::map<int, int> & outNodeConstraintSegmentIndices); // indicates which constraint segment each outNode corresponds to (-1 if no correspondance to any constraint));
+
+void TriangulatedSphereJiggleMesh(vector<vec3> & Nodes,
+	vector<std::set<int> > const & NodeConnectivity,
+	vector<bool> const & NodeIsConstrained,
+	vec3 const & SphereCenter,
+	double const & SphereRadius);
+
+void GetMeshNodeConnectivity(vector<vector<int> > const & Elems,
+	int NumNodes,
+	vector<std::set<int> > & NodeConnectivity);
 
 #endif

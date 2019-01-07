@@ -393,9 +393,12 @@ int VectorGetElementNum(vector<T> const & SearchVec, T const & Item){
 	return ElemNum;
 }
 int SearchVectorForString(vector<string> const & Vec, string const & SearchString, bool UseVectorStringLength = true);
-vector<string> SplitString(string const &s, string const & delim = " ");
+
+// template <class T>
+// vector<T> SplitString(string const &s, string const & delim, bool RemoveAllBlanks = false, bool RemoveBlankAtEnd = false);
+vector<string> SplitString(string const &s, string const & delim = " ", bool RemoveAllBlanks = false, bool RemoveBlankAtEnd = false);
 vector<int> SplitStringInt(string const &s, string const & delim = ",");
-vector<double> SplitStringDbl(string const &s, string const & delim);
+vector<double> SplitStringDbl(string const &s, string const & delim = ",");
 template <class T>
 string VectorToString(vector<T> const & Items, string const & Delim = " "){
 	//string OutStr;
@@ -485,5 +488,17 @@ Boolean_t SaveTetVec3VecAsFEZone(vector<vec3> const & Verts,
 	string const & ZoneName,
 	ColorIndex_t const & Color,
 	vector<EntIndex_t> const & XYZVarNums);
+
+enum CSMZoneStyle_e{
+	ZoneStyle_Invalid = -1,
+	ZoneStyle_Points,
+	ZoneStyle_Path,
+	ZoneStyle_Surface,
+	ZoneStyle_Volume
+};
+void SetZoneStyle(vector<int> ZoneNums = {},
+	CSMZoneStyle_e ZoneStyle = ZoneStyle_Invalid,
+	ColorIndex_t Color = InvalidColor_C,
+	double const Size = -1);
 
 #endif

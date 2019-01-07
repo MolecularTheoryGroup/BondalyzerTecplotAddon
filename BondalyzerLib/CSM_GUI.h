@@ -105,8 +105,8 @@ void CSMGui(string const & Title,
 	AddOn_pa const & InputAddOnID,
 	vector<GuiField_c> const PassthroughFields = vector<GuiField_c>());
 
-void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID = NULL);
-void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID = NULL);
+void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID = nullptr);
+void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID = nullptr);
 
 void CSMGuiLock();
 void CSMGuiUnlock();

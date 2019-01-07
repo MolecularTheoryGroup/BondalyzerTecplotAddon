@@ -293,7 +293,7 @@ static void Dialog3Init_CB(void)
 
 	EntIndex_t NumVars, NumZones;
 
-	Boolean_t IsOk = TecUtilDataSetGetInfo(NULL, &NumZones, &NumVars);
+	Boolean_t IsOk = TecUtilDataSetGetInfo(nullptr, &NumZones, &NumVars);
 
 	if (IsOk){
 		TecGUIListDeleteAllItems(ZoneList_MLST_T1_1);

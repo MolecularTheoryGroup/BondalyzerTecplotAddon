@@ -73,7 +73,7 @@ void BuildDialog3(LgIndex_t  ParentDialog)
                                              "Refine zone data",
                                              Dialog3Init_CB,
                                              Dialog3CloseButton_CB,
-                                             NULL)
+                                             nullptr)
 ;  TAB1_TB_D3 = TecGUITabAdd(Dialog3Manager,
                           29,
                           220,
@@ -99,7 +99,7 @@ void BuildDialog1(LgIndex_t  ParentDialog)
                                           "Untitled",
                                           Dialog1Init_CB,
                                           Dialog1OkButton_CB,
-                                          NULL,
+                                          nullptr,
                                           Dialog1CancelButton_CB,
                                           Dialog1HelpButton_CB);
   MLT41LoadVa_MLST_D1 = TecGUIListAdd(Dialog1Manager,
@@ -130,7 +130,7 @@ void BuildDialog2(LgIndex_t  ParentDialog)
                                           "Untitled",
                                           Dialog2Init_CB,
                                           Dialog2OkButton_CB,
-                                          NULL,
+                                          nullptr,
                                           Dialog2CancelButton_CB,
                                           Dialog2HelpButton_CB);
   LBL2_LBL_D2 = TecGUILabelAdd(Dialog2Manager,

@@ -106,7 +106,7 @@ FESurface_c::FESurface_c(int InZoneNum,
 		m_FEVolumeMade = (InMaxIJK.size() == 3);
 
 	if (m_FEVolumeMade)
-		m_FEVolumeMade = (InConnectivityListPtr != NULL);
+		m_FEVolumeMade = (InConnectivityListPtr != nullptr);
 
 	if (m_FEVolumeMade){
 		TecUtilZoneGetIJK(InZoneNum, &m_NumNodes, &m_NumElems, &m_NumNodesPerElem);
@@ -266,7 +266,7 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 		for (auto * g : GPs){
 			IndList.push_back(vector<int>(g->GetCount()));
 			int gi = 0;
-			for (auto p : g->m_XYZList){
+			for (auto const & p : g->m_XYZList){
 				m_XYZList[ni] = p;
 				IndList.back()[gi++] = ni++;
 			}
@@ -345,103 +345,138 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 
 
 
-		if (AddCap){
-			/*
-			 *	GB edges have been connected into surfaces.
-			 *	Now need to create surfaces for the initial and terminal 3d caps
-			 *	to close off the GB.
-			 *	The initial 2d cap is guaranteed to be a triangle since it coincides
-			 *	with one of the triangular elements on the sphere.
-			 *	The terminal 2d cap can be stitched by finding the pair of GP end
-			 *	points of greatest separation and dividing all end points into
-			 *	two paths and then stitching those.
-			 */
-
-			/*
-			*	There are two kinds of GBs:
-			*	One for "normal" GBs and another for GBs that have a bond
-			*	path as an edge.
-			*
-			*	The normal GBs have a triangle of points at their base with
-			*	e edge points, so 3e+3 total points.
-			*
-			*	Bond path GBs are similar, but have multiple points at one of
-			*	the triangular vertices because of the e+2 paths on the far
-			*	side of the bond path (that is, along the interatomic surface).
-			*	So they have 4e+4 total points. The first 2e+2 and the last e+1 GPs of a bond path
-			*	GB (and the (2e+3)-th GP) describe the full set of points along
-			*	the triangular element, and the set [2e+3,3e+3] all originate
-			*	from the same point as the (3e+4)-th GP.
-			*/
-
-
+		if (AddCap) {
 			int NumEdgePointsNormal = (GPs.size() - 3) / 3,
 				NumEdgePointsSaddle = (GPs.size() - 4) / 4;
 			int TotNumPointsNormal = 3 * NumEdgePointsNormal + 3,
 				TotNumPointsSaddle = 4 * NumEdgePointsSaddle + 4;
 
-			/*
-			 *	If TotNumPoints == GPs.size() then it's a normal GB, if not it's
-			 *	a bond path GB.
-			 */
-			// 		vector<int> InitialCapInd;
+			if (TotNumPointsSaddle > 4 || TotNumPointsNormal > 3) {
+				/*
+				 *	GB edges have been connected into surfaces.
+				 *	Now need to create surfaces for the initial and terminal 3d caps
+				 *	to close off the GB.
+				 *	The initial 2d cap is guaranteed to be a triangle since it coincides
+				 *	with one of the triangular elements on the sphere.
+				 *	The terminal 2d cap can be stitched by finding the pair of GP end
+				 *	points of greatest separation and dividing all end points into
+				 *	two paths and then stitching those.
+				 */
 
-			if (TotNumPointsSaddle == GPs.size()){
-				// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
-				// 			InitialCapInd.back()++;
-				m_ElemList.push_back({ IndList[0][0],
-					IndList[NumEdgePointsSaddle + 1][0],
-					IndList[(NumEdgePointsSaddle)* 2 + 2][0] });
-			}
-			else if (TotNumPointsNormal == GPs.size()){
-				// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
-				m_ElemList.push_back({ IndList[0][0],
-					IndList[NumEdgePointsNormal + 1][0],
-					IndList[(NumEdgePointsNormal + 1) * 2][0] });
-			}
-			else
-				TecUtilDialogMessageBox("Incorrect number of GPs for GB", MessageBoxType_Error);
-			// 		m_ElemList.push_back(InitialCapInd);
+				 /*
+				 *	There are two kinds of GBs:
+				 *	One for "normal" GBs and another for GBs that have a bond
+				 *	path as an edge.
+				 *
+				 *	The normal GBs have a triangle of points at their base with
+				 *	e edge points, so 3e+3 total points.
+				 *
+				 *	Bond path GBs are similar, but have multiple points at one of
+				 *	the triangular vertices because of the e+2 paths on the far
+				 *	side of the bond path (that is, along the interatomic surface).
+				 *	So they have 4e+4 total points. The first 2e+2 and the last e+1 GPs of a bond path
+				 *	GB (and the (2e+3)-th GP) describe the full set of points along
+				 *	the triangular element, and the set [2e+3,3e+3] all originate
+				 *	from the same point as the (3e+4)-th GP.
+				 */
 
 
-			/*
-			 *	Find the GP end points of maximum separation.
-			 *	We can neglect the presence of 1d cap points in CapIndList because
-			 *	they are guaranteed to be straight lines, so by including the
-			 *	GP endpoints we'll necessarily end up with triangular elements
-			 *	in the resulting 2d cap that coincide with the existing 1d cap points.
-			 */
+				 /*
+				  *	If TotNumPoints == GPs.size() then it's a normal GB, if not it's
+				  *	a bond path GB.
+				  */
+				  // 		vector<int> InitialCapInd;
 
-			double MaxDistSqr = -1;
-			int MaxDistsGPNums[2] = { -1, -1 };
-
-			for (int i = 0; i < IndList.size() - (ConnectBeginningAndEndGPs ? 2 : 1); ++i){
-				for (int j = i + 1; j < GPs.size(); ++j){
-					double TmpDistSqr = DistSqr(GPs[i]->XYZAt(-1), GPs[j]->XYZAt(-1));
-					if (TmpDistSqr > MaxDistSqr){
-						MaxDistSqr = TmpDistSqr;
-						MaxDistsGPNums[0] = i;
-						MaxDistsGPNums[1] = j;
-					}
+				if (TotNumPointsSaddle == GPs.size()) {
+					// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
+					// 			InitialCapInd.back()++;
+					m_ElemList.push_back({ IndList[0][0],
+						IndList[NumEdgePointsSaddle + 1][0],
+						IndList[(NumEdgePointsSaddle) * 2 + 2][0] });
 				}
-			}
+				else if (TotNumPointsNormal == GPs.size()) {
+					// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
+					m_ElemList.push_back({ IndList[0][0],
+						IndList[NumEdgePointsNormal + 1][0],
+						IndList[(NumEdgePointsNormal + 1) * 2][0] });
+				}
+				else
+					TecUtilDialogMessageBox("Incorrect number of GPs for GB", MessageBoxType_Error);
+				// 		m_ElemList.push_back(InitialCapInd);
 
-
-			if (MaxDistSqr > 0){
-				vector<int> LVec, RVec;
-				for (int i = MaxDistsGPNums[0]; i < MaxDistsGPNums[1]; ++i)
-					LVec.push_back(IndList[i].back());
-				for (int i = 0; i < GPs.size() - (MaxDistsGPNums[1] - MaxDistsGPNums[0]); ++i)
-					RVec.push_back(IndList[(MaxDistsGPNums[1] + i) % GPs.size()].back());
-				std::reverse(RVec.begin(), RVec.end());
 
 				/*
-				 *	Now stitch these two "paths" and add to the element list
+				 *	Find the GP end points of maximum separation.
+				 *	We can neglect the presence of 1d cap points in CapIndList because
+				 *	they are guaranteed to be straight lines, so by including the
+				 *	GP endpoints we'll necessarily end up with triangular elements
+				 *	in the resulting 2d cap that coincide with the existing 1d cap points.
 				 */
-				StitchPaths(LVec, RVec, m_XYZList, m_ElemList);
+
+				double MaxDistSqr = -1;
+				int MaxDistsGPNums[2] = { -1, -1 };
+
+				for (int i = 0; i < IndList.size() - (ConnectBeginningAndEndGPs ? 2 : 1); ++i) {
+					for (int j = i + 1; j < GPs.size(); ++j) {
+						double TmpDistSqr = DistSqr(GPs[i]->XYZAt(-1), GPs[j]->XYZAt(-1));
+						if (TmpDistSqr > MaxDistSqr) {
+							MaxDistSqr = TmpDistSqr;
+							MaxDistsGPNums[0] = i;
+							MaxDistsGPNums[1] = j;
+						}
+					}
+				}
+
+
+				if (MaxDistSqr > 0) {
+					vector<int> LVec, RVec;
+					for (int i = MaxDistsGPNums[0]; i < MaxDistsGPNums[1]; ++i)
+						LVec.push_back(IndList[i].back());
+					for (int i = 0; i < GPs.size() - (MaxDistsGPNums[1] - MaxDistsGPNums[0]); ++i)
+						RVec.push_back(IndList[(MaxDistsGPNums[1] + i) % GPs.size()].back());
+					std::reverse(RVec.begin(), RVec.end());
+
+					/*
+					 *	Now stitch these two "paths" and add to the element list
+					 */
+					StitchPaths(LVec, RVec, m_XYZList, m_ElemList);
+				}
+				else
+					IsOk = FALSE;
 			}
-			else
-				IsOk = FALSE;
+			else{
+				// No edge GPs are present, so the cap connectivity is either the final points of the GPs,
+				// if 3 total GPs, or splitting a quad into two triangles, if 4 total GPs.
+				// 
+				if (GPs.size() == 3){
+					m_ElemList.push_back({ IndList[0][0], IndList[1][0], IndList[2][0] });
+					m_ElemList.push_back({ IndList[0].back(), IndList[1].back(), IndList[2].back() });
+				}
+				else if (GPs.size() == 4) {
+					// Check the two ways to split the quads initial and terminal caps and split
+					// according to the shortest split edge.
+					
+					vector<vector<int> > TmpIndList = {
+						{ IndList[0][0], IndList[1][0], IndList[2][0], IndList[3][0] },
+						{ IndList[0].back(), IndList[1].back(), IndList[2].back(), IndList[3].back() } },
+						Split02 = { {0,1,2},{0,2,3} },
+						Split13 = { {0,1,3},{1,2,3} };
+
+					for (auto const & inds : TmpIndList){
+						if (DistSqr(m_XYZList[inds[0]], m_XYZList[inds[2]]) < DistSqr(m_XYZList[inds[1]], m_XYZList[inds[3]])){
+							for (auto const & tri : Split02)
+								m_ElemList.push_back({ inds[tri[0]], inds[tri[1]], inds[tri[2]] });
+						}
+						else {
+							for (auto const & tri : Split13)
+								m_ElemList.push_back({ inds[tri[0]], inds[tri[1]], inds[tri[2]] });
+						}
+					}
+				}
+				else{
+					IsOk = FALSE;
+				}
+			}
 		}
 	}
 
@@ -886,7 +921,7 @@ int FESurface_c::SaveAsTriFEZone(vector<int> const & XYZVarNums,
 
 	if (m_RefinedXYZList.size() <= 0) m_RefinedXYZList = m_XYZList;
 
-	IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), m_RefinedXYZList.size(), m_ElemList.size(), 0, ZoneType_FETriangle, NULL);
+	IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), m_RefinedXYZList.size(), m_ElemList.size(), 0, ZoneType_FETriangle, nullptr);
 
 	Set_pa TmpSet = TecUtilSetAlloc(FALSE);
 
@@ -1252,13 +1287,13 @@ void FESurface_c::GetNodeConnectivityFromTecplot(){
 	*/
 	if (m_FEVolumeMade) {
 		TecUtilDataNodeGetReadableRawPtr(m_ZoneNum, &m_ConnectivityListPtr);
-		m_FEVolumeMade = (m_ConnectivityListPtr != NULL);
+		m_FEVolumeMade = (m_ConnectivityListPtr != nullptr);
 	}
 	if (m_FEVolumeMade) {
 		NodeToElemMap_pa NodeToElemMap = TecUtilDataNodeToElemMapGetReadableRef(m_ZoneNum);
 		m_NodeConnectivityList.resize(m_NumNodes);
 		ElemFaceOffset_t FaceOffset = 0;
-		LgIndex_t NumUniqueNodes, UniqueNodesSize = 0, *UniqueNodes = NULL;
+		LgIndex_t NumUniqueNodes, UniqueNodesSize = 0, *UniqueNodes = nullptr;
 		for (LgIndex_t NodeNum = 0; NodeNum < m_NumNodes; ++NodeNum) {
 			m_NodeConnectivityList[NodeNum].reserve(8);
 			LgIndex_t NumElems = TecUtilDataNodeToElemMapGetNumElems(NodeToElemMap, NodeNum + 1);
@@ -1562,7 +1597,7 @@ Boolean_t FESurface_c::Refine(){
 	m_ElemList.reserve(m_ElemList.size() * 4);
 
 	for (int i = 0; i < m_NumElems; ++i)
-		TriangleEdgeMidPointSubdivide(i);
+		TriangleEdgeMidPointSubdivide(m_RefinedXYZList, m_ElemList, i, vector<int>());
 
 	m_XYZList = m_RefinedXYZList;
 	m_NumNodes = m_RefinedXYZList.size();
@@ -2193,28 +2228,28 @@ Boolean_t FESurface_c::CalcMaxNodeDistSqr(){
 	return IsOk;
 }
 
-vector<int> FESurface_c::TriangleEdgeMidPointSubdivide(int TriNum){
-	vector<LgIndex_t> NewNodes(3);
-	vector<int> NewTris(4);
-	NewTris[0] = TriNum;
-	int ni = m_RefinedXYZList.size();
-	int ti = m_ElemList.size();
-	for (int i = 0; i < 3; ++i){
-		m_RefinedXYZList.push_back(
-			(
-				m_RefinedXYZList[m_ElemList[TriNum][i]]
-				+ m_RefinedXYZList[m_ElemList[TriNum][(i + 1) % 3]]
-			) / 2.
-		);
-		NewNodes[i] = ni++;
-		NewTris[i+1] = ti++;
-	}
-	m_ElemList.push_back(vector<LgIndex_t>({m_ElemList[TriNum][1], NewNodes[1], NewNodes[0]}));
-	m_ElemList.push_back(vector<LgIndex_t>({m_ElemList[TriNum][2], NewNodes[2], NewNodes[1]}));
-	m_ElemList.push_back(NewNodes);
-	m_ElemList[TriNum] = vector<LgIndex_t>({m_ElemList[TriNum][0], NewNodes[0], NewNodes[2]});
-	return NewTris;
-}
+// vector<int> FESurface_c::TriangleEdgeMidPointSubdivide(int TriNum){
+// 	vector<LgIndex_t> NewNodes(3);
+// 	vector<int> NewTris(4);
+// 	NewTris[0] = TriNum;
+// 	int ni = m_RefinedXYZList.size();
+// 	int ti = m_ElemList.size();
+// 	for (int i = 0; i < 3; ++i){
+// 		m_RefinedXYZList.push_back(
+// 			(
+// 				m_RefinedXYZList[m_ElemList[TriNum][i]]
+// 				+ m_RefinedXYZList[m_ElemList[TriNum][(i + 1) % 3]]
+// 			) / 2.
+// 		);
+// 		NewNodes[i] = ni++;
+// 		NewTris[i+1] = ti++;
+// 	}
+// 	m_ElemList.push_back(vector<LgIndex_t>({m_ElemList[TriNum][1], NewNodes[1], NewNodes[0]}));
+// 	m_ElemList.push_back(vector<LgIndex_t>({m_ElemList[TriNum][2], NewNodes[2], NewNodes[1]}));
+// 	m_ElemList.push_back(NewNodes);
+// 	m_ElemList[TriNum] = vector<LgIndex_t>({m_ElemList[TriNum][0], NewNodes[0], NewNodes[2]});
+// 	return NewTris;
+// }
 
 void FESurface_c::RefineTriElems(vector<int> const & TriNumList){
 	for (auto const & t : TriNumList){
@@ -2223,7 +2258,9 @@ void FESurface_c::RefineTriElems(vector<int> const & TriNumList){
 			MaxNodeDistSqr = MAX(MaxNodeDistSqr, DistSqr(m_RefinedXYZList[m_ElemList[t][i]], m_RefinedXYZList[m_ElemList[t][(i+1) % 3]]));
 		}
 		if (MaxNodeDistSqr > m_MinNodeDistanceSqr){
-			RefineTriElems(TriangleEdgeMidPointSubdivide(t));
+			vector<int> refinedTriNums;
+			TriangleEdgeMidPointSubdivide(m_RefinedXYZList, m_ElemList, t, refinedTriNums);
+			RefineTriElems(refinedTriNums);
 		}
 	}
 }
@@ -2643,6 +2680,59 @@ int FESurface_c::TriangleIntersect(vec3 const & T_P0,
 		return 0;
 }
 
+vector<double> FESurface_c::TriSphereElemAreas() const
+{
+	Boolean_t IsOk = TRUE;
+
+	vector<double> AreaFactors;
+
+	if (IsOk) {
+		AreaFactors.resize(m_NumElems);
+		double TotalArea = 0.0;
+		/*
+		*	Get total surface area of sphere, storing element areas
+		*	as they're found.
+		*/
+
+		vec3 T[3];
+		double A, B, C;
+
+		for (int ElemNum = 0; ElemNum < m_NumElems; ++ElemNum) {
+			/*
+			*	Get the corners of the triangle element.
+			*/
+			
+			for (int i = 0; i < 3; ++i) {
+				T[i] = m_XYZList[m_ElemList[ElemNum][i]];
+			}
+
+			/*
+			*	Get the area of the element
+			*/
+			A = T[0][2] * (T[1][1] - T[2][1])
+				+ T[1][2] * (T[2][1] - T[0][1])
+				+ T[2][2] * (T[0][1] - T[1][1]);
+
+			B = T[0][0] * (T[1][2] - T[2][2])
+				+ T[1][0] * (T[2][2] - T[0][2])
+				+ T[2][0] * (T[0][2] - T[1][2]);
+
+			C = T[0][1] * (T[1][0] - T[2][0])
+				+ T[1][1] * (T[2][0] - T[0][0])
+				+ T[2][1] * (T[0][0] - T[1][0]);
+
+			AreaFactors[ElemNum] = 0.5 * sqrt(A * A + B * B + C * C);
+			TotalArea += AreaFactors[ElemNum];
+		}
+
+		for (int ElemNum = 0; ElemNum < m_NumElems; ++ElemNum) {
+			AreaFactors[ElemNum] /= TotalArea;
+		}
+	}
+
+	return AreaFactors;
+}
+
 
 vector<vector<double> > FESurface_c::TriSphereIntValsByElem(vector<double> * SphereTriangleAreas) const
 {
@@ -2691,7 +2781,7 @@ vector<vector<double> > FESurface_c::TriSphereIntValsByElem(vector<double> * Sph
 			TotalArea += AreaFactors[ElemNum];
 		}
 
-		if (SphereTriangleAreas != NULL)
+		if (SphereTriangleAreas != nullptr)
 			*SphereTriangleAreas = AreaFactors;
 
 		for (int ElemNum = 0; ElemNum < m_NumElems; ++ElemNum){
@@ -2933,6 +3023,23 @@ vector<vec3> FESurface_c::GetSphereIntersectionPath(vec3 const & SphereCenter, d
 	}
 
 	return IntPoints;
+}
+
+int FESurface_c::GetClosestNodeToPoint(vec3 const & Point) const{
+	int MinNodeInd = -1;
+	if (this->IsMade()){
+		double MinDistSqr = DBL_MAX,
+			TmpDistSqr;
+
+		for (int ni = 0; ni < this->m_XYZList.size(); ++ni){
+			TmpDistSqr = DistSqr(Point, this->m_XYZList[ni]);
+			if (TmpDistSqr < MinDistSqr){
+				MinDistSqr = TmpDistSqr;
+				MinNodeInd = ni;
+			}
+		}
+	}
+	return MinNodeInd;
 }
 
 

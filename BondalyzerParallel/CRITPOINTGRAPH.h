@@ -105,7 +105,7 @@ private:
 	* Returns a pointer to a node struct with given ID (if it exists)
 	* @param _ID the ID of the node to retrieve
 	* @throws NoSuchNode if no node with specified ID exists
-	* @return pointer to node struct with given ID, or NULL if it doesn't exist
+	* @return pointer to node struct with given ID, or nullptr if it doesn't exist
 	* @author Jan Durakiewicz
 	****/
 	Node* GetNode(unsigned long _ID);
@@ -257,7 +257,7 @@ private:
 //		}
 //	}
 //	throw NoSuchNode;
-//	return NULL;
+//	return nullptr;
 //}
 //
 //void CritPointGraph::AddEdgeToNode(Node* _node, unsigned long _ID)

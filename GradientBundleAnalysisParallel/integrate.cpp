@@ -23,7 +23,7 @@
 #include "CSM_DATA_TYPES.h"
 #include "CSM_FE_VOLUME.h"
 #include "VIEWRESULTS.h"
-#include "CSM_GUI.h"
+#include "CSM_GBAGUI.h"
 #include "CSM_GEOMETRY.h"
 
 #include "INTEGRATE.h"
@@ -135,7 +135,7 @@ Boolean_t PerformIntegration(vector<string> const & AtomNameList,
 
 	Boolean_t UserQuit = FALSE;
 
-	char* DesktopPath = NULL;
+	char* DesktopPath = nullptr;
 	DesktopPath = getenv("USERPROFILE");
 
 	string OutFileName = string(DesktopPath) + string("\\Desktop\\Out.csv");
@@ -662,7 +662,7 @@ int GetRecommendedIntPrecision(){
 			double MinCPSpacing = DBL_MAX;
 			int NumCPs;
 			vec3 iCP, jCP;
-			TecUtilZoneGetIJK(ZoneNum, &NumCPs, NULL, NULL);
+			TecUtilZoneGetIJK(ZoneNum, &NumCPs, nullptr, nullptr);
 			TecUtilDataLoadBegin();
 			vector<int> XYZVarNums = { 1, 2, 3 };
 			vector<FieldData_pa> CPXYZRefs(3);
