@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <map>
 
 #include <armadillo>
 
@@ -23,6 +24,7 @@ using std::to_string;
 
 using namespace arma;
 
+std::map<string, int> NuclearNameToCPNum;
 
 vector<string> ListGetSelectedStrings(LgIndex_t ListID){
 	LgIndex_t * SelItemNums;
@@ -58,9 +60,9 @@ vector<int> ListGetSelectedItemNums(LgIndex_t ListID){
 	return IntList;
 }
 
-void ListPopulateWithVarNames(LgIndex_t ListID){
+void ListPopulateWithVarNames(LgIndex_t ListID, int StartVarNum){
 	EntIndex_t NumVars = TecUtilDataSetGetNumVars();
-	for (int i = 1; i <= NumVars; ++i){
+	for (int i = StartVarNum; i <= NumVars; ++i){
 		char * VarName;
 		TecUtilVarGetName(i, &VarName);
 		TecGUIListAppendItem(ListID, VarName);

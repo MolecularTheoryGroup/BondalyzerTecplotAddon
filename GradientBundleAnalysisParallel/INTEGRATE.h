@@ -1,5 +1,4 @@
-#ifndef INTEGRATE_H_
-#define INTEGRATE_H_
+#pragma once
 
 #include <string>
 #include <vector>
@@ -7,8 +6,8 @@
 using std::vector;
 using std::string;
 
-static int IntPrecise = 2;
-static vector<string> IntPrecisionLabels = { "Coarse", "Normal", "Fine", "Finer", "Finest" };
+static int IntPrecise = 3;
+static vector<string> IntPrecisionLabels = { "Too Coarse", "Coarse", "Medium", "Fine", "Finer", "Finest" };
 
 // void GBAIntegrationPrepareGUI();
 
@@ -20,5 +19,3 @@ Boolean_t PerformIntegration(vector<string> const & AtomNameList,
 	Boolean_t IntegrateVolume,
 	int IntResolution,
 	Boolean_t ActiveGBsOnly);
-
-#endif

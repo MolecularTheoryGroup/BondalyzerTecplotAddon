@@ -13,9 +13,16 @@
 #include <queue>
 #include <stdio.h>
 
-#include "GSM_GEOMETRY.h"
+#include <iostream>
+#include <fstream>
+
+#include "CSM_GEOMETRY.h"
 #include "CSM_DATA_TYPES.h"
 #include "CSM_GRAD_PATH.h"
+
+#include "updateSphericalTriangulation.h"
+
+//#define _GBADEBUG
 
 using namespace arma;
 
@@ -575,7 +582,7 @@ vector<vec> GetWeightsPoints(int N){
  */
 vector<vector<int> > TriangulatePolygon(vector<vec3> const & V){
 	vector<vector<int> > T;
-	double ChkDistSqr = DBL_MIN, TmpDistSqr;
+	double ChkDistSqr = -1.0, TmpDistSqr;
 	int MaxDistInds[2];
 	int NumVerts = V.size();
 
@@ -602,7 +609,7 @@ vector<vector<int> > TriangulatePolygon(vector<vec3> const & V){
 	for (int i = 0; i < lSize; ++i) L[i] = MaxDistInds[0] + i;
 	for (int i = 0; i < rSize; ++i) R[rSize - i - 1] = (MaxDistInds[1] + i) % NumVerts;
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 	// save "left" and "right" paths as scatter"
 	vector<vec3> vv;
 	for (int i : L) vv.push_back(V[i]);
@@ -629,7 +636,7 @@ vector<vector<int> > TriangulatePolygon(vector<vec3> const & V){
  *	find points along the rest of the GPs with the same rho value.
  */
 
-bool GetIsoRhoGPPoints(const vector<GradPath_c*> GPs, vector<unsigned int> & IndexList, int MinGPNum, vector<vec3> & NewVerts, double const & NewStepCutoffRatio, bool MultiStep = false){
+bool GetIsoRhoGPPoints(vector<GradPath_c const *> const & GPs, vector<unsigned int> & IndexList, int MinGPNum, vector<vec3> & NewVerts, double const & NewStepCutoffRatio, bool MultiStep = false){
 	unsigned int NumGPs = GPs.size();
 	NewVerts.resize(NumGPs);
 	bool NotTerminated = true;
@@ -649,6 +656,7 @@ bool GetIsoRhoGPPoints(const vector<GradPath_c*> GPs, vector<unsigned int> & Ind
 			if (MultiStep){
 				while (GPs[i]->RhoAt(IndexList[i]) > RhoVal && NotTerminated){
 					IndexList[i]++;
+					NotTerminated = IndexList[i] < GPs[i]->GetCount() - 1;
 				}
 			}
 			else{
@@ -694,10 +702,55 @@ bool GetIsoRhoGPPoints(const vector<GradPath_c*> GPs, vector<unsigned int> & Ind
 }
 
 /*
+ *	Given a list of GP pointers, a list of indices specifying points along each GP,
+ *	and a number specifying which GP to use to define a value of electron density,
+ *	find points along the rest of the GPs with the same rho value.
+ *	This implementation doesn't interpolate between GP points.
+ */
+
+bool GetIsoRhoGPPoints2(vector<GradPath_c const *> const & GPs, vector<unsigned int> & IndexList, int MinGPNum, vector<vec3> & NewVerts) {
+	unsigned int NumGPs = GPs.size();
+	NewVerts.resize(NumGPs);
+	bool NotTerminated = true;
+	/*
+	*	Get rho value at the GP point
+	*/
+	double RhoVal = GPs[MinGPNum]->RhoAt(IndexList[MinGPNum]);
+
+	/*
+	*	Now linearly interpolate the same value on the rest of the GPs
+	*/
+	for (int i = 0; i < NumGPs && NotTerminated; ++i) {
+		if (i != MinGPNum) {
+
+			int Ind;
+			double Weight;
+			vec3 Pt;
+			NotTerminated = !GPs[i]->GetPointAtRhoValue(RhoVal, Pt, Ind, Weight);
+			NewVerts[i] = GPs[i]->XYZAt(Ind);
+			IndexList[i] = Ind;
+
+			NotTerminated = IndexList[i] < GPs[i]->GetCount() - 1;
+		}
+		else {
+			NewVerts[i] = GPs[i]->XYZAt(IndexList[i]);
+			IndexList[MinGPNum]++;
+		}
+	}
+
+	return NotTerminated;
+}
+
+/*
  *	Integrate volume and variables (for provided var pointers) over a tetrahedron specified
  *	according to vertex indices and a list of vertices.
  */
-void IntTet(const vector<vec3*> & Vptr, vector<unsigned int> const & Ind, int nPts, vector<FieldDataPointer_c> const & VarPtrs, VolExtentIndexWeights_s & VolInfo, vector<double> & IntVals){
+void IntTet(const vector<vec3 const*> & Vptr, 
+	vector<int> const & Ind, 
+	int nPts, 
+	vector<FieldDataPointer_c> const & VarPtrs, 
+	VolExtentIndexWeights_s & VolInfo, 
+	vector<double> & IntVals){
 	/*
 	*	I'll do this in two ways;
 	*	one that generates quadrature weights for a reference tetrahedron
@@ -715,11 +768,11 @@ void IntTet(const vector<vec3*> & Vptr, vector<unsigned int> const & Ind, int nP
 	}
 	vector<vec> xyzw = tetraquad(nPts, V);
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 	vector<vec3> GaussQuadPts(xyzw[0].n_elem);
 	for (int i = 0; i < GaussQuadPts.size(); ++i)
 		GaussQuadPts[i] << xyzw[0][i] << xyzw[1][i] << xyzw[2][i];
-// 	SaveVec3VecAsScatterZone(GaussQuadPts, "Gauss Quad Pts", Black_C, { 1, 2, 3 });
+	SaveVec3VecAsScatterZone(GaussQuadPts, "Gauss Quad Pts", Black_C, { 1, 2, 3 });
 #endif
 
 
@@ -779,7 +832,7 @@ vector<vector<vector<unsigned int> > > IntTetInds = {
  *	triangulation is used to decompose the polyhedron into trigonal prisms which are decomposed
  *	further into tetrahedra, which are then integrated using Gauss quadrature rules.
  */
-void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
+void IntegrateUsingIsosurfaces(vector<GradPath_c const *> & GPs,
 	int nPts,
 	VolExtentIndexWeights_s & VolInfo,
 	vector<FieldDataPointer_c> const & VarPtrs,
@@ -828,7 +881,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 	*	
 	*	First, get the indices of non-degenerate GPs.
 	*/
-	vector<GradPath_c*> GPi = GPs;
+	vector<GradPath_c const *> GPi = GPs;
 	int BondPointNodeNum = -1;
 	int DegenGPNumFull = -1, DegenGPNum;
 	vector<vector<int> > T2;
@@ -841,7 +894,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
  		 *	with it.
  		 */
  		IsDegenerate.resize(NumGPs, false);
- 		GradPath_c * DegenGP = nullptr;
+ 		GradPath_c const * DegenGP = nullptr;
  		for (int i = 0; i < NumGPs - 1; ++i){
  			for (int j = i + 1; j < NumGPs; ++j){
  				if (sum(GPi[i]->XYZAt(0) == GPi[j]->XYZAt(0)) == 3){
@@ -1054,7 +1107,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 		T = TriangulatePolygon(Planes[1]);
  	}
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 	int Iter = 0;
 	vector<vector<double> > IntValList;
 #endif
@@ -1063,7 +1116,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 	*	Main loop
 	*/
 	while (NotTerminated){
-		vector<vec3*> Vptr;
+		vector<vec3 const*> Vptr;
 		int MinGPNum = -1;
 
 		
@@ -1155,21 +1208,21 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 		for (auto & p : Planes) for (auto & v : p) Vptr.push_back(&v);
 
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 		// Save each plane as scatter
 		for (int i = 0; i < 2; ++i){
-// 			SaveVec3VecAsScatterZone(Planes[i], to_string(Iter + 1) + "Plane" + to_string(i + 1), ColorIndex_t(i % 7), { 1, 2, 3 });
+			SaveVec3VecAsScatterZone(Planes[i], to_string(Iter + 1) + "Plane" + to_string(i + 1), ColorIndex_t(i % 7), { 1, 2, 3 });
 		}
 		int tColor = 0;
 #endif
 
 		for (auto const & t : T){
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 			// Save triangle as scatter
 			vector<vec3> tv;
-// 			for (int i = 0; i < 3; ++i) tv.push_back(Planes[1][t[i]]);
-			// 			SaveVec3VecAsScatterZone(tv, to_string(Iter + 1) + "Tri " + to_string(tColor), ColorIndex_t(tColor % 7), { 1, 2, 3 });
-			tColor++;
+ 			for (int i = 0; i < 3; ++i) tv.push_back(Planes[1][t[i]]);
+				SaveVec3VecAsScatterZone(tv, to_string(Iter + 1) + "Tri " + to_string(tColor), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+				tColor++;
 #endif
 // 			if (ContainsBondPath && )
 			/*
@@ -1197,13 +1250,13 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 				VI[i+3] = VI[i] + NumGPs;
 			}
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 			vector<vec3> hexv;
-// 			for (auto const & i : VI){
-// 				int PlaneNum = (i < NumGPs ? 0 : 1);
-// 				hexv.push_back(Planes[PlaneNum][i % NumGPs]);
-// 			}
-// 			SaveVec3VecAsScatterZone(hexv, to_string(Iter + 1) + "Hex " + to_string(tColor + 1), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+			for (auto const & i : VI){
+				int PlaneNum = (i < NumGPs ? 0 : 1);
+				hexv.push_back(Planes[PlaneNum][i % NumGPs]);
+			}
+			SaveVec3VecAsScatterZone(hexv, to_string(Iter + 1) + "Hex " + to_string(tColor + 1), ColorIndex_t(tColor % 7), { 1, 2, 3 });
 #endif
 
 			/*
@@ -1215,7 +1268,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 			/*
 			*	Now loop over the three tets to compute their integral
 			*/
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 			// for coloring tets
 			int tetColor = 0;
 #endif // _DEBUG
@@ -1239,10 +1292,10 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 				if (TetDegen) 
 					continue;
 				
-				vector<unsigned int> Ind(4);
+				vector<int> Ind(4);
 				for (int i = 0; i < 4; ++i) Ind[i] = VI[tet[i]];
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 				// Save tet as scatter
 				vector<vec3> tetv;
 				for (auto const & i : tet){
@@ -1250,7 +1303,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 					// 					tetv.push_back(Planes[PlaneNum][VI[i] % NumGPs]);
 					tetv.push_back(*Vptr[VI[i]]);
 				}
-// 				SaveTetVec3VecAsFEZone(tetv, to_string(Iter + 1) + " Tet " + to_string(tColor) + " " + to_string(tetColor), ColorIndex_t(tetColor % 7), { 1, 2, 3 });
+				SaveTetVec3VecAsFEZone(tetv, to_string(Iter + 1) + " Tet " + to_string(tColor) + " " + to_string(tetColor), ColorIndex_t(tetColor % 7), { 1, 2, 3 });
 				tetColor++;
 				IntValList.push_back(IntVals);
 				int valSize = IntValList.size();
@@ -1262,7 +1315,7 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 
 		Planes[0] = Planes[1];
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 		Iter++;
 // 		if (Iter > 20) break;
 #endif
@@ -1275,17 +1328,22 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 /*
  *	Same as above, but assuming that gradient bundles have either 3 or 4 gradient
  *	paths.
- *	Used for GBA after adding the ring surfaces triangulation update code. No graadient 
+ *	Used for GBA after adding the ring surfaces triangulation update code. No gradient 
  *	paths are seeded down the edges of triangular sphere elements, so there's always
  *	3 or 4 GPs.
  */
-void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
+void NewIntegrateUsingIsosurfaces(vector<GradPath_c const *> const & GPsIn,
 	int nPts,
 	VolExtentIndexWeights_s & VolInfo,
 	vector<FieldDataPointer_c> const & VarPtrs,
 	vector<double> & IntVals,
 	vec3 const * BondCPPos)
 {
+#ifdef _GBADEBUG
+	std::ofstream DebugLog("C:\\Users\\Haiiro\\Documents\\Tecplot Addons\\debuglog.csv", std::ofstream::app);
+	DebugLog << "\n\nNew run:\n\n";
+#endif
+
 	auto GPs = GPsIn;
 	REQUIRE(GPs.size() == 3 || GPs.size() == 4);
 	for (auto const * p : GPs) {
@@ -1329,9 +1387,9 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 	*
 	*	First, get the indices of non-degenerate GPs.
 	*/
-	vector<GradPath_c*> GPi = GPs;
+	vector<GradPath_c const*> GPi = GPs;
 	int BondPointNodeNum = -1;
-	int DegenGPNumFull = -1, DegenGPNum;
+	int DegenGPNumFull = -1, DegenGPNum = 0;
 	vector<vector<int> > T2;
 	vector<bool> IsDegenerate;
 	vector<unsigned int> OldIndexList;
@@ -1344,7 +1402,7 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 		vector<vec3> ClosestPtsToBondPt(NumGPs);
 		vector<int> ClosestPtNumsToBondPt(NumGPs, -1);
 		IsDegenerate.resize(NumGPs, false);
-		GradPath_c * DegenGP = nullptr;
+		GradPath_c const * DegenGP = nullptr;
 		for (int i = 0; i < NumGPs - 1; ++i) {
 			if (ClosestPtNumsToBondPt[i] < 0)
 				ClosestPtsToBondPt[i] = GPs[i]->ClosestPoint(*BondCPPos, ClosestPtNumsToBondPt[i]);
@@ -1428,6 +1486,8 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 
 	vector<vector<int> > T;
 
+	int MinGPNum = DegenGPNum;
+
 	if (ContainsBondPath) {
 		/*
 		 *	For a bond path coincident GB, need to use the triangulation from the polygon
@@ -1444,7 +1504,8 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 					*	Get the polygon triangulation immediately after the bond point is passed
 					*/
 		TmpIndices[DegenGPNum] = GPi[DegenGPNum]->RhoAt(BondPointNodeNum + 1);
-		if (!GetIsoRhoGPPoints(GPi, TmpIndices, DegenGPNum, TmpPlane, NewStepCutoffRatio, true)) {
+// 		if (!GetIsoRhoGPPoints(GPi, TmpIndices, DegenGPNum, TmpPlane, NewStepCutoffRatio, true)) {
+		if (!GetIsoRhoGPPoints2(GPi, TmpIndices, DegenGPNum, TmpPlane)) {
 			TecUtilDialogErrMsg("GP(s) terminated too close to bond point rho value");
 		}
 
@@ -1505,7 +1566,8 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 		if (TermAtPoint) {
 			vector<unsigned int> TmpIndices(NumGPs, 1);
 			TmpIndices[0] = GPs[0]->GetCount() / 2;
-			if (!GetIsoRhoGPPoints(GPs, TmpIndices, 0, Planes[1], NewStepCutoffRatio)) {
+// 			if (!GetIsoRhoGPPoints1(GPs, TmpIndices, 0, Planes[1], NewStepCutoffRatio)) {
+			if (!GetIsoRhoGPPoints2(GPs, TmpIndices, 0, Planes[1])) {
 				TecUtilDialogErrMsg("GP(s) terminated too close to halfway value of first GP (GB terminating at cage point)");
 			}
 		}
@@ -1522,7 +1584,7 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 		T = { {0,1,2} };
 	}
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 	int Iter = 0;
 	vector<vector<double> > IntValList;
 #endif
@@ -1531,8 +1593,7 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 	*	Main loop
 	*/
 	while (NotTerminated) {
-		vector<vec3*> Vptr;
-		int MinGPNum = -1;
+		vector<vec3 const*> Vptr;
 
 
 		if (ContainsBondPath && T.size() != T2.size()) {
@@ -1545,21 +1606,28 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 
 		ChkDistSqr = DBL_MAX;
 
-		/*
-		*	Loop over GPs to find the GP with the shortest current line segment
-		*/
-		for (int i = 0; i < NumGPs; ++i) {
-			TmpDistSqr = DistSqr(Planes[0][i], GPs[i]->XYZAt(IndexList[i]));
-			if (TmpDistSqr < ChkDistSqr) {
-				ChkDistSqr = TmpDistSqr;
-				MinGPNum = i;
-			}
-		}
+// 		/*
+// 		*	Loop over GPs to find the GP with the shortest current line segment
+// 		*/
+// 		for (int i = 0; i < NumGPs; ++i) {
+// 
+// 			TmpDistSqr = DistSqr(Planes[0][i], GPs[i]->XYZAt(IndexList[i]));
+// 			if (TmpDistSqr < ChkDistSqr) {
+// 				ChkDistSqr = TmpDistSqr;
+// 				MinGPNum = i;
+// 			}
+// 		}
 
 		/*
 			*	Get corresponding isoRho points from the rest of the GPs and update the IndexList values accordingly.
 			*/
-		NotTerminated = GetIsoRhoGPPoints(GPs, IndexList, MinGPNum, Planes[1], NewStepCutoffRatio);
+// 		NotTerminated = GetIsoRhoGPPoints(GPs, IndexList, MinGPNum, Planes[1], NewStepCutoffRatio);
+		int MinGPInd = IndexList[MinGPNum];
+		NotTerminated = GetIsoRhoGPPoints2(GPs, IndexList, MinGPNum, Planes[1]);
+		if (IndexList[MinGPNum] == MinGPInd && MinGPInd < GPs[MinGPNum]->GetCount() - 1) {
+			IndexList[MinGPNum]++;
+			Planes[1][MinGPNum] = GPs[MinGPNum]->XYZAt(IndexList[MinGPNum]);
+		}
 
 		/*
 		*	If end of GP has been reached then the end of all the GPs will be used.
@@ -1598,7 +1666,8 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 					IndexList[i] = OldIndexList[vi++];
 				}
 			}
-			NotTerminated = GetIsoRhoGPPoints(GPs, IndexList, MinGPNum, Planes[1], NewStepCutoffRatio, true);
+// 			NotTerminated = GetIsoRhoGPPoints(GPs, IndexList, MinGPNum, Planes[1], NewStepCutoffRatio, true);
+			NotTerminated = GetIsoRhoGPPoints2(GPs, IndexList, MinGPNum, Planes[1]);
 			T = T2;
 
 			/*
@@ -1623,20 +1692,20 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 		for (auto & p : Planes) for (auto & v : p) Vptr.push_back(&v);
 
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 		// Save each plane as scatter
 		for (int i = 0; i < 2; ++i) {
-			// 			SaveVec3VecAsScatterZone(Planes[i], to_string(Iter + 1) + "Plane" + to_string(i + 1), ColorIndex_t(i % 7), { 1, 2, 3 });
+			 			SaveVec3VecAsScatterZone(Planes[i], to_string(Iter + 1) + "Plane" + to_string(i + 1), ColorIndex_t(i % 7), { 1, 2, 3 });
 		}
 		int tColor = 0;
 #endif
 
 		for (auto const & t : T) {
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 			// Save triangle as scatter
 			vector<vec3> tv;
-			// 			for (int i = 0; i < 3; ++i) tv.push_back(Planes[1][t[i]]);
-						// 			SaveVec3VecAsScatterZone(tv, to_string(Iter + 1) + "Tri " + to_string(tColor), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+			 			for (int i = 0; i < 3; ++i) tv.push_back(Planes[1][t[i]]);
+						 			SaveVec3VecAsScatterZone(tv, to_string(Iter + 1) + "Tri " + to_string(tColor), ColorIndex_t(tColor % 7), { 1, 2, 3 });
 			tColor++;
 #endif
 			// 			if (ContainsBondPath && )
@@ -1665,13 +1734,13 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 				VI[i + 3] = VI[i] + NumGPs;
 			}
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 			vector<vec3> hexv;
-			// 			for (auto const & i : VI){
-			// 				int PlaneNum = (i < NumGPs ? 0 : 1);
-			// 				hexv.push_back(Planes[PlaneNum][i % NumGPs]);
-			// 			}
-			// 			SaveVec3VecAsScatterZone(hexv, to_string(Iter + 1) + "Hex " + to_string(tColor + 1), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+			for (auto const & i : VI) {
+				int PlaneNum = (i < NumGPs ? 0 : 1);
+				hexv.push_back(Planes[PlaneNum][i % NumGPs]);
+			}
+			SaveVec3VecAsScatterZone(hexv, to_string(Iter + 1) + "Hex " + to_string(tColor + 1), ColorIndex_t(tColor % 7), { 1, 2, 3 });
 #endif
 
 			/*
@@ -1683,7 +1752,7 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 			/*
 			*	Now loop over the three tets to compute their integral
 			*/
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 			// for coloring tets
 			int tetColor = 0;
 #endif // _DEBUG
@@ -1707,10 +1776,10 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 				if (TetDegen)
 					continue;
 
-				vector<unsigned int> Ind(4);
+				vector<int> Ind(4);
 				for (int i = 0; i < 4; ++i) Ind[i] = VI[tet[i]];
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 				// Save tet as scatter
 				vector<vec3> tetv;
 				for (auto const & i : tet) {
@@ -1718,23 +1787,717 @@ void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPsIn,
 					// 					tetv.push_back(Planes[PlaneNum][VI[i] % NumGPs]);
 					tetv.push_back(*Vptr[VI[i]]);
 				}
-				// 				SaveTetVec3VecAsFEZone(tetv, to_string(Iter + 1) + " Tet " + to_string(tColor) + " " + to_string(tetColor), ColorIndex_t(tetColor % 7), { 1, 2, 3 });
+#ifdef _GBADEBUG
+				DebugLog << "Iter " << Iter + 1 << ",Tet " << tColor << " " << tetColor;
+#endif // _DEBUG
+
+				SaveTetVec3VecAsFEZone(tetv, to_string(Iter + 1) + " Tet " + to_string(tColor) + " " + to_string(tetColor), ColorIndex_t(tetColor % 7), { 1, 2, 3 });
 				tetColor++;
 				IntValList.push_back(IntVals);
 				int valSize = IntValList.size();
+				auto OldIndVals = IntVals;
 #endif // _DEBUG
 
 				IntTet(Vptr, Ind, nPts, VarPtrs, VolInfo, IntVals);
+
+#ifdef _GBADEBUG
+				vector<double> NewIntVals(IntVals.size(), 0.0);
+				for (int i = 0; i < NewIntVals.size(); ++i)
+					NewIntVals[i] = IntVals[i] - OldIndVals[i];
+
+				for (double i : NewIntVals)
+					DebugLog << "," << i;
+				DebugLog << std::endl;
+#endif
 			}
 		}
 
 		Planes[0] = Planes[1];
 
-#ifdef _DEBUG
+#ifdef _GBADEBUG
 		Iter++;
 		// 		if (Iter > 20) break;
 #endif
 	}
+
+#ifdef _GBADEBUG
+	DebugLog.close();
+#endif
+
+	return;
+}
+
+/*
+ *	Same as above, but simply stepping down GPs one point at a time without regard to value of rho.
+ *	Used for GBA after adding the ring surfaces triangulation update code. No gradient
+ *	paths are seeded down the edges of triangular sphere elements, so there's always
+ *	3 or 4 GPs.
+ */
+vector<vector<vector<int> > > NewIntegration1Tets = { // These are tet mappings once a midpoint vertex has been added
+		{// for 3 GP GBs. midpoint vertex is 6
+			{0,1,2,6}, // first 6 for the 3 quad sides of the trigonal prism
+			{1,2,3,6},
+			{2,3,4,6},
+			{3,4,5,6},
+			{4,5,0,6},
+			{5,0,1,6},
+			{0,2,4,6}, // then 2 for the triangular top and bottom
+			{1,3,5,6},
+			{0,1,5,7}  // then an extra tet for the 3-4 GP transition GB, extra transition vertex is 7
+		},
+		{// for 4 GP GBs. midpoint vertex is 8
+			{0,1,2,8}, // first 8 are wrapping around the "sides" of the rectangular prism
+			{1,2,3,8},
+			{2,3,4,8},
+			{3,4,5,8},
+			{4,5,6,8},
+			{5,6,7,8},
+			{6,7,0,8},
+			{7,0,1,8},
+			{0,2,4,8}, // then 4 more for the top and bottom
+			{0,4,6,8},
+			{1,3,5,8},
+			{1,5,7,8}
+		}
+};
+vector<vector<int> > NewIntegration1TetDegenCheckGPs = {
+	{
+		{0,1,1,2,2,1,-1,-1},
+		{0,1,1,2,2,3,3,0,-1,-1,-1,-1}
+	}
+};
+void NewIntegrateUsingIsosurfaces1(vector<GradPath_c const *> const & GPsIn,
+	int nPts,
+	VolExtentIndexWeights_s & VolInfo,
+	vector<FieldDataPointer_c> const & VarPtrs,
+	vector<double> & IntVals,
+	vec3 const * BondCPPos,
+	AddOn_pa * AddOnID)
+{
+#ifdef _GBADEBUG
+	std::ofstream DebugLog("C:\\Users\\Haiiro\\Documents\\Tecplot Addons\\debuglog.csv", std::ofstream::app);
+	DebugLog << "\n\nNew run:\n\n";
+#endif
+
+	auto GPs = GPsIn;
+	REQUIRE(GPs.size() == 3 || GPs.size() == 4);
+	for (auto const * p : GPs) {
+		REQUIRE(p->IsMade() && p->GetCount() > 3);
+	}
+
+	if (IntVals.size() != VarPtrs.size() + 1)
+		IntVals.resize(VarPtrs.size() + 1, 0);
+
+	/*
+	*	We're stepping down the GPs according to values of rho.
+	*	We'll assume that they all either terminate at the same rho value or critical point.
+	*	Even if they don't terminate at the same rho value, we'll assume that the termination of any GP will be at a sufficiently low rho value
+	*		such that most properties of interest have converged.
+	*	Also assuming that GPs go "downhill" from a GBA sphere around a nuclear CP.
+	*	At end of each loop, confirm that there is at least one more point in each grad path, otherwise exit.
+	*/
+	bool NotTerminated = true;
+
+	// Used in avoiding very small volume polyhedra.
+	double NewStepCutoffRatio = 0.7;
+
+	unsigned int NumGPs = GPs.size();
+
+	int BondPointNodeNum = -1;
+
+	bool ContainsBondPath = (BondCPPos != nullptr);
+
+	if (ContainsBondPath){
+		// Get GP point number that corresponds to the bond point.
+		vec3 tmpvec = GPs[0]->ClosestPoint(*BondCPPos, BondPointNodeNum);
+	}
+
+
+	double ChkDistSqr, TmpDistSqr;
+
+	/*
+		*	Because the triangulation of each plane can change as we
+		*	move down the GB, we need to find a triangulation to use
+		*	throughout the entire process.
+		*	If we're in an open system then many of the GBs will terminate
+		*	at a threshold value of rho. In this case we can use the
+		*	terminal plane to determine the triangulation.
+		*	If the GB terminates at a cage CP then the process of finding
+		*	a good plane to use for the triangulation becomes more complicated,
+		*	so we'll just punt and use the triangulation from the halfway plane
+		*	according to the number of points in the first GP.
+		*
+		*	There's a special case for GBs that terminate at a point, but it's easy to
+		*	deal with. The triangulation
+		*	will result in tetrahedra that can be immediately integrated rather than
+		*	trigonal prisms.
+		*/
+
+		/*
+		* Check to see if the GB originates or terminates at a point (i.e. cage CP) by
+		* testing for degenerate terminal points.
+		*/
+// 	double TermCheckDist = 0.01,
+// 		AvgTermDist = 0.0;
+// 	double Denom = 0.0;
+// 	for (int i = 0; i < GPs.size() - 1; ++i) {
+// 		Denom += GPs.size() - (i + 1);
+// 		for (int j = i + 1; j < GPs.size(); ++j) {
+// 			AvgTermDist += Distance(GPs[i]->XYZAt(-1), GPs[j]->XYZAt(-1));
+// 		}
+// 	}
+// 	AvgTermDist /= Denom;
+// 	bool TermAtPoint = (AvgTermDist < TermCheckDist);
+
+#ifdef _GBADEBUG
+	vector<vector<double> > IntValList;
+	high_resolution_clock::time_point Time1;
+	bool UserQuit;
+	if (AddOnID != nullptr) {
+		Time1 = high_resolution_clock::now();
+		UserQuit = !StatusUpdate(0, GPs[0]->GetCount(), "Integrating GB", *AddOnID, Time1);
+	}
+#endif
+
+	/*
+	*	Main loop
+	*/
+	int PtInd = 0;
+	vector<vector<int> > IndLists(2, vector<int>(NumGPs, PtInd));
+	vector<vec3 const*> Vptr;
+	Vptr.reserve(6);
+	vector<vector<int> > Tets;
+	vector<bool> IsDegenerate;
+	vector<int> DegenerateParent;
+	while (NotTerminated) {
+		for (int gpi = 0; gpi < NumGPs; ++gpi) {
+			if (IndLists[1][gpi] < GPs[gpi]->GetCount() - 1)
+				IndLists[1][gpi]++;
+		}
+
+		vector<vector<vec3> > Planes(2);
+		for (int gpi = 0; gpi < NumGPs; ++gpi) {
+			for (int i = 0; i < 2; ++i) {
+				Planes[i].push_back(GPs[gpi]->XYZAt(IndLists[i][gpi]));
+			}
+		}
+
+#ifdef _GBADEBUG
+		if (AddOnID != nullptr)
+			UserQuit = !StatusUpdate(PtInd, GPs[0]->GetCount(), "Integrating GB", *AddOnID, Time1);
+		// Save each plane as scatter
+		for (int i = 0; i < 2; ++i) {
+// 			SaveVec3VecAsScatterZone(Planes[i], to_string(PtInd + 1) + " Plane " + to_string(i + 1), ColorIndex_t(i % 7), { 1, 2, 3 });
+		}
+		int tColor = 0;
+#endif
+
+// #ifdef _DEBUG
+// 		// Save triangle as scatter
+// 		vector<vec3> tv;
+// 		for (int i = 0; i < 3; ++i) tv.push_back(Planes[1][t[i]]);
+// 		SaveVec3VecAsScatterZone(tv, to_string(PtInd + 1) + " Tri " + to_string(tColor), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+// 		tColor++;
+// #endif
+
+#ifdef _GBADEBUG
+		// for coloring tets
+		int tetColor = 0;
+#endif // _DEBUG
+
+		Vptr.clear();
+		vec3 MidPt = zeros(3);
+		Tets.clear();
+		IsDegenerate.clear();
+		DegenerateParent.clear();
+
+		if (!ContainsBondPath || (BondPointNodeNum > 0 && IndLists[0][0] <= BondPointNodeNum)){
+			// 3 GP or transition GB case
+			for (int gpi = 0; gpi < 3; ++gpi) {
+				for (int i = 0; i < 2; ++i) {
+					Vptr.push_back(&Planes[i][gpi]);
+				}
+			}
+
+			// now add the midpoint vertex, excluding degenerate copies of vertices
+			IsDegenerate.resize(Vptr.size(), false);
+			DegenerateParent.resize(Vptr.size(), -1);
+			for (int vi = 0; vi < Vptr.size() - 1; ++vi) {
+				if (!IsDegenerate[vi]) {
+					for (int vj = vi + 1; vj < Vptr.size(); ++vj) {
+						if (approx_equal(*Vptr[vi], *Vptr[vj], "absdiff", 1e-10)) {
+							IsDegenerate[vj] = true;
+							DegenerateParent[vj] = vi;
+						}
+					}
+				}
+			}
+			int NumNonDegenVerts = 0;
+			for (int vi = 0; vi < Vptr.size(); ++vi) {
+				if (!IsDegenerate[vi]) {
+					MidPt += *Vptr[vi];
+					NumNonDegenVerts++;
+				}
+			}
+			MidPt /= (double)NumNonDegenVerts;
+			Vptr.push_back(&MidPt);
+			DegenerateParent.push_back(-1);
+
+			Tets.insert(Tets.begin(), NewIntegration1Tets[0].begin(), NewIntegration1Tets[0].end() - 1);
+
+			// for 3-4 GP transition GB, check if the extra transition
+			// tet is degenerate and add if not
+			if (ContainsBondPath && IndLists[0][0] == BondPointNodeNum
+				&& IndLists[0][0] != IndLists[1][0]
+				&& IndLists[0].back() != IndLists[1].back())
+			{
+				Vptr.push_back(&Planes[1][3]);
+				DegenerateParent.push_back(-1);
+				Tets.push_back(NewIntegration1Tets[0].back());
+			}
+		}
+		else{
+			// There is a bond path and we're now in the 4 GP section of the GB
+			for (int gpi = 0; gpi < 4; ++gpi) {
+				for (int i = 0; i < 2; ++i) {
+					Vptr.push_back(&Planes[i][gpi]);
+				}
+			}
+
+			// now add the midpoint vertex, excluding degenerate copies of vertices
+			IsDegenerate.resize(Vptr.size(), false);
+			DegenerateParent.resize(Vptr.size(), -1);
+			for (int vi = 0; vi < Vptr.size() - 1; ++vi){
+				if (!IsDegenerate[vi]) {
+					for (int vj = vi + 1; vj < Vptr.size(); ++vj) {
+						if (approx_equal(*Vptr[vi], *Vptr[vj], "absdiff", 1e-12)){
+							IsDegenerate[vj] = true;
+							DegenerateParent[vj] = vi;
+						}
+					}
+				}
+			}
+			int NumNonDegenVerts = 0;
+			for (int vi = 0; vi < Vptr.size(); ++vi) {
+				if (!IsDegenerate[vi]) {
+					MidPt += *Vptr[vi];
+					NumNonDegenVerts++;
+				}
+			}
+			MidPt /= (double)NumNonDegenVerts;
+			Vptr.push_back(&MidPt);
+			DegenerateParent.push_back(-1);
+			Tets = NewIntegration1Tets[1];
+		}
+
+#ifdef _GBADEBUG
+		vector<vec3> V;
+		for (auto v : Vptr) V.push_back(*v);
+		SaveVec3VecAsScatterZone(V, to_string(PtInd + 1) + " Vertices " + to_string(tColor + 1), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+#endif	
+
+		for (auto const & tet : Tets)
+		{
+			bool TetIsDegen = false;
+			for (int ti = 0; ti < 3 && !TetIsDegen; ++ti){
+				for (int tj = ti + 1; tj < 4 && !TetIsDegen; ++tj){
+					TetIsDegen = (DegenerateParent[tet[ti]] == tet[tj] || DegenerateParent[tet[tj]] == tet[ti]);
+					if (!TetIsDegen && IndLists[0][0] == 0)
+						TetIsDegen = approx_equal(*Vptr[tet[ti]], *Vptr[tet[tj]], "absdiff", 1e-12);
+				}
+			}
+#ifdef _GBADEBUG
+			// Save tet as scatter
+			vector<vec3> tetv;
+			for (auto const & i : tet) {
+				tetv.push_back(*Vptr[i]);
+			}
+			DebugLog << "Iter " << PtInd + 1 << ",Tet " << tColor << " " << tetColor;
+
+			if (TetIsDegen)
+				SaveTetVec3VecAsFEZone(tetv, to_string(PtInd + 1) + " Skipped Tet " + to_string(tColor) + " " + to_string(tetColor), ColorIndex_t((tetColor % 7) + 1), { 1, 2, 3 });
+			else
+				SaveTetVec3VecAsFEZone(tetv, to_string(PtInd + 1) + " Tet " + to_string(tColor) + " " + to_string(tetColor), ColorIndex_t((tetColor % 7)+1), { 1, 2, 3 });
+			tetColor++;
+			IntValList.push_back(IntVals);
+			int valSize = IntValList.size();
+			auto OldIndVals = IntVals;
+#endif // _DEBUG
+
+			IntTet(Vptr, tet, nPts, VarPtrs, VolInfo, IntVals);
+
+#ifdef _GBADEBUG
+			vector<double> NewIntVals(IntVals.size(), 0.0);
+			for (int i = 0; i < NewIntVals.size(); ++i)
+				NewIntVals[i] = IntVals[i] - OldIndVals[i];
+
+			for (double i : NewIntVals)
+				DebugLog << "," << i;
+			DebugLog << std::endl;
+#endif
+		}
+
+		NotTerminated = false;
+		for (int gpi = 0; gpi < NumGPs && !NotTerminated; ++gpi) {
+			NotTerminated = IndLists[1][gpi] < GPs[gpi]->GetCount() - 1;
+		}
+
+		IndLists[0] = IndLists[1];
+
+#ifdef _GBADEBUG
+		PtInd++;
+		// 		if (Iter > 20) break;
+#endif
+	}
+
+#ifdef _GBADEBUG
+	DebugLog.close();
+#endif
+
+	return;
+}
+
+/*
+ * Integrates a hexahedron (trigonal prism) as three tetrahedrons.
+ * "Bottom" triangle is indices (0,2,4), and the "top" tri is (1,3,5).
+ */
+void IntTrigonalPrism(vector<vec3 const*> const & InVptr, 
+	int nPts, 
+	vector<FieldDataPointer_c> const & VarPtrs, 
+	VolExtentIndexWeights_s & VolInfo, 
+	vector<double> & IntVals,
+	int PtInd = 0)
+{
+	REQUIRE(InVptr.size() == 6);
+	REQUIRE(!IntVals.empty() && IntVals.size() == VarPtrs.size() + 1);
+	for (auto const & i : VarPtrs) REQUIRE(i.IsReady());
+
+	auto Vptr = InVptr;
+	vec3 MidPt = zeros(3);
+
+
+	vector<bool> IsDegenerate(Vptr.size(), false);
+	vector<int> DegenerateParent(Vptr.size(), -1);
+
+	// Check for degenerate points
+	for (int vi = 0; vi < Vptr.size() - 1; ++vi) {
+		if (!IsDegenerate[vi]) {
+			for (int vj = vi + 1; vj < Vptr.size(); ++vj) {
+				if (approx_equal(*Vptr[vi], *Vptr[vj], "absdiff", 1e-10)) {
+					IsDegenerate[vj] = true;
+					DegenerateParent[vj] = vi;
+				}
+			}
+		}
+	}
+
+	int NumNonDegenVerts = 0;
+	for (int vi = 0; vi < Vptr.size(); ++vi) {
+		if (!IsDegenerate[vi]) {
+			MidPt += *Vptr[vi];
+			NumNonDegenVerts++;
+		}
+	}
+
+	MidPt /= (double)NumNonDegenVerts;
+	Vptr.push_back(&MidPt);
+	DegenerateParent.push_back(-1);
+	IsDegenerate.push_back(false);
+
+	vector<vector<int> > Tets(NewIntegration1Tets[0].cbegin(), NewIntegration1Tets[0].cend() - 1);
+
+
+#ifdef _GBADEBUG
+	// for coloring tets
+	int tetColor = 0;
+	vector<vec3> V;
+	for (auto v : Vptr) V.push_back(*v);
+	SaveVec3VecAsScatterZone(V, to_string(PtInd + 1) + " Vertices", ColorIndex_t(0), { 1, 2, 3 });
+#endif	
+
+	for (auto const & tet : Tets)
+	{
+		bool TetIsDegen = false;
+		for (int ti = 0; ti < 3 && !TetIsDegen; ++ti) {
+			for (int tj = ti + 1; tj < 4 && !TetIsDegen; ++tj) {
+				TetIsDegen = (DegenerateParent[tet[ti]] == tet[tj] || DegenerateParent[tet[tj]] == tet[ti]);
+// 				if (!TetIsDegen)
+// 					TetIsDegen = approx_equal(*Vptr[tet[ti]], *Vptr[tet[tj]], "absdiff", 1e-12);
+			}
+		}
+#ifdef _GBADEBUG
+		// Save tet as scatter
+		vector<vec3> tetv;
+		for (auto const & i : tet) {
+			tetv.push_back(*Vptr[i]);
+		}
+
+		if (TetIsDegen)
+			SaveTetVec3VecAsFEZone(tetv, to_string(PtInd + 1) + " Skipped Tet " + to_string(tetColor), ColorIndex_t((tetColor % 7) + 1), { 1, 2, 3 });
+		else
+			SaveTetVec3VecAsFEZone(tetv, to_string(PtInd + 1) + " Tet " + to_string(tetColor), ColorIndex_t((tetColor % 7) + 1), { 1, 2, 3 });
+		tetColor++;
+#endif // _DEBUG
+
+		IntTet(Vptr, tet, nPts, VarPtrs, VolInfo, IntVals);
+	}
+}
+
+void NewIntegrateUsingIsosurfaces2(vector<GradPath_c const *> const & GPsIn,
+	int nPts,
+	VolExtentIndexWeights_s & VolInfo,
+	vector<FieldDataPointer_c> const & VarPtrs,
+	vector<double> & IntVals,
+	vec3 const * BondCPPos,
+	AddOn_pa * AddOnID)
+{
+#ifdef _GBADEBUG
+	std::ofstream DebugLog("C:\\Users\\Haiiro\\Documents\\Tecplot Addons\\debuglog.csv", std::ofstream::app);
+	DebugLog << "\n\nNew run:\n\n";
+#endif
+
+	auto GPs = GPsIn;
+	ENSURE(GPs.size() >= 3);
+	for (auto const * p : GPs) {
+		ENSURE(p->IsMade() && p->GetCount() > 3);
+	}
+
+	if (IntVals.size() != VarPtrs.size() + 1)
+		IntVals.resize(VarPtrs.size() + 1, 0);
+
+	/*
+	*	We're stepping down the GPs according to values of rho.
+	*	We'll assume that they all either terminate at the same rho value or critical point.
+	*	Even if they don't terminate at the same rho value, we'll assume that the termination of any GP will be at a sufficiently low rho value
+	*		such that most properties of interest have converged.
+	*	Also assuming that GPs go "downhill" from a GBA sphere around a nuclear CP.
+	*	At end of each loop, confirm that there is at least one more point in each grad path, otherwise exit.
+	*/
+	bool NotTerminated = true;
+
+	// Used in avoiding very small volume polyhedra.
+	double NewStepCutoffRatio = 0.7;
+
+	unsigned int NumGPs = GPs.size();
+
+// 	/*
+// 	  * Check to see if the GB terminates at a point (i.e. cage CP) by
+// 	  * testing for degenerate terminal points.
+// 	  */
+// 	double TermCheckDist = 0.01,
+// 		AvgTermDist = 0.0;// (sum(GPs[0]->XYZAt(-1) == GPs[1]->XYZAt(-1)) == 3);
+// 	double Denom = 0.0;
+// 	for (int i = 0; i < GPs.size() - 1; ++i) {
+// 		Denom += GPs.size() - (i + 1);
+// 		for (int j = i + 1; j < GPs.size(); ++j) {
+// 			AvgTermDist += Distance(GPs[i]->XYZAt(-1), GPs[j]->XYZAt(-1));
+// 		}
+// 	}
+// 	AvgTermDist /= Denom;
+// 	bool TermAtPoint = (AvgTermDist < TermCheckDist);
+
+	vector<vector<int> > T;
+
+	bool ContainsBondPath = (BondCPPos != nullptr);
+
+// 	if (!TermAtPoint){
+// 		vector<vec3> V;
+// 		V.reserve(NumGPs);
+// 		for (auto const & p : GPs) V.push_back(p->XYZAt(-1));
+// 		T = TriangulatePolygon(V);
+// 	}
+// 	else {
+
+	// Get indices of maximum GB cross-sectional area.
+	int TmpCount = GPs[0]->GetCount();
+	vector<double> AreaAtInd(TmpCount, 0.0);
+	vector<vector<vector<int> > > Triangulations(TmpCount);
+	vector<vector<unsigned int> > TmpIndLists(TmpCount, vector<unsigned int>(GPs.size(), 0));
+	vector<vector<vec3> > ThVertices(omp_get_num_procs(), vector<vec3>(GPs.size()));
+	int StartInd = 0, EndInd = TmpCount;
+	if (ContainsBondPath){
+		vec3 ClosestPoint = GPs[0]->ClosestPoint(*BondCPPos, StartInd);
+		if (TmpCount - StartInd > 30) {
+			StartInd += 5;
+		}
+	}if (TmpCount - StartInd > 30) {
+		EndInd -= 5;
+	}
+//#pragma omp parallel for
+	for (int i = StartInd; i < EndInd; ++i) {
+		int ThNum = omp_get_thread_num();
+		TmpIndLists[i][0] = i;
+		if (GetIsoRhoGPPoints(GPsIn, TmpIndLists[i], 0, ThVertices[ThNum], 0.5, true)){
+			Triangulations[i] = TriangulatePolygon(ThVertices[ThNum]);
+			for (auto const & t : Triangulations[i]){
+				AreaAtInd[i] += TriArea(ThVertices[ThNum][t[0]], ThVertices[ThNum][t[1]], ThVertices[ThNum][t[2]]);
+			}
+		}
+	}
+
+	int MaxAreaInd = -1;
+	double MaxArea = 0.0;
+	for (auto i = 0; i < TmpCount; ++i){
+		if (AreaAtInd[i] > MaxArea){
+			MaxArea = AreaAtInd[i];
+			MaxAreaInd = i;
+		}
+	}
+
+	if (MaxAreaInd > 0){
+		T = Triangulations[MaxAreaInd];
+	}
+	else{
+		T = Triangulations[(StartInd + EndInd) / 2];
+// #pragma omp critical(BadGBCrosSectionArea)
+// 		{
+// 			TecUtilDialogErrMsg("Failed to find max area cross-section of GB");
+// 		}
+	}
+// 
+// 	if (ContainsBondPath) {
+// 		vector<vec3> V;
+// 		V.reserve(NumGPs);
+// 		int ClosestPointToBond = -1;
+// 		for (auto const & p : GPs) {
+// 			if (approx_equal(p->ClosestPoint(*BondCPPos, ClosestPointToBond), *BondCPPos, "absdiff", 1e-12)) {
+// 				int CheckPoint = (ClosestPointToBond + p->GetCount()) / 2;
+// 				for (auto const & q : GPs)
+// 					V.push_back(q->XYZAt(CheckPoint > q->GetCount() ? q->GetCount() / 2 : CheckPoint));
+// 			}
+// 			V.push_back(p->XYZAt(p->GetCount() / 2));
+// 		}
+// 		T = TriangulatePolygon(V);
+// 	}
+// 	else {
+// 		vector<vec3> V;
+// 		V.reserve(NumGPs);
+// 		int HalfPoint = GPs[0]->GetCount() / 2;
+// 		for (auto const & p : GPs)
+// 			V.push_back(p->XYZAt(HalfPoint > p->GetCount() ? p->GetCount() / 2 : HalfPoint));
+// 		T = TriangulatePolygon(V);
+// 	}
+// 	}
+
+
+	double ChkDistSqr, TmpDistSqr;
+
+	/*
+		*	Because the triangulation of each plane can change as we
+		*	move down the GB, we need to find a triangulation to use
+		*	throughout the entire process.
+		*	If we're in an open system then many of the GBs will terminate
+		*	at a threshold value of rho. In this case we can use the
+		*	terminal plane to determine the triangulation.
+		*	If the GB terminates at a cage CP then the process of finding
+		*	a good plane to use for the triangulation becomes more complicated,
+		*	so we'll just punt and use the triangulation from the halfway plane
+		*	according to the number of points in the first GP.
+		*
+		*	There's a special case for GBs that terminate at a point, but it's easy to
+		*	deal with. The triangulation
+		*	will result in tetrahedra that can be immediately integrated rather than
+		*	trigonal prisms.
+		*/
+
+		/*
+		* Check to see if the GB originates or terminates at a point (i.e. cage CP) by
+		* testing for degenerate terminal points.
+		*/
+		// 	double TermCheckDist = 0.01,
+		// 		AvgTermDist = 0.0;
+		// 	double Denom = 0.0;
+		// 	for (int i = 0; i < GPs.size() - 1; ++i) {
+		// 		Denom += GPs.size() - (i + 1);
+		// 		for (int j = i + 1; j < GPs.size(); ++j) {
+		// 			AvgTermDist += Distance(GPs[i]->XYZAt(-1), GPs[j]->XYZAt(-1));
+		// 		}
+		// 	}
+		// 	AvgTermDist /= Denom;
+		// 	bool TermAtPoint = (AvgTermDist < TermCheckDist);
+
+#ifdef _GBADEBUG
+	vector<vector<double> > IntValList;
+	high_resolution_clock::time_point Time1;
+	bool UserQuit;
+	if (AddOnID != nullptr) {
+		Time1 = high_resolution_clock::now();
+		UserQuit = !StatusUpdate(0, GPs[0]->GetCount(), "Integrating GB", *AddOnID, Time1);
+	}
+#endif
+
+	/*
+	*	Main loop
+	*/
+	int PtInd = 0;
+	std::deque<vector<vec3> > Planes;
+	Planes.push_back(vector<vec3>());
+	Planes.back().reserve(NumGPs);
+	for (auto const & p : GPs) Planes.back().push_back(p->XYZAt(PtInd));
+	std::deque<vector<int> > IndLists;
+	IndLists.push_back(vector<int>(NumGPs, PtInd));
+	vector<vec3 const*> Vptr;
+	Vptr.reserve(6);
+	vector<vector<int> > Tets;
+	vector<bool> IsDegenerate;
+	vector<int> DegenerateParent;
+	while (NotTerminated) {
+		IndLists.push_back(IndLists.back());
+		for (int gpi = 0; gpi < NumGPs; ++gpi) {
+			if (IndLists.back()[gpi] < GPs[gpi]->GetCount() - 1)
+				IndLists.back()[gpi]++;
+		}
+
+		Planes.push_back(vector<vec3>());
+		Planes.back().reserve(NumGPs);
+		for (int gpi = 0; gpi < NumGPs; ++gpi) {
+			Planes.back().push_back(GPs[gpi]->XYZAt(IndLists.back()[gpi]));
+		}
+
+#ifdef _GBADEBUG
+		if (AddOnID != nullptr)
+			UserQuit = !StatusUpdate(PtInd, GPs[0]->GetCount(), "Integrating GB", *AddOnID, Time1);
+		// Save each plane as scatter
+		for (int i = 0; i < 2; ++i) {
+			 SaveVec3VecAsScatterZone(Planes[i], to_string(PtInd + 1) + " Plane " + to_string(i + 1), ColorIndex_t(i % 7), { 1, 2, 3 });
+		}
+		int tColor = 0;
+#endif
+
+		for (auto const & tri : T) {
+#ifdef _GBADEBUG
+			// Save triangle as scatter
+			vector<vec3> tv;
+			for (int i = 0; i < 3; ++i) tv.push_back(Planes[1][tri[i]]);
+			SaveVec3VecAsScatterZone(tv, to_string(PtInd + 1) + " Tri " + to_string(tColor), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+			tColor++;
+#endif
+			Vptr.clear();
+			for (auto i : tri){
+				Vptr.push_back(&Planes.front()[i]);
+				Vptr.push_back(&Planes.back()[i]);
+			}
+
+			IntTrigonalPrism(Vptr, nPts, VarPtrs, VolInfo, IntVals);
+		}
+
+		NotTerminated = false;
+		for (int gpi = 0; gpi < NumGPs && !NotTerminated; ++gpi) {
+			NotTerminated = IndLists[1][gpi] < GPs[gpi]->GetCount() - 1;
+		}
+
+		IndLists.pop_front();
+		Planes.pop_front();
+
+#ifdef _GBADEBUG
+		PtInd++;
+		// 		if (Iter > 20) break;
+#endif
+	}
+
+#ifdef _GBADEBUG
+	DebugLog.close();
+#endif
 
 	return;
 }
@@ -1769,6 +2532,7 @@ void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 		}
 	}
 }
+
 
 bool GetPerimeterEdges(vector<vector<int> > const & TriElems, vector<vec3> const & TriNodes, vector<vector<int> > & PerimeterEdges) {
 
@@ -1822,14 +2586,8 @@ bool GetPerimeterEdges(vector<vector<int> > const & TriElems, vector<vec3> const
 			UnsortedEdges.push_back(edgeNodes);
 			UnsortedEdgeTriNums.push_back(e.second[1]);
 			for (auto const & i : edgeNodes) {
-				if (NodeOccurenceCount.count(i) == 0) {
-					NodeOccurenceCount[i] = 1;
-					NodeEdges[i] = { e.first };
-				}
-				else {
-					NodeOccurenceCount[i]++;
-					NodeEdges[i].insert(e.first);
-				}
+				NodeOccurenceCount[i]++;
+				NodeEdges[i].insert(e.first);
 			}
 		}
 	}
@@ -2084,61 +2842,66 @@ Boolean_t Vec3PathResample(vector<vec3> const & OldXYZList, int NumPoints, vecto
 
 	// 	if (IsOk && NumPoints < OldCount){
 	if (IsOk) {
-		NewXYZList.resize(NumPoints);
+		if (NumPoints == 2) {
+			NewXYZList = { OldXYZList.front(),OldXYZList.back() };
+		}
+		else {
+			NewXYZList.resize(NumPoints);
 
-		double Length = 0;
-		for (int i = 1; i < OldXYZList.size(); ++i)
-			Length += Distance(OldXYZList[i], OldXYZList[i - 1]);
+			double Length = 0;
+			for (int i = 1; i < OldXYZList.size(); ++i)
+				Length += Distance(OldXYZList[i], OldXYZList[i - 1]);
 
-		double DelLength = Length / static_cast<double>(NumPoints - 1);
+			double DelLength = Length / static_cast<double>(NumPoints - 1);
 
-		double ArcLength = 0.0,
-			ArcLengthI = 0.0,
-			ArcLengthIm1 = 0.0;
+			double ArcLength = 0.0,
+				ArcLengthI = 0.0,
+				ArcLengthIm1 = 0.0;
 
-		vec3 PtI, PtIm1;
+			vec3 PtI, PtIm1;
 
-		PtI = OldXYZList[0];
+			PtI = OldXYZList[0];
 
-		NewXYZList[0] = PtI;
+			NewXYZList[0] = PtI;
 
-		int OldI = 0;
+			int OldI = 0;
 
-		for (int NewI = 1; NewI < NumPoints - 1; ++NewI) {
-			ArcLength += DelLength;
+			for (int NewI = 1; NewI < NumPoints - 1; ++NewI) {
+				ArcLength += DelLength;
 
-			while (OldI < OldCount - 1 && ArcLengthI < ArcLength) {
-				++OldI;
+				while (OldI < OldCount - 1 && ArcLengthI < ArcLength) {
+					++OldI;
 
-				ArcLengthIm1 = ArcLengthI;
-				PtIm1 = PtI;
+					ArcLengthIm1 = ArcLengthI;
+					PtIm1 = PtI;
 
-				PtI = OldXYZList[OldI];
+					PtI = OldXYZList[OldI];
 
-				ArcLengthI += Distance(PtI, PtIm1);
-			}
+					ArcLengthI += Distance(PtI, PtIm1);
+				}
 
-			double Ratio = (ArcLength - ArcLengthIm1) / (ArcLengthI - ArcLengthIm1);
-			NewXYZList[NewI] = PtIm1 + (PtI - PtIm1) * Ratio;
+				double Ratio = (ArcLength - ArcLengthIm1) / (ArcLengthI - ArcLengthIm1);
+				NewXYZList[NewI] = PtIm1 + (PtI - PtIm1) * Ratio;
 
-			if (OldI >= OldCount) {
-				while (NewI < NumPoints) {
-					NewI++;
-					if (NewI < NumPoints) {
-						NewXYZList[NewI] = PtIm1 + (PtI - PtIm1) * Ratio;
+				if (OldI >= OldCount) {
+					while (NewI < NumPoints) {
+						NewI++;
+						if (NewI < NumPoints) {
+							NewXYZList[NewI] = PtIm1 + (PtI - PtIm1) * Ratio;
+						}
 					}
 				}
 			}
+
+			/*
+			*	Add last point
+			*/
+
+			NewXYZList[NumPoints - 1] = OldXYZList[OldCount - 1];
+
+
+			IsOk = NewXYZList.size() == NumPoints;
 		}
-
-		/*
-		*	Add last point
-		*/
-
-		NewXYZList[NumPoints - 1] = OldXYZList[OldCount - 1];
-
-
-		IsOk = NewXYZList.size() == NumPoints;
 	}
 	else IsOk = FALSE;
 
@@ -2773,27 +3536,40 @@ void UpdateSubdivideSphericalTriangulationWithConstraintNodesAndSegments(
 	}
 }
 
-void TriangulatedSphereJiggleMesh(vector<vec3> & Nodes,
+double TriangulatedSphereJiggleMesh(vector<vec3> & Nodes,
 	vector<std::set<int> > const & NodeConnectivity,
 	vector<bool> const & NodeIsConstrained,
 	vec3 const & SphereCenter,
 	double const & SphereRadius)
 {
-	vector<vec3> OldNodes = Nodes;
+	int NumNodes = Nodes.size();
+	vector<vec3> NewNodes(NumNodes);
+	vector<double> NodeMovedDistSqr(NumNodes);
 
-	int NumNodes = OldNodes.size();
 #pragma omp parallel for
 	for (int ni = 0; ni < NumNodes; ++ni) {
 		if (!NodeIsConstrained[ni]) {
 			vec3 MidPt = zeros(3);
 			for (auto nj : NodeConnectivity[ni])
-				MidPt += OldNodes[nj];
+				MidPt += Nodes[nj];
 
 			MidPt /= (double)NodeConnectivity[ni].size();
 			MidPt = SphereCenter + normalise(MidPt - SphereCenter) * SphereRadius;
-			Nodes[ni] = MidPt;
+			NewNodes[ni] = MidPt;
 		}
+		else
+			NewNodes[ni] = Nodes[ni];
+
+		NodeMovedDistSqr[ni] = DistSqr(Nodes[ni], NewNodes[ni]);
 	}
+
+	double MaxMovedDist = 0.;
+	for (auto const & d : NodeMovedDistSqr)
+		MaxMovedDist = MAX(MaxMovedDist, d);
+
+	Nodes = NewNodes;
+
+	return MaxMovedDist;
 }
 
 void GetMeshNodeConnectivity(vector<vector<int> > const & Elems,
@@ -2810,4 +3586,243 @@ void GetMeshNodeConnectivity(vector<vector<int> > const & Elems,
 			}
 		}
 	}
+}
+
+double TriArea(vec3 const & p1, vec3 const & p2, vec3 const & p3){
+	vec3 ABC;
+
+	ABC[0] = p1[2] * (p2[1] - p3[1])
+		+ p2[2] * (p3[1] - p1[1])
+		+ p3[2] * (p1[1] - p2[1]);
+
+	ABC[1] = p1[0] * (p2[2] - p3[2])
+		+ p2[0] * (p3[2] - p1[2])
+		+ p3[0] * (p1[2] - p2[2]);
+
+	ABC[2] = p1[1] * (p2[0] - p3[0])
+		+ p2[1] * (p3[0] - p1[0])
+		+ p3[1] * (p1[0] - p2[0]);
+
+	return 0.5 * norm(ABC);
+}
+
+double TriPerimeter(vec3 const & p1, vec3 const & p2, vec3 const & p3){
+	return Distance(p1, p2) + Distance(p2, p3) + Distance(p3, p1);
+}
+
+// Returns sum of differences between corner angles and 60 degrees,
+// so gives the "distance" of the triangle from being equilateral.
+// 0 means perfectly equilateral, and the upper limit is 240 degrees
+double const MaxTriBadness = 240. / DEGPERRADIANS;
+double const TriBadnessCheckAngle = 60. / DEGPERRADIANS;
+double TriBadness(vec3 const & p1, vec3 const & p2, vec3 const & p3){
+// 	Old implementation used the ratio of tri area to perimeter, but results
+// 	in low area triangles looking more bad than they are.
+// 	double a = TriArea(p1, p2, p3);
+// 	double p = TriPerimeter(p1, p2, p3);
+// 
+// 	return (p > 0.0 ? a / p : 0.0);
+// 	
+// 	
+	vec3 v1 = p2 - p1,
+		v2 = p3 - p2,
+		v3 = p1 - p3;
+	double AngleDiffSum = abs(TriBadnessCheckAngle - VectorAngle(v1,-v2));
+	AngleDiffSum += abs(TriBadnessCheckAngle - VectorAngle(v2,-v3));
+	AngleDiffSum += abs(TriBadnessCheckAngle - VectorAngle(v3,-v1));
+
+	return AngleDiffSum / MaxTriBadness;
+}
+
+/*
+ *	Remove duplicate nodes (nodes with same position)
+ *	and revise element list to reflect the removal of
+ *	the nodes.
+ */
+void RemoveDupicateNodesFromMesh(vector<vec3> & NodeList, vector<vector<int> > & ElemList, vector<int> * OldToNewNodes) {
+	vector<bool> NodeIsDuplicate(NodeList.size(), false);
+	vector<int> NodeNums(NodeList.size());
+	bool DupFound = false;
+
+	for (int i = 0; i < NodeList.size(); ++i)
+		NodeNums[i] = i;
+
+	for (int i = 0; i < NodeList.size() - 1; ++i) {
+		if (!NodeIsDuplicate[i]) {
+			for (int j = i + 1; j < NodeList.size(); ++j) {
+				if (!NodeIsDuplicate[j] && approx_equal(NodeList[i], NodeList[j], "absdiff", 1e-12)) {
+					NodeIsDuplicate[j] = true;
+					NodeNums[j] = NodeNums[i];
+					DupFound = true;
+				}
+			}
+		}
+	}
+
+	if (DupFound) {
+		vector<vec3> NewXYZ;
+		NewXYZ.reserve(NodeList.size());
+
+		for (int n = 0; n < NodeIsDuplicate.size(); ++n) {
+			if (!NodeIsDuplicate[n]) {
+				NewXYZ.push_back(NodeList[n]);
+				NodeNums[n] = NewXYZ.size() - 1;
+				for (int ni = n + 1; ni < NodeIsDuplicate.size(); ++ni) {
+					if (NodeIsDuplicate[ni] && NodeNums[ni] == n) {
+						NodeNums[ni] = NodeNums[n];
+					}
+				}
+			}
+		}
+
+		NodeList = NewXYZ;
+
+		vector<vector<int> > NewElems;
+		NewElems.reserve(ElemList.size());
+		for (auto & e : ElemList) {
+			for (int & ei : e) {
+				ei = NodeNums[ei];
+			}
+			if (e[0] != e[1] && e[0] != e[2] && e[1] != e[2]) {
+				NewElems.push_back(e);
+			}
+			else {
+				int a = 1;
+			}
+		}
+
+		ElemList = NewElems;
+
+		if (OldToNewNodes != nullptr) {
+			*OldToNewNodes = NodeNums;
+		}
+	}
+
+	NodeList.shrink_to_fit();
+	ElemList.shrink_to_fit();
+}
+
+void RemoveDuplicatePointsFromVec3Vec(vector<vec3> & Points, double tol, vector<int> * PtNumsOldToNew)
+{
+	if (Points.size() <= 1)
+		return;
+
+	vector<vec3> NewPoints;
+	NewPoints.reserve(Points.size());
+
+	vector<int> PtNums;
+	vector<int> * PtNumPtr;
+	if (PtNumsOldToNew != nullptr){
+		PtNumPtr = PtNumsOldToNew;
+	}
+	else{
+		PtNumPtr = &PtNums;
+	}
+	PtNumPtr->resize(Points.size());
+	for (int i = 0; i < Points.size(); ++i)
+		PtNumPtr->at(i) = i;
+
+	for (int i = 0; i < Points.size() - 1; ++i){
+		if (PtNumPtr->at(i) == i) {
+			for (int j = i + 1; j < Points.size(); ++j) {
+				if (approx_equal(Points[i], Points[PtNumPtr->at(j)], "absdiff", tol)) {
+					PtNumPtr->at(j) = PtNumPtr->at(i);
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < Points.size() - 1; ++i){
+		if (PtNumPtr->at(i) == i) {
+			NewPoints.push_back(Points[i]);
+		}
+	}
+
+	NewPoints.push_back(Points.back());
+
+	Points = NewPoints;
+	Points.shrink_to_fit();
+
+	return;
+}
+
+/*
+ *	Distance between a point x0 and a line defined by x1 and x2.
+ *	From http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
+ */
+double PointLineDist(vec3 const & p, vec3 const & a, vec3 const & b) {
+	double LineDist = Distance(b, a);
+	if (LineDist <= 1e-12) {
+		return Distance(p, a);
+	}
+	else {
+		double numer = norm(cross(p - a, p - b));
+		return numer / LineDist;
+	}
+}
+double PointLineDist(tpcsm::Vec3 const & p, tpcsm::Vec3 const & a, tpcsm::Vec3 const & b) {
+	double LineDist = (b - a).getNorm();
+	if ( LineDist <= 1e-12) {
+		return (a - p).getNorm();
+	}
+	else {
+		double numer = ((p - a).cross(p - b)).getNorm();
+		double denom = (b - a).getNorm();
+		return numer / denom;
+	}
+}
+
+vec3 ProjectPointToLine(vec3 const & p, vec3 const & a, vec3 const & b){
+	vec3 ap = p - a,
+		ab = b - a;
+	return a + ab * dot(ap, ab) / dot(ab, ab);
+}
+tpcsm::Vec3 ProjectPointToLine(tpcsm::Vec3 const & p, tpcsm::Vec3 const & a, tpcsm::Vec3 const & b){
+	tpcsm::Vec3 ap = p - a,
+		ab = b - a;
+	return a + ab * ap.dot(ab) / ab.dot(ab);
+}
+
+vec3 ClosestPointToPath(vector<vec3> const & Path, vec3 const & CheckPt, int & PtNum)
+{
+	vec3 ClosestPt;
+	if (!Path.empty()) {
+		// Simple sequential search down whole GP
+		ClosestPt = Path[0];
+		double MinSqrDist = DistSqr(Path[0], CheckPt);
+		PtNum = 0;
+		int Count = Path.size();
+		for (int i = 1; i < Count - 1; ++i) {
+			double TempSqrDist = DistSqr(Path[i], CheckPt);
+			if (TempSqrDist < MinSqrDist) {
+				MinSqrDist = TempSqrDist;
+				ClosestPt = Path[i];
+				PtNum = i;
+			}
+		}
+
+		vec3 AB;
+		double t;
+		vector<bool> PointChecked(Count, false);
+		do
+		{
+			PointChecked[PtNum] = true;
+			AB = Path[PtNum + 1] - Path[PtNum];
+			t = dot(CheckPt - Path[PtNum], AB) / dot(AB, AB);
+			if (t > 1.0)
+				if (PtNum < Count - 2 && !PointChecked[PtNum + 1])
+					PtNum++;
+				else
+					t = 1.0;
+			else if (t < 0.0)
+				if (PtNum > 1 && !PointChecked[PtNum - 1])
+					PtNum--;
+				else
+					t = 0.0;
+		} while (t > 1.0 || t < 0.0);
+
+		ClosestPt = Path[PtNum] + AB * t;
+	}
+
+	return ClosestPt;
 }

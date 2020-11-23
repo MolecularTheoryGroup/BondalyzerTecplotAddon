@@ -1,5 +1,4 @@
-#ifndef ZONEVARINFO_H_
-#define ZONEVARINFO_H_
+#pragma once
 
 #include <vector>
 #include <string>
@@ -15,5 +14,3 @@ string ReplaceStringChar(string const & InString,
 	string const & NewChar);
 string RemoveStringChar(string const & InString,
 	string const & OldChar);
-
-#endif

@@ -13,6 +13,23 @@ using namespace arma;
 using std::string;
 using std::to_string;
 
+int ElementCoreElectronCount(int AtomicNumber) {
+	if (AtomicNumber < 3)
+		return 0;
+	else if (AtomicNumber < 11)
+		return 2;
+	else if (AtomicNumber < 19)
+		return 10;
+	else if (AtomicNumber < 37)
+		return 18;
+	else if (AtomicNumber < 55)
+		return 36;
+	else if (AtomicNumber < 87)
+		return 54;
+	else
+		return 86;
+}
+
 double dot2(const vec & v) 
 { return dot(v, v); }
 
@@ -40,7 +57,7 @@ vec3 const SphericalToCartesian(double const & r, double const & theta, double c
 	return out * r;
 }
 
-const mat44		RotationMatrix(double const & Angle, vec3 Axis){
+const mat44		RotationMatrix(double const & Angle, vec3 const & Axis){
 	double L = norm(Axis);
 	double LSqr = L * L;
 	double L_sinAngle = L * sin(Angle), cosAngle = cos(Angle), OneMinusCosAngle = 1. - cosAngle;
@@ -90,7 +107,7 @@ const mat44		RotationMatrix(double const & Angle, vec3 Axis){
  *	Note that Point will be rotated around the origin, so
  *	remember to translate it to whereever it needs to be afterwards.
  */
-vec3 const Rotate(vec3 const & Point, double const & Angle, vec3 Axis){
+vec3 const Rotate(vec3 const & Point, double const & Angle, vec3 const & Axis){
 	mat44 RotMat = RotationMatrix(Angle, Axis);
 	vec4 TmpVec4 = RotMat * join_cols(Point, ones<vec>(1));
 	return vec3(TmpVec4.subvec(0, 2));

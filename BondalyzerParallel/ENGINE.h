@@ -7,9 +7,8 @@
 *****************************************************************
 *****************************************************************
 */
+#pragma once
 
-#ifndef  ENGINE_H_
-#define ENGINE_H_ /* Only include once */
 
 #include <fstream>
 #include <vector>
@@ -53,6 +52,7 @@ static vector<string> const BondalyzerStepGUITitles = {
 
 
 void RefineActiveZones();
+void GetClosedIsoSurfacesInstallProbeCallback();
 void GetClosedIsoSurfaceFromPoints();
 void GetClosedIsoSurfaceFromNodes();
 void GetAllClosedIsoSurfaces();
@@ -64,6 +64,7 @@ void MakeSurfaceFromPathZonesGetUserInfo();
 void MakeSliceFromPointSelectionGetUserInfo();
 
 void GradientPathsOnSphereGetUserInfo();
+void SimpleSurfacesAroundSaddlesGetUserInfo();
 
 void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, vector<GuiField_c> const PassthroughFields = vector<GuiField_c>());
 
@@ -75,10 +76,12 @@ void GradientPathToolGetUserInfo();
 Boolean_t FindCritPoints(int VolZoneNum,
 	vector<int> const & XYZVarNums,
 	int RhoVarNum,
-	vector<int> const & GradVarNums,
-	vector<int> const & HessVarNums,
+	vector<int> & GradVarNums,
+	vector<int> & HessVarNums,
 	Boolean_t IsPeriodic,
-	double const & CellSpacing);
+	double const & CellSpacing,
+	int ConvergedIterations,
+	bool PrecalcVars = true);
 
 void DeleteCPsGetUserInfo();
 void ExtractCPsGetUserInfo();
@@ -105,7 +108,8 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 	int RhoVarNum,
 	vector<int> const & GradVarNums,
 	vector<int> const & HessVarNums,
-	Boolean_t IsPeriodic);
+	Boolean_t IsPeriodic,
+	bool PrecalcVars = true);
 
 Boolean_t FindCageNuclearPaths(int VolZoneNum,
 	vector<int> const & OtherCPZoneNums,
@@ -116,7 +120,8 @@ Boolean_t FindCageNuclearPaths(int VolZoneNum,
 	int RhoVarNum,
 	vector<int> const & GradVarNums,
 	vector<int> const & HessVarNums,
-	Boolean_t IsPeriodic);
+	Boolean_t IsPeriodic,
+	bool PrecalcVars = true);
 
 Boolean_t FindBondRingSurfaces(int VolZoneNum,
 	vector<int> const & OtherCPZoneNums,
@@ -129,7 +134,25 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 	vector<int> const & GradVarNums,
 	vector<int> const & HessVarNums,
 	int RCSFuncVarNum,
-	Boolean_t IsPeriodic);
+	Boolean_t IsPeriodic,
+	bool PrecalcVars = true);
+
+Boolean_t FindBondRingSurfaces2(int VolZoneNum,
+	vector<int> const & OtherCPZoneNums,
+	int SelectedCPZoneNum,
+	vector<int> SelectedCPNums,
+	int CPTypeVarNum,
+	CPType_e const & CPType,
+	vector<int> const & XYZVarNums,
+	int RhoVarNum,
+	vector<int> GradVarNums,
+	vector<int> HessVarNums,
+	int RCSFuncVarNum,
+	Boolean_t IsPeriodic,
+	bool DebugMode = false,
+	double RhoCutoff = DefaultRhoCutoff,
+	int NumGPPts = 800,
+	bool PrecalcVars = true);
 
 void ExtractRadiusContourLinesToIOrderedPoints(vector<int> const & ZoneNums,
 	vec3 const & Origin, 
@@ -174,5 +197,3 @@ Boolean_t CPNumbersMapBetweenZones(int AllCPsZoneNum,
 
 void TestFunction();
 
-
-#endif /* ENGINE_H_ */

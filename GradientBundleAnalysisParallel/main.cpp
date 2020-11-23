@@ -6,6 +6,8 @@
 #include "GUIDEFS.h"
 #include "GUICB.h"
 
+#include "CSM_GUI.h"
+
 #include "GBAENGINE.h"
 #include "VIEWRESULTS.h"
 #include "INTEGRATE.h"
@@ -77,7 +79,6 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
 		TecGUIDialogDrop(Dialog1Manager);
 	}
 
-	TecUtilLockFinish(AddOnID);
 
 
 
@@ -118,7 +119,9 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
 // 			TecUtilDialogMessageBox("node maps altered", MessageBoxType_Information);
 			break;
 		case StateChange_MouseModeUpdate: /* the new mouse mode */
+			CSMGuiLock();
 			GBAProcessSystemDeleteCPLabels();
+			CSMGuiUnlock();
 // 			TecUtilDialogMessageBox("mouse mode update", MessageBoxType_Information);
 			break;
 		case StateChange_Style:           /* Style Parameters P1,P2,P3,P4,P5,P6 */
@@ -278,6 +281,7 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
 		} break;
 		default: break;
 	} /* end switch */
+	TecUtilLockFinish(AddOnID);
 }
 
 /**
@@ -288,6 +292,19 @@ static void STDCALL MenuCallback(void)
 	BuildDialog1(MAINDIALOGID);
 	if (TecUtilDataSetIsAvailable() && GBAProcessSystemPrepareGUI())
 		TecGUIDialogLaunch(Dialog1Manager);
+	else
+		TecUtilDialogErrMsg("Load a bondalyzed file first.");
+	TecUtilLockFinish(AddOnID);
+}
+
+/**
+ */
+static void STDCALL CreateCircularGBsMenuCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	BuildDialog1(MAINDIALOGID);
+	if (TecUtilDataSetIsAvailable())
+		CreateCircularGBsGetUserInfo();
 	else
 		TecUtilDialogErrMsg("Load a bondalyzed file first.");
 	TecUtilLockFinish(AddOnID);
@@ -363,6 +380,10 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 						 "Gradient Bundle Analysis",
 						 '\0',
 						 MenuCallback);
+	TecUtilMenuAddOption("MTG_Utilities",
+						"Create Circular GBs on GBA sphere",
+						'\0',
+						CreateCircularGBsMenuCallback);
 // 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 						"GP Test",
 // 						'\0',

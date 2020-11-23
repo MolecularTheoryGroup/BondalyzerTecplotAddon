@@ -220,7 +220,7 @@ Boolean_t FieldDataPointer_c::GetReadPtr(int ZoneNum, int VarNum){
 		}
 	}
 
-	REQUIRE(m_IsReady);
+// 	REQUIRE(m_IsReady);
 
 	return m_IsReady;
 }
@@ -339,7 +339,11 @@ Boolean_t FieldVecPointer_c::GetReadPtr(int ZoneNum, vector<int> const & VarNums
 	Boolean_t IsOk = TRUE;
 
 	for (int i = 0; i < 3 && IsOk; ++i){
-		IsOk = (Ptrs[i].GetReadPtr(ZoneNum, VarNums[i]) && Ptrs[i].FDType() == FieldDataType_Double);
+		IsOk = (Ptrs[i].GetReadPtr(ZoneNum, VarNums[i]) 
+			&& (
+			Ptrs[i].FDType() == FieldDataType_Double
+						|| Ptrs[i].FDType() == FieldDataType_Float)
+			);
 		if (i > 0) IsOk = (IsOk && Ptrs[i].ValueLocation() == Ptrs[i - 1].ValueLocation()
 			&& Ptrs[i].Size() == Ptrs[i - 1].Size());
 	}
@@ -352,7 +356,11 @@ Boolean_t FieldVecPointer_c::GetWritePtr(int ZoneNum, vector<int> const & VarNum
 	Boolean_t IsOk = TRUE;
 	
 	for (int i = 0; i < 3 && IsOk; ++i){
-		IsOk = (Ptrs[i].GetWritePtr(ZoneNum, VarNums[i]) && Ptrs[i].FDType() == FieldDataType_Double);
+		IsOk = (Ptrs[i].GetWritePtr(ZoneNum, VarNums[i]) 
+			&& (
+			Ptrs[i].FDType() == FieldDataType_Double
+						|| Ptrs[i].FDType() == FieldDataType_Float)
+			);
 		if (i > 0) IsOk = (IsOk && Ptrs[i].ValueLocation() == Ptrs[i - 1].ValueLocation());
 	}
 

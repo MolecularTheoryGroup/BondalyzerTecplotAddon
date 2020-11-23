@@ -1,6 +1,4 @@
 #pragma once
-#ifndef CSMFEVOLUME_H_
-#define CSMFEVOLUME_H_
 
 #include <vector>
 
@@ -8,6 +6,9 @@
 #include "CSM_GEOMETRY.h"
 
 using std::vector;
+
+static int const DefaultProjectPointToSurfaceMaxBFSDepth = 10;
+static int const DefaultProjectPointtoSurfaceNumConvergedBSFDepthLevels = 3;
 
 class FESurface_c
 {
@@ -76,7 +77,7 @@ public:
 
 
 	vector<vec3> GetSphereIntersectionPath(vec3 const & SphereCenter, double const & SphereRadius);
-	bool ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, int & ProjectedElemIndex, bool & ProjectionIsInterior) const;
+	bool ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, int & ProjectedElemIndex, bool & ProjectionIsInterior, int MaxBFSDepth = DefaultProjectPointToSurfaceMaxBFSDepth, bool StartWithBFS = true) const;
 
 	/*
 	*	Setters
@@ -114,13 +115,35 @@ public:
 	vector<vec3> const * GetXYZListPtr() const { return &m_XYZList; }
 
 // 	Boolean_t MakeGradientBundle(vector<GradPath_c*> GPs);
-	Boolean_t MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBeginningAndEndGPs = false, bool const AddCap = false);
+	Boolean_t MakeFromGPs(vector<GradPathBase_c const *> const & GPs, 
+		bool ConnectBeginningAndEndGPs = false, 
+		bool AddCapToSurface = false, 
+		bool AddCapsBetweenGPs = true, 
+		vector<vec3> const * CapPoints = nullptr, 
+		int LeftPathDeviationPointInd = -1,
+		int RightPathDeviationPointInd = -1,
+		int CapMidPointInd = -1);
+ 	Boolean_t MakeFromGPs(vector<GradPath_c const *> const & GPs, 
+		bool ConnectBeginningAndEndGPs = false, 
+		bool AddCapToSurface = false, 
+		bool AddCapsBetweenGPs = true, 
+		vector<vec3> const * CapPoints = nullptr, 
+		int LeftPathDeviationPointInd = -1,
+		int RightPathDeviationPointInd = -1,
+		int CapMidPointInd = -1)
+ 	{
+ 		vector<GradPathBase_c const *> TmpGPPtrs;
+ 		for (auto i : GPs)
+ 			TmpGPPtrs.push_back(reinterpret_cast<GradPathBase_c const *>(i));
+ 
+ 		return MakeFromGPs(TmpGPPtrs, ConnectBeginningAndEndGPs, AddCapToSurface, AddCapsBetweenGPs, CapPoints, LeftPathDeviationPointInd, RightPathDeviationPointInd, CapMidPointInd);
+ 	}
 
 	Boolean_t MakeFromNodeElemList(vector<vec3> const & P, vector<vector<int> > const & T);
 
 	Boolean_t Refine();
 
-	int GetClosestNodeToPoint(vec3 const & Point) const;
+	int GetClosestNodeToPoint(vec3 const & Point, double * ClosestNodeDistance = nullptr) const;
 	/*
 	*	Two methods to make the 3- and 4-sided
 	*	FE volumes from gradient paths.
@@ -146,7 +169,8 @@ public:
 	int SaveAsTriFEZone(string const & ZoneName, 
 		vector<FieldDataType_e> DataTypes,
 		vector<ValueLocation_e> const & DataLocations,
-		vector<int> const & XYZVarNums);
+		vector<int> const & XYZVarNums,
+		int RhoVarNum = 4);
 // 	int const SaveAsFEZone(
 // 		vector<FieldDataType_e> DataTypes,
 // 		vector<int> const & XYZVarNums,
@@ -264,7 +288,3 @@ private:
 	vector<vector<int> > m_E;
 	FESurface_c *m_Vol = nullptr;
 };
-
-
-
-#endif

@@ -22,6 +22,7 @@
 #include "Set.h"
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_DATA_TYPES.h"
+#include "CSM_GUI.h"
 #include "VIEWRESULTS.h"
 
 using namespace arma;
@@ -64,8 +65,6 @@ void GBAResultViewerPopulateGBs() {
 
 
 void GBAResultViewerSelectSphere(){
-	TecUtilLockStart(AddOnID);
-	TecUtilDrawGraphics(FALSE);
 
 
 	Boolean_t IsOk = TRUE;
@@ -155,14 +154,10 @@ void GBAResultViewerSelectSphere(){
 
 	}
 
-	TecUtilDrawGraphics(TRUE);
-	TecUtilLockFinish(AddOnID);
 	return;
 }
 
 void GBAResultViewerSelectIntVar(){
-	TecUtilLockStart(AddOnID);
-	TecUtilDrawGraphics(FALSE);
 
 	Boolean_t IsOk = TRUE;
 
@@ -223,8 +218,6 @@ void GBAResultViewerSelectIntVar(){
 
 		if (VarMin == DBL_MAX || VarMax == -DBL_MAX){
 			TecUtilDialogMessageBox("No values for selected variable for selected sphere(s)", MessageBoxType_Error);
-			TecUtilDrawGraphics(TRUE);
-			TecUtilLockFinish(AddOnID);
 			return;
 		}
 
@@ -348,14 +341,9 @@ void GBAResultViewerSelectIntVar(){
 		TecUtilArgListDealloc(&TempArgList);
 		TecUtilSetDealloc(&ZoneSet);
 	}
-
-	TecUtilDrawGraphics(TRUE);
-	TecUtilLockFinish(AddOnID);
 }
 
 void GBAResultViewerSelectCondensedGBs() {
-	TecUtilLockStart(AddOnID);
-	TecUtilDrawGraphics(FALSE);
 
 	Boolean_t IsOk = TRUE;
 
@@ -446,14 +434,9 @@ void GBAResultViewerSelectCondensedGBs() {
 	}
 
 	TecUtilArrayDealloc((void**)&SelectedNums);
-
-	TecUtilDrawGraphics(TRUE);
-	TecUtilLockFinish(AddOnID);
 }
 
 void GBAResultViewerSelectGB(){
-	TecUtilLockStart(AddOnID);
-	TecUtilDrawGraphics(FALSE);
 
 	Boolean_t IsOk = TRUE;
 
@@ -546,13 +529,9 @@ void GBAResultViewerSelectGB(){
 
 	TecUtilArrayDealloc((void**)&SelectedNums);
 
-	TecUtilDrawGraphics(TRUE);
-	TecUtilLockFinish(AddOnID);
 }
 
 void GBAResultViewerToggleSphere(){
-	TecUtilLockStart(AddOnID);
-	TecUtilDrawGraphics(FALSE);
 
 	Boolean_t IsOk = (TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0);
 
@@ -568,8 +547,6 @@ void GBAResultViewerToggleSphere(){
 		char* ChkName = TecGUIListGetString(SLSelSphere_SLST_T3_1, TecGUIListGetSelectedItem(SLSelSphere_SLST_T3_1));
 		string ChkNameStr = ChkName;
 		TecUtilStringDealloc(&ChkName);
-
-		TecUtilDataLoadBegin();
 
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum){
 			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)
@@ -596,8 +573,6 @@ void GBAResultViewerToggleSphere(){
 		ChkNameStr = ChkName;
 		TecUtilStringDealloc(&ChkName);
 
-		TecUtilDataLoadBegin();
-
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum){
 			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)
 				&& AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, ChkNameStr))
@@ -619,12 +594,7 @@ void GBAResultViewerToggleSphere(){
 	else{
 		TecGUIToggleSet(TGLSphereVis_TOG_T3_1, FALSE);
 	}
-
-	TecUtilDataLoadEnd();
 	GBAResultViewerSelectSphere();
-
-	TecUtilDrawGraphics(TRUE);
-	TecUtilLockFinish(AddOnID);
 }
 
 void SortCPNameList(vector<string> & StrList){
@@ -698,10 +668,8 @@ void GBAResultViewerDeleteSphere(){
 	 *	Delete selected sphere zone and and all
 	 *	GBA zones associated with it.
 	 */
-	TecUtilLockStart(AddOnID);
 
 	if (TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0){
-		TecUtilDrawGraphics(FALSE);
 		/*
 		*	Get selected sphere name
 		*/
@@ -767,19 +735,12 @@ void GBAResultViewerDeleteSphere(){
 			}
 		}
 
-
-		TecUtilDataLoadEnd();
-		TecUtilDrawGraphics(TRUE);
 	}
-	TecUtilLockFinish(AddOnID);
-
 }
 
 void GBAResultViewerActivateAllGB(){
-	TecUtilLockStart(AddOnID);
 
 	if (TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0){
-		TecUtilDrawGraphics(FALSE);
 		/*
 		*	Get selected sphere name
 		*/
@@ -797,11 +758,12 @@ void GBAResultViewerActivateAllGB(){
 
 		Set_pa ActivateSet = TecUtilSetAlloc(FALSE);
 
-		TecUtilDataLoadBegin();
-
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones; ++ZoneNum){
-			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
-				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr))
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
+				&& (
+				AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+								|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr))
+				)
 			{
 				TecUtilSetAddMember(ActivateSet, ZoneNum, FALSE);
 			}
@@ -821,27 +783,46 @@ void GBAResultViewerActivateAllGB(){
 		else{
 			TecUtilZoneSetActive(ActivateSet, AssignOp_PlusEquals);
 			int NumGBAtoms = TecGUIListGetItemCount(MLSelGB_MLST_T3_1);
-			vector<int> SelNums(NumGBAtoms);
-			for (int i = 1; i <= NumGBAtoms; ++i)
-				SelNums[i - 1] = i;
+			if (NumGBAtoms > 0) {
+				vector<int> SelNums(NumGBAtoms);
+				for (int i = 1; i <= NumGBAtoms; ++i)
+					SelNums[i - 1] = i;
 
-			TecGUIListSetSelectedItems(MLSelGB_MLST_T3_1, SelNums.data(), NumGBAtoms);
+				TecGUIListSetSelectedItems(MLSelGB_MLST_T3_1, SelNums.data(), NumGBAtoms);
+			}
 		}
 
 		TecUtilSetDealloc(&ActivateSet);
 
 		TecUtilStringDealloc(&SphereNameCStr);
-
-		TecUtilDataLoadEnd();
-		TecUtilDrawGraphics(TRUE);
 	}
-
-	TecUtilLockFinish(AddOnID);
 }
 
 /*
  *	Volume zone toggle probe functions
  */
+
+std::map<unsigned int, bool> SphereZoneHasSavedGBs;
+
+void SphereZoneCheckForSavedGBs(){
+	SphereZoneHasSavedGBs.clear();
+	int NumZones = TecUtilDataSetGetNumZones();
+	string SphereName;
+	for (int z = 1; z <= NumZones; ++z){
+		if (AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)
+			&& AuxDataZoneGetItem(z, CSMAuxData.GBA.SphereCPName, SphereName))
+		{
+			bool IsFound = false;
+			for (int zgb = z + 1; zgb <= NumZones && !IsFound; ++zgb){
+				if (AuxDataZoneItemMatches(zgb, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
+					&& AuxDataZoneItemMatches(zgb, CSMAuxData.GBA.SphereCPName, SphereName)){
+					IsFound = true;
+				}
+			}
+			SphereZoneHasSavedGBs[z] = IsFound;
+		}
+	}
+}
 
 void ToggleFEVolumesProbeInstallCB(){
 	ArgList_pa ProbeArgs = TecUtilArgListAlloc();
@@ -858,11 +839,8 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 	Boolean_t isNearestPoint,
 	ArbParam_t ClientData)
 {
-
-
 	TecUtilLockStart(AddOnID);
-	TecUtilDrawGraphics(FALSE);
-
+	CSMGuiLock();
 	if (WasSuccessful){
 
 		string TmpStr1, TmpStr2, TmpStr3;
@@ -874,8 +852,6 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 		string TmpStr;
 
 		string CPName;
-
-		TecUtilDataLoadBegin();
 
 		if (IsOk){
 			IsOk = AuxDataZoneGetItem(ProbedZoneNum, CSMAuxData.GBA.SphereCPName, CPName);
@@ -899,7 +875,7 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 					int NumFound = 0;
 					for (int CurZoneNum = 1; CurZoneNum < NumZones && NumFound < 6; ++CurZoneNum){
 						if (TecUtilZoneGetType(CurZoneNum) == ZoneType_FETriangle){
-							if (AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+							if (AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
 								&& AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.SphereCPName, CPName))
 							{
 								for (int i = 0; i < 3; ++i){
@@ -920,7 +896,7 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 					LgIndex_t ElemNum = TecUtilProbeFieldGetCell();
 					for (int CurZoneNum = 1; CurZoneNum < NumZones; ++CurZoneNum){
 						if (TecUtilZoneGetType(CurZoneNum) == ZoneType_FETriangle){
-							if (AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+							if (AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
 								&& AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.SphereCPName, CPName)
 								&& AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ElemNum, to_string(ElemNum)))
 							{
@@ -931,7 +907,7 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 					}
 				}
 			}
-			else if (ZoneType == CSMAuxData.GBA.ZoneTypeFEVolumeZone){
+			else if (ZoneType == CSMAuxData.GBA.ZoneTypeDGB){
 				/*
 				 *	Two modes:
 				 *	1. If user does nearest point probe, then the probed FE
@@ -969,7 +945,7 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 						SetIndex_t CurZoneNum = TecUtilSetGetNextMember(ActiveZones, TECUTILSETNOTMEMBER);
 						while (IsOk && CurZoneNum != TECUTILSETNOTMEMBER){
 							if (CurZoneNum != FEZoneNum && TecUtilZoneIsActive((EntIndex_t)CurZoneNum) && TecUtilZoneGetType((EntIndex_t)CurZoneNum) == ZoneType_FETriangle){
-								if (AuxDataZoneItemMatches(static_cast<int>(CurZoneNum), CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+								if (AuxDataZoneItemMatches(static_cast<int>(CurZoneNum), CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
 									&& AuxDataZoneItemMatches(static_cast<int>(CurZoneNum), CSMAuxData.GBA.SphereCPName, CPName))
 								{
 									for (int i = 0; i < 3 && IsOk; ++i){
@@ -1010,13 +986,11 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 				}
 			}
 		}
-
-		TecUtilDataLoadEnd();
 	}
 
-	TecUtilDrawGraphics(TRUE);
-	TecGUIDialogLaunch(Dialog1Manager);
+	CSMGuiUnlock();
 	TecUtilLockFinish(AddOnID);
+	TecGUIDialogLaunch(Dialog1Manager);
 }
 
 vec3 GetElemMidPoint(int ZoneNum, int ElemNum){
@@ -1061,7 +1035,7 @@ void SelectGBsInRegion(int const SphereZoneNum,
 	for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
 		if (TecUtilZoneIsActive(z)
 			&& TecUtilZoneIsFiniteElement(z)
-			&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+			&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
 			&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, SphereName))
 		{
 			ElemNum = stoi(AuxDataZoneGetItem(z, CSMAuxData.GBA.ElemNum));
@@ -1148,7 +1122,7 @@ void SelectGBsInRegion(int const SphereZoneNum,
 	for (auto const & e : ElemsToActivate){
 		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
 			if (TecUtilZoneIsFiniteElement(z)
-				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
 				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, SphereName)
 				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ElemNum, to_string(e)))
 			{
@@ -1177,7 +1151,7 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
 	ArbParam_t ClientData)
 {
 	TecUtilLockStart(AddOnID);
-	TecUtilDrawGraphics(FALSE);
+	CSMGuiLock();
 
 	if (WasSuccessful){
 		Boolean_t IsOk = TRUE;
@@ -1189,9 +1163,9 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
 		SelectGBsInRegion(ProbedZoneNum, ElemNum, GroupNumberToWrite);
 	}
 
-	TecUtilDrawGraphics(TRUE);
-	TecGUIDialogLaunch(Dialog1Manager);
+	CSMGuiUnlock();
 	TecUtilLockFinish(AddOnID);
+	TecGUIDialogLaunch(Dialog1Manager);
 }
 
 void ExportGBAData(){
@@ -1202,7 +1176,7 @@ void ExportGBAData(){
 			TecUtilStringDealloc(&FolderNameCStr);
 			if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
 				if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
-					Boolean_t ActiveZonesOnly = TecGUIToggleGet(TGLExGBs_TOG_T3_1);
+					Boolean_t IncludeAllGBs = !TecGUIToggleGet(TGLExGBs_TOG_T3_1);
 					vector<int> IntVarNums;
 					vector<string> IntVarNames;
 					vector<string> IntCheckStrs = { "I: ", "IN: ", "INS: ", " Integration" };
@@ -1218,7 +1192,7 @@ void ExportGBAData(){
 									IntVarNums.push_back(VarNum);
 									break;
 								}
-								break; // Only want the "I:" integration values
+// 								break; // Only want the "I:" integration values
 							}
 							TecUtilStringDealloc(&VarName);
 						}
@@ -1233,7 +1207,7 @@ void ExportGBAData(){
 
 								vector<bool> ElemActive;
 								int NumActive = IJK[1];
-								if (ActiveZonesOnly) {
+								if (IncludeAllGBs) {
 									string SphereName = AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.SphereCPName);
 									/*
 									*	Get list of elements for which the corresponding GB is active
@@ -1244,7 +1218,7 @@ void ExportGBAData(){
 										for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
 											if (TecUtilZoneIsActive(z)
 												&& TecUtilZoneIsFiniteElement(z)
-												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeFEVolumeZone)
+												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
 												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, SphereName)
 												&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ElemNum, to_string(e + 1)))
 											{
@@ -1254,14 +1228,15 @@ void ExportGBAData(){
 										}
 									}
 								}
-								else
+								else {
 									ElemActive.resize(IJK[1], true);
+								}
 
-								if (NumActive > 0) {
+								if (!IncludeAllGBs || NumActive > 0) {
 									ofstream OutFile(string(FolderName + "/Zone_" + to_string(ZoneNum) + "_" + string(ZoneName) + "_IntegrationResults.csv").c_str(), std::ios::trunc);
 									if (OutFile.is_open()) {
 										OutFile << "Zone," << ZoneName << "\nNumber of gradient bundles (GBs)," << IJK[1];
-										if (ActiveZonesOnly) {
+										if (IncludeAllGBs) {
 											OutFile << "\nNumber of active GBs," << NumActive;
 										}
 										string TmpStr;
@@ -1283,23 +1258,40 @@ void ExportGBAData(){
 											OutFile << IntVarNames[i] << "," << i + 1 << ",";
 											double Total = 0.0;
 											for (int j = 0; j < Ptrs[i].Size(); ++j) {
-												if (ElemActive[j])
+												if (!IncludeAllGBs || ElemActive[j])
 													Total += Ptrs[i][j];
 											}
 											OutFile << std::setprecision(16) << std::scientific << Total << '\n';
 										}
 
-										OutFile << "\nZone Name,Zone#,GB#";
-										for (string const & i : IntVarNames)
-											OutFile << "," << i;
-										OutFile << '\n';
 
-										for (int i = 0; i < Ptrs[0].Size(); ++i) {
-											if (ElemActive[i]) {
-												char* GBZoneName;
-												TecUtilZoneGetName(ZoneNum + i + 1, &GBZoneName);
-												OutFile << GBZoneName << "," << ZoneNum + i + 1 << "," << i + 1;
-												TecUtilStringDealloc(&GBZoneName);
+										if (IncludeAllGBs) {
+											OutFile << "\nZone Name,Zone number,GB number";
+											for (string const & i : IntVarNames)
+												OutFile << "," << i;
+											OutFile << '\n';
+											for (int i = 0; i < Ptrs[0].Size(); ++i) {
+												if (ElemActive[i]) {
+													int GBZoneNum = ZoneNum + i + 1;
+													if (GBZoneNum >= 1 && GBZoneNum <= NumZones) {
+														char* GBZoneName;
+														TecUtilZoneGetName(ZoneNum + i + 1, &GBZoneName);
+														OutFile << GBZoneName << "," << ZoneNum + i + 1 << "," << i + 1;
+														TecUtilStringDealloc(&GBZoneName);
+														for (auto const & j : Ptrs)
+															OutFile << std::setprecision(16) << std::scientific << "," << j[i];
+														OutFile << "\n";
+													}
+												}
+											}
+										}
+										else{
+											OutFile << "\nGB number";
+											for (string const & i : IntVarNames)
+												OutFile << "," << i;
+											OutFile << '\n';
+											for (int i = 0; i < Ptrs[0].Size(); ++i) {
+												OutFile << i + 1;
 												for (auto const & j : Ptrs)
 													OutFile << std::setprecision(16) << std::scientific << "," << j[i];
 												OutFile << "\n";
@@ -1349,7 +1341,6 @@ void ExportGBAData(){
 							vector<double> valVec = SplitStringDbl(IntVals, ",");
 							if (varStrs.size() == valVec.size()){
 								for (int i = 0; i < varStrs.size(); ++i){
-
 									VarVals[tmpStr][varStrs[i]] = valVec[i];
 									VarNameSet.insert(varStrs[i]);
 								}
@@ -1558,7 +1549,7 @@ void ExportGBAData(){
 							*	Now all the values
 							*/
 						for (string const & cbStr : CondensedBasinSet) {
-							OutFile << CPNames[cbStr][0] << "," << SplitString(cbStr, GBADelim)[0] << "," << CondensedBasinZoneNums[cbStr] << GBSphereZoneNums[cbStr][0] << "," << DefiningVars[cbStr] << ",";
+							OutFile << CPNames[cbStr][0] << "," << SplitString(cbStr, GBADelim)[0] << "," << CondensedBasinZoneNums[cbStr] << "," << GBSphereZoneNums[cbStr][0] << "," << DefiningVars[cbStr] << ",";
 							for (string const & varStr : VarNameSet) {
 								if (VarVals[cbStr].count(varStr) > 0)
 									OutFile << std::setprecision(16) << VarVals[cbStr][varStr];
@@ -1575,4 +1566,161 @@ void ExportGBAData(){
 			}
 		}
 	}
+}
+
+bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin){
+	if (AuxDataZoneItemMatches(SphereZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone))
+	{
+		bool OriginFound = false;
+		// If origin is saved to sphere, just use that
+		string OriginString;
+		if (AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereOrigin, OriginString)){
+			vector<double> OriginVec = SplitStringDbl(OriginString);
+			if (OriginString.size() == 3) {
+				for (int i = 0; i < 3; ++i) {
+					Origin[i] = OriginVec[i];
+				}
+				OriginFound = true;
+			}
+		}
+
+		if (OriginFound)
+			return OriginFound;
+
+		vector<int> XYZVarNums(3);
+		TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
+
+		// now see if origin CP zone is present and use that
+		string CPZoneNumStr, CPNumStr;
+		if (AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SourceZoneNum, CPZoneNumStr) && AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereCPNum, CPNumStr)) {
+			int SourceCPZoneNum = stoi(CPZoneNumStr),
+				SourceCPNum = stoi(CPNumStr);
+			if (AuxDataZoneItemMatches(SourceCPZoneNum, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.CPSubTypes[0])) {
+				for (int i = 0; i < 3; ++i) {
+					Origin[i] = TecUtilDataValueGetByZoneVar(SourceCPZoneNum, XYZVarNums[i], SourceCPNum);
+				}
+				OriginFound = true;
+			}
+		}
+
+		if (OriginFound)
+			return OriginFound;
+
+
+		// Just use nuclear CP closest to sphere node midpoint, since changes to zones can break the commented code below.
+		FieldVecPointer_c SphereXYZ;
+		SphereXYZ.GetReadPtr(SphereZoneNum, XYZVarNums);
+		vec3 SphereMaxXYZ = vec3() * DBL_MIN,
+			SphereMinXYZ = vec3() * DBL_MAX;
+		vec3 SphereMidPoint = { 0,0,0 };
+		for (int i = 0; i < SphereXYZ.Size(); ++i){
+			for (int j = 0; j < 3; ++j) {
+				SphereMaxXYZ[j] = MAX(SphereMaxXYZ[j], SphereXYZ[i][j]);
+				SphereMinXYZ[j] = MAX(SphereMinXYZ[j], SphereXYZ[i][j]);
+			}
+		}
+		SphereMidPoint = (SphereMaxXYZ + SphereMinXYZ) * 0.5;
+
+// 		SaveVec3VecAsScatterZone({ SphereMidPoint }, "sphere midpoint");
+		
+		// Now get closest nuclear CP
+		double MinDistSqr = DBL_MAX;
+		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
+			if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.CPSubTypes[0])) {
+				FieldVecPointer_c CPsXYZ;
+				CPsXYZ.GetReadPtr(z, XYZVarNums);
+				for (int i = 0; i < CPsXYZ.Size(); ++i) {
+					double TmpDistSqr = DistSqr(CPsXYZ[i], SphereMidPoint);
+					if (TmpDistSqr < MinDistSqr) {
+						MinDistSqr = TmpDistSqr;
+						Origin = CPsXYZ[i];
+					}
+				}
+			}
+		}
+
+		if (Distance(SphereMidPoint, Origin) > 0.1){
+			// too far from the sphere midpoint, so use the midpoint instead.
+			Origin = SphereMidPoint;
+		}
+
+		return true;
+	}
+	return false;
+}
+
+void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t AbsoluteRadius){
+	CSMGuiLock();
+
+	vector<EntIndex_t> XYZVarNums(3);
+	TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
+
+	string SelectedSphereName = TecGUIListGetString(SLSelSphere_SLST_T3_1, TecGUIListGetSelectedItem(SLSelSphere_SLST_T3_1));
+
+	for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
+		if (AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)
+			&& (AllSpheres || AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, SelectedSphereName)))
+		{
+			vec3 Origin;
+			GetSphereOrigin(z, Origin);
+// 			string CPZoneNumStr, CPNumStr;
+// 			if (AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceZoneNum, CPZoneNumStr) && AuxDataZoneGetItem(z, CSMAuxData.GBA.SphereCPNum, CPNumStr)){
+// 				int SourceCPZoneNum = stoi(CPZoneNumStr),
+// 					SourceCPNum = stoi(CPNumStr);
+// 				for (int i = 0; i < 3; ++i){
+// 					Origin[i] = TecUtilDataValueGetByZoneVar(SourceCPZoneNum, XYZVarNums[i], SourceCPNum);
+// 				}
+// 			}
+// 			else{
+// 				TecUtilDialogErrMsg(string("Couldn't get source CP coordinates for sphere zone " + to_string(z)).c_str());
+// 				continue;
+// 			}
+
+			// Get list of basin zone numbers
+			string SphereName = AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceNucleusName);
+			vector<int> ZoneNums;
+			for (int zi = z + 1; zi <= TecUtilDataSetGetNumZones(); ++zi){
+				if ((AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin)
+					|| AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin))
+					&& AuxDataZoneItemMatches(zi, CSMAuxData.GBA.SourceNucleusName, SphereName))
+				{
+					ZoneNums.push_back(zi);
+				}
+			}
+
+			double NewRadius = SizeFactor;
+			string OldRadStr;
+			double OldRadius;
+			if (!AbsoluteRadius && AuxDataZoneGetItem(z, CSMAuxData.GBA.SphereRadius, OldRadStr)) {
+				OldRadius = stof(OldRadStr);
+				NewRadius *= OldRadius;
+			}
+
+			for (auto zi : ZoneNums) {
+				FieldVecPointer_c XYZPtr;
+				TecUtilDataLoadBegin();
+				XYZPtr.GetWritePtr(zi, XYZVarNums);
+				int NumNodes = XYZPtr.Size();
+
+#pragma omp parallel for
+				for (int i = 0; i < NumNodes; ++i) {
+					XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * NewRadius * 1.01);
+				}
+				TecUtilDataLoadEnd();
+			}
+
+			FieldVecPointer_c XYZPtr;
+			TecUtilDataLoadBegin();
+			XYZPtr.GetWritePtr(z, XYZVarNums);
+			int NumNodes = XYZPtr.Size();
+
+#pragma omp parallel for
+			for (int i = 0; i < NumNodes; ++i) {
+				XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * NewRadius);
+			}
+			TecUtilDataLoadEnd();
+		}
+	}
+
+	CSMGuiUnlock();
 }

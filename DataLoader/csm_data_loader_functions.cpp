@@ -12,6 +12,7 @@
 
 #include "TECADDON.h"
 #include "CSM_DATA_TYPES.h"
+#include "CSM_DATA_SET_INFO.h"
 #include "CSM_DATA_LOADER_FUNCTIONS.h"
 
 #include <armadillo>
@@ -361,8 +362,17 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 	for (int GroupNum = 0; GroupNum < AtomGroupList.size() && IsOk; ++GroupNum){
 		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : nullptr);
 
+		EntIndex_t ZoneNum;
+
+		if (IsOk) {
+			ZoneNum = TecUtilDataSetGetNumZones();
+			IsOk = AuxDataZoneSetItem(ZoneNum, DLZoneType, DLZoneTypeNuclearPositions);
+		}
+		if (IsOk) {
+			IsOk = AuxDataZoneSetItem(ZoneNum, DLZoneAtomicSpecies, AtomGroupList[GroupNum].Name);
+		}
+
 		if (IsOk){
-			EntIndex_t ZoneNum = TecUtilDataSetGetNumZones();
 			FieldData_pa VarRef[3];
 			for (int i = 0; i < 3; ++i)
 				VarRef[i] = TecUtilDataValueGetWritableNativeRef(ZoneNum, TecUtilVarGetNumByName(XYZVarNames[i].c_str()));
@@ -381,7 +391,7 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 
 			TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
 			TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, GetAtomColor(AtomColorList, AtomGroupList[GroupNum].Name));
-			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(2 * sqrt(AtomGroupList[GroupNum].Charges[0]), 8), 0);
+			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, (AtomGroupList[GroupNum].Charges.size() > 0 ? MIN(2 * sqrt(AtomGroupList[GroupNum].Charges[0]), 8) : 4), 0);
 			TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
 
 			TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);

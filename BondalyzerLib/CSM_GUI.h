@@ -1,10 +1,11 @@
 #pragma once
-#ifndef CSMGUI_H_
-#define CSMGUI_H_
 
 #ifdef MSWIN
 #include <Windows.h>
 #endif
+
+#include <vector>
+#include <string>
 
 using std::vector;
 using std::string;
@@ -47,13 +48,14 @@ public:
 	GuiField_c(GuiFieldType_e const & Type,
 		string const & Label = "",
 		string const & Val = "",
-		const vector<void*> & CallbackFuntions = vector<void*>());
+		const vector<TecGUIVoidCallback_pf> & CallbackFuntions = vector<TecGUIVoidCallback_pf>());
 	~GuiField_c();
 
 	GuiFieldType_e GetType() const { return Type_m; }
 	string GetLabel() const { return Label_m; }
 	string GetSearchString() const { return InputVal_m; }
 	int GetID(int IDNum = 0) const { return FieldID_m[IDNum]; }
+	vector<TecGUIVoidCallback_pf> GetCallbackFunctions() const { return CallbackFuntions_m; }
 
 	int GetReturnInt() const;
 	double GetReturnDouble() const;
@@ -92,7 +94,7 @@ private:
 	vector<int> ValueIntVec_m;
 	vector<string> ValueStringVec_m;
 	int FieldID_m[2];
-	vector<void*> CallbackFuntions_m;
+	vector<TecGUIVoidCallback_pf> CallbackFuntions_m;
 };
 
 typedef void(*CSMGuiReturnFunc_pf)(bool const GuiSuccess, 
@@ -110,6 +112,3 @@ void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID = nullptr);
 
 void CSMGuiLock();
 void CSMGuiUnlock();
-
-
-#endif

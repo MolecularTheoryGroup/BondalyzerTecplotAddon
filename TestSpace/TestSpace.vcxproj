@@ -56,6 +56,8 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;$(SolutionDir)..\gsl-1.16;$(SolutionDir)armadillo\include</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -74,6 +76,8 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;$(SolutionDir)..\gsl-1.16;$(SolutionDir)armadillo\include</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -86,6 +90,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="testspace.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BondalyzerLib\BondalyzerLib.vcxproj">
+      <Project>{56a88a1b-1458-47bc-aab9-2ca1c440312a}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,6 +1,4 @@
 #pragma once
-#ifndef CSMDATASETINFO_H_
-#define CSMDATASETINFO_H_
 
 #include <string>
 #include <vector>
@@ -81,7 +79,7 @@ struct CSMAuxData_s{
 			GPNodeNum = Prefix + "SphereNodeNum",
 			ZoneType = Prefix + "ZoneType",
 			ZoneTypeSphereZone = "SphereMeshZone",
-			ZoneTypeFEVolumeZone = "FEVolumeZone",
+			ZoneTypeDGB = "DifferentialGradientBundle",
 			ZoneTypeGradPath = "GradPath",
 			ZoneTypeIBEdgeZone = "IBEdgeZone",
 			ZoneTypeCondensedRepulsiveBasin = "CondensedRepulsiveBasin",
@@ -97,16 +95,29 @@ struct CSMAuxData_s{
 			CondensedBasinDefiningVariable = Prefix + "CondensedBasinDefiningVariable",
 			VolumeCPName = Prefix + "VolumeCP",
 			IntPrecision = Prefix + "IntegrationPrecision",
+			RadialSphereApproximation = Prefix + "RadialSphereApproximation",
 			NumGBs = Prefix + "NumberOfGradientBundles",
 			PointsPerGP = Prefix + "PointsPerGradientPath",
 			GPsPerGB = Prefix + "GradientPathsPerGradientBundle",
 			IntWallTime = Prefix + "IntegrationWallTime",
 			IntVarNames = Prefix + "IntegratedVariableNames",
 			IntVarVals = Prefix + "IntegratedVariableValues",
+			IntVarSphereInteriorVals = Prefix + "IntegratedVariableSphereInteriorValues",
+			IntVarSphereInteriorMins = Prefix + "IntegratedVariableSphereInteriorMinValues",
+			IntVarSphereInteriorMaxes = Prefix + "IntegratedVariableSphereInteriorMaxValues",
+			IntVarSphereInteriorMeans = Prefix + "IntegratedVariableSphereInteriorMeanValues",
+			IntVarSphereInteriorStdDevs = Prefix + "IntegratedVariableSphereInteriorValueStdDevs",
+			IntVarSphereInteriorRanges = Prefix + "IntegratedVariableSphereInteriorValueRanges",
 			AtomicBasinIntegrationVariables = Prefix + "AtomicBasinIntegrateVariables",
 			AtomicBasinIntegrationValues = Prefix + "AtomicBasinIntegrationValues",
+			AtomicBasinIntegrationTotalValues = Prefix + "AtomicBasinTotalIntegrationValues",
+			TePartitionFunction = Prefix + "TePartitionFunction",
 			VarType = Prefix + "VarType",
-			VarTypeCondensedVariable = "CondensedVariable";
+			VarTypeCondensedVariable = "CondensedVariable",
+			SphereElemSymbol = Prefix + "SphereElementSymbol",
+			SphereAtomicNumber = Prefix + "SphereAtomicNumber",
+			SphereAtomicCoreECount = Prefix + "SphereAtomicCoreElectronCount",
+			SphereOrigin = Prefix + "SphereOriginXYZ";
 		vector<string> NodeNums;
 
 		GBA_s(){
@@ -143,6 +154,7 @@ struct CSMAuxData_s{
 		ZoneSubTypeRingLineSegment = "RingLineSegment",
 		ZoneSubTypeCageNuclearPath = "CageNuclearPath",
 		ZoneSubTypeRingNuclearPath = "RingNuclearPath",
+		ZoneSubTypeRingBondPath = "RingBondPath",
 		GPEndNumList = Prefix + "BegEndCrtPtNums",
 		GPEndTypeList = Prefix + "BegEndCrtPtTypes",
 		GPMiddleCPNum = Prefix + "MiddleCrtPtNum",
@@ -399,6 +411,8 @@ int SearchVectorForString(vector<string> const & Vec, string const & SearchStrin
 vector<string> SplitString(string const &s, string const & delim = " ", bool RemoveAllBlanks = false, bool RemoveBlankAtEnd = false);
 vector<int> SplitStringInt(string const &s, string const & delim = ",");
 vector<double> SplitStringDbl(string const &s, string const & delim = ",");
+string StringJoin(vector<string> const & strVec, string const & delim = " ");
+
 template <class T>
 string VectorToString(vector<T> const & Items, string const & Delim = " "){
 	//string OutStr;
@@ -419,10 +433,12 @@ string VectorToString(vector<T> const & Items, string const & Delim = " "){
 	}
 	else return "";
 }
+string IntVectorToRangeString(vector<int> Items);
 Boolean_t StringIsInt(string const & s);
 Boolean_t StringIsFloat(string const & s);
 string StringReplaceSubString(string const & InStr, string const & OldStr, string const & NewStr);
 string StringRemoveSubString(string const & InString, string const & SubString);
+string DoubleToString(double const & Val, int Precision = 2);
 
 void AuxDataCopy(int SourceNum, int DestNum, bool IsZone);
 
@@ -454,13 +470,14 @@ vector<vec3> ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, i
 void ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum, vec3 & MinXYZ, vec3 & MaxXYZ);
 void ZoneXYZVarGetBasisVectors_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum, mat33 & BasisVectors, vec3 & BVExtent);
 
-void StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale = TRUE, Boolean_t ShowButton = TRUE);
+void StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale = TRUE, Boolean_t ShowButton = TRUE, Boolean_t RelaunchStatus = FALSE);
 void StatusDrop(AddOn_pa const & AddOnID);
 Boolean_t StatusUpdate(unsigned int CurrentNum, 
 	unsigned int TotalNum, 
 	string const & ProgresssText, 
 	AddOn_pa const & AddOnID, 
-	high_resolution_clock::time_point StartTime = high_resolution_clock::time_point());
+	high_resolution_clock::time_point StartTime = high_resolution_clock::time_point(),
+	bool DisplayCount = true);
 
 LgIndex_t IndexFromIJK(LgIndex_t I,
 	LgIndex_t J,
@@ -501,4 +518,4 @@ void SetZoneStyle(vector<int> ZoneNums = {},
 	ColorIndex_t Color = InvalidColor_C,
 	double const Size = -1);
 
-#endif
+int ZoneFinalSourceZoneNum(int ZoneNum, bool MaintainZoneType = false);

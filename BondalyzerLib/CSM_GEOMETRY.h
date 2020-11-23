@@ -1,11 +1,13 @@
 #pragma once
-#ifndef CSMGEOMETRY_H_
-#define CSMGEOMETRY_H_
 
 #include <vector>
 #include <map>
 #include <set>
 #include <armadillo>
+
+#include "CSM_GRAD_PATH.h"
+
+#include "updateSphericalTriangulation.h"
 
 #define SAVE_INT_OBJECTS
 
@@ -40,12 +42,28 @@ void IntegrateUsingIsosurfaces(vector<GradPath_c*> & GPs,
 	vector<double> & IntVals,
 	bool const ContainsBondPath = false);
 
-void NewIntegrateUsingIsosurfaces(vector<GradPath_c*> const & GPs,
+void NewIntegrateUsingIsosurfaces(vector<GradPath_c const *> const & GPs,
 	int nPts,
 	VolExtentIndexWeights_s & VolInfo,
 	vector<FieldDataPointer_c> const & VarPtrs,
 	vector<double> & IntVals,
 	vec3 const * BondCPPos = nullptr);
+
+void NewIntegrateUsingIsosurfaces1(vector<GradPath_c const *> const & GPsIn,
+	int nPts,
+	VolExtentIndexWeights_s & VolInfo,
+	vector<FieldDataPointer_c> const & VarPtrs,
+	vector<double> & IntVals,
+	vec3 const * BondCPPos = nullptr,
+	AddOn_pa * AddOnID = nullptr);
+
+void NewIntegrateUsingIsosurfaces2(vector<GradPath_c const *> const & GPsIn,
+	int nPts,
+	VolExtentIndexWeights_s & VolInfo,
+	vector<FieldDataPointer_c> const & VarPtrs,
+	vector<double> & IntVals,
+	vec3 const * BondCPPos,
+	AddOn_pa * AddOnID);
 
 bool GetSortedParameterEdgeMidpoints(vector<vector<int> > const & TriElems,
 	vector<vec3> const & NodeList,
@@ -62,6 +80,9 @@ Boolean_t Vec3PathResample(vector<vec3> const & OldXYZList, int NumPoints, vecto
 
 bool ProjectedPointToTriangleIsInterior(vec3 const & P0, vec3 & TP, vec3 const & T1, vec3 const & T2, vec3 const & T3);
 double PointDistanceToTriangleSquared(vec3 const & P, vec3 & ClosestPoint, vec3 const & T1, vec3 const & T2, vec3 const & T3, bool RecordPoint = true);
+
+vec3 ProjectPointToLine(vec3 const & p, vec3 const & a, vec3 const & b);
+tpcsm::Vec3 ProjectPointToLine(tpcsm::Vec3 const & p, tpcsm::Vec3 const & a, tpcsm::Vec3 const & b);
 
 void TriangleEdgeMidPointSubdivide(
 	vector<vec3> & nodes, 
@@ -86,7 +107,7 @@ void UpdateSubdivideSphericalTriangulationWithConstraintNodesAndSegments(
 	std::map<int, int> & outNodeConstraintNodeIndices, // indicates which constraintNode each outNode corresponds to (-1 if none or corresponds to segment)
 	std::map<int, int> & outNodeConstraintSegmentIndices); // indicates which constraint segment each outNode corresponds to (-1 if no correspondance to any constraint));
 
-void TriangulatedSphereJiggleMesh(vector<vec3> & Nodes,
+double TriangulatedSphereJiggleMesh(vector<vec3> & Nodes,
 	vector<std::set<int> > const & NodeConnectivity,
 	vector<bool> const & NodeIsConstrained,
 	vec3 const & SphereCenter,
@@ -96,4 +117,18 @@ void GetMeshNodeConnectivity(vector<vector<int> > const & Elems,
 	int NumNodes,
 	vector<std::set<int> > & NodeConnectivity);
 
-#endif
+double TriArea(vec3 const & p1, vec3 const & p2, vec3 const & p3);
+double TriPerimeter(vec3 const & p1, vec3 const & p2, vec3 const & p3);
+double TriBadness(vec3 const & p1, vec3 const & p2, vec3 const & p3);
+
+void RemoveDupicateNodesFromMesh(vector<vec3> & NodeList, vector<vector<int> > & ElemList, vector<int> * OldToNewNodes = nullptr);
+void RemoveDuplicatePointsFromVec3Vec(vector<vec3> & Points, double tol = 1e-8, vector<int> * PtNumsOldToNew = nullptr);
+
+/*
+ *	Distance between a point p and a line defined by a and b.
+ *	From http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
+ */
+double PointLineDist(vec3 const & p, vec3 const & a, vec3 const & b);
+double PointLineDist(tpcsm::Vec3 const & p, tpcsm::Vec3 const & a, tpcsm::Vec3 const & b);
+
+vec3 ClosestPointToPath(vector<vec3> const & Path, vec3 const & CheckPt, int & PtNum);

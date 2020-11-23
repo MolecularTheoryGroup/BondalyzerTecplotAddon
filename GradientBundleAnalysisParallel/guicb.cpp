@@ -23,6 +23,7 @@
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_DATA_TYPES.h"
 #include "CSM_CRIT_POINTS.h"
+#include "CSM_GUI.h"
 #include "GBAENGINE.h"
 #include "INTEGRATE.h"
 #include "VIEWRESULTS.h"
@@ -35,6 +36,7 @@ using std::stringstream;
 using std::to_string;
 using std::vector;
 using std::ofstream;
+using std::make_pair;
 
 using namespace arma;
 using namespace tecplot::toolbox;
@@ -55,6 +57,65 @@ int GBAResultViewerSelectSphereNum = 1;
 
 int PrecisionOffset = 2;
 
+
+/*
+ *	Tooltips for GBA dialog
+ */
+
+// void GBAProcessSystemSetToolTips() {
+// 	const vector<std::pair<int, string> >
+// 		ToolTips = {
+// 			make_pair(SCPrecise_SC_T1_1, "Determines the number of integration points that will be used in the Gaussian quadrature integration of gradient bundles. N^2 points will be used for the specified N."),
+// 			make_pair(LBLPrecise_LBL_T1_1, "Determines the number of integration points that will be used in the Gaussian quadrature integration of gradient bundles. N^2 points will be used for the specified N."),
+// 			make_pair(LBLPreci1_LBL_T1_1, "Determines the number of integration points that will be used in the Gaussian quadrature integration of gradient bundles. N^2 points will be used for the specified N."),
+// 
+// 			make_pair(TGLsGP_TOG_T1_1, "Save gradient paths used to create gradient bundles as zones"),
+// 			make_pair(TGLsGB_TOG_T1_1, "Save gradient bundles as zones"),
+// 
+// 			make_pair(TFCutoff_TF_T1_1, "Value of electron density at which to truncate gradient bundles"),
+// 			make_pair(LBLCutoff_LBL_T1_1, "Value of electron density at which to truncate gradient bundles"),
+// 
+// 			make_pair(TFSTPts_TF_T1_1, "Number of points used to represent the gradient paths that make up gradient bundle edges"),
+// 			make_pair(LBLSTPts_LBL_T1_1, "Number of points used to represent the gradient paths that make up gradient bundle edges"),
+// 
+// 			make_pair(TFRad_TF_T1_1, "Specify the radius of spheres placed around the specified nuclear critical points according to the option selected below"),
+// 			make_pair(LBLRad_LBL_T1_1, "Specify the radius of spheres placed around the specified nuclear critical points according to the option selected below"),
+// 			make_pair(RBRadMode_RADIO_T1_1, "If \"Absolute\" is specified then this number is in the same units as the X, Y, and Z variables (i.e. bohr). If Fraction of CP dist then it specifies a factor of the distance to the closest critical point for each of the specified nuclear critical points, and can result in a different radius sphere for each nuclear critical point analyzed."),
+// 
+// 			make_pair(TFLevel_TFS_T1_1, "Specify the number of times to subdivide the icosahedron used to generate the initial sphere nodes"),
+// 			make_pair(LBLNumTri_LBL_T1_1, "Specify the number of times to subdivide the icosahedron used to generate the initial sphere nodes"),
+// 			make_pair(LBLLevel_LBL_T1_1, "Specify the number of times to subdivide the icosahedron used to generate the initial sphere nodes"),
+// 
+// 			make_pair(TFGBPerE_TF_T1_1, "Specify the minimum number of gradient bundles per electron to use in subdivision of gradient bundles (controls amount of charge density per gradient bundle)"),
+// 			make_pair(LBLGBPerE_LBL_T1_1, "Specify the minimum number of gradient bundles per electron to use in subdivision of gradient bundles (controls amount of charge density per gradient bundle)"),
+// 
+// 			make_pair(TFBPGBInit_TF_T1_1, "Specify the number of passes of edge midpoint subdivision for gradient bundles that coincide with bond paths. A gradient bundle is turned into four gradient bundles with each subdivision pass."),
+// 			make_pair(LBLBPGBi_LBL_T1_1, "Specify the number of passes of edge midpoint subdivision for gradient bundles that coincide with bond paths. A gradient bundle is turned into four gradient bundles with each subdivision pass."),
+// 
+// 			make_pair(TFBPGBs_TF_T1_1, "Specify a target number of gradient bundles N that should be coincident with each bond path. Target number of gradient bundles is achieved by splitting gradient bundles around a bond path intersection like putting more slices into a pie such that the resulting angle between gradient bundle edges is not greater than 2*pi / N."),
+// 			make_pair(LBLBPGBa_LBL_T1_1, "Specify a target number of gradient bundles N that should be coincident with each bond path. Target number of gradient bundles is achieved by splitting gradient bundles around a bond path intersection like putting more slices into a pie such that the resulting angle between gradient bundle edges is not greater than 2*pi / N."),
+// 
+// 			make_pair(TFGBMaxSD_TF_T1_1, "Specify maximum number of gradient bundles possible by subdividing a single gradient bundle (e.g. One gradient bundle is subdivided into four each pass, so a value of 4 will limit each gradient bundle to a single pass of subdivision)"),
+// 			make_pair(LBLGBMaxSD_LBL_T1_1, "Specify maximum number of gradient bundles possible by subdividing a single gradient bundle (e.g. One gradient bundle is subdivided into four each pass, so a value of 4 will limit each gradient bundle to a single pass of subdivision)")
+// 	};
+// 
+// 	for (auto const & i : ToolTips)
+// 		TecGUISetToolTip(i.first, i.second.c_str());
+// }
+
+// void GBAResultViewerSetToolTips() {
+// 	const vector<std::pair<int, string> >
+// 		ToolTips = {
+// 					make_pair(SLSelSphere_SLST_T3_1, "Selecting a sphere recalculates contour values for the specified property according to the selected sphere if \"Make contour values from all sphere()\" is selected"),
+// 
+// 					make_pair(SLSelVar_SLST_T3_1, "Select integrated property to use to generate contour values (\"I: \" properties are the actual integration results, \"IN: \" have been normalized by dividing by the area of the triangular element from which each gradient bundle was made, and \"INS :\" have then been scaled so that the total integrated value is the same as for the \"I: \")"),
+// 
+// 					make_pair(BTNSmooth_BTN_T3_1, "Perform gaussian smoothing on the selected integrated property (for all spheres or just for the selected sphere). Five passes of smoothing are performed with a sigma coefficient of 0.5.")
+// 	};
+// 
+// 	for (auto const & i : ToolTips)
+// 		TecGUISetToolTip(i.first, i.second.c_str());
+// }
 
 /*
  *	Integration sidebar functions
@@ -151,9 +212,11 @@ static void SLSelSphere_SLST_T3_1_CB(LgIndex_t const *I)
 	int NewGBAResultViewerSelectSphereNum = TecGUIListGetSelectedItem(SLSelSphere_SLST_T3_1);
 	if (NewGBAResultViewerSelectSphereNum != GBAResultViewerSelectSphereNum){
 		GBAResultViewerSelectSphereNum = NewGBAResultViewerSelectSphereNum;
+		CSMGuiLock();
 		GBAResultViewerSelectSphere();
 		if (GBACntSrc == 1)
 			GBAResultViewerSelectIntVar();
+		CSMGuiUnlock();
 		GBAReloadDialog();
 	}
 	TecUtilLockFinish(AddOnID);
@@ -166,7 +229,9 @@ static void TGLSphereVis_TOG_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLSphere_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
+	CSMGuiLock();
 	GBAResultViewerToggleSphere();
+	CSMGuiUnlock();
 	GBAReloadDialog();
 	TecUtilLockFinish(AddOnID);
 }
@@ -177,8 +242,86 @@ static void BTNSphereDel_BTN_T3_1_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE("Delete Button Pushed\n");
+	CSMGuiLock();
 	GBAResultViewerDeleteSphere();
+	CSMGuiUnlock();
 	GBAReloadDialog();
+	TecUtilLockFinish(AddOnID);
+}
+
+/**
+ */
+static void TGLSmoothAll_TOG_T3_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Toggle (TGLSmoothAll_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
+	TecUtilLockFinish(AddOnID);
+}
+
+void SmoothGBAIntResults()
+{
+	int NumSmoothingPasses = 5;
+	double SmoothingCoefficient = 0.5;
+
+	LgIndex_t *SelectedNums;
+	LgIndex_t NumSelected;
+
+	TecGUIListGetSelectedItems(SLSelVar_SLST_T3_1, &SelectedNums, &NumSelected);
+
+	if (NumSelected > 0) {
+		char *IntVarNameCStr = TecGUIListGetString(SLSelVar_SLST_T3_1, TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1));
+		string IntVarNameStr = IntVarNameCStr;
+		TecUtilStringDealloc(&IntVarNameCStr);
+
+		char* SphereNameCStr = TecGUIListGetString(SLSelSphere_SLST_T3_1, TecGUIListGetSelectedItem(SLSelSphere_SLST_T3_1));
+		string SphereNameStr = SphereNameCStr;
+		TecUtilStringDealloc(&SphereNameCStr);
+
+		// Get the variable number
+		int VarNum = TecUtilVarGetNumByName(IntVarNameStr.c_str());
+
+		vector<int> SphereZoneNums;
+
+		Boolean_t AllSpheres = TecGUIToggleGet(TGLSmoothAll_TOG_T3_1);
+
+		for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones(); ++ZoneNum) {
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)
+				&& (AllSpheres || AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+					|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr))) {
+				SphereZoneNums.push_back(ZoneNum);
+				if (!AllSpheres)
+					break;
+			}
+		}
+
+		for (int SphereZoneNum : SphereZoneNums) {
+			if (SphereZoneNum > 0) {
+
+				string MacroCmd = "$!SMOOTH ZONE = "
+					+ to_string(SphereZoneNum)
+					+ " VAR = " + to_string(VarNum)
+					+ " NUMSMOOTHPASSES = " + to_string(NumSmoothingPasses)
+					+ " SMOOTHWEIGHT = " + to_string(SmoothingCoefficient)
+					+ " SMOOTHBNDRYCOND = FIXED";
+
+				TecUtilMacroExecuteCommand(MacroCmd.c_str());
+			}
+		}
+	}
+}
+
+/**
+ */
+static void BTNSmooth_BTN_T3_1_CB(void)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE("Smooth Button Pushed\n");
+
+	CSMGuiLock();
+	SmoothGBAIntResults();
+	CSMGuiUnlock();
+	GBAReloadDialog();
+
 	TecUtilLockFinish(AddOnID);
 }
 
@@ -190,7 +333,9 @@ static void MLSelGB_MLST_T3_1_CB(LgIndex_t const *I)
 	TecUtilLockStart(AddOnID);
 	TRACE1("Multi selection list (MLSelVol_MLST_T3_1) item selected,  First Item is: %d\n", *I);
 // 	GBAResultViewerSelectGB();
+	CSMGuiLock();
 	GBAResultViewerSelectCondensedGBs();
+	CSMGuiUnlock();
 	GBAReloadDialog();
 	TecUtilLockFinish(AddOnID);
 }
@@ -204,7 +349,9 @@ static void SLSelVar_SLST_T3_1_CB(LgIndex_t const *I)
 	int NewGBAResultViewerSelectIntVarNum = TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1);
 	if (NewGBAResultViewerSelectIntVarNum != GBAResultViewerSelectIntVarNum){
 		GBAResultViewerSelectIntVarNum = NewGBAResultViewerSelectIntVarNum;
+		CSMGuiLock();
 		GBAResultViewerSelectIntVar();
+		CSMGuiUnlock();
 		GBAReloadDialog();
 	}
 	TecUtilLockFinish(AddOnID);
@@ -228,7 +375,9 @@ static void BTNAllGB_BTN_T3_1_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE("         Activate All Button Pushed\n");
+	CSMGuiLock();
 	GBAResultViewerActivateAllGB();
+	CSMGuiUnlock();
 	GBAReloadDialog();
 	TecUtilLockFinish(AddOnID);
 }
@@ -255,7 +404,9 @@ static void Dialog1CloseButton_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	GBAIsOpen = false;
+	CSMGuiLock();
 	GBAProcessSystemDeleteCPLabels();
+	CSMGuiUnlock();
 	TecGUIDialogDrop(Dialog1Manager);
 	TecUtilLockFinish(AddOnID);
 }
@@ -269,11 +420,13 @@ static void BTNRun_BTN_T1_1_CB(void)
 	int NumSelected, *IJunk;
 	TecGUIListGetSelectedItems(MLSelCPs_MLST_T1_1, &IJunk, &NumSelected);
 	TecUtilArrayDealloc((void**)&IJunk);
-	if (NumSelected > 0){
-		GBAProcessSystemDeleteCPLabels();
+	if (NumSelected > 0) {
 		TecGUIDialogDrop(Dialog1Manager);
-// 		MainFunction();
+		CSMGuiLock();
+		GBAProcessSystemDeleteCPLabels();
+		// 		MainFunction();
 		NewMainFunction();
+		CSMGuiUnlock();
 		GBAResultViewerPrepareGUI();
 // 		GBATabNumber = 3;
 // 		Boolean_t DoIntegration = TecGUIToggleGet(TGLInt_TOG_T1_1);
@@ -310,25 +463,10 @@ static void MLSelCPs_MLST_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Multi selection list (MLSelCPs_MLST_T1_1) item selected,  First Item is: %d\n", *I);
+	CSMGuiLock();
 	GBAProcessSystemLabelSelectedCPs();
+	CSMGuiUnlock();
 	GBAReloadDialog();
-	TecUtilLockFinish(AddOnID);
-}
-
-
-/**
-*/
-static void TGLInt_TOG_T1_1_CB(LgIndex_t const *I)
-{
-	TecUtilLockStart(AddOnID);
-	TRACE1("Toggle (TGLInt_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
-	TecGUIListDeleteAllItems(MLSelVars_MLST_T1_1);
-	if (TecGUIToggleGet(TGLInt_TOG_T1_1))
-		ListPopulateWithVarNames(MLSelVars_MLST_T1_1);
-	else{
-		TecGUIToggleSet(TGLsGP_TOG_T1_1, TRUE);
-		TecGUIToggleSet(TGLsGB_TOG_T1_1, TRUE);
-	}
 	TecUtilLockFinish(AddOnID);
 }
 
@@ -374,13 +512,13 @@ static LgIndex_t  TFLevel_TFS_T1_1_ValueChanged_CB(char const *S)
 	TRACE1("Spin Control Text field (TFLevel_TFS_T1_1) Value Changed,  New value is: %s\n", S);
 	LgIndex_t Value;
 	if (TecGUITextFieldGetLgIndex(TFLevel_TFS_T1_1, &Value)){
-		if (Value < MinLevel)
-			TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(MinLevel).c_str());
-		else if (Value > MaxLevel)
-			TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(MaxLevel).c_str());
+		if (Value < GBAMinSphereRefinementLevel)
+			TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBAMinSphereRefinementLevel).c_str());
+		else if (Value > GBAMaxSphereRefinementLevel)
+			TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBAMaxSphereRefinementLevel).c_str());
 	}
 	else{
-		TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(DefaultLevel).c_str());
+		TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBADefaultSphereMeshRefinementLevel).c_str());
 	}
 	GBAProcessSystemUpdateNumTriangles();
 	TecUtilLockFinish(AddOnID);
@@ -394,7 +532,7 @@ static void TFLevel_TFS_T1_1_ButtonUp_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Spin control (TFLevel_TFS_T1_1) up callback called.\n");
-	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_T1_1, 1, MinLevel, MaxLevel);
+	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_T1_1, 1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel);
 	GBAProcessSystemUpdateNumTriangles();
 	TecUtilLockFinish(AddOnID);
 }
@@ -406,7 +544,7 @@ static void TFLevel_TFS_T1_1_ButtonDown_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Spin control (TFLevel_TFS_T1_1) down callback called.\n");
-	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_T1_1, -1, MinLevel, MaxLevel);
+	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_T1_1, -1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel);
 	GBAProcessSystemUpdateNumTriangles();
 	TecUtilLockFinish(AddOnID);
 }
@@ -454,31 +592,10 @@ static LgIndex_t  TFRad_TF_T1_1_CB(char const *S)
 	TRACE1("Text field (TFRad_TF_T1_1) Value Changed,  New value is: %s\n", S); 
 	double Value;
 	if (!TecGUITextFieldGetDouble(TFRad_TF_T1_1, &Value)){
-		TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(DefaultRadius).c_str());
+		TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(GBADefaultSphereRadius).c_str());
 	}
 	TecUtilLockFinish(AddOnID);
 	return (IsOk);
-}
-
-/**
-*/
-static void SCNumEdgeGPs_SC_T1_1_CB(LgIndex_t const *I)
-{
-	TecUtilLockStart(AddOnID);
-	TRACE1("Scale (SCNumEdgeGPs_SC_T1_1) Value Changed,  New value is: %d\n", *I);
-	GBAProcessSystemUpdateNumGPsPerGB();
-	TecUtilLockFinish(AddOnID);
-}
-
-
-/**
-*/
-static void SCNumEdgeGPs_SCD_T1_1_CB(LgIndex_t const *I)
-{
-	TecUtilLockStart(AddOnID);
-	TRACE1("Scale (SCNumEdgeGPs_SCD_T1_1) Value Changed on drag,  New value is: %d\n", *I);
-	GBAProcessSystemUpdateNumGPsPerGB();
-	TecUtilLockFinish(AddOnID);
 }
 
 
@@ -523,7 +640,7 @@ static LgIndex_t  TFSTPts_TF_T1_1_CB(char const *S)
 	int Value;
 	Boolean_t ValRead = TecGUITextFieldGetLgIndex(TFSTPts_TF_T1_1, &Value);
 	if (!ValRead){
-		TecGUITextFieldSetString(TFSTPts_TF_T1_1, to_string(DefaultSTPts).c_str());
+		TecGUITextFieldSetString(TFSTPts_TF_T1_1, to_string(DefaultNumGPPts).c_str());
 	}
 	else if (Value % 2 != 0){
 		TecGUITextFieldSetString(TFSTPts_TF_T1_1, to_string(--Value).c_str());
@@ -542,6 +659,8 @@ static void RBRadMode_RADIO_T1_1_CB(LgIndex_t const *I)
 }
 
 Boolean_t GBAProcessSystemPrepareGUI(){
+// 	GBAProcessSystemSetToolTips();
+
 	/*
 	*	Prepare CP list
 	*/
@@ -552,60 +671,103 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	TecGUIListDeleteAllItems(MLSelCPs_MLST_T1_1);
 
 	/*
-	*	Add any atom zones from the data import (e.g. H, C, O, Ag)
-	*/
-
-	for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones(); ++ZoneNum){
-		char* ZoneNameCStr;
-		if (TecUtilZoneIsOrdered(ZoneNum) && TecUtilZoneGetName(ZoneNum, &ZoneNameCStr)){
-			string ZoneName = ZoneNameCStr;
-			TecUtilStringDealloc(&ZoneNameCStr);
-
-			int ElemNum = SearchVectorForString(ElementSymbolList, ZoneName, false);
-			if (ElemNum < 0)
-				ElemNum = SearchVectorForString(ElementNameList, ZoneName);
-			if (ElemNum >= 0){
-				int NumPts;
-				TecUtilZoneGetIJK(ZoneNum, &NumPts, nullptr, nullptr);
-				for (int Counter = 1; Counter <= NumPts; ++Counter){
-					TecGUIListAppendItem(MLSelCPs_MLST_T1_1, string(ZoneName + " " + to_string(Counter)).c_str());
-				}
-			}
-		}
-	}
-
-	/*
-	 *	Add CPs from Bondalyzer
+	 *	Get nuclear CPs according to nuclear name.
 	 */
+	vector<int> XYZVarNums;
+	for (auto const & i : { "X","Y","Z" }){
+		XYZVarNums.push_back(VarNumByName(i));
+		if (XYZVarNums.back() <= 0){
+			XYZVarNums = { 1,2,3 };
+			break;
+		}
+	}
+	int CPTypeVarNum = VarNumByName(CSMVarName.CritPointType);
+	if (CPTypeVarNum > 0) {
+		CritPoints_c NuclearCPs;
+		for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones(); ++ZoneNum) {
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.CPSubTypes[0])) {
+				NuclearCPs += CritPoints_c(ZoneNum, { 1,2,3 }, CPTypeVarNum);
+			}
+		}
 
-	EntIndex_t CPZoneNum = ZoneNumByName(string("Critical Points"), false);
-	EntIndex_t CPVarNum = VarNumByName(string("CritPointType"));
-// 	if (CPZoneNum < 0 || CPVarNum < 0){
-// 		TecUtilDialogErrMsg("Couldn't find critical points zone or CP type variable.");
-// 		return FALSE;
-// 	}
-	if (CPZoneNum > 0 && CPVarNum > 0){
-		int Ranks[4] = { -3, -1, 1, 3 };
-		LgIndex_t IJK[3]; LgIndex_t NumCPs[4] = { 0, 0, 0, 0 };
-		TecUtilZoneGetIJK(CPZoneNum, &IJK[0], &IJK[1], &IJK[2]);
-		for (int i = 1; i <= IJK[0]; ++i){
-			int CPType = (int)TecUtilDataValueGetByZoneVar(CPZoneNum, CPVarNum, i);
-			for (int j = 0; j < 4; ++j){
-				if (CPType == Ranks[j]){
-					NumCPs[j]++;
-					if (CPType == -3 || CPType == 3){
-						stringstream ss;
-						int CPOffset = 0;
-						for (int k = 0; k < j; ++k)
-							CPOffset += NumCPs[k];
-						ss << CPNameList[j] << " " << i - CPOffset;
-						TecGUIListAppendItem(MLSelCPs_MLST_T1_1, ss.str().c_str());
+		NuclearNameToCPNum.clear();
+		std::set<int> CPIndSet;
+		double DistCutoff = 0.2;
+
+		for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones(); ++ZoneNum) {
+			char* ZoneNameCStr;
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.DL.ZoneType, CSMAuxData.DL.ZoneTypeNuclearPositions) && TecUtilZoneGetName(ZoneNum, &ZoneNameCStr)) {
+				string ZoneName = ZoneNameCStr;
+				TecUtilStringDealloc(&ZoneNameCStr);
+
+				int ElemNum = SearchVectorForString(ElementSymbolList, ZoneName, false);
+				if (ElemNum < 0)
+					ElemNum = SearchVectorForString(ElementNameList, ZoneName);
+				if (ElemNum >= 0) {
+					int NumPts;
+					TecUtilZoneGetIJK(ZoneNum, &NumPts, nullptr, nullptr);
+					for (int Counter = 1; Counter <= NumPts; ++Counter) {
+						vec3 Pt;
+						for (int i = 0; i < 3; ++i){
+							Pt[i] = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[i], Counter);
+						}
+						int CPInd;
+						double CPDist;
+						vec3 ClosestCPPt = NuclearCPs.ClosestPoint(Pt, CPInd, CPDist);
+						if (CPDist < DistCutoff){
+							string CPName = ZoneName + " " + to_string(Counter);
+							NuclearNameToCPNum[CPName] = CPInd;
+							CPIndSet.insert(CPInd);
+							TecGUIListAppendItem(MLSelCPs_MLST_T1_1, CPName.c_str());
+						}
 					}
-					break;
 				}
 			}
 		}
+
+		// Now add nuclear CPs that weren't sufficiently close to one of the nuclear positions
+		for (int i = 0; i < NuclearCPs.NumAtoms(); ++i){
+			if (!CPIndSet.count(i)){
+				string CPName = CPNameList[0] + " " + to_string(i + 1);
+				NuclearNameToCPNum[CPName] = i;
+				TecGUIListAppendItem(MLSelCPs_MLST_T1_1, CPName.c_str());
+			}
+		}
 	}
+// 	else {
+// 		/*
+// 		 *	Add CPs from Bondalyzer
+// 		 */
+// 
+// 		EntIndex_t CPZoneNum = ZoneNumByName(string("Critical Points"), false);
+// 		EntIndex_t CPVarNum = VarNumByName(string("CritPointType"));
+// 		// 	if (CPZoneNum < 0 || CPVarNum < 0){
+// 		// 		TecUtilDialogErrMsg("Couldn't find critical points zone or CP type variable.");
+// 		// 		return FALSE;
+// 		// 	}
+// 		if (CPZoneNum > 0 && CPVarNum > 0) {
+// 			int Ranks[4] = { -3, -1, 1, 3 };
+// 			LgIndex_t IJK[3]; LgIndex_t NumCPs[4] = { 0, 0, 0, 0 };
+// 			TecUtilZoneGetIJK(CPZoneNum, &IJK[0], &IJK[1], &IJK[2]);
+// 			for (int i = 1; i <= IJK[0]; ++i) {
+// 				int CPType = (int)TecUtilDataValueGetByZoneVar(CPZoneNum, CPVarNum, i);
+// 				for (int j = 0; j < 4; ++j) {
+// 					if (CPType == Ranks[j]) {
+// 						NumCPs[j]++;
+// 						if (CPType == -3 || CPType == 3) {
+// 							stringstream ss;
+// 							int CPOffset = 0;
+// 							for (int k = 0; k < j; ++k)
+// 								CPOffset += NumCPs[k];
+// 							ss << CPNameList[j] << " " << i - CPOffset;
+// 							TecGUIListAppendItem(MLSelCPs_MLST_T1_1, ss.str().c_str());
+// 						}
+// 						break;
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
 
 	if (NumSelected > 0)
 		TecGUIListSetSelectedItems(MLSelCPs_MLST_T1_1, SelectedNums, NumSelected);
@@ -618,44 +780,62 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 
 	TecGUIScaleShowNumericDisplay(SCPrecise_SC_T1_1, TRUE);
 	TecGUIScaleSetLimits(SCPrecise_SC_T1_1, PrecisionOffset, PrecisionOffset + IntPrecisionLabels.size() - 1, 0);
-	TecGUIScaleSetValue(SCPrecise_SC_T1_1, IntPrecise);
-	TecGUILabelSetText(LBLPrecise_LBL_T1_1, IntPrecisionLabels[IntPrecise-PrecisionOffset].c_str());
+	TecGUIScaleSetValue(SCPrecise_SC_T1_1, GBADefaultIntegrationPrecision);
+	TecGUILabelSetText(LBLPrecise_LBL_T1_1, IntPrecisionLabels[GBADefaultIntegrationPrecision - PrecisionOffset].c_str());
 // 	TecGUIScaleSetValue(SCPrecise_SC_T1_1, GetRecommendedIntPrecision());
 
-	TecGUIScaleShowNumericDisplay(SCNumEdgeGPs_SC_T1_1, FALSE);
-	TecGUIScaleSetLimits(SCNumEdgeGPs_SC_T1_1, 1, 30, 0);
-	TecGUIScaleSetValue(SCNumEdgeGPs_SC_T1_1, 4);
-	GBAProcessSystemUpdateNumGPsPerGB();
 
 	NumSelected = -1;
 	if (TecGUIListGetItemCount(MLSelVars_MLST_T1_1) > 0)
 		TecGUIListGetSelectedItems(MLSelVars_MLST_T1_1, &SelectedNums, &NumSelected);
 
 	TecGUIListDeleteAllItems(MLSelVars_MLST_T1_1);
-	TecGUIToggleSet(TGLInt_TOG_T1_1, DefaultIntegrate);
 	TecGUIToggleSet(TGLsGP_TOG_T1_1, FALSE);
 	TecGUIToggleSet(TGLsGB_TOG_T1_1, FALSE);
 // 	TecGUIToggleSet(TGLVolInt_TOG_T1_1, DefaultVolIntegrate);
-	if (DefaultIntegrate){
-		ListPopulateWithVarNames(MLSelVars_MLST_T1_1);
-	}
+	ListPopulateWithVarNames(MLSelVars_MLST_T1_1, 4);
 	if (NumSelected > 0)
 		TecGUIListSetSelectedItems(MLSelVars_MLST_T1_1, SelectedNums, NumSelected);
+	else{
+		int SelectNums[] = { 1 };
+		TecGUIListSetSelectedItems(MLSelVars_MLST_T1_1, SelectNums, 1);
+	}
+// 	TecGUITextFieldSetString(TFGBPerE_TF_T1_1, to_string(GBADefaultGBPerE).c_str());
+// 	TecGUITextFieldSetString(TFBPGBs_TF_T1_1, to_string(GBADefaultBPAngularGBs).c_str());
+// 	TecGUITextFieldSetString(TFGBMaxSD_TF_T1_1, to_string(GBADefaultMaxGBSubdivisionLevel).c_str());
+// 	TecGUITextFieldSetString(TFBPGBInit_TF_T1_1, to_string(GBADefaultNumberOfPreBondPathElemSubdivision).c_str());
+// 	
+	TecGUIScaleSetLimits(SCBPGBInit_SC_T1_1, 0, GBADefaultMaxNumberOfPreBondPathElemSubdivision, 0);
+	TecGUIScaleSetValue(SCBPGBInit_SC_T1_1, GBADefaultNumberOfPreBondPathElemSubdivision);
+	TecGUILabelSetText(LBLBPGBInit_LBL_T1_1, to_string(GBADefaultNumberOfPreBondPathElemSubdivision).c_str());
+
+	TecGUIScaleSetLimits(SCBPGBs_SC_T1_1, 1, GBADefaultMaxBPAngularGBs, 0);
+	TecGUIScaleSetValue(SCBPGBs_SC_T1_1, GBADefaultBPAngularGBs);
+	TecGUILabelSetText(LBLBPGBs_LBL_T1_1, to_string(GBADefaultBPAngularGBs).c_str());
+
+// 	double VolumeGridSpacing = norm(GetDelXYZ_Ordered3DZone(XYZVarNums, ZoneNumByName("Full Volume", false, true)));
+	TecGUIScaleSetLimits(SCEGPDist_SC_T1_1, GBADefaultMinEdgeGPSpacing * 10, GBADefaultMaxEdgeGPSpacing * 10, 1);
+	TecGUIScaleSetValue(SCEGPDist_SC_T1_1, GBADefaultEdgeGPSpacing * 10);
+	TecGUILabelSetText(LBLEGPDistTy_LBL_T1_1, DoubleToString(GBADefaultEdgeGPSpacing, 1).c_str());
+
+	TecGUIToggleSet(TGLNoSphInt_TOG_T1_1, TRUE);
+	
+
+	TecGUIToggleSet(TGLSmoothAll_TOG_T3_1, TRUE);
 
 	/*
 	*	System boundary options
 	*/
-	TecGUIToggleSet(TGLOpenSys_TOG_T1_1, DefaultSystemIsOpen);
 	TecGUITextFieldSetString(TFCutoff_TF_T1_1, to_string(DefaultRhoCutoff).c_str());
 
 	/*
 	*	Mesh parameters
 	*/
-	TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(DefaultRadius).c_str());
+	TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(GBADefaultSphereRadius).c_str());
 	TecGUIRadioBoxSetToggle(RBRadMode_RADIO_T1_1, 2);
-	TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(DefaultLevel).c_str());
+	TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBADefaultSphereMeshRefinementLevel).c_str());
 	GBAProcessSystemUpdateNumTriangles();
-	TecGUITextFieldSetString(TFSTPts_TF_T1_1, to_string(DefaultSTPts).c_str());
+	TecGUITextFieldSetString(TFSTPts_TF_T1_1, to_string(DefaultNumGPPts).c_str());
 
 	/*
 	*	IB detection paraneters
@@ -688,22 +868,12 @@ void GBAProcessSystemUpdateNumTriangles(){
 	TecGUILabelSetText(LBLNumTri_LBL_T1_1, ss.str().c_str());
 }
 
-void GBAProcessSystemUpdateNumGPsPerGB(){
-	LgIndex_t Level;
-	Level = TecGUIScaleGetValue(SCNumEdgeGPs_SC_T1_1);
-	LgIndex_t NumGPs = 3 * (1 + Level);
-	stringstream ss;
-	ss << NumGPs;
-	TecGUILabelSetText(LBLGPperGB_LBL_T1_1, ss.str().c_str());
-}
 
 void GBAProcessSystemLabelSelectedCPs(){
-	TecUtilLockStart(AddOnID);
 	LgIndex_t * SelectedCPs;
 	LgIndex_t NumSelected;
 	TecGUIListGetSelectedItems(MLSelCPs_MLST_T1_1, &SelectedCPs, &NumSelected);
 	if (NumSelected > 0){
-		TecUtilDrawGraphics(FALSE);
 		TecUtilPickDeselectAll();
 		for (int i = 0; i < CPLabelIDs.size(); ++i){
 			TecUtilPickText(CPLabelIDs[i]);
@@ -729,28 +899,22 @@ void GBAProcessSystemLabelSelectedCPs(){
 
 			CPLabelIDs.push_back(LabelID);
 		}
-		TecUtilDrawGraphics(TRUE);
 	}
 	TecUtilArrayDealloc((void **)&SelectedCPs);
-	TecUtilLockFinish(AddOnID);
 }
 
 void GBAProcessSystemDeleteCPLabels(){
-	TecUtilLockStart(AddOnID);
 	MouseButtonMode_e MouseMode = TecUtilMouseGetCurrentMode();
 	if (CPLabelIDs.size() > 0){
-		TecUtilDrawGraphics(FALSE);
 		TecUtilPickDeselectAll();
 		for (int i = 0; i < CPLabelIDs.size(); ++i){
 			TecUtilPickText(CPLabelIDs[i]);
 		}
 		TecUtilPickClear();
 		CPLabelIDs.clear();
-		TecUtilDrawGraphics(TRUE);
-		TecUtilRedraw(TRUE);
 	}
-	TecUtilMouseSetMode(MouseMode);
-	TecUtilLockFinish(AddOnID);
+	if (TecUtilMouseIsValidMode(MouseMode))
+		TecUtilMouseSetMode(MouseMode);
 }
 
 void PrepareIntegration(Boolean_t IntegratingFromIntTab){
@@ -785,6 +949,138 @@ void PrepareIntegration(Boolean_t IntegratingFromIntTab){
 
 	TecGUITabSetCurrentPage(TAB1_TB_D1, 3);
 }
+
+/**
+ */
+static void TGLNoSphInt_TOG_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Toggle (TGLNoSphInt_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void SCBPGBInit_SC_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCBPGBInit_SC_T1_1) Value Changed,  New value is: %d\n", *I);
+	TecGUILabelSetText(LBLBPGBInit_LBL_T1_1, to_string(*I).c_str());
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void SCBPGBInit_SCD_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCBPGBInit_SCD_T1_1) Value Changed on drag,  New value is: %d\n", *I);
+	TecGUILabelSetText(LBLBPGBInit_LBL_T1_1, to_string(*I).c_str());
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void SCBPGBs_SC_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCBPGBs_SC_T1_1) Value Changed,  New value is: %d\n", *I);
+	TecGUILabelSetText(LBLBPGBs_LBL_T1_1, to_string(*I).c_str());
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void SCBPGBs_SCD_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCBPGBs_SCD_T1_1) Value Changed on drag,  New value is: %d\n", *I);
+	TecGUILabelSetText(LBLBPGBs_LBL_T1_1, to_string(*I).c_str());
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void SCEGPDist_SC_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCEGPDist_SC_T1_1) Value Changed,  New value is: %d\n", *I);
+	TecGUILabelSetText(LBLEGPDistTy_LBL_T1_1, DoubleToString(double(*I)/10., 1).c_str());
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void SCEGPDist_SCD_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCEGPDist_SCD_T1_1) Value Changed on drag,  New value is: %d\n", *I);
+	TecGUILabelSetText(LBLEGPDistTy_LBL_T1_1, DoubleToString(double(*I) / 10., 1).c_str());
+	TecUtilLockFinish(AddOnID);
+}
+
+/**
+ */
+// static LgIndex_t  TFGBPerE_TF_T1_1_CB(const char *S)
+// {
+// 	LgIndex_t IsOk = 1;
+// 	TecUtilLockStart(AddOnID);
+// 	TRACE1("Text field (TFGBPerE_TF_T1_1) Value Changed,  New value is: %s\n", S);
+// 	if (StringIsInt(S) && stoi(string(S)) > 0){
+// 		TecGUITextFieldSetString(TFGBPerE_TF_T1_1, S);
+// 	}
+// 	TecUtilLockFinish(AddOnID);
+// 	return (IsOk);
+// }
+
+/**
+ */
+// static LgIndex_t  TFBPGBInit_TF_T1_1_CB(const char *S)
+// {
+// 	LgIndex_t IsOk = 1;
+// 	TecUtilLockStart(AddOnID);
+// 	TRACE1("Text field (TFBPGBInit_TF_T1_1) Value Changed,  New value is: %s\n", S);
+// 	if (StringIsInt(S)) {
+// 		int s = CLAMP(stoi(string(S)), 0, GBADefaultMaxNumberOfPreBondPathElemSubdivision);
+// 		TecGUITextFieldSetString(TFBPGBInit_TF_T1_1, to_string(s).c_str());
+// 	}
+// 	TecUtilLockFinish(AddOnID);
+// 	return (IsOk);
+// }
+
+/**
+ */
+// static LgIndex_t  TFBPGBs_TF_T1_1_CB(const char *S)
+// {
+// 	LgIndex_t IsOk = 1;
+// 	TecUtilLockStart(AddOnID);
+// 	TRACE1("Text field (TFBPGBs_TF_T1_1) Value Changed,  New value is: %s\n", S);
+// 	if (StringIsInt(S) && stoi(string(S)) > 0) {
+// 		TecGUITextFieldSetString(TFBPGBs_TF_T1_1, S);
+// 	}
+// 	TecUtilLockFinish(AddOnID);
+// 	return (IsOk);
+// }
+
+/**
+ */
+// static LgIndex_t  TFGBMaxSD_TF_T1_1_CB(const char *S)
+// {
+// 	LgIndex_t IsOk = 1;
+// 	TecUtilLockStart(AddOnID);
+// 	TRACE1("Text field (TFGBMaxSD_TF_T1_1) Value Changed,  New value is: %s\n", S);
+// 	if (StringIsInt(S) && stoi(string(S)) >= -1) {
+// 		TecGUITextFieldSetString(TFGBMaxSD_TF_T1_1, S);
+// 	}
+// 	TecUtilLockFinish(AddOnID);
+// 	return (IsOk);
+// }
 
 /**
 */
@@ -836,7 +1132,9 @@ static void RBCntSrc_RADIO_T3_1_CB(LgIndex_t const *I)
 	TecUtilLockStart(AddOnID);
 	TRACE1("RadioBox (RBCntSrc_RADIO_T3_1) Value Changed,  New value is: %d\n", *I);
 	GBACntSrc = TecGUIRadioBoxGetToggle(RBCntSrc_RADIO_T3_1);
+	CSMGuiLock();
 	GBAResultViewerSelectIntVar();
+	CSMGuiUnlock();
 	TecUtilLockFinish(AddOnID);
 }
 
@@ -847,7 +1145,9 @@ static void RBLogLin_RADIO_T3_1_CB(LgIndex_t const *I)
 	TecUtilLockStart(AddOnID);
 	TRACE1("RadioBox (RBLogLin_RADIO_T3_1) Value Changed,  New value is: %d\n", *I);
 	GBALogLin = TecGUIRadioBoxGetToggle(RBLogLin_RADIO_T3_1);
+	CSMGuiLock();
 	GBAResultViewerSelectIntVar();
+	CSMGuiUnlock();
 	TecUtilLockFinish(AddOnID);
 }
 
@@ -877,7 +1177,9 @@ static LgIndex_t  TFNumContours_TF_T3_1_CB(char const *S)
 */
 void GBAResultViewerPrepareGUI(){
 
-	TecUtilLockStart(AddOnID);
+// 	TecUtilLockStart(AddOnID);
+
+// 	GBAResultViewerSetToolTips();
 
 	/*
 	*	Clear lists and stuff
@@ -909,6 +1211,12 @@ void GBAResultViewerPrepareGUI(){
 		}
 	}
 
+	TecGUIScaleSetLimits(SCRad_SC_T3_1, 1, 50, 1);
+	TecGUIScaleSetValue(SCRad_SC_T3_1, 10);
+	TecGUIToggleSet(TGLRadAbs_TOG_T3_1, FALSE);
+	TecGUIToggleSet(TGLRadAll_TOG_T3_1, TRUE);
+	TecGUILabelSetText(LBLRadLab_LBL_T3_1, "1.0");
+
 	IsOk = (SphereCPNameList.size() > 0);
 	if (IsOk){
 		/*
@@ -924,7 +1232,7 @@ void GBAResultViewerPrepareGUI(){
 		GBAResultViewerPopulateGBs();
 	}
 
-	TecUtilLockFinish(AddOnID);
+// 	TecUtilLockFinish(AddOnID);
 }
 
 /**
@@ -962,7 +1270,7 @@ static void TGLShowMesh_TOG_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLShowMesh_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
-	TecUtilDrawGraphics(FALSE);
+	CSMGuiLock();
 
 	Set_pa ZoneSet = TecUtilSetAlloc(FALSE);
 	for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones(); ++ZoneNum){
@@ -971,11 +1279,11 @@ static void TGLShowMesh_TOG_T3_1_CB(LgIndex_t const *I)
 	}
 
 	TecUtilZoneSetMesh(SV_SHOW, ZoneSet, 0.0, TecGUIToggleGet(TGLShowMesh_TOG_T3_1));
-	TecUtilZoneSetMesh(SV_COLOR, ZoneSet, 0.0, Custom2_C);
+	TecUtilZoneSetMesh(SV_COLOR, ZoneSet, 0.0, Red_C);
 
 	TecUtilSetDealloc(&ZoneSet);
-
-	TecUtilDrawGraphics(TRUE);
+	
+	CSMGuiUnlock();
 	TecUtilLockFinish(AddOnID);
 }
 
@@ -1045,8 +1353,61 @@ static void BTNFndBas_BTN_T3_1_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE("Find basins Button Pushed\n");
+	CSMGuiLock();
 	FindSphereBasins();
+	CSMGuiUnlock();
 	GBAResultViewerPrepareGUI();
+	TecUtilLockFinish(AddOnID);
+}
+
+void ResizeSpheresCallback(bool DoResize = true) {
+	double NewVal = (double)(TecGUIScaleGetValue(SCRad_SC_T3_1)) / 10.0;
+	TecGUILabelSetText(LBLRadLab_LBL_T3_1, DoubleToString(NewVal, 2).c_str());
+	if (DoResize) {
+		ResizeSpheres(NewVal, TecGUIToggleGet(TGLRadAll_TOG_T3_1), TecGUIToggleGet(TGLRadAbs_TOG_T3_1));
+		GBAReloadDialog();
+	}
+}
+
+/**
+ */
+static void SCRad_SC_T3_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCRad_SC_T3_1) Value Changed,  New value is: %d\n", *I);
+	ResizeSpheresCallback();
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void SCRad_SCD_T3_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCRad_SCD_T3_1) Value Changed on drag,  New value is: %d\n", *I);
+	ResizeSpheresCallback(false);
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void TGLRadAll_TOG_T3_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Toggle (TGLRadAll_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void TGLRadAbs_TOG_T3_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Toggle (TGLRadAbs_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
+	ResizeSpheresCallback();
 	TecUtilLockFinish(AddOnID);
 }
 

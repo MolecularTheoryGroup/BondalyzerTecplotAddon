@@ -1,6 +1,4 @@
 #pragma once
-#ifndef CSMFIELDDATAPOINTER_H_
-#define CSMFIELDDATAPOINTER_H_
 
 #include <vector>
 #include <armadillo>
@@ -98,4 +96,3 @@ Boolean_t const GetReadPtrsForZone(int ZoneNum,
 	vector<FieldDataPointer_c> & HessPtrs);
 
 
-#endif // !CSMFIELDDATAPOINTER_H_

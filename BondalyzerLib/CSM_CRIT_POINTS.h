@@ -1,6 +1,4 @@
 #pragma once
-#ifndef CSMCRITPOINTS_H_
-#define CSMCRITPOINTS_H_
 
 // #include <gsl/gsl_vector.h>
 // #include <gsl/gsl_matrix.h>
@@ -8,8 +6,11 @@
 
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_DATA_TYPES.h"
+#include "Edge.h"
 
 #include <vector>
+#include <map>
+#include <set>
 
 #include <armadillo>
 using namespace arma;
@@ -24,7 +25,7 @@ using std::vector;
 
 // 0.27 bohr is the value used in the BAND cp search, but then I went higher!
 static double const SpuriousCPCheckDistance = 0.2;
-static double const SpuriousCPDistanceRatioOfSearchGrid = 0.05;
+static double const SpuriousCPDistanceRatioOfSearchGrid = 0.5;
 
 enum CPType_e{
 	CPType_Nuclear = -3,
@@ -60,8 +61,8 @@ static vector<int> const CPPrincDirInds = {
 	-1 // cageFF n/a
 };
 
-static vector<int> const CPSaddleTypeNums = { 1, 2 };
-static vector<int> const CPNearFieldTypes = { 0, 1, 2, 3 };
+static vector<CPTypeNum_e> const CPSaddleTypeNums = { CPTypeNum_Bond, CPTypeNum_Ring };
+static vector<CPTypeNum_e> const CPNearFieldTypes = { CPTypeNum_Nuclear, CPTypeNum_Bond, CPTypeNum_Ring, CPTypeNum_Cage };
 
 static vector<ColorIndex_t> const CPColorList = { White_C, Red_C, Green_C, Cyan_C, Custom5_C, Custom6_C };
 
@@ -125,6 +126,14 @@ public:
 	mat33 GetEigVecs(int TypeNum, int Offset) const { return m_EigVecs[TypeNum][Offset]; }
 	mat33 GetEigVecs(int TotOffset) const;
 
+	bool HasEdge(Edge const & e, int * zoneNum = nullptr) const;
+	bool HasEdge(int e1, int e2, int * zoneNum = nullptr) const { return HasEdge(MakeEdge(e1, e2), zoneNum); }
+	bool HasEdgeNoPathRecorded(Edge const & e, int searchDepthLimit) const;
+	bool HasEdge(Edge const & e, int searchDepthLimit, vector<int> * Path = nullptr) const;
+	bool HasEdge(int e1, int e2, int searchDepth, vector<int> * Path = nullptr) const { return HasEdge(MakeEdge(e1, e2), searchDepth, Path); }
+
+	vec3 ClosestPoint(vec3 const & Pt, int & TotCPOffset, double & MinDist);
+
 	Boolean_t IsValid() const;
 
 	/*
@@ -146,8 +155,9 @@ public:
 
 	Boolean_t FindMinCPDist(vector<CPType_e> const & CPTypes);
 	void RemoveSpuriousCPs(double const & CheckDist = SpuriousCPCheckDistance);
+	void GenerateCPGraph();
 	
-	vector<int> SaveAsOrderedZone(vector<int> const & XYZVarNum, int RhoVarNum = -1, Boolean_t SaveCPTypeZones = FALSE);
+	vector<int> SaveAsOrderedZone(vector<int> const & XYZVarNum, int RhoVarNum = -1, Boolean_t SaveCPTypeZones = FALSE, int VolZoneNum = -1);
 
 private:
 
@@ -164,6 +174,10 @@ private:
 	double m_MinCPDist;
 	Boolean_t m_MinCPDistFound;
 	double m_RhoCutoff;
+	int m_ZoneNum = -1;
+
+	std::map<Edge,int> m_CPEdgeToZoneNumMap;
+	std::map<int,std::set<int> > m_CPAdjacencyList;
 
 	vector<CPType_e> m_MinDistCPTypes;
 };
@@ -207,5 +221,3 @@ Boolean_t CritPointInCell(
 	char & Type,
 	MultiRootParams_s & RootParams,
 	MultiRootObjects_s & MR);
-
-#endif

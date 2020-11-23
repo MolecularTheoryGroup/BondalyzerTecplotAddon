@@ -28,11 +28,11 @@ const string DefaultIntVarStr = "Electron Density";
 const Boolean_t DefaultIntegrate = FALSE;
 const Boolean_t DefaultSystemIsOpen = TRUE;
 const double DefaultRhoCutoff = 0.001;
-const double DefaultRadius = 0.2;
-const int DefaultLevel = 3;
-const int MinLevel = 0;
-const int MaxLevel = 10;
-const int DefaultSTPts = 100;
+const double GBADefaultSphereRadius = 0.2;
+const int GBADefaultSphereMeshRefinementLevel = 3;
+const int GBAMinSphereRefinementLevel = 0;
+const int GBAMaxSphereRefinementLevel = 10;
+const int DefaultNumGPPts = 100;
 const double DefaultIBDist = 0.05;
 const double DefaultIBAng = 20;
 
@@ -252,13 +252,13 @@ static LgIndex_t  TFLevel_TFS_D1_ValueChanged_CB(const char *S)
 	TRACE1("Spin Control Text field (TFLevel_TFS_D1) Value Changed,  New value is: %s\n", S);
 	LgIndex_t Value;
 	if (TecGUITextFieldGetLgIndex(TFLevel_TFS_D1, &Value)){
-		if (Value < MinLevel)
-			TecGUITextFieldSetString(TFLevel_TFS_D1, to_string(MinLevel).c_str());
-		else if (Value > MaxLevel)
-			TecGUITextFieldSetString(TFLevel_TFS_D1, to_string(MaxLevel).c_str());
+		if (Value < GBAMinSphereRefinementLevel)
+			TecGUITextFieldSetString(TFLevel_TFS_D1, to_string(GBAMinSphereRefinementLevel).c_str());
+		else if (Value > GBAMaxSphereRefinementLevel)
+			TecGUITextFieldSetString(TFLevel_TFS_D1, to_string(GBAMaxSphereRefinementLevel).c_str());
 	}
 	else{
-		TecGUITextFieldSetString(TFLevel_TFS_D1, to_string(DefaultLevel).c_str());
+		TecGUITextFieldSetString(TFLevel_TFS_D1, to_string(GBADefaultSphereMeshRefinementLevel).c_str());
 	}
 	GBAProcessSystemUpdateNumTriangles();
 	TecUtilLockFinish(AddOnID);
@@ -272,7 +272,7 @@ static void TFLevel_TFS_D1_ButtonUp_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Spin control (TFLevel_TFS_D1) up callback called.\n");
-	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_D1, 1, MinLevel, MaxLevel);
+	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_D1, 1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel);
 	GBAProcessSystemUpdateNumTriangles();
 	TecUtilLockFinish(AddOnID);
 }
@@ -284,7 +284,7 @@ static void TFLevel_TFS_D1_ButtonDown_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE0("Spin control (TFLevel_TFS_D1) down callback called.\n");
-	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_D1, -1, MinLevel, MaxLevel);
+	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_D1, -1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel);
 	GBAProcessSystemUpdateNumTriangles();
 	TecUtilLockFinish(AddOnID);
 }
@@ -299,7 +299,7 @@ static LgIndex_t  TFRad_TF_D1_CB(const char *S)
 	TRACE1("Text field (TFRad_TF_D1) Value Changed,  New value is: %s\n", S); 
 	double Value;
 	if (!TecGUITextFieldGetDouble(TFRad_TF_D1, &Value)){
-		TecGUITextFieldSetString(TFRad_TF_D1, to_string(DefaultRadius).c_str());
+		TecGUITextFieldSetString(TFRad_TF_D1, to_string(GBADefaultSphereRadius).c_str());
 	}
 	TecUtilLockFinish(AddOnID);
 	return (IsOk);
@@ -315,7 +315,7 @@ static LgIndex_t  TFIBDist_TF_D1_CB(const char *S)
 	TRACE1("Text field (TFIBDist_TF_D1) Value Changed,  New value is: %s\n", S);
 	double Value;
 	if (!TecGUITextFieldGetDouble(TFIBDist_TF_D1, &Value)){
-		TecGUITextFieldSetString(TFIBDist_TF_D1, to_string(DefaultRadius).c_str());
+		TecGUITextFieldSetString(TFIBDist_TF_D1, to_string(GBADefaultSphereRadius).c_str());
 	}
 	TecUtilLockFinish(AddOnID);
 	return (IsOk);
@@ -331,7 +331,7 @@ static LgIndex_t  TFIBAng_TF_D1_CB(const char *S)
 	TRACE1("Text field (TFIBAng_TF_D1) Value Changed,  New value is: %s\n", S); 
 	double Value;
 	if (!TecGUITextFieldGetDouble(TFIBAng_TF_D1, &Value)){
-		TecGUITextFieldSetString(TFIBAng_TF_D1, to_string(DefaultRadius).c_str());
+		TecGUITextFieldSetString(TFIBAng_TF_D1, to_string(GBADefaultSphereRadius).c_str());
 	}
 	TecUtilLockFinish(AddOnID);
 	return (IsOk);
@@ -347,7 +347,7 @@ static LgIndex_t  TFSTPts_TF_D1_CB(const char *S)
 	int Value;
 	Boolean_t ValRead = TecGUITextFieldGetLgIndex(TFSTPts_TF_D1, &Value);
 	if (!ValRead){
-		TecGUITextFieldSetString(TFSTPts_TF_D1, to_string(DefaultSTPts).c_str());
+		TecGUITextFieldSetString(TFSTPts_TF_D1, to_string(DefaultNumGPPts).c_str());
 	}
 	else if (Value % 2 != 0){
 		TecGUITextFieldSetString(TFSTPts_TF_D1, to_string(--Value).c_str());
@@ -415,11 +415,11 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	/*
 	*	Mesh parameters
 	*/
-	TecGUITextFieldSetString(TFRad_TF_D1, to_string(DefaultRadius).c_str());
+	TecGUITextFieldSetString(TFRad_TF_D1, to_string(GBADefaultSphereRadius).c_str());
 	TecGUIRadioBoxSetToggle(RBRadMode_RADIO_D1, 2);
-	TecGUITextFieldSetString(TFLevel_TFS_D1, to_string(DefaultLevel).c_str());
+	TecGUITextFieldSetString(TFLevel_TFS_D1, to_string(GBADefaultSphereMeshRefinementLevel).c_str());
 	GBAProcessSystemUpdateNumTriangles();
-	TecGUITextFieldSetString(TFSTPts_TF_D1, to_string(DefaultSTPts).c_str());
+	TecGUITextFieldSetString(TFSTPts_TF_D1, to_string(DefaultNumGPPts).c_str());
 
 	/*
 	*	IB detection paraneters

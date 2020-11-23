@@ -38,6 +38,7 @@ Set_pa CSMGuiActiveZones = nullptr;
 bool CSMGuiProbeFirstInstall = true;
 bool CSMGuiDeleteLabelsRunning = false;
 MouseButtonMode_e CSMGuiMouseMode = MouseButtonMode_Invalid;
+Boolean_t CSMGuiAutoRedrawIsActive = TRUE;
 
 int CSMGuiDialogManager;
 bool CSMGuiSuccess;
@@ -86,7 +87,7 @@ GuiField_c::GuiField_c()
 GuiField_c::GuiField_c(GuiFieldType_e const & Type,
 	string const & Label,
 	string const & Val,
-	const vector<void*> & CallbackFuntions)
+	const vector<TecGUIVoidCallback_pf> & CallbackFuntions)
 {
 	Type_m = Type;
 	Label_m = Label;
@@ -242,6 +243,11 @@ void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
 		if (NumSelected > 0){
 			TecUtilDrawGraphics(FALSE);
 
+			Set_pa TmpSet = nullptr;
+			if (CSMGuiActiveZones != nullptr && !TecUtilSetIsEmpty(CSMGuiActiveZones) && TecUtilZoneGetActive(&TmpSet)) {
+				TecUtilZoneSetActive(CSMGuiActiveZones, AssignOp_Equals);
+			}
+
 			double TextOffset = 0.1;
 			for (int i = 0; i < NumSelected; ++i){
 				char* LabelStr = TecGUIListGetString(CSMGuiMultiListID, SelectedItems[i]);
@@ -250,7 +256,7 @@ void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
 				vec3 XYZGrid;
 				TecUtilConvert3DPositionToGrid(Point[0], Point[1], Point[2], &XYZGrid[0], &XYZGrid[1], &XYZGrid[2]);
 
-				Text_ID LabelID = TecUtilTextCreate(CoordSys_Grid, XYZGrid[0] + TextOffset, XYZGrid[1] + TextOffset, Units_Frame, 1, LabelStr);
+				Text_ID LabelID = TecUtilTextCreate(CoordSys_Grid, XYZGrid[0] + TextOffset, XYZGrid[1] + TextOffset, Units_Frame, 1.5, LabelStr);
 				TecUtilTextBoxSetType(LabelID, TextBox_Filled);
 				TecUtilTextBoxSetFillColor(LabelID, White_C);
 
@@ -259,8 +265,17 @@ void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
 
 				TecUtilStringDealloc(&LabelStr);
 			}
-			TecUtilDrawGraphics(TRUE);
 			TecUtilRedraw(TRUE);
+
+			if (TmpSet == nullptr) {
+				TecUtilDrawGraphics(TRUE);
+			}
+			else{
+				TecUtilZoneSetActive(TmpSet, AssignOp_Equals);
+				TecUtilSetDealloc(&TmpSet);
+			}
+
+
 		}
 		TecUtilArrayDealloc((void **)&SelectedItems);
 	}
@@ -351,7 +366,7 @@ void STDCALL CSMGuiPointSelectProbeCB(Boolean_t WasSuccessful,
 	}
 	CSMGuiLabelSelectedPoints();
 	CSMGuiPointSelectButtonCB();
-	TecUtilRedraw(TRUE);
+// 	TecUtilRedraw(TRUE);
 
 	CSMGuiLock();
 
@@ -462,9 +477,10 @@ void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID){
 // 		if (TecUtilPickListGetCount() > 0){
 // 			CSMGuiPointLabelIDs.clear();
 // 		}
-		TecUtilDrawGraphics(TRUE);
-		TecUtilRedraw(TRUE);
-		TecUtilMouseSetMode(MouseMode);
+// 		TecUtilDrawGraphics(TRUE);
+// 		TecUtilRedraw(TRUE);
+		if (TecUtilMouseIsValidMode(MouseMode))
+			TecUtilMouseSetMode(MouseMode);
 		TecUtilLockFinish(*AddOnID);
 // 		CSMGuiDeleteLabelsRunning = false;
 	}
@@ -493,6 +509,7 @@ void DialogCloseButtonCB(){
 
 	TecGUIDialogDrop(CSMGuiDialogManager);
 	CSMGUIDeleteCPLabels();
+	TecUtilDrawGraphics(CSMGuiAutoRedrawIsActive);
 	TecUtilLockFinish(CSMGuiAddOnID);
 }
 
@@ -556,6 +573,8 @@ void DialogOKButtonCB(){
 		else if (t <= Gui_String) f.SetReturnString(TecGUITextFieldGetString(f.GetID()));
 		else if (t <= Gui_Radio) f.SetReturnInt(TecGUIRadioBoxGetToggle(f.GetID()));
 	}
+
+	TecUtilDrawGraphics(CSMGuiAutoRedrawIsActive);
 
 	TecUtilLockFinish(CSMGuiAddOnID);
 
@@ -650,6 +669,8 @@ void CSMLaunchGui(string const & Title,
 	vector<GuiField_c> const & Fields)
 {
 	TecUtilPleaseWait("Loading dialog...", TRUE);
+
+	CSMGuiAutoRedrawIsActive = TecUtilAutoRedrawIsActive();
 
 	CSMGuiFields = Fields;
 
@@ -786,11 +807,14 @@ void CSMLaunchGui(string const & Title,
 				vector<string> ListItems;
 				TecGUIIntCallback_pf fCB;
 				if (t == Gui_ZonePointSelectMulti){
+					TecUtilWorkAreaSuspend(TRUE);
+					TecUtilDrawGraphics(FALSE);
 					if (ZoneVarCommaListValid[0])
 						f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarCommaList[0].c_str(), CSMGuiPointSelectOptionCallback), 1);
 					else{
-						f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarList[0][0].c_str(), CSMGuiPointSelectOptionCallback), 1);
-						for (int i = 1; i < ZoneVarList[0].size(); ++i) TecGUIOptionMenuAppendItem(f.GetID(), ZoneVarList[0][i].c_str());
+						f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, StringReplaceSubString(ZoneVarList[0][0], ",", ".").c_str(), CSMGuiPointSelectOptionCallback), 1);
+						for (int i = 1; i < ZoneVarList[0].size(); ++i) 
+							TecGUIOptionMenuAppendItem(f.GetID(), StringReplaceSubString(ZoneVarList[0][i], ",", ".").c_str());
 					}
 					TecGUIOptionMenuSet(f.GetID(1), MAX(1, FieldZoneVarNums[fNum].back()));
 					fCB = CSMGuiPointSelectMultiListCallback;
@@ -924,7 +948,7 @@ void CSMGui(string const & Title,
 	CSMLaunchGui(Title, Fields);
 }
 
-void CSMGuiLock(){
+; void CSMGuiLock() {
 	TecUtilDrawGraphics(FALSE);
 	TecUtilInterfaceSuspend(TRUE);
 	TecUtilWorkAreaSuspend(TRUE);

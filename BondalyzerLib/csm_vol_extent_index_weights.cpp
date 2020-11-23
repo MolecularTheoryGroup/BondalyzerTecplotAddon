@@ -34,12 +34,13 @@ VolExtentIndexWeights_s & VolExtentIndexWeights_s::operator = (VolExtentIndexWei
 	MaxIJK = rhs.MaxIJK;
 	MaxXYZ = rhs.MaxXYZ;
 	MinXYZ = rhs.MinXYZ;
-	DelXYZ = rhs.DelXYZ;
+	PointSpacingV123 = rhs.PointSpacingV123;
 	BasisVectors = rhs.BasisVectors;
 	BasisNormalized = rhs.BasisNormalized;
 	BasisInverse = rhs.BasisInverse;
 	BasisExtent = rhs.BasisExtent;
 	IsPeriodic = rhs.IsPeriodic;
+	IsRectilinear = rhs.IsRectilinear;
 	AddOnID = rhs.AddOnID;
 
 	for (int i = 0; i < 8; ++i){
@@ -54,12 +55,13 @@ Boolean_t VolExtentIndexWeights_s::operator == (VolExtentIndexWeights_s const & 
 		MaxIJK == rhs.MaxIJK &&
 		sum(MaxXYZ == rhs.MaxXYZ) == 3 &&
 		sum(MinXYZ == rhs.MinXYZ) == 3 &&
-		sum(DelXYZ == rhs.DelXYZ ) == 3 &&
+		sum(PointSpacingV123 == rhs.PointSpacingV123 ) == 3 &&
 		sum(BasisExtent == rhs.BasisExtent) == 3 &&
 		sum(sum(BasisVectors == rhs.BasisVectors)) == 9 &&
 		sum(sum(BasisNormalized == rhs.BasisNormalized)) == 9 &&
 		sum(sum(BasisInverse == rhs.BasisInverse)) == 9 &&
 		IsPeriodic == rhs.IsPeriodic &&
+		IsRectilinear == rhs.IsRectilinear &&
 		AddOnID == rhs.AddOnID
 		);
 
@@ -84,10 +86,11 @@ Boolean_t GetVolInfo(int VolZoneNum,
 	for (int i = 0; i < 3; ++i) REQUIRE(VolInfo.MaxIJK[i] >= 3); // if less than 3 points, can't do numerical gradients (if necessary)
 
 	ZoneXYZVarGetMinMax_Ordered3DZone(XYZVarNums, VolZoneNum, VolInfo.MinXYZ, VolInfo.MaxXYZ);
-	VolInfo.DelXYZ = GetDelXYZ_Ordered3DZone(XYZVarNums, VolZoneNum);
 	ZoneXYZVarGetBasisVectors_Ordered3DZone(XYZVarNums, VolZoneNum, VolInfo.BasisVectors, VolInfo.BasisExtent);
+	VolInfo.PointSpacingV123 = GetDelXYZ_Ordered3DZone(XYZVarNums, VolZoneNum);
 	VolInfo.BasisInverse = mat33(VolInfo.BasisVectors.i());
 	VolInfo.BasisNormalized = mat33(normalise(VolInfo.BasisVectors));
+	VolInfo.IsRectilinear = approx_equal(mat33({ {1,0,0},{0,1,0},{0,0,1} }), VolInfo.BasisNormalized, "absdiff", 1e-14);
 	VolInfo.IsPeriodic = IsPeriodic;
 
 	return TRUE;

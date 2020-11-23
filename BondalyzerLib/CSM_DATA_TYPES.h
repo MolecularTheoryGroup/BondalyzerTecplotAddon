@@ -1,6 +1,4 @@
 #pragma once
-#ifndef CSMDATATYPES_H_
-#define CSMDATATYPES_H_
 
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
@@ -27,7 +25,7 @@ using std::string;
 
 double dot2(const vec & v);
 
-vector<string> const ElementSymbolList = { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Uut", "Fl", "Uup", "Lv", "Uus", "Uuo"};
+vector<string> const ElementSymbolList = { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"};
 vector<string> const ElementNameList = {
 "Hydrogen",
 "Helium",
@@ -141,14 +139,16 @@ vector<string> const ElementNameList = {
 "Darmstadtium",
 "Roentgenium",
 "Copernicium",
-"Ununtrium",
+"Nihonium",
 "Flerovium",
-"Ununpentium",
+"Moscovium",
 "Livermorium",
-"Ununseptium",
-"Ununoctium",
+"Tennessine",
+"Oganesson",
 "Atom "
 };
+
+int ElementCoreElectronCount(int AtomicNumber);
 
 vec const LogSpace(double const & low, double const & high, int n);
 
@@ -157,8 +157,8 @@ double DistSqr(vec const & A, vec const & B);
 double Distance(vec const & A, vec const & B);
 double VectorAngle(vec3 const & A, vec3 const & B);
 vec3 const SphericalToCartesian(double const & r, double const & theta, double const & phi);
-const mat44	RotationMatrix(double const & Angle, vec3 Axis);
-vec3 const Rotate(vec3 const & Point, double const & Angle, vec3 Axis);
+const mat44	RotationMatrix(double const & Angle, vec3 const & Axis);
+vec3 const Rotate(vec3 const & Point, double const & Angle, vec3 const & Axis);
 double const TriangleArea(vec3 const & A, vec3 const & B, vec3 const & C);
 double const TetVolume(vector<vec3> const & V); 
 double const HexahedronInternalPointTetVolume(vector<vec3> const & V);
@@ -214,6 +214,3 @@ enum CompDir_e{
 };
 
 string GetEdgeString(int ei, int ej);
-
-
-#endif

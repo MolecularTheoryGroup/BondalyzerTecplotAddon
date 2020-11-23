@@ -364,6 +364,21 @@ static void STDCALL GradientPathsOnSphereMenuCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL SimpleSurfacesAroundSaddlesMenuCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		SimpleSurfacesAroundSaddlesGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL GetClosedIsoSurfaceFromPointsCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -374,6 +389,20 @@ static void STDCALL GetClosedIsoSurfaceFromPointsCallback(void)
 		GetClosedIsoSurfaceFromPoints();
 
 		CSMGuiUnlock();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL GetClosedIsoSurfaceFromProbeCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		GetClosedIsoSurfacesInstallProbeCallback();
 	}
 	else
 	{
@@ -720,6 +749,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		GradientPathsOnSphereMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
+		string("Simple surfaces around bond/ring CPs").c_str(),
+		'\0',
+		SimpleSurfacesAroundSaddlesMenuCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Make surface from path zones").c_str(),
 		'\0',
 		MakeSurfaceFromPathZonesMenuCallback);
@@ -728,16 +762,22 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Create slice from CPs").c_str(),
 		'\0',
 		MakeSliceFomeCPsCallback);
+	
 
-	TecUtilMenuAddOption("MTG_Utilities",
-		string("Get closed isosurface from points").c_str(),
-		'\0',
-		GetClosedIsoSurfaceFromPointsCallback);
+		TecUtilMenuAddOption("MTG_Utilities",
+			string("Get closed isosurface component").c_str(),
+			'\0',
+			GetClosedIsoSurfaceFromProbeCallback);
 
-	TecUtilMenuAddOption("MTG_Utilities",
-		string("Get closed isosurface from nodes").c_str(),
-		'\0',
-		GetClosedIsoSurfaceFromNodesCallback);
+// 	TecUtilMenuAddOption("MTG_Utilities",
+// 		string("Get closed isosurface from points").c_str(),
+// 		'\0',
+// 		GetClosedIsoSurfaceFromPointsCallback);
+// 
+// 	TecUtilMenuAddOption("MTG_Utilities",
+// 		string("Get closed isosurface from nodes").c_str(),
+// 		'\0',
+// 		GetClosedIsoSurfaceFromNodesCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		string("Get all closed isosurface").c_str(),

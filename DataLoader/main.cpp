@@ -280,6 +280,15 @@ static void STDCALL LoadGaussianCubeMenuCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL LoadFLAPWCHARGEMenuCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+
+	LoadFLAPWCHARGEFiles();
+
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL LoadTurboMoleCubeMenuCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -400,6 +409,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		"Load TurboMole Binary PLT File(s)",
 		'\0',
 		LoadBinaryPLTFileDataMenuCallback);
+
+	TecUtilMenuAddOption("MTG_Load data",
+		"Load FLAPW CHARGE File(s)",
+		'\0',
+		LoadFLAPWCHARGEMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		"Refine ADF Tecplot Zone Data",

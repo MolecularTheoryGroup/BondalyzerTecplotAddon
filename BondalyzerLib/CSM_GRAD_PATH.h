@@ -1,8 +1,7 @@
 #pragma once
-#ifndef CSMGRADPATH_H_
-#define CSMGRADPATH_H_
 
 #include <vector>
+#include <set>
 
 #include "CSM_DATA_TYPES.h"
 #include "CSM_DATA_SET_INFO.h"
@@ -15,16 +14,35 @@ using namespace arma;
 
 using std::vector;
 
-#define GP_NumPointsBufferFactor	0.2
-#define GP_StallPointCount			8
-#define GP_StallNumPointsToCheck	8
-#define GP_StallPointDistTol		1e-8
+#define GP_NumPointsBufferFactor	2
+#define GP_StallPointCount			500
+#define GP_StallNumPointsToCheck	0
+#define GP_StallPointDistTol		1e-7
 #define GP_MaxNumPoints				10000
 #define GP_PlaneCPStallCount		30
 #define GP_PlaneCPMaxIter			100
+#define GP_MaxStepSize				5e-1
+
+static double const GP_DeviationAngleMaxCutoff = 170. / 180. * PI;
+
+
+static double const DefaultGPDeviationCheckAngleFactor = 0.15;
+static double const DefaultGPDeviationCheckDistFactor = 0.05;
+static double const DefaultGPDeviationStartPtLengthFactor = 0.1;
+
+
+static double const GB_DefaultKinkCheckAngle = 0.3 * PI;
 
 class CritPoints_c;
 class FESurface_c;
+
+enum GPResampleMethod_e
+{
+	GPResampleMethod_Linear = 0,
+	GPResampleMethod_Adaptive,
+
+	GPResampleMethod_Invalid = -1
+};
 
 enum GPTerminate_e
 {
@@ -64,6 +82,7 @@ struct GradPathParams_s{
 
 class GradPathBase_c
 {
+	friend class FESurface_c;
 public:
 	GradPathBase_c();
 	~GradPathBase_c();
@@ -105,10 +124,16 @@ public:
 		return TRUE;
 	}
 
-	Boolean_t Resample(int NumPoints);
+	void Clear();
+
+
+	void RemoveKinks(double const & AngleCutoff = GB_DefaultKinkCheckAngle);
+
+	Boolean_t Resample(int NumPoints, vector<int> & ProtectedPoints, GPResampleMethod_e Method = GPResampleMethod_Adaptive);
+	Boolean_t Resample(int NumPoints, GPResampleMethod_e Method = GPResampleMethod_Adaptive) { vector<int> v; return Resample(NumPoints, v, Method); }
 	Boolean_t Reverse();
-	GradPathBase_c & ConcatenateResample(GradPathBase_c & rhs, int NumPoints);
-	GradPathBase_c & ConcatenateResample(GradPathBase_c & rhs, int NumPoints, int & BrigePtNum);
+	GradPathBase_c & ConcatenateResample(GradPathBase_c & rhs, int NumPoints, GPResampleMethod_e Method = GPResampleMethod_Adaptive);
+	GradPathBase_c & ConcatenateResample(GradPathBase_c & rhs, int NumPoints, int & BrigePtNum, GPResampleMethod_e Method = GPResampleMethod_Adaptive);
 	GradPathBase_c & Concatenate(GradPathBase_c const & rhs) { return *this += rhs; }
 	Boolean_t Trim(vec3 const & Point, double const & Radius);
 	void PointAppend(vec3 const & Point, double const & Rho);
@@ -124,12 +149,16 @@ public:
 		ColorIndex_t const MeshColor = Black_C);
 	Boolean_t SaveAsCSV(string const & PathToFile, Boolean_t IncludeVars = FALSE);
 
+	Boolean_t TruncateAtRhoValue(double const & RhoVal);
+
 	/*
 	*	Getter methods
 	*/
 	Boolean_t IsMade() const { return m_GradPathMade; }
 	Boolean_t IsReady() const { return m_GradPathReady; }
 	double GetLength();
+	double GetLength(int AtInd = 0) const;
+	int GetIndAtLength(double const & Length) const;
 	int GetCount() const {
 		return static_cast<const int>(m_XYZList.size());
 	}
@@ -142,6 +171,28 @@ public:
 		return m_StartEndCPNum[i];
 	}
 
+	vec3 ClosestMaxCurvaturePoint(vec3 const & CheckPt) const { int i; return ClosestMaxCurvaturePoint(CheckPt, i); }
+	vec3 ClosestMaxCurvaturePoint(vec3 const & CheckPt, int & PtInd) const; 
+
+	bool GetPointAtRhoValue(double const & RhoValue, vec3 & OutVec, int & Ind, double & Weight) const;
+
+	bool GetDeviationMidpointRhoBasedFromOtherGP(GradPathBase_c const & GP, double const & CheckAngle, vec3 & OutPt, int & Ind1, int & Ind2, vec3 & Pt2) const;
+	bool GetDeviationMidpointClosestPointBasedFromOtherGP(GradPathBase_c const & GP, double const & CheckAngle, vec3 & OutPt, int & Ind1, int & Ind2, vec3 & Pt2) const;
+	bool GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOtherGP(GradPathBase_c const & GP, 
+		double const & CheckTermAngleFactor, 
+		double const & CheckTermDistFactor, 
+		double const & StartPtAsFactorOfLength, 
+		vec3 & OutPt, int & Ind1, 
+		int & Ind2, vec3 & Pt2,
+		double const & MinCheckDist = 0.0,
+		double const & MinCheckAngle = PIOVER2) const;
+	bool GetMaxSeparationMidpointFromOtherGP(GradPathBase_c const & GP, vec3 & OutPt, int & Ind1, int & Ind2, vec3 & Pt2, double & MaxDist, int step=1) const;
+	bool GetMaxSeparationMidpointFromOtherGPRhoBased(GradPathBase_c const & GP, vec3 & OutPt, int & Ind1, int & Ind2, vec3 & Pt2, double & MaxDist, int step=1) const;
+	bool GetSeparationMidpointAtDistFromOtherGP(GradPathBase_c const & GP, vec3 & OutPt, int & Ind1, int & Ind2, vec3 & Pt2, const double & MaxDist, const double & StartPtAsFactorOfLength) const;
+	double GetMaxSeparationFromNeighboringGPs(vector<GradPathBase_c const *> GPs, vector<int> & IndList, int & Ind) const;
+
+	vector<vec3> const * GetXYZListPtr() const { return &m_XYZList; }
+
 	vec3 XYZAt(int i) const { return operator[](i); }
 	double RhoAt(int i) const;
 
@@ -149,9 +200,14 @@ public:
 
 	vec3 ClosestPoint(vec3 const & rhs) const;
 	vec3 ClosestPoint(vec3 const & rhs, int & PtNum) const;
-	bool GetSphereIntersectionPoint(vec3 const & Center, double const & Radius, vec3 & IntersectionPoint) const;
+	int GetSphereIntersectionPoint(vec3 const & Center, double const & Radius, vec3 & IntersectionPoint) const;
+
+
 
 private:
+
+	void FixDeviationMidpoint(GradPathBase_c const & GP, vec3 & MidPt, int Ind1, int Ind2) const;
+	Boolean_t ResampleAdaptive(int NumPoints, vector<int> & ProtectedPoints);
 
 	unsigned int GetInd(int i) const{
 		REQUIRE(abs(i) < m_XYZList.size());
@@ -227,9 +283,30 @@ public:
 	/* 
 	 * Constructor for grad path from existing i-ordered zone
 	 */
-	GradPath_c::GradPath_c(EntIndex_t ZoneNum,
+	GradPath_c(EntIndex_t ZoneNum,
 		vector<EntIndex_t> const & XYZRhoVarNums,
 		AddOn_pa const & AddOnID);
+
+
+	// Constructor that makes a new GradPath using the midpoints
+	// of the provided GradPaths.
+	GradPath_c(vector<GradPathBase_c const *> const & GPs,
+		double const & Path1Weight,
+		double const & RhoVal,
+		int GPStep);
+
+	// Constructor that makes a surface from the provided 
+	// GradPaths and then seeds a new grad path constrained to that
+	// surface.
+	GradPath_c(vector<GradPath_c const *> const & GPs,
+		vec3 const & SeedPoint,
+		StreamDir_e GPDir,
+		vector<std::pair<int, int> > StartEndGPInds = {},
+		vec3 const * TermPoint = nullptr,
+		double const * TermPointRadiu = nullptr);
+
+	// Construct from vector<vec3> points and optional vector<double> rho values
+	GradPath_c(vector<vec3> const & XYZList, vector<double> const RhoList = vector<double>());
 
 	/*
 	* Copy constructor
@@ -250,6 +327,19 @@ public:
 	/*
 	*	Getter methods
 	*/
+
+	GPTerminate_e GetGPTermType() { return m_HowTerminate; }
+	vec3 GetStartPoint() { return m_StartPoint; };
+	GPType_e GetGPType() { return m_GPType; }
+	double GetTermPointRadius() { return sqrt(m_TermPointRadiusSqr); }
+	double GetTermValue() { return m_TermValue; }
+	VolExtentIndexWeights_s GetVolInfo() { return m_ODE_Data.VolZoneInfo; }
+	FieldDataPointer_c GetRhoPtr() { return m_ODE_Data.RhoPtr; }
+	vec3 GetTermPoint() { return m_TermPoint; }
+	vector<CPTypeNum_e> GetTerminalCPTypeNums() { return m_TerminalCPTypeNums; }
+	FESurface_c const * GetSurfPtr() { return m_Surface; }
+	StreamDir_e GetDir() { return m_ODE_Data.Direction; }
+
 
 	/*
 	*	Setter methods
@@ -294,8 +384,29 @@ public:
 		return TRUE;
 	}
 
+	void Clear();
 
-	Boolean_t ReinterpolateRhoValuesFromVolume(VolExtentIndexWeights_s * VolInfo = nullptr);
+	void SetNumGPPoints(int NumPts) { m_NumGPPoints = NumPts; }
+
+	void SetGPTermType(GPTerminate_e Type) { m_HowTerminate = Type; }
+	void SetStartPoint(vec3 const & pt);
+	void SetGPType(GPType_e Type) { m_GPType = Type; }
+	void SetTermPointRadius(double Rad) { m_TermPointRadiusSqr = Rad * Rad; }
+	void SetTermValue(double Val) { m_TermValue = Val; }
+	void SetVolInfo(VolExtentIndexWeights_s VolInfo) { m_ODE_Data.VolZoneInfo = VolInfo; }
+	void SetRhoPtr(FieldDataPointer_c & RhoPtr) { m_ODE_Data.RhoPtr = RhoPtr; }
+	void SetTermPoint(vec3 const & pt) { m_TermPoint = pt; }
+	void SetTerminalCPTypeNum(CPTypeNum_e CPTypeNum);
+	void SetTerminalCPTypeNums(vector<CPTypeNum_e> const & CPTypeNums);
+	void SetSurfPtr(FESurface_c const * SurfPtr, int SurfProjectionFrequency = -1) { m_Surface = SurfPtr; m_SurfGPProjectionFrequency = SurfProjectionFrequency; }
+	void SetDir(StreamDir_e Dir) { m_ODE_Data.Direction = Dir; }
+
+	void MakeRhoValuesMonotomic(VolExtentIndexWeights_s * VolInfo = nullptr, FieldDataPointer_c * RhoPtr = nullptr);
+
+
+	Boolean_t ReinterpolateRhoValuesFromVolume(VolExtentIndexWeights_s * VolInfo = nullptr, FieldDataPointer_c * RhoPtr = nullptr);
+
+	Boolean_t ProjectPathToSurface(FESurface_c const * SurfPtr = nullptr);
 
 private:
 	//Boolean_t SetIndexAndWeightsForPoint(vec3 & Point);
@@ -333,11 +444,14 @@ private:
 	CritPoints_c * m_CPs;
 	// if surface grad path
 	FESurface_c const * m_Surface;
+	int m_SurfGPProjectionFrequency = -1;
 	// For point or CP:
-	double m_TermPointRadiusSqr;
+	double m_TermPointRadiusSqr = 0;
 	// Variable value
 	// Which item in dep var list used for terminal value?
-	double m_TermValue;
+	double m_TermValue = -1;
+
+	vector<CPTypeNum_e> m_TerminalCPTypeNums;
 
 	GPTerminate_e m_HowTerminate;
 	vec3 m_StartPoint;
@@ -373,10 +487,10 @@ private:
 };
 
 
-GradPath_c ConcatenateResample(vector<GradPath_c> GPList, int NumPoints);
+GradPath_c ConcatenateResample(vector<GradPath_c> GPList, int NumPoints, vector<int> GPNumPointsList = {}, GPResampleMethod_e Method = GPResampleMethod_Adaptive);
 
 /*
-*	Redo of path stitching algorithm, formally TryPolyLines
+*	Redo of path stitching algorithm, formally TriPolyLines
 */
 void StitchPaths(
 	vector<int> const &     L,       // indices of points in P
@@ -387,10 +501,11 @@ void StitchPaths(
 void StitchCapPaths(
 	vector<int> const &     L,       // indices of points in P
 	vector<int> const &     R,
-	vector<int> const &		C,       // indices of points in the cap, C
+	vector<int> &			C,       // indices of points in the cap, C
 	vector<vec3> const &     P,
-	vector<vector<int> > &     T       // triplets of integers specifying nodes of triangles
+	vector<vector<int> > &     T,       // triplets of integers specifying nodes of triangles
+	int LeftPathDeviationPointInd = -1,
+	int RightPathDeviationPointInd = -1,
+	int CapMidPointInd = -1
 	);
 
-
-#endif

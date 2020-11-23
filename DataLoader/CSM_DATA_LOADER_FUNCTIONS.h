@@ -1,6 +1,4 @@
-
-#ifndef CSMDATALOADERFUNCTIONS_H_
-#define CSMDATALOADERFUNCTIONS_H_
+#pragma once
 
 #include <string>
 #include <vector>
@@ -126,5 +124,3 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 	vector<string> const & XYZVarNames,
 	vector<FieldDataType_e> & VarDataTypes,
 	int GroupIndex);
-
-#endif

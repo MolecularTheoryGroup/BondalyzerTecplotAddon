@@ -1,6 +1,4 @@
 #pragma once
-#ifndef CSMCALCVARS_H_
-#define	CSMCALCVARS_H_
 
 #include <vector>
 #include <string>
@@ -202,5 +200,3 @@ void GaussianBlur(Boolean_t IsPeriodic,
 vec3 Transform2dTo3d(vec2 const & TwoPt,
 	mat33 const & BasisVectors,
 	vec3 const & Origin);
-
-#endif

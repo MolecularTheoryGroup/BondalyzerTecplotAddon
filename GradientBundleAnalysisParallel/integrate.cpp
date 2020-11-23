@@ -684,7 +684,7 @@ int GetRecommendedIntPrecision(){
 			}
 			TecUtilDataLoadEnd();
 			double DelXYZMag = sqrt(sum(square(GetDelXYZ_Ordered3DZone(XYZVarNums, ZoneNumByName("Full Volume")))));
-			RecPrecision = MIN(16, MAX(0,static_cast<int>(std::log2(DelXYZMag / (MinCPSpacing * DefaultRadius * PI * 2.0 / 40.0)))));
+			RecPrecision = MIN(16, MAX(0,static_cast<int>(std::log2(DelXYZMag / (MinCPSpacing * GBADefaultSphereRadius * PI * 2.0 / 40.0)))));
 		}
 	}
 

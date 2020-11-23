@@ -29,6 +29,7 @@
 #include "LOADDATA.h"
 
 #define BorhToAngstrom 0.529177249
+#define AngstromToBohr 1.889725989
 
 using std::vector;
 using std::string;
@@ -747,6 +748,8 @@ Boolean_t LoadVASPData(){
 			if (IsOk)
 				VolZoneNum = TecUtilDataSetGetNumZones();
 
+			SetZoneStyle({ VolZoneNum }, ZoneStyle_Volume);
+
 			vector<FieldDataPointer_c> VarRawPtrs(NumVars);
 
 			TecUtilDataLoadBegin();
@@ -1434,6 +1437,8 @@ int LoadADFTape41ASCIIData(char* FileNameCStr)
 	TecUtilStringListDealloc(&VarNames);
 	EntIndex_t ZoneNum, VolZoneNum;
 	VolZoneNum = TecUtilDataSetGetNumZones();
+
+	SetZoneStyle({ VolZoneNum }, ZoneStyle_Volume);
 
 	/*
 	 *	Now loop over list of variables in the file, reading them in some set number of points at a time
@@ -2366,6 +2371,7 @@ void LoadADFTape41Data(){
 					IsOk = TecUtilDataSetAddVar(CurrentVarName.c_str(), ZoneDataTypes.data());
 					if (IsOk){
 						VarNum = TecUtilDataSetGetNumVars();
+						VarDataTypes.push_back(FieldDataType_Double);
 						IsOk = (VarNum > 0);
 					}
 				}
@@ -2413,6 +2419,8 @@ void LoadADFTape41Data(){
 
 	if (UnloadBetweenVars)
 		TecUtilDataLoadBegin();
+
+	SetZoneStyle({ VolZoneNum }, ZoneStyle_Volume);
 
 	if (!ReplaceDataSet){
 		TecUtilZoneSetScatter(SV_SHOW, VolZoneSet, 0.0, FALSE);
@@ -2506,50 +2514,52 @@ void LoadADFTape41Data(){
 		vector<AtomColor_s> AtomColorList;
 		PopulateAtomColorList(AtomColorList);
 
-		for (int GroupNum = 0; GroupNum < AtomGroupList.size() && IsOk; ++GroupNum){
-			IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, VarDataTypes.data());
+		CreateAtomZonesFromAtomGroupList(AtomGroupList, { "X","Y","Z" }, VarDataTypes, 50);
 
-			if (IsOk){
-				ZoneNum = TecUtilDataSetGetNumZones();
-				IsOk = AuxDataZoneSetItem(ZoneNum, DLZoneType, DLZoneTypeNuclearPositions);
-			}
-			if (IsOk){
-				IsOk = AuxDataZoneSetItem(ZoneNum, DLZoneAtomicSpecies, AtomGroupList[GroupNum].Name);
-			}
-
-			if (IsOk){
-				FieldData_pa VarRef[3] = {
-					TecUtilDataValueGetWritableNativeRef(ZoneNum, TecUtilVarGetNumByName("X")),
-					TecUtilDataValueGetWritableNativeRef(ZoneNum, TecUtilVarGetNumByName("Y")),
-					TecUtilDataValueGetWritableNativeRef(ZoneNum, TecUtilVarGetNumByName("Z"))
-				};
-				if (VALID_REF(VarRef[0]) && VALID_REF(VarRef[0]) && VALID_REF(VarRef[0])){
-					for (int i = 0; i < 3; ++i){
-						vector<ImportType_t> ImportBuffer(AtomGroupList[GroupNum].Positions[i].begin(), AtomGroupList[GroupNum].Positions[i].end());
-						// 					TecUtilDataValueArraySetByRef(VarRef[i], 1, AtomGroupList[GroupNum].Count, AtomGroupList[GroupNum].Positions[i].data());
-						TecUtilDataValueArraySetByRef(VarRef[i], 1, AtomGroupList[GroupNum].Count, ImportBuffer.data());
-					}
-				}
-
-				TecUtilSetAddMember(NewZones, ZoneNum, FALSE);
-
-				Set_pa TempSet = TecUtilSetAlloc(TRUE);
-				TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
-
-				TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
-				TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, GetAtomColor(AtomColorList, AtomGroupList[GroupNum].Name));
-				TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(2 * sqrt(AtomGroupList[GroupNum].Charges[0]), 8), 0);
-				TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
-
-				TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
-				TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
-				TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
-				TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
-				TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
-
-				TecUtilSetDealloc(&TempSet);
-			}
-		}
+//  		for (int GroupNum = 0; GroupNum < AtomGroupList.size() && IsOk; ++GroupNum){
+//  			IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, NULL);
+//  
+//  			if (IsOk){
+//  				ZoneNum = TecUtilDataSetGetNumZones();
+//  				IsOk = AuxDataZoneSetItem(ZoneNum, DLZoneType, DLZoneTypeNuclearPositions);
+//  			}
+//  			if (IsOk){
+//  				IsOk = AuxDataZoneSetItem(ZoneNum, DLZoneAtomicSpecies, AtomGroupList[GroupNum].Name);
+//  			}
+//  
+//  			if (IsOk){
+//  				FieldData_pa VarRef[3] = {
+//  					TecUtilDataValueGetWritableNativeRef(ZoneNum, TecUtilVarGetNumByName("X")),
+//  					TecUtilDataValueGetWritableNativeRef(ZoneNum, TecUtilVarGetNumByName("Y")),
+//  					TecUtilDataValueGetWritableNativeRef(ZoneNum, TecUtilVarGetNumByName("Z"))
+//  				};
+//  				if (VALID_REF(VarRef[0]) && VALID_REF(VarRef[0]) && VALID_REF(VarRef[0])){
+//  					for (int i = 0; i < 3; ++i){
+//  						vector<ImportType_t> ImportBuffer(AtomGroupList[GroupNum].Positions[i].begin(), AtomGroupList[GroupNum].Positions[i].end());
+//  						// 					TecUtilDataValueArraySetByRef(VarRef[i], 1, AtomGroupList[GroupNum].Count, AtomGroupList[GroupNum].Positions[i].data());
+//  						TecUtilDataValueArraySetByRef(VarRef[i], 1, AtomGroupList[GroupNum].Count, ImportBuffer.data());
+//  					}
+//  				}
+//  
+//  				TecUtilSetAddMember(NewZones, ZoneNum, FALSE);
+//  
+//  				Set_pa TempSet = TecUtilSetAlloc(TRUE);
+//  				TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
+//  
+//  				TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
+//  				TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, GetAtomColor(AtomColorList, AtomGroupList[GroupNum].Name));
+//  				TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(2 * sqrt(AtomGroupList[GroupNum].Charges[0]), 8), 0);
+//  				TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
+//  
+//  				TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
+//  				TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+//  				TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+//  				TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+//  				TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
+//  
+//  				TecUtilSetDealloc(&TempSet);
+//  			}
+//  		}
 
 		/*
 		*	Inform Tecplot of the new zones
@@ -2784,9 +2794,10 @@ void LoadBANDTape41Data(){
 	TempStrings.clear();
 
 	mat33 LatticeVector;
-	double StartPoint[3];
+	vec3 StartPoint;
+// 	double StartPoint[3];
 	if (IsOk)
-		IsOk = (getKFData(&GlobalKFFile, "Grid%Start_point", &StartPoint) > 0);
+		IsOk = (getKFData(&GlobalKFFile, "Grid%Start_point", StartPoint.memptr()) > 0);
 	TempStrings = { "Grid%x-vector", "Grid%y-vector", "Grid%z-vector" };
 	for (int i = 0; i < 3 && IsOk; ++i){
 		double TmpDbl[3];
@@ -2849,6 +2860,9 @@ void LoadBANDTape41Data(){
 	if (IsOk)
 		VolZoneNum = TecUtilDataSetGetNumZones();
 
+
+	SetZoneStyle({ VolZoneNum }, ZoneStyle_Volume);
+
 	StatusLaunch("Loading Tape41 file", AddOnID, TRUE);
 
 	string IsoSurfaceVarName;
@@ -2904,7 +2918,7 @@ void LoadBANDTape41Data(){
 							LgIndex_t Index = IndexFromIJK(i + Zx*MaxI, j + Zy*MaxJ, k + Zz*MaxK, TMx, TMy, TMz, TRUE) - 1;
 							LgIndex_t SmIndex = IndexFromIJK(i, j, k, MaxI, MaxJ, MaxK, TRUE) - 1;
 
-							vec3 XYZ = LatticeVector * TotIJK;
+							vec3 XYZ = StartPoint + LatticeVector * TotIJK;
 							for (int VarNum = 0; VarNum < 3; ++VarNum){
 								VarRawPtrs[VarNum].Write(Index, XYZ[VarNum]);
 							}
@@ -3071,70 +3085,72 @@ void LoadBANDTape41Data(){
 		*	All atoms for an atom type have been made, so create a ordered zone
 		*	with the atom positions.
 		*/
-		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), static_cast<int>(XYZ[0].size()), 1, 1, ZoneType_Ordered, VarDataTypes.data());
-
-		if (IsOk){
-			EntIndex_t ZoneNum = TecUtilDataSetGetNumZones();
-			FieldData_pa VarRef[3] = {
-				TecUtilDataValueGetWritableNativeRef(ZoneNum, 1),
-				TecUtilDataValueGetWritableNativeRef(ZoneNum, 2),
-				TecUtilDataValueGetWritableNativeRef(ZoneNum, 3)
-			};
-			if (VALID_REF(VarRef[0]) && VALID_REF(VarRef[0]) && VALID_REF(VarRef[0])){
-				for (int i = 0; i < 3; ++i){
-					TecUtilDataValueArraySetByRef(VarRef[i], 1, static_cast<int>(XYZ[i].size()), XYZ[i].data());
-				}
-			}
-
-			if (IsOk)
-				IsOk = TecUtilSetAddMember(NewZones, TecUtilDataSetGetNumZones(), FALSE);
-
-			/*
-			*	Get the value of charge density at the first atom in the group.
-			*	This will be used to scale the scatter point sphere based
-			*	on the atom's charge.
-			*/
-			double TmpDbl;
-
-			if (IsOk){
-				vector<double> TmpDbls(NumVars);
-				LgIndex_t LgIndexJunk;
-				IJKPlanes_e IJKPlanesJunk;
-				EntIndex_t EntIndexJunk;
-				Set_pa TempSet = TecUtilSetAlloc(TRUE);
-				TecUtilSetAddMember(TempSet, 1, FALSE);
-				TecUtilProbeAtPosition(XYZ[0][0], XYZ[1][0], XYZ[2][0],
-					&LgIndexJunk, &LgIndexJunk, &LgIndexJunk, &IJKPlanesJunk, &EntIndexJunk, FALSE,
-					TmpDbls.data(), TempSet, TRUE, FALSE, FALSE);
-				TecUtilSetDealloc(&TempSet);
-
-				TmpDbl = TmpDbls[3];
-			}
-
-			/*
-			*	Set all the style information for the atom zone.
-			*/
-			Set_pa TempSet = TecUtilSetAlloc(TRUE);
-			TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
-
-			TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
-
-			TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, AtomGroupList[GroupNum].AtomColor);
-
-			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(8, 2 * sqrt(TmpDbl)), 0);
-			TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
-
-			TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
-			TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
-			TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
-			TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
-			TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
-
-			TecUtilZoneSetActive(TempSet, AssignOp_PlusEquals);
-
-			TecUtilSetDealloc(&TempSet);
-		}
+// 		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), static_cast<int>(XYZ[0].size()), 1, 1, ZoneType_Ordered, VarDataTypes.data());
+// 
+// 		if (IsOk){
+// 			EntIndex_t ZoneNum = TecUtilDataSetGetNumZones();
+// 			FieldData_pa VarRef[3] = {
+// 				TecUtilDataValueGetWritableNativeRef(ZoneNum, 1),
+// 				TecUtilDataValueGetWritableNativeRef(ZoneNum, 2),
+// 				TecUtilDataValueGetWritableNativeRef(ZoneNum, 3)
+// 			};
+// 			if (VALID_REF(VarRef[0]) && VALID_REF(VarRef[0]) && VALID_REF(VarRef[0])){
+// 				for (int i = 0; i < 3; ++i){
+// 					TecUtilDataValueArraySetByRef(VarRef[i], 1, static_cast<int>(XYZ[i].size()), XYZ[i].data());
+// 				}
+// 			}
+// 
+// 			if (IsOk)
+// 				IsOk = TecUtilSetAddMember(NewZones, TecUtilDataSetGetNumZones(), FALSE);
+// 
+// 			/*
+// 			*	Get the value of charge density at the first atom in the group.
+// 			*	This will be used to scale the scatter point sphere based
+// 			*	on the atom's charge.
+// 			*/
+// 			double TmpDbl;
+// 
+// 			if (IsOk){
+// 				vector<double> TmpDbls(NumVars);
+// 				LgIndex_t LgIndexJunk;
+// 				IJKPlanes_e IJKPlanesJunk;
+// 				EntIndex_t EntIndexJunk;
+// 				Set_pa TempSet = TecUtilSetAlloc(TRUE);
+// 				TecUtilSetAddMember(TempSet, 1, FALSE);
+// 				TecUtilProbeAtPosition(XYZ[0][0], XYZ[1][0], XYZ[2][0],
+// 					&LgIndexJunk, &LgIndexJunk, &LgIndexJunk, &IJKPlanesJunk, &EntIndexJunk, FALSE,
+// 					TmpDbls.data(), TempSet, TRUE, FALSE, FALSE);
+// 				TecUtilSetDealloc(&TempSet);
+// 
+// 				TmpDbl = TmpDbls[3];
+// 			}
+// 
+// 			/*
+// 			*	Set all the style information for the atom zone.
+// 			*/
+// 			Set_pa TempSet = TecUtilSetAlloc(TRUE);
+// 			TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
+// 
+// 			TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, TRUE);
+// 
+// 			TecUtilZoneSetScatter(SV_COLOR, TempSet, 0.0, AtomGroupList[GroupNum].AtomColor);
+// 
+// 			TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, MIN(8, 2 * sqrt(TmpDbl)), 0);
+// 			TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
+// 
+// 			TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, FALSE);
+// 			TecUtilZoneSetContour(SV_SHOW, TempSet, 0.0, FALSE);
+// 			TecUtilZoneSetVector(SV_SHOW, TempSet, 0.0, FALSE);
+// 			TecUtilZoneSetShade(SV_SHOW, TempSet, 0.0, FALSE);
+// 			TecUtilZoneSetEdgeLayer(SV_SHOW, TempSet, 0.0, FALSE);
+// 
+// 			TecUtilZoneSetActive(TempSet, AssignOp_PlusEquals);
+// 
+// 			TecUtilSetDealloc(&TempSet);
+// 		}
 	}
+
+	CreateAtomZonesFromAtomGroupList(AtomGroupList, { "X","Y","Z" }, VarDataTypes, 50);
 
 	/*
 	*	Inform Tecplot of the new zones
@@ -3938,6 +3954,8 @@ Boolean_t LoadADFTape21(){
 		return LoaderFailed;
 	}
 
+	Boolean_t DeleteUselessData = TRUE;
+
 	/*
 	 *	Get all information about contents of Tape21.
 	 *	Includes names of sections/variables and length/type of variables
@@ -4239,6 +4257,7 @@ Boolean_t LoadADFTape21(){
 		 */
 
 		int NumBonds;
+		int NumPtsPerBond = 500;
 
 		Tmp = ZoneNumByName(T21Prefix + "Geometry%guinbonds");
 		if (Tmp > 0){
@@ -4262,6 +4281,21 @@ Boolean_t LoadADFTape21(){
 			AtomXYZInputOrderPtr.GetReadPtr(Tmp, ImportDataVarNum);
 		else IsOk = FALSE;
 
+		/*
+		 *	Make scatter zone for bond midpoints
+		 */
+		Set_pa GUIBondMidpointZoneSet = TecUtilSetAlloc(FALSE);
+		IsOk = TecUtilDataSetAddZone("GUI bond midpoints", NumBonds, 1, 1, ZoneType_Ordered, TypeVec.data());
+		ZoneNum = TecUtilDataSetGetNumZones();
+		IsOk = TecUtilSetAddMember(GUIBondMidpointZoneSet, ZoneNum, TRUE);
+		TecUtilZoneSetMesh(SV_SHOW, GUIBondMidpointZoneSet, 0.0, FALSE);
+		TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, GUIBondMidpointZoneSet, GeomShape_Sphere);
+		TecUtilZoneSetScatter(SV_FRAMESIZE, GUIBondMidpointZoneSet, 1, 0);
+		TecUtilZoneSetScatter(SV_SHOW, GUIBondMidpointZoneSet, 0.0, TRUE);
+		TecUtilZoneSetActive(GUIBondMidpointZoneSet, AssignOp_MinusEquals);
+		FieldVecPointer_c GUIBondMidpointZoneXYZPtr;
+		GUIBondMidpointZoneXYZPtr.GetWritePtr(ZoneNum, { 1,2,3 });
+
 		for (int BNum = 0; BNum < NumBonds; ++BNum){
 			string BondStr = "GUI bond " + to_string(BNum + 1) + ": ";
 			for (int i = 0; i < 2; ++i){
@@ -4280,7 +4314,7 @@ Boolean_t LoadADFTape21(){
 				}
 			}
 
-			IsOk = TecUtilDataSetAddZone(BondStr.c_str(), 2, 1, 1, ZoneType_Ordered, TypeVec.data());
+			IsOk = TecUtilDataSetAddZone(BondStr.c_str(), NumPtsPerBond, 1, 1, ZoneType_Ordered, TypeVec.data());
 			if (IsOk){
 				ZoneNum = TecUtilDataSetGetNumZones();
 				IsOk = TecUtilSetAddMember(ZoneSet, ZoneNum, TRUE);
@@ -4288,15 +4322,27 @@ Boolean_t LoadADFTape21(){
 			if (IsOk)
 				IsOk = TecUtilSetAddMember(GuiBondZones, ZoneNum, TRUE);
 
-			for (int i = 1; i <= 2 && IsOk; ++i){
+			vector<vec3> StartEndXYZ(2);
+
+			for (int i = 0; i < 2 && IsOk; ++i){
 				for (int j = 0; j < 3 && IsOk; ++j){
-					int AtomInd = j + (3 * (BondAtomNumPtr[BNum + (i - 1) * NumBonds] - 1));
+					int AtomInd = j + (3 * (BondAtomNumPtr[BNum + i * NumBonds] - 1));
 					double TmpVal = AtomXYZInputOrderPtr[AtomInd];
-					IsOk = TecUtilDataValueSetByZoneVar(ZoneNum, 
-						XYZVarNums[j], 
-						i, 
-						TmpVal);
+					StartEndXYZ[i][j] = TmpVal;
+// 					IsOk = TecUtilDataValueSetByZoneVar(ZoneNum, 
+// 						XYZVarNums[j], 
+// 						i, 
+// 						TmpVal);
 				}
+			}
+
+			GUIBondMidpointZoneXYZPtr.Write(BNum, (StartEndXYZ[0] + StartEndXYZ[1]) * 0.5);
+
+			vec3 stepVec = (StartEndXYZ[1] - StartEndXYZ[0]) / double(NumPtsPerBond - 1);
+			FieldVecPointer_c xyzVecPtr;
+			xyzVecPtr.GetWritePtr(ZoneNum, { 1,2,3 });
+			for (int i = 0; i < NumPtsPerBond; ++i){
+				xyzVecPtr.Write(i, StartEndXYZ[0] + stepVec * double(i));
 			}
 
 			Set_pa TempSet = TecUtilSetAlloc(TRUE);
@@ -4305,6 +4351,9 @@ Boolean_t LoadADFTape21(){
 
 				TecUtilZoneSetMesh(SV_SHOW, TempSet, 0.0, TRUE);
 				TecUtilZoneSetMesh(SV_COLOR, TempSet, 0.0, Black_C);
+				TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TempSet, GeomShape_Sphere);
+				TecUtilZoneSetScatter(SV_FRAMESIZE, TempSet, 0.5, 0);
+				TecUtilZoneSetScatter(SV_SHOW, TempSet, 0.0, FALSE);
 				if (BondTypePtr[BNum] == static_cast<int>(BondTypePtr[BNum]))
 					TecUtilZoneSetMesh(SV_LINEPATTERN, TempSet, 0.0, LinePattern_Solid);
 				else
@@ -4645,6 +4694,30 @@ Boolean_t LoadADFTape21(){
 		
 		TecUtilDataLoadEnd();
 	}
+
+	/*
+	 *	Delete all the raw Tape21 data
+	 */
+	Set_pa tmpSet = TecUtilSetAlloc(FALSE);
+	for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
+		char * zoneName;
+		if (TecUtilZoneGetName(z, &zoneName)){
+			string nameStr(zoneName);
+			if (nameStr.length() >= 4 && nameStr.find(T21Prefix) != string::npos) {
+				TecUtilSetAddMember(tmpSet, z, FALSE);
+			}
+			TecUtilStringDealloc(&zoneName);
+		}
+	}
+	if (!TecUtilSetIsEmpty(tmpSet)) {
+		TecUtilDataSetDeleteZone(tmpSet);
+	}
+	TecUtilSetDealloc(&tmpSet);
+	tmpSet = TecUtilSetAlloc(FALSE);
+	TecUtilSetAddMember(tmpSet, 4, FALSE);
+	TecUtilDataSetDeleteVar(tmpSet);
+	TecUtilSetDealloc(&tmpSet);
+	
 
 	if (IsOk)
 		TecUtilViewDataFit();
@@ -5041,6 +5114,7 @@ void LoadGaussianCubeFiles()
 
 			Set_pa VolZoneSet = TecUtilSetAlloc(TRUE);
 			if (IsOk){
+				SetZoneStyle({ VolZoneNum }, ZoneStyle_Volume);
 				TecUtilSetAddMember(VolZoneSet, VolZoneNum, TRUE);
 			}
 
@@ -5281,6 +5355,541 @@ void LoadGaussianCubeFiles()
 	TecUtilLockFinish(AddOnID);
 }
 
+
+bool GetFLAPWCHARGEFileHeader(string const & fileName, string & fieldName, int & nx, int & ny, int & ns, double & lx, double & ly, string & firstVal) {
+	bool IsOk = true;
+
+	ifstream CHARGEFile(fileName);
+
+	if (!CHARGEFile.is_open()) {
+		return false;
+	}
+
+	string H1, H2;
+	getline(CHARGEFile, H1);
+	getline(CHARGEFile, H2);
+
+	stringstream ss;
+	ss << H1;
+
+	fieldName = StringJoin(SplitString(H2, " ", true, true));
+
+
+	// Split first line and check as valid header (+int +int +int +double +double)
+	vector<string> SplitH1 = SplitString(H1, " ", true, true);
+
+
+	if (SplitH1.size() != 5) {
+		return false;
+	}
+
+	IsOk = (
+		StringIsInt(SplitH1[0]) &&
+		StringIsInt(SplitH1[1]) &&
+		StringIsInt(SplitH1[2]) &&
+		StringIsFloat(SplitH1[3]) &&
+		StringIsFloat(SplitH1[4])
+		);
+
+	if (!IsOk) {
+		return false;
+	}
+
+	ss >> nx >> ny >> ns >> lx >> ly; // read in first header line
+
+	/*
+	*	Header is now read. Next fetch the first value in the file.
+	*	After reading the entire file into memory, we'll use the first
+	*	value to identify when we've arrived at the beginning of the
+	*	data block.
+	*/
+
+	CHARGEFile >> firstVal;
+
+	while (!StringIsFloat(firstVal)){
+		CHARGEFile >> firstVal;
+	}
+
+	if (!StringIsFloat(firstVal)){
+		return false;
+	}
+
+	return true;
+}
+
+bool GetFLAPWCHARGEFileFieldData(string const & fileName, string const & firstVal, vector<float> & data)
+{
+	bool IsOk = true;
+
+	ifstream CHARGEFile(fileName);
+
+	if (!CHARGEFile.is_open()) {
+		return false;
+	}
+
+	/*
+	*	Read whole file into memory
+	*/
+	CHARGEFile.seekg(0, CHARGEFile.end);
+	std::streamoff FileSize = CHARGEFile.tellg();
+	CHARGEFile.seekg(0, CHARGEFile.beg);
+
+
+	vector<char> CHARGEFileContents(FileSize);
+	CHARGEFile.read(CHARGEFileContents.data(), FileSize);
+	CHARGEFile.close();
+
+	/*
+	*	Run through the char vector CubeFileContents to find the first data value
+	*/
+
+	char* TmpCStr = strtok(CHARGEFileContents.data(), " \n");
+	while (TmpCStr != nullptr && firstVal.compare(TmpCStr))
+		TmpCStr = strtok(nullptr, " \n");
+
+	// size of data tells us how many values are expected
+	int i = 0;
+	while (TmpCStr != nullptr && i < data.size()){
+		data[i] = atof(TmpCStr);
+		TmpCStr = strtok(nullptr, " \n");
+		i++;
+	}
+
+	if (i < data.size()){
+		return false;
+	}
+
+	return true;
+}
+
+// Trump is a super callous fragile racist sexist nazi POTUS
+
+
+/*
+*	Loads one or more 2D CHARGE grids from FLAPW.
+*	A 3d grid is composed of multiple 2d grid files.
+*	Files must be sorted so that they correspond to consecutive slices of the 3d grid.
+*	Header information from first file is used to determine the system extent.
+*	Here we assume that the z spacing is the same as the x spacing
+*
+*	Example CHARGE contents
+*
+  801 1201    1  20.00000  30.00000 // NumXPts, NumYPts, NumSpins, X extent (bohr), Y extent (bohr)
+ total density // name of density
+  0.493235E-01  0.490900E-01  0.488877E-01  0.487172E-01  0.485794E-01
+  0.484748E-01  0.484044E-01  0.483691E-01  0.483697E-01  0.484074E-01
+  0.484833E-01  0.485986E-01  0.487545E-01  0.489524E-01  0.491937E-01
+  0.494799E-01  0.498123E-01  0.501927E-01  0.506226E-01  0.511036E-01
+  0.516374E-01  0.522257E-01  0.530421E-01  0.537439E-01  0.545290E-01
+  0.553822E-01  0.563362E-01  0.573829E-01  0.585322E-01  0.598104E-01
+  0.611943E-01  0.627353E-01  0.644193E-01  0.662755E-01  0.683283E-01
+*/
+void LoadFLAPWCHARGEFiles() {
+	StringList_pa FileNameStrList = TecUtilStringListAlloc();
+	vector<string> FileNames;
+	Boolean_t IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNameStrList, "FLAPW CHARGE File(s)", nullptr, "*");
+
+	if (IsOk && FileNameStrList != nullptr){
+		for (int i = 1; i <= TecUtilStringListGetCount(FileNameStrList); ++i){
+			FileNames.emplace_back(TecUtilStringListGetString(FileNameStrList, i));
+		}
+	}
+
+	if (!IsOk){
+		return;
+	}
+
+// 	FileNames = {
+// 		"Z:\\Tecplot\\StorageWorkspace\\2020_FLAPW-dataLoader\\CHARGE"
+// 	};
+// 	for (int i = 0; i < 10; ++i) FileNames.push_back(FileNames.front());
+
+	/*
+	 * First validata all files and verify they're all for the same system
+	 */
+
+	int nx, ny, nz, ns;
+	double lx, ly, dx, dy;
+	string fieldName;
+	vector<string> firstVal(FileNames.size());
+
+	bool filesValid = GetFLAPWCHARGEFileHeader(FileNames.front(), fieldName, nx, ny, ns, lx, ly, firstVal[0]);
+
+	if (!filesValid) {
+		TecUtilDialogErrMsg(string("File 1 header invalid (\'" + FileNames[0] + "\')").c_str());
+		return;
+	}
+
+	for (int i = 1; i < FileNames.size() && filesValid; ++i){
+		int nx1, ny1, ns1;
+		double lx1, ly1;
+		string fieldName1;
+		filesValid = GetFLAPWCHARGEFileHeader(FileNames[i], fieldName1, nx1, ny1, ns1, lx1, ly1, firstVal[i])
+			&& nx == nx1 && ny == ny1 && ns == ns1 
+			&& lx == lx1 && ly == ly1 && fieldName == fieldName1;
+		if (!filesValid){
+			TecUtilDialogErrMsg(string("File " + to_string(i+1) + " header invalid or mismatch to group (\'" + FileNames[i] + "\')").c_str());
+		}
+	}
+
+	if (!filesValid){
+		return;
+	}
+
+	/*
+	 * prepare dataset
+	 */
+
+	nz = FileNames.size();
+	int npts = nx * ny * nz;
+	dx = lx / double(nx - 1);
+	dy = ly / double(ny - 1);
+
+
+	vector<int> IJK = { nx,ny,nz };
+
+	/*
+	*	Make dataset and volume zone if necessary
+	*/
+	StringList_pa VarNames = TecUtilStringListAlloc();
+	vector<string> VarNameStrs = { "X", "Y", "Z", CSMVarName.Dens};
+
+	for (string const & i : VarNameStrs)
+		TecUtilStringListAppendString(VarNames, i.c_str());
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+	string Slash = "\\";
+#else
+	string Slash = "/";
+#endif
+
+	string DataSetName = FileNames[0].substr(0, FileNames[0].find_last_of("."));
+	size_t TmpStrPos = DataSetName.find_last_of(Slash.c_str());
+	if (TmpStrPos != string::npos){
+		DataSetName = DataSetName.substr(TmpStrPos + 1, DataSetName.length() - TmpStrPos - 1);
+	}
+	vector<FieldDataType_e> VarDataTypes;
+	EntIndex_t ZoneNum, VolZoneNum = -1;
+	if (IsOk){
+		if (ReplaceDataSet){
+			VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
+			IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+		}
+		else{
+			if (!TecUtilDataSetIsAvailable()){
+				VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
+				IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+			}
+			else{
+				EntIndex_t NumVars = TecUtilDataSetGetNumVars();
+				VarDataTypes.reserve(NumVars);
+				for (int i = 1; i <= NumVars; ++i){
+					char* TmpCStr;
+					TecUtilVarGetName(i, &TmpCStr);
+					int Ind = SearchVectorForString(VarNameStrs, TmpCStr, true);
+					TecUtilStringDealloc(&TmpCStr);
+					if (Ind >= 0)
+						VarDataTypes.push_back(FieldDataType_Float);
+					else
+						VarDataTypes.push_back(FieldDataType_Bit);
+				}
+			}
+		}
+		//if (VolZoneNum <= 0) {
+			IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), nx, ny, nz, ZoneType_Ordered, VarDataTypes.data());
+			if (IsOk) {
+				VolZoneNum = TecUtilDataSetGetNumZones();
+				IsOk = VolZoneNum > 0;
+			}
+		//}
+	}
+
+	vector<FieldDataType_e> ZoneDataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Bit);
+	ZoneDataTypes[VolZoneNum - 1] = FieldDataType_Float;
+
+	Set_pa VolZoneSet = TecUtilSetAlloc(TRUE);
+	if (IsOk){
+		SetZoneStyle({ VolZoneNum }, ZoneStyle_Volume);
+		TecUtilSetAddMember(VolZoneSet, VolZoneNum, TRUE);
+	}
+
+	/*
+		*	Make new variables where necessary and get pointers to variable data
+		*/
+	vector<int> VarNums;
+	int VarNum;
+// 	vector<FieldDataPointer_c> Ptrs(VarNameStrs.size());
+	for (int i = 0; i < VarNameStrs.size() && IsOk; ++i){
+		if (!ReplaceDataSet){
+			VarNums.push_back(VarNumByName(VarNameStrs[i]));
+			if (VarNums.back() <= 0){
+				IsOk = TecUtilDataSetAddVar(VarNameStrs[i].c_str(), ZoneDataTypes.data());
+				if (IsOk){
+					VarNums.back() = TecUtilDataSetGetNumVars();
+					IsOk = (VarNum > 0);
+				}
+			}
+		}
+		else
+			VarNums.push_back(i + 1);
+
+// 		if (IsOk)
+// 			IsOk = Ptrs[i].GetWritePtr(VolZoneNum, VarNum);
+	}
+
+	TecUtilDataLoadBegin(); // keep tecplot from deallocating pointers
+
+	FieldVecPointer_c XYZPtr;
+	XYZPtr.GetWritePtr(VolZoneNum, vector<int>(VarNums.begin(), VarNums.end() - 1));
+
+// 	FieldDataPointer_c ValPtr;
+// 	ValPtr.GetWritePtr(VolZoneNum, VarNums.back());
+			
+	/*
+		*	Now just need to parse through the char array and populate the necessary variables
+		*/
+	int TotalPoints = IJK[0] * IJK[1] * IJK[2];
+	mat33 LatticeVector = zeros<mat>(3,3);
+	LatticeVector.at(0, 0) = dx;
+	LatticeVector.at(1, 1) = dx;
+	LatticeVector.at(2, 2) = dx;
+	vec3 Origin = zeros<vec>(3);
+	string StatusStr = "Loading FLAPW data: " + DataSetName;
+	StatusLaunch(StatusStr, AddOnID, TRUE);
+
+	/*
+	 *	Loop over files again, reading in data from each.
+	 *	rho data can be read into tecplot as one big read, 
+	 *	and we'll populate the xyz values as we go.
+	 */
+
+	vector<float> SliceData(nx*ny);
+
+	// write rho data as single write for each file
+	FieldData_pa VarRef = TecUtilDataValueGetWritableNativeRef(VolZoneNum, VarNums.back());
+	if (VALID_REF(VarRef)) {
+		vec3 TmpIJK = zeros<vec>(3);
+		for (int k = 0; k < IJK[2] && IsOk; ++k) {
+// 			IsOk = StatusUpdate(k, IJK[2], StatusStr, AddOnID);
+			// Get data from file
+			if (GetFLAPWCHARGEFileFieldData(FileNames[k], firstVal[k], SliceData)){
+				TecUtilDataValueArraySetByRef(VarRef, IndexFromIJK(1, 1, k + 1, IJK[0], IJK[1]), SliceData.size(), SliceData.data());
+			}
+
+			TmpIJK[1] = 0;
+			for (int j = 0; j < IJK[1] && IsOk; ++j) {
+				IsOk = StatusUpdate(j + IJK[1] * k, IJK[1] * IJK[2], StatusStr, AddOnID);
+				TmpIJK[0] = 0;
+				for (int i = 0; i < IJK[0]; ++i) {
+					int Index = IndexFromIJK(i + 1, j + 1, k + 1, IJK[0], IJK[1]) - 1;
+					XYZPtr.Write(Index, Origin + LatticeVector * TmpIJK);
+
+					++TmpIJK[0];
+				}
+				++TmpIJK[1];
+			}
+			++TmpIJK[2];
+		}
+	}
+
+	// write xyz values
+// 	StatusStr = "Loading FLAPW data (step 2 of 2): " + DataSetName;
+// 	vec3 TmpIJK = zeros<vec>(3);
+// 	for (int i = 0; i < IJK[0] && IsOk; ++i) {
+// 		IsOk = StatusUpdate(i, IJK[0], StatusStr, AddOnID);
+// 		TmpIJK[1] = 0;
+// 		for (int j = 0; j < IJK[1] && IsOk; ++j) {
+// 			TmpIJK[2] = 0;
+// 			for (int k = 0; k < IJK[2]; ++k) {
+// 				int Index = IndexFromIJK(i + 1, j + 1, k + 1, IJK[0], IJK[1]) - 1;
+// 				XYZPtr.Write(Index, Origin + LatticeVector * TmpIJK);
+// 				
+// 				++TmpIJK[2];
+// 			}
+// 			++TmpIJK[1];
+// 		}
+// 		++TmpIJK[0];
+// 	}
+
+	
+
+	StatusDrop(AddOnID);
+
+	XYZPtr.Close();
+// 	for (FieldDataPointer_c & i : Ptrs) i.Close();
+
+
+	if (!ReplaceDataSet){
+		TecUtilZoneSetScatter(SV_SHOW, VolZoneSet, 0.0, FALSE);
+		TecUtilZoneSetMesh(SV_SHOW, VolZoneSet, 0.0, FALSE);
+		TecUtilZoneSetContour(SV_SHOW, VolZoneSet, 0.0, FALSE);
+		TecUtilZoneSetEdgeLayer(SV_SHOW, VolZoneSet, 0.0, TRUE);
+	}
+
+	//	Modify group number of volume zone
+	if (IsOk){
+		ArgList_pa ArgList = TecUtilArgListAlloc();
+		TecUtilArgListAppendString(ArgList, SV_P1, SV_FIELDMAP);
+		TecUtilArgListAppendString(ArgList, SV_P2, SV_GROUP);
+		TecUtilArgListAppendSet(ArgList, SV_OBJECTSET, VolZoneSet);
+		TecUtilArgListAppendArbParam(ArgList, SV_IVALUE, (LgIndex_t)(GroupIndex));
+		TecUtilStyleSetLowLevelX(ArgList);
+		TecUtilArgListDealloc(&ArgList);
+	}
+
+	if (nz > 1) {
+		// 3d, so turn on isosurface and stick a slice at 1/2 z
+		TecUtilFrameSetPlotType(PlotType_Cartesian3D);
+
+		double zMin, zMax;
+		TecUtilDataValueGetMinMaxByZoneVar(VolZoneNum, VarNums[2], &zMin, &zMax);
+
+		TecUtilMacroExecuteCommand("$!SLICELAYERS SHOW = YES");
+		TecUtilMacroExecuteCommand("$!SLICEATTRIBUTES 1  SLICESURFACE = ZPLANES");
+		TecUtilMacroExecuteCommand(string("$!SLICEATTRIBUTES 1  PRIMARYPOSITION{ Z = " + to_string((zMax - zMin) * 0.5) + " }").c_str());
+		TecUtilMacroExecuteCommand("$!SLICEATTRIBUTES 1  CONTOUR{ CONTOURTYPE = FLOOD }");
+		TecUtilMacroExecuteCommand("$!SLICEATTRIBUTES 1  CONTOUR{ FLOODCOLORING = GROUP1 }");
+
+		ArgList_pa argList = TecUtilArgListAlloc();
+
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_ISOSURFACEATTRIBUTES);
+		TecUtilArgListAppendString(argList, SV_P2, SV_EFFECTS);
+		TecUtilArgListAppendString(argList, SV_P3, SV_USETRANSLUCENCY);
+		TecUtilArgListAppendInt(argList, SV_OFFSET1, 1);
+		TecUtilArgListAppendArbParam(argList, SV_IVALUE, TRUE);
+		TecUtilStyleSetLowLevelX(argList);
+
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_ISOSURFACEATTRIBUTES);
+		TecUtilArgListAppendString(argList, SV_P2, SV_EFFECTS);
+		TecUtilArgListAppendString(argList, SV_P3, SV_SURFACETRANSLUCENCY);
+		TecUtilArgListAppendInt(argList, SV_OFFSET1, 1);
+		TecUtilArgListAppendArbParam(argList, SV_IVALUE, 70);
+		TecUtilStyleSetLowLevelX(argList);
+
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_FIELDLAYERS);
+		TecUtilArgListAppendString(argList, SV_P2, SV_SHOWSCATTER);
+		TecUtilArgListAppendArbParam(argList, SV_IVALUE, TRUE);
+		TecUtilStyleSetLowLevelX(argList);
+
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_ISOSURFACELAYERS);
+		TecUtilArgListAppendString(argList, SV_P2, SV_SHOW);
+		TecUtilArgListAppendArbParam(argList, SV_IVALUE, TRUE);
+		TecUtilStyleSetLowLevelX(argList);
+
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_ISOSURFACEATTRIBUTES);
+		TecUtilArgListAppendString(argList, SV_P2, SV_DEFINITIONCONTOURGROUP);
+		TecUtilArgListAppendInt(argList, SV_OFFSET1, 1);
+		TecUtilArgListAppendArbParam(argList, SV_IVALUE, (SmInteger_t)1);
+		TecUtilStyleSetLowLevelX(argList);
+
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_ISOSURFACEATTRIBUTES);
+		TecUtilArgListAppendString(argList, SV_P2, SV_SHOWGROUP);
+		TecUtilArgListAppendInt(argList, SV_OFFSET1, 1);
+		TecUtilArgListAppendArbParam(argList, SV_IVALUE, TRUE);
+		TecUtilStyleSetLowLevelX(argList);
+
+		EntIndex_t IsoSurfaceVarNum = VarNums.back();
+		// 	double ValMax, ValMin;
+		// 	TecUtilVarGetMinMax(IsoSurfaceVarNum, &ValMin, &ValMax);
+		// 	double IsoValue = ValMax - 0.05 * (ValMax - ValMin);
+		double IsoValue = 0.25;
+
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_ISOSURFACEATTRIBUTES);
+		TecUtilArgListAppendString(argList, SV_P2, SV_ISOVALUE1);
+		TecUtilArgListAppendInt(argList, SV_OFFSET1, 1);
+		TecUtilArgListAppendDouble(argList, SV_DVALUE, IsoValue);
+		TecUtilStyleSetLowLevelX(argList);
+
+
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_GLOBALCONTOUR);
+		TecUtilArgListAppendString(argList, SV_P2, SV_VAR);
+		TecUtilArgListAppendInt(argList, SV_OFFSET1, 1);
+		TecUtilArgListAppendArbParam(argList, SV_IVALUE, IsoSurfaceVarNum);
+		TecUtilStyleSetLowLevelX(argList);
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_ISOSURFACEATTRIBUTES);
+		TecUtilArgListAppendString(argList, SV_P2, SV_ISOVALUE1);
+		TecUtilArgListAppendInt(argList, SV_OFFSET1, 1);
+		TecUtilArgListAppendDouble(argList, SV_DVALUE, IsoValue);
+		TecUtilStyleSetLowLevelX(argList);
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_ISOSURFACEATTRIBUTES);
+		TecUtilArgListAppendString(argList, SV_P2, SV_ISOVALUE2);
+		TecUtilArgListAppendInt(argList, SV_OFFSET1, 1);
+		TecUtilArgListAppendDouble(argList, SV_DVALUE, IsoValue);
+		TecUtilStyleSetLowLevelX(argList);
+		TecUtilArgListClear(argList);
+		TecUtilArgListAppendString(argList, SV_P1, SV_ISOSURFACEATTRIBUTES);
+		TecUtilArgListAppendString(argList, SV_P2, SV_ISOVALUE3);
+		TecUtilArgListAppendInt(argList, SV_OFFSET1, 1);
+		TecUtilArgListAppendDouble(argList, SV_DVALUE, IsoValue);
+		TecUtilStyleSetLowLevelX(argList);
+
+		TecUtilArgListDealloc(&argList);
+	}
+	else{
+		// only one slice, so turn set to 2d and turn on contours for first zone
+		TecUtilFrameSetPlotType(PlotType_Cartesian2D);
+		TecUtilMacroExecuteCommand("$!FIELDLAYERS SHOWCONTOUR = YES");
+		TecUtilZoneSetContour(SV_SHOW, VolZoneSet, 0.0, TRUE);
+	}
+
+	// set contour levels
+	double varMin, varMax;
+	TecUtilDataValueGetMinMaxByRef(VarRef, &varMin, &varMax);
+	vec ContourLevels;
+	if (varMin > 0) {
+		ContourLevels = LogSpace(varMin, sqrt(varMax), 20);
+	}
+	else {
+		ContourLevels = linspace(varMin, varMax, 20);
+	}
+
+	ArgList_pa TempArgList = TecUtilArgListAlloc();
+	TecUtilArgListAppendInt(TempArgList, SV_CONTOURGROUP, 1);
+	TecUtilArgListAppendInt(TempArgList, SV_VAR, VarNums.back());
+	TecUtilContourSetVariableX(TempArgList);
+	TecUtilArgListClear(TempArgList);
+
+	TecUtilArgListAppendInt(TempArgList, SV_CONTOURLABELACTION, ContourLabelAction_DeleteAll);
+	TecUtilArgListAppendInt(TempArgList, SV_CONTOURGROUP, 1);
+	TecUtilContourLabelX(TempArgList);
+	TecUtilArgListClear(TempArgList);
+
+	TecUtilArgListAppendInt(TempArgList, SV_CONTOURLEVELACTION, ContourLevelAction_New);
+	TecUtilArgListAppendInt(TempArgList, SV_CONTOURGROUP, 1);
+	TecUtilArgListAppendInt(TempArgList, SV_NUMVALUES, 20);
+	TecUtilArgListAppendArray(TempArgList, SV_RAWDATA, ContourLevels.memptr());
+	TecUtilContourLevelX(TempArgList);
+	TecUtilArgListClear(TempArgList);
+
+	TecUtilArgListAppendString(TempArgList, SV_P1, SV_GLOBALCONTOUR);
+	TecUtilArgListAppendString(TempArgList, SV_P2, SV_LEGEND);
+	TecUtilArgListAppendString(TempArgList, SV_P3, SV_SHOW);
+	TecUtilArgListAppendInt(TempArgList, SV_OFFSET1, 1);
+	TecUtilArgListAppendArbParam(TempArgList, SV_IVALUE, FALSE);
+	TecUtilStyleSetLowLevelX(TempArgList);
+	TecUtilArgListClear(TempArgList);
+
+
+	TecUtilDataLoadEnd();
+
+	TecUtilSetDealloc(&VolZoneSet);
+
+	AuxDataDataSetSetItem(DLProgramName, "FLAPW");
+
+	return;
+}
+
+
 /*
 *	Loads one or more FORMATTED turbomole cube files. Will fail if they're not formatted.
 */
@@ -5295,7 +5904,7 @@ void LoadTurboMoleCubeFiles()
 	omp_set_num_threads(numCPU);
 
 	StringList_pa FileNames = TecUtilStringListAlloc();
-	Boolean_t IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "TurboMole Cube File", nullptr, "*.cub");
+	Boolean_t IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNames, "TurboMole Cube File", nullptr, "*.cub?");
 
 	Boolean_t UseExistingVolZone = FALSE;
 	FileNameStrs.clear();
@@ -5601,7 +6210,8 @@ void LoadTurboMoleCubeFiles()
 			TecUtilDataLoadBegin();
 
 			Set_pa VolZoneSet = TecUtilSetAlloc(TRUE);
-			if (IsOk){
+			if (IsOk) {
+				SetZoneStyle({ VolZoneNum }, ZoneStyle_Volume);
 				TecUtilSetAddMember(VolZoneSet, VolZoneNum, TRUE);
 			}
 
@@ -5957,11 +6567,17 @@ Boolean_t LoadBinaryPLTFileData(){
 	}
 
 	if (LoadSuccess){
+
+		int VolZoneNum = TecUtilDataSetGetNumZones();
+
+
+		SetZoneStyle({ VolZoneNum }, ZoneStyle_Volume);
+
 		TecUtilFrameSetPlotType(PlotType_Cartesian3D);
 
 		Set_pa VolZoneSet = TecUtilSetAlloc(TRUE);
 
-		TecUtilSetAddMember(VolZoneSet, 1, TRUE);
+		TecUtilSetAddMember(VolZoneSet, VolZoneNum, TRUE);
 
 		TecUtilZoneSetScatter(SV_SHOW, VolZoneSet, 0.0, FALSE);
 		TecUtilZoneSetMesh(SV_SHOW, VolZoneSet, 0.0, FALSE);

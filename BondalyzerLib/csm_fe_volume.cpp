@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <set>
 #include <map>
+#include <queue>
 #include <cmath>
 
 #include <armadillo>
@@ -18,11 +19,15 @@
 #include "ArgList.h"
 #include "Set.h"
 
+#include <omp.h>
+
 #include "CSM_GRAD_PATH.h"
 #include "CSM_DATA_TYPES.h"
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_FE_VOLUME.h"
 #include "CSM_GEOMETRY.h"
+
+#include "updateSphericalTriangulation.h"
 
 // #define RECORD_INT_POINTS
 
@@ -131,6 +136,8 @@ FESurface_c::FESurface_c(vector<vec3> const & Nodes, vector<vector<int> > & Elem
 		m_XYZList.clear();
 		m_XYZList.insert(m_XYZList.begin(), Nodes.cbegin(), Nodes.cend());
 		m_ElemList.insert(m_ElemList.begin(), Elements.cbegin(), Elements.cend());
+		m_NumElems = m_ElemList.size();
+		m_NumNodes = m_XYZList.size();
 	}
 }
 
@@ -234,9 +241,18 @@ FESurface_c::FESurface_c(int InZoneNum,
 /*
 Make FEVolume from vector of pointers to GradPath_c's
 */
-Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBeginningAndEndGPs, bool const AddCap)
+Boolean_t FESurface_c::MakeFromGPs(vector<GradPathBase_c const *> const & GPs, 
+	bool ConnectBeginningAndEndGPs, 
+	bool AddCap, 
+	bool AddCapsBetweenGPs, 
+	vector<vec3> const * CapPoints, 
+	int LeftPathDeviationPointInd,
+	int RightPathDeviationPointInd, 
+	int CapMidPointInd)
 {
 	Boolean_t IsOk = TRUE;
+	AddCapsBetweenGPs = false; // depricated; looks better the other way, and saving GBs as zones is purely for visualization.
+// 	AddCap = true; // depricated; now we add "caps" along the entire GB for visual effect of being closed even when truncated.
 
 	for (int i = 0; i < GPs.size() && IsOk; ++i){
 	 	IsOk = GPs[i]->IsMade() && GPs[i]->GetCount() > 0;
@@ -251,9 +267,8 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 		*	Get total number of points in all GPs
 		*/
 		m_NumNodes = 0;
-		for (int i = 0; i < GPs.size(); ++i){
-			m_NumNodes += GPs[i]->GetCount();
-		}
+		for (auto const & i : GPs)
+			m_NumNodes += i->GetCount();
 
 		/*
 		 *	Save GP points to m_XYZList and save each GP's points'
@@ -261,6 +276,7 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 		 */
 		m_XYZList.clear();
 		m_XYZList.resize(m_NumNodes);
+		m_RhoList.clear();
 		vector<vector<int> > IndList;
 		int ni = 0;
 		for (auto * g : GPs){
@@ -270,6 +286,7 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 				m_XYZList[ni] = p;
 				IndList.back()[gi++] = ni++;
 			}
+			m_RhoList.insert(m_RhoList.end(), g->m_RhoList.cbegin(), g->m_RhoList.cend());
 		}
 
 		/*
@@ -283,18 +300,19 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 
 		/*
 			* First, get the average spacing between GP points to come up with a decent
-			*	spacing for the cap points (this seems expensive, so maybe think of a better
-			*	way in the future).
+			*	spacing for the cap points
 			*/
 		double AvgCapSpacing = 0;
-		int Denom = 0;
-		for (auto * g : GPs){
-			for (int i = 0; i < g->GetCount() - 1; ++i){
-				AvgCapSpacing += Distance(g->XYZAt(i), g->XYZAt(i + 1));
-				Denom++;
+		if (AddCapsBetweenGPs) {
+			int Denom = 0;
+			for (auto * g : GPs) {
+				for (int i = 0; i < g->GetCount() - 1; ++i) {
+					AvgCapSpacing += Distance(g->XYZAt(i), g->XYZAt(i + 1));
+					Denom++;
+				}
 			}
+			AvgCapSpacing /= double(Denom);
 		}
-		AvgCapSpacing /= double(Denom);
 
 		/*
 			*	Now check to see if each neighboring pair of paths needs a cap.
@@ -307,28 +325,30 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 		vector<vector<int> > CapIndList(IndList.size() - 1);
 		// size - 1 because there are IndList.size() - 1 pairs
 
-		for (int i = 0; i < IndList.size() - 1; ++i){
-			double CapDist = Distance(m_XYZList[IndList[i].back()], m_XYZList[IndList[i + 1].back()]);
-			if (CapDist > AvgCapSpacing){
-				/*
-					*	Cap points needed, so find NumCapPoints necessary
-					*	and then make equidistant points.
-					*/
-				int NumCapPoints = CapDist / AvgCapSpacing;
-				/*
-					*	Always want an odd number of cap points to ensure that one
-					*	is at the midpoint between the path end points.
-					*/
-				if (NumCapPoints > 0 && NumCapPoints % 2 == 1) NumCapPoints--;
+		if (AddCapsBetweenGPs) {
+			for (int i = 0; i < IndList.size() - 1; ++i) {
+				double CapDist = Distance(m_XYZList[IndList[i].back()], m_XYZList[IndList[i + 1].back()]);
+				if (CapDist > AvgCapSpacing) {
+					/*
+						*	Cap points needed, so find NumCapPoints necessary
+						*	and then make equidistant points.
+						*/
+					int NumCapPoints = CapDist / AvgCapSpacing;
+					/*
+						*	Always want an odd number of cap points to ensure that one
+						*	is at the midpoint between the path end points.
+						*/
+					if (NumCapPoints > 0 && NumCapPoints % 2 == 1) NumCapPoints--;
 
-				/*
-					*	Now make the cap points, starting from the "left" path,
-					*	saving the index of each new point to CapIndList.
-					*/
-				vec3 CapVec = (m_XYZList[IndList[i + 1].back()] - m_XYZList[IndList[i].back()]) / double(NumCapPoints);
-				for (int j = 0; j < NumCapPoints; ++j){
-					m_XYZList.push_back(m_XYZList[IndList[i].back()] + CapVec * double(j));
-					CapIndList[i].push_back(ni++);
+					/*
+						*	Now make the cap points, starting from the "left" path,
+						*	saving the index of each new point to CapIndList.
+						*/
+					vec3 CapVec = (m_XYZList[IndList[i + 1].back()] - m_XYZList[IndList[i].back()]) / double(NumCapPoints);
+					for (int j = 0; j < NumCapPoints; ++j) {
+						m_XYZList.push_back(m_XYZList[IndList[i].back()] + CapVec * double(j));
+						CapIndList[i].push_back(ni++);
+					}
 				}
 			}
 		}
@@ -339,8 +359,24 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 		 * Next call the path stitching function on each pair.
 		 */
 		m_ElemList.clear();
-		for (int i = 0; i < IndList.size() - 1; ++i){
-			StitchCapPaths(IndList[i], IndList[i + 1], CapIndList[i], m_XYZList, m_ElemList);
+		if (CapPoints != nullptr){
+			// The presence of a list of cap points means that this is a special case for
+			// interatomic/ring surface generation where two surfaces going into the center CP
+			// need to be stitched with a bond/ring path.
+			// Assume that IndList is of length 2, so that CapIndList is of size 1.
+			REQUIRE(IndList.size() == 2);
+			for (auto const & v : *CapPoints){
+				CapIndList.back().push_back(m_XYZList.size());
+				m_XYZList.push_back(v);
+			}
+			AddCapsBetweenGPs = true;
+		}
+
+		for (int i = 0; i < IndList.size() - 1; ++i) {
+			if (AddCapsBetweenGPs)
+				StitchCapPaths(IndList[i], IndList[i + 1], CapIndList[i], m_XYZList, m_ElemList, LeftPathDeviationPointInd, RightPathDeviationPointInd, CapMidPointInd);
+			else
+				StitchPaths(IndList[i], IndList[i + 1], m_XYZList, m_ElemList);
 		}
 
 
@@ -351,7 +387,8 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 			int TotNumPointsNormal = 3 * NumEdgePointsNormal + 3,
 				TotNumPointsSaddle = 4 * NumEdgePointsSaddle + 4;
 
-			if (TotNumPointsSaddle > 4 || TotNumPointsNormal > 3) {
+// 			if (TotNumPointsSaddle > 4 || TotNumPointsNormal > 3) {
+			if (GPs.size() > 4) {
 				/*
 				 *	GB edges have been connected into surfaces.
 				 *	Now need to create surfaces for the initial and terminal 3d caps
@@ -387,62 +424,75 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 				  */
 				  // 		vector<int> InitialCapInd;
 
-				if (TotNumPointsSaddle == GPs.size()) {
-					// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
-					// 			InitialCapInd.back()++;
-					m_ElemList.push_back({ IndList[0][0],
-						IndList[NumEdgePointsSaddle + 1][0],
-						IndList[(NumEdgePointsSaddle) * 2 + 2][0] });
-				}
-				else if (TotNumPointsNormal == GPs.size()) {
-					// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
-					m_ElemList.push_back({ IndList[0][0],
-						IndList[NumEdgePointsNormal + 1][0],
-						IndList[(NumEdgePointsNormal + 1) * 2][0] });
-				}
-				else
-					TecUtilDialogMessageBox("Incorrect number of GPs for GB", MessageBoxType_Error);
+// 				if (TotNumPointsSaddle == GPs.size()) {
+// 					// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
+// 					// 			InitialCapInd.back()++;
+// 					m_ElemList.push_back({ IndList[0][0],
+// 						IndList[NumEdgePointsSaddle + 1][0],
+// 						IndList[(NumEdgePointsSaddle) * 2 + 2][0] });
+// 				}
+// 				else if (TotNumPointsNormal == GPs.size()) {
+// 					// 			for (int i = 0; i < 3; ++i) InitialCapInd.push_back(IndList[(NumEdgePointsNormal + 1) * i][0]);
+// 					m_ElemList.push_back({ IndList[0][0],
+// 						IndList[NumEdgePointsNormal + 1][0],
+// 						IndList[(NumEdgePointsNormal + 1) * 2][0] });
+// 				}
+// 				else
+// 					TecUtilDialogMessageBox("Incorrect number of GPs for GB", MessageBoxType_Error);
 				// 		m_ElemList.push_back(InitialCapInd);
 
 
 				/*
-				 *	Find the GP end points of maximum separation.
+				 *	Find the GP end points of maximum separation at each step down the GPs
+				 *	which are assumed to have equispaced points, although the results wouldn't
+				 *	be terrible even with nonuniform spacing.
 				 *	We can neglect the presence of 1d cap points in CapIndList because
 				 *	they are guaranteed to be straight lines, so by including the
 				 *	GP endpoints we'll necessarily end up with triangular elements
 				 *	in the resulting 2d cap that coincide with the existing 1d cap points.
 				 */
 
-				double MaxDistSqr = -1;
-				int MaxDistsGPNums[2] = { -1, -1 };
 
-				for (int i = 0; i < IndList.size() - (ConnectBeginningAndEndGPs ? 2 : 1); ++i) {
-					for (int j = i + 1; j < GPs.size(); ++j) {
-						double TmpDistSqr = DistSqr(GPs[i]->XYZAt(-1), GPs[j]->XYZAt(-1));
-						if (TmpDistSqr > MaxDistSqr) {
-							MaxDistSqr = TmpDistSqr;
-							MaxDistsGPNums[0] = i;
-							MaxDistsGPNums[1] = j;
+// 				for (int gpi = 10; gpi < IndList[0].size(); ++gpi) {
+					double MaxDistSqr = -1;
+					int MaxDistsGPNums[2] = { -1, -1 };
+
+
+					for (int i = 0; i < IndList.size() - (ConnectBeginningAndEndGPs ? 2 : 1); ++i) {
+
+						for (int j = i + 1; j < GPs.size(); ++j) {
+
+							double TmpDistSqr = DistSqr(GPs[i]->XYZAt(-1), GPs[j]->XYZAt(-1)); // old version that only capped end of GBs
+// 							double TmpDistSqr = DistSqr(GPs[i]->XYZAt(MIN(gpi, GPs[i]->m_NumGPPoints - 1)), GPs[j]->XYZAt(MIN(gpi,GPs[j]->m_NumGPPoints-1)));
+							if (TmpDistSqr > MaxDistSqr) {
+								MaxDistSqr = TmpDistSqr;
+								MaxDistsGPNums[0] = i;
+								MaxDistsGPNums[1] = j;
+							}
 						}
 					}
-				}
 
 
-				if (MaxDistSqr > 0) {
-					vector<int> LVec, RVec;
-					for (int i = MaxDistsGPNums[0]; i < MaxDistsGPNums[1]; ++i)
-						LVec.push_back(IndList[i].back());
-					for (int i = 0; i < GPs.size() - (MaxDistsGPNums[1] - MaxDistsGPNums[0]); ++i)
-						RVec.push_back(IndList[(MaxDistsGPNums[1] + i) % GPs.size()].back());
-					std::reverse(RVec.begin(), RVec.end());
+					if (MaxDistSqr > 0.0001) {
+						vector<int> LVec, RVec;
+						for (int i = MaxDistsGPNums[0]; i < MaxDistsGPNums[1]; ++i) {
+							LVec.push_back(IndList[i].back());
+// 							LVec.push_back(IndList[i][MIN(gpi, IndList[i].size() - 1)]);
+						}
+						for (int i = 0; i < GPs.size() - (MaxDistsGPNums[1] - MaxDistsGPNums[0]); ++i) {
+							RVec.push_back(IndList[(MaxDistsGPNums[1] + i) % GPs.size()].back());
+// 							RVec.push_back(IndList[(MaxDistsGPNums[1] + i) % GPs.size()][MIN(gpi, IndList[(MaxDistsGPNums[1] + i) % GPs.size()].size() - 1)]);
+						}
+						std::reverse(RVec.begin(), RVec.end());
 
-					/*
-					 *	Now stitch these two "paths" and add to the element list
-					 */
-					StitchPaths(LVec, RVec, m_XYZList, m_ElemList);
-				}
-				else
-					IsOk = FALSE;
+						/*
+						 *	Now stitch these two "paths" and add to the element list
+						 */
+						StitchPaths(LVec, RVec, m_XYZList, m_ElemList);
+					}
+// 				}
+// 				else
+// 					IsOk = FALSE;
 			}
 			else{
 				// No edge GPs are present, so the cap connectivity is either the final points of the GPs,
@@ -486,6 +536,8 @@ Boolean_t FESurface_c::MakeFromGPs(vector<GradPath_c*> GPs, bool const ConnectBe
 
 		m_FEVolumeMade = TRUE;
 	}
+
+// 	RemoveDupicateNodes();
 
 	return IsOk;
 
@@ -725,6 +777,7 @@ vector<double> FESurface_c::GetIntResults() const
 
 
 
+
 double FESurface_c::PointDistanceToElementSquared(vec3 const & P, int elem, vec3 & ClosestPoint) const{
 	/*
 	 * from https://www.gamedev.net/forums/topic/552906-closest-point-on-triangle/
@@ -779,8 +832,7 @@ double FESurface_c::PointDistanceToElementSquared(vec3 const & P, int elem, vec3
 			if (tmp1 > tmp0)
 			{
 				double numer = tmp1 - tmp0;
-				double denom = m_a[elem] - 2.0 * m_b[elem] + m_c[elem];
-				s = CLAMP(numer / denom, 0.0, 1.0);
+				s = CLAMP(numer * m_oneOverDenom[elem], 0.0, 1.0);
 				t = 1 - s;
 			}
 			else
@@ -794,8 +846,7 @@ double FESurface_c::PointDistanceToElementSquared(vec3 const & P, int elem, vec3
 			if (m_a[elem] + d > m_b[elem] + e)
 			{
 				double numer = m_c[elem] + e - m_b[elem] - d;
-				double denom = m_a[elem] - 2.0 * m_b[elem] + m_c[elem];
-				s = CLAMP(numer / denom, 0.0, 1.0);
+				s = CLAMP(numer * m_oneOverDenom[elem], 0.0, 1.0);
 				t = 1 - s;
 			}
 			else
@@ -807,8 +858,7 @@ double FESurface_c::PointDistanceToElementSquared(vec3 const & P, int elem, vec3
 		else
 		{
 			double numer = m_c[elem] + e - m_b[elem] - d;
-			double denom = m_a[elem] - 2.0 * m_b[elem] + m_c[elem];
-			s = CLAMP(numer / denom, 0.0, 1.0);
+			s = CLAMP(numer * m_oneOverDenom[elem], 0.0, 1.0);
 			t = 1.0 - s;
 		}
 	}
@@ -817,8 +867,8 @@ double FESurface_c::PointDistanceToElementSquared(vec3 const & P, int elem, vec3
 	return DistSqr(ClosestPoint, P);
 }
 
-bool FESurface_c::ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, int & ProjectedElemIndex, bool & ProjectionIsInterior) const{
-	bool IsOk = m_XYZList.size() > 0 
+bool FESurface_c::ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, int & ProjectedElemIndex, bool & ProjectionIsInterior, int MaxBFSDepth, bool StartWithBFS) const{
+	bool IsOk = m_XYZList.size() > 0
 		&& m_ElemList.size() > 0;
 	if (!IsOk) return IsOk;
 
@@ -834,49 +884,113 @@ bool FESurface_c::ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, 
 	 *	from http://www.iquilezles.org/www/articles/triangledistance/triangledistance.htm
 	 */
 
-	
-// 	if (ProjectedElemIndex < 0 || ProjectedElemIndex >= m_ElemList.size()){
-		double MinDistSqr = DBL_MAX,
-			TmpDistSqr;
-		bool PointIsInterior;
 
-		for (int e = 0; e < m_edge0.size(); ++e) {
-			TmpDistSqr = PointDistanceToElementSquared(OldPoint, e, NewPoint);
-			if (TmpDistSqr < MinDistSqr){
-				MinDistSqr = TmpDistSqr;
-				ProjectedElemIndex = e;
+	 // 	if (ProjectedElemIndex < 0 || ProjectedElemIndex >= m_ElemList.size()){
+
+// 	// find minimum distance element and try to project to that,
+// 	// moving to a breadth first search starting from ProjectedElemIndex.
+
+	double MinDistSqr = DBL_MAX,
+		OldMinDistSqr = DBL_MAX,
+		TmpDistSqr;
+	int NumConvergedLevels = 0;
+ 	if (ProjectedElemIndex >= 0 && StartWithBFS){
+ 		// BFS with depth limit
+ 		std::queue<int> ToCheck;
+ 		vector<bool> Visited(m_ElemList.size(), false);
+ 		int CurDepth = 0;
+ 		ToCheck.push(ProjectedElemIndex);
+ 		ToCheck.push(-1); //Depth level marker
+		Visited[ProjectedElemIndex] = true;
+ 		while (!ToCheck.empty()){
+ 			if (ToCheck.front() == -1){
+ 				// Moving down another depth
+ 				ToCheck.push(-1);
+ 				if (++CurDepth > MaxBFSDepth)
+ 					break;
+				
+				if (MinDistSqr < OldMinDistSqr) {
+					NumConvergedLevels = 0;
+					OldMinDistSqr = MinDistSqr;
+				}
+				else
+					NumConvergedLevels++;
+
+				if (NumConvergedLevels >= DefaultProjectPointtoSurfaceNumConvergedBSFDepthLevels)
+					break;
+ 			}
+ 			else {
+ 				int e = ToCheck.front();
+				TmpDistSqr = PointDistanceToElementSquared(OldPoint, e, NewPoint);
+				// #pragma omp critical
+				if (TmpDistSqr < MinDistSqr) {
+					MinDistSqr = TmpDistSqr;
+					ProjectedElemIndex = e;
+				}
+ 				for (int n : m_ElemConnectivityList[e]) {
+ 					if (!Visited[n]) {
+ 						ToCheck.push(n);
+						Visited[n] = true;
+ 					}
+ 				}
+ 			}
+ 			ToCheck.pop();
+ 		}
+ 	}
+
+	if (MinDistSqr > 1e-12 || !StartWithBFS) {
+		vector<std::pair<double, int> > MinDistSqrIndVector(omp_get_num_procs(), std::make_pair(MinDistSqr, ProjectedElemIndex));
+		vector<vec3> JunkVecVector(omp_get_num_procs());
+		int numElems = m_edge0.size();
+#pragma omp parallel for
+		for (int e = 0; e < numElems; ++e) {
+			int numThreads = omp_get_num_threads();
+			int ThreadNum = omp_get_thread_num();
+			double ThreadDistSqr = PointDistanceToElementSquared(OldPoint, e, JunkVecVector[ThreadNum]);
+			if (ThreadDistSqr < MinDistSqrIndVector[ThreadNum].first) {
+				MinDistSqrIndVector[ThreadNum].first = ThreadDistSqr;
+				MinDistSqrIndVector[ThreadNum].second = e;
 			}
+// 			TmpDistSqr = PointDistanceToElementSquared(OldPoint, e, NewPoint);
+// 			if (TmpDistSqr < MinDistSqr) {
+// 				MinDistSqr = TmpDistSqr;
+// 				ProjectedElemIndex = e;
+// 			}
 		}
 
-		if (ProjectedElemIndex >= 0) {
-			PointDistanceToElementSquared(OldPoint, ProjectedElemIndex, NewPoint);
+		auto MinDistSqrInd = std::min_element(MinDistSqrIndVector.begin(), MinDistSqrIndVector.end(), [](std::pair<double, int> a, std::pair<double, int> b) {return a.first < b.first; });
+		ProjectedElemIndex = MinDistSqrInd->second;
+	}
+
+	if (ProjectedElemIndex >= 0) {
+		PointDistanceToElementSquared(OldPoint, ProjectedElemIndex, NewPoint);
 #if 0
-			SaveVec3VecAsScatterZone({ OldPoint }, string("Element " + to_string(ProjectedElemIndex + 1) + " old point"), Red_C);
-			TecUtilZoneSetScatter(SV_FRAMESIZE, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0.5, 0);
-			TecUtilZoneSetActive(tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
-			SaveVec3VecAsScatterZone({ NewPoint }, string("Element " + to_string(ProjectedElemIndex + 1) + " new point"), Green_C);
-			TecUtilZoneSetScatter(SV_FRAMESIZE, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0.5, 0);
-			TecUtilZoneSetActive(tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+		SaveVec3VecAsScatterZone({ OldPoint }, string("Element " + to_string(ProjectedElemIndex + 1) + " old point"), Red_C);
+		TecUtilZoneSetScatter(SV_FRAMESIZE, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0.5, 0);
+		TecUtilZoneSetActive(tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+		SaveVec3VecAsScatterZone({ NewPoint }, string("Element " + to_string(ProjectedElemIndex + 1) + " new point"), Green_C);
+		TecUtilZoneSetScatter(SV_FRAMESIZE, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0.5, 0);
+		TecUtilZoneSetActive(tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
 
-			SaveVec3VecAsScatterZone({ OldPoint, NewPoint }, string("old to new point"), Blue_C);
-			TecUtilZoneSetScatter(SV_SHOW, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, FALSE);
-			TecUtilZoneSetMesh(SV_SHOW, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, TRUE);
-			TecUtilZoneSetMesh(SV_LINETHICKNESS, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0.2, 0);
-			TecUtilZoneSetMesh(SV_COLOR, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, Blue_C);
-			TecUtilZoneSetActive(tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+		SaveVec3VecAsScatterZone({ OldPoint, NewPoint }, string("old to new point"), Blue_C);
+		TecUtilZoneSetScatter(SV_SHOW, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, FALSE);
+		TecUtilZoneSetMesh(SV_SHOW, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, TRUE);
+		TecUtilZoneSetMesh(SV_LINETHICKNESS, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0.2, 0);
+		TecUtilZoneSetMesh(SV_COLOR, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, Blue_C);
+		TecUtilZoneSetActive(tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
 
-			SaveVec3VecAsScatterZone({ m_XYZList[m_ElemList[ProjectedElemIndex][0]], m_XYZList[m_ElemList[ProjectedElemIndex][1]] , m_XYZList[m_ElemList[ProjectedElemIndex][2]], m_XYZList[m_ElemList[ProjectedElemIndex][0]] }, string("Element " + to_string(ProjectedElemIndex + 1)));
-			TecUtilZoneSetScatter(SV_SHOW, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, FALSE);
-			TecUtilZoneSetMesh(SV_SHOW, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, TRUE);
-			TecUtilZoneSetMesh(SV_LINETHICKNESS, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0.4, 0);
-			TecUtilZoneSetMesh(SV_COLOR, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, Red_C);
-			TecUtilZoneSetActive(tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+		SaveVec3VecAsScatterZone({ m_XYZList[m_ElemList[ProjectedElemIndex][0]], m_XYZList[m_ElemList[ProjectedElemIndex][1]] , m_XYZList[m_ElemList[ProjectedElemIndex][2]], m_XYZList[m_ElemList[ProjectedElemIndex][0]] }, string("Element " + to_string(ProjectedElemIndex + 1)));
+		TecUtilZoneSetScatter(SV_SHOW, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, FALSE);
+		TecUtilZoneSetMesh(SV_SHOW, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, TRUE);
+		TecUtilZoneSetMesh(SV_LINETHICKNESS, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0.4, 0);
+		TecUtilZoneSetMesh(SV_COLOR, tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), 0, Red_C);
+		TecUtilZoneSetActive(tecplot::toolbox::Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
 #endif
-		}
-		else
-			TecUtilDialogErrMsg("Failed to find minimum triangle distance");
-// 	}
-	
+	}
+	else
+		TecUtilDialogErrMsg("Failed to find minimum triangle distance");
+	// 	}
+
 	IsOk = ProjectedElemIndex >= 0;
 	if (!IsOk) return IsOk;
 
@@ -981,7 +1095,8 @@ int FESurface_c::SaveAsTriFEZone(vector<int> const & XYZVarNums,
 int FESurface_c::SaveAsTriFEZone(string const & ZoneName, 
 	vector<FieldDataType_e> DataTypes,
 	vector<ValueLocation_e> const & DataLocations,
-	vector<int> const & XYZVarNums)
+	vector<int> const & XYZVarNums,
+	int RhoVarNum)
 {
 	Boolean_t IsOk = IsMade();
 	int ZoneNum = -1;
@@ -1034,13 +1149,13 @@ int FESurface_c::SaveAsTriFEZone(string const & ZoneName,
 				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_XYZList.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
 			}
 		}
-// 		if (IsOk){
-// 			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, RhoVarNum);
-// 			IsOk = VALID_REF(SetFDPtr);
-// 			if (IsOk){
-// 				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_NumNodes, reinterpret_cast<void*>(const_cast<double*>(m_RhoList.data())));
-// 			}
-// 		}
+		if (IsOk && m_RhoList.size() == m_XYZList.size()){
+			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, RhoVarNum);
+			IsOk = VALID_REF(SetFDPtr);
+			if (IsOk){
+				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_NumNodes, reinterpret_cast<void*>(const_cast<double*>(m_RhoList.data())));
+			}
+		}
 
 	}
 
@@ -1312,60 +1427,36 @@ void FESurface_c::GetNodeConnectivityFromTecplot(){
 }
 
 
-void FESurface_c::GeneratePointElementDistanceCheckData(){
-// 	if (m_v21.size() != m_ElemList.size()) {
-// 		m_v21.clear(); m_v21.reserve(m_ElemList.size()); 
-// 		m_v32.clear(); m_v32.reserve(m_ElemList.size());
-// 		m_v13.clear(); m_v13.reserve(m_ElemList.size());
-// 		m_normals.clear(); m_normals.reserve(m_ElemList.size());
-// 		m_v21crossN.clear(); m_v21crossN.reserve(m_ElemList.size());
-// 		m_v32crossN.clear(); m_v32crossN.reserve(m_ElemList.size());
-// 		m_v13crossN.clear(); m_v13crossN.reserve(m_ElemList.size());
-// 		m_oneOverMagSqrV21.clear(); m_oneOverMagSqrV21.reserve(m_ElemList.size());
-// 		m_oneOverMagSqrV32.clear(); m_oneOverMagSqrV32.reserve(m_ElemList.size());
-// 		m_oneOverMagSqrV13.clear(); m_oneOverMagSqrV13.reserve(m_ElemList.size());
-// 		m_oneOverMagSqrN.clear(); m_oneOverMagSqrN.reserve(m_ElemList.size());
-// 
-// 		for (auto const & e : m_ElemList) {
-// 			m_v21.push_back(m_XYZList[e[1]] - m_XYZList[e[0]]);
-// 			m_v32.push_back(m_XYZList[e[2]] - m_XYZList[e[1]]);
-// 			m_v13.push_back(m_XYZList[e[0]] - m_XYZList[e[2]]);
-// 			m_normals.push_back(cross(m_v21.back(), m_v13.back()));
-// 			m_v21crossN.push_back(cross(m_v21.back(), m_normals.back()));
-// 			m_v32crossN.push_back(cross(m_v32.back(), m_normals.back()));
-// 			m_v13crossN.push_back(cross(m_v13.back(), m_normals.back()));
-// 			m_oneOverMagSqrV21.push_back(1.0 / dot2(m_v21.back()));
-// 			m_oneOverMagSqrV32.push_back(1.0 / dot2(m_v32.back()));
-// 			m_oneOverMagSqrV13.push_back(1.0 / dot2(m_v13.back()));
-// 			m_oneOverMagSqrN.push_back(1.0 / dot2(m_normals.back()));
-// 		}
-// 	}
-
-	if (m_edge0.size() != m_ElemList.size()) {
-		m_edge0.clear(); m_edge0.reserve(m_ElemList.size());
-		m_edge1.clear(); m_edge1.reserve(m_ElemList.size());
-		m_a.clear(); m_a.reserve(m_ElemList.size());
-		m_b.clear(); m_b.reserve(m_ElemList.size());
-		m_c.clear(); m_c.reserve(m_ElemList.size());
-		m_det.clear(); m_det.reserve(m_ElemList.size());
-		m_oneOverA.clear(); m_oneOverA.reserve(m_ElemList.size());
-		m_oneOverC.clear(); m_oneOverC.reserve(m_ElemList.size());
-		m_invDet.clear(); m_invDet.reserve(m_ElemList.size());
-		m_oneOverDenom.clear(); m_oneOverDenom.reserve(m_ElemList.size());
-
-		for (auto const & e : m_ElemList) {
-			m_edge0.push_back(m_XYZList[e[1]] - m_XYZList[e[0]]);
-			m_edge1.push_back(m_XYZList[e[2]] - m_XYZList[e[0]]);
-			m_a.push_back(dot2(m_edge0.back()));
-			m_b.push_back(dot(m_edge0.back(), m_edge1.back()));
-			m_c.push_back(dot2(m_edge1.back()));
-			m_det.push_back(m_a.back() * m_c.back() - m_b.back() * m_b.back());
-			m_oneOverA.push_back(1.0 / m_a.back());
-			m_oneOverC.push_back(1.0 / m_c.back());
-			m_invDet.push_back(1.0 / m_det.back());
-			m_oneOverDenom.push_back(1.0 / (m_a.back() - 2.0 * m_b.back() + m_c.back()));
-		}
-	}
+void FESurface_c::GeneratePointElementDistanceCheckData() {
+ 	m_NumElems = m_ElemList.size();
+ 
+ 	if (m_edge0.size() != m_NumElems) {
+ 		m_edge0.clear(); m_edge0.resize(m_NumElems);
+ 		m_edge1.clear(); m_edge1.resize(m_NumElems);
+ 		m_a.clear(); m_a.resize(m_NumElems);
+ 		m_b.clear(); m_b.resize(m_NumElems);
+ 		m_c.clear(); m_c.resize(m_NumElems);
+ 		m_det.clear(); m_det.resize(m_NumElems);
+ 		m_oneOverA.clear(); m_oneOverA.resize(m_NumElems);
+ 		m_oneOverC.clear(); m_oneOverC.resize(m_NumElems);
+ 		m_invDet.clear(); m_invDet.resize(m_NumElems);
+ 		m_oneOverDenom.clear(); m_oneOverDenom.resize(m_NumElems);
+ 
+ #pragma omp parallel for
+ 		for (int i = 0; i < m_NumElems; ++i) {
+ 			m_edge0[i] = m_XYZList[m_ElemList[i][1]] - m_XYZList[m_ElemList[i][0]];
+ 			m_edge1[i] = m_XYZList[m_ElemList[i][2]] - m_XYZList[m_ElemList[i][0]];
+ 			m_a[i] = dot2(m_edge0[i]);
+ 			m_b[i] = dot(m_edge0[i], m_edge1[i]);
+ 			m_c[i] = dot2(m_edge1[i]);
+ 			m_det[i] = m_a[i] * m_c[i] - m_b[i] * m_b[i];
+ 			m_oneOverA[i] = 1.0 / m_a[i];
+ 			m_oneOverC[i] = 1.0 / m_c[i];
+ 			m_invDet[i] = 1.0 / m_det[i];
+ 			m_oneOverDenom[i] = 1.0 / (m_a[i] - 2.0 * m_b[i] + m_c[i]);
+ 		}
+ 	}
+	GenerateElemConnectivity();
 }
 
 void FESurface_c::GenerateElemMidpoints(){
@@ -1531,61 +1622,7 @@ Boolean_t FESurface_c::Setup(int const InZoneNum,
  *	the nodes.
  */
 void FESurface_c::RemoveDupicateNodes(){
-	vector<bool> NodeIsDuplicate(m_XYZList.size(), false);
-	vector<int> NodeNums(m_XYZList.size());
-	bool DupFound = false;
-
-	for (int i = 0; i < m_XYZList.size(); ++i)
-		NodeNums[i] = i;
-
-	for (int i = 0; i < m_XYZList.size() - 1; ++i){
-		if (!NodeIsDuplicate[i]){
-			for (int j = i + 1; j < m_XYZList.size(); ++j){
-				if (!NodeIsDuplicate[j] && sum(m_XYZList[i] == m_XYZList[j]) == 3){
-					NodeIsDuplicate[j] = true;
-					NodeNums[j] = NodeNums[i];
-					DupFound = true;
-				}
-			}
-		}
-	}
-
-	if (DupFound){
-		vector<vec3> NewXYZ;
-		NewXYZ.reserve(m_XYZList.size());
-
-		for (int n = 0; n < NodeIsDuplicate.size(); ++n){
-			if (!NodeIsDuplicate[n]){
-				NewXYZ.push_back(m_XYZList[n]);
-				NodeNums[n] = NewXYZ.size() - 1;
-				for (int ni = n + 1; ni < NodeIsDuplicate.size(); ++ni){
-					if (NodeIsDuplicate[ni] && NodeNums[ni] == n){
-						NodeNums[ni] = NodeNums[n];
-					}
-				}
-			}
-		}
-
-		m_XYZList = NewXYZ;
-
-		vector<vector<int> > NewElems;
-		NewElems.reserve(m_ElemList.size());
-		for (auto & e : m_ElemList){
-			for (int & ei : e){
-				ei = NodeNums[ei];
-			}
-			if (e[0] != e[1] && e[0] != e[2] && e[1] != e[2]){
-				NewElems.push_back(e);
-			}
-			else{
-				int a = 1;
-			}
-		}
-
-		m_ElemList = NewElems;
-	}
-
-
+	RemoveDupicateNodesFromMesh(m_XYZList, m_ElemList);
 }
 
 
@@ -1707,10 +1744,10 @@ Boolean_t FESurface_c::DoIntegration(Boolean_t IntegrateVolume,
 // 	*	Loop over every point in the system checking if it's interior
 // 	*	or not. If interior, add it to the integral value.
 // 	* /
-// 	vec3 DelXYZ, TmpPoint;
+// 	vec3 PointSpacingV123, TmpPoint;
 // 
 // 	for (int i = 0; i < 3; ++i){
-// 	DelXYZ[i] = (m_VolZoneInfo.MaxXYZ[i] - m_VolZoneInfo.MinXYZ[i]) / static_cast<double>(m_VolZoneInfo.MaxIJK[i] - 1);
+// 	PointSpacingV123[i] = (m_VolZoneInfo.MaxXYZ[i] - m_VolZoneInfo.MinXYZ[i]) / static_cast<double>(m_VolZoneInfo.MaxIJK[i] - 1);
 // 	}
 // 	m_IntValues.resize(m_NumIntVars, 0.0);
 // 	int IJK[3];
@@ -1718,7 +1755,7 @@ Boolean_t FESurface_c::DoIntegration(Boolean_t IntegrateVolume,
 // 	for (IJK[1] = 0; IJK[1] < m_VolZoneInfo.MaxIJK[1]; ++IJK[1]){
 // 	for (IJK[0] = 0; IJK[0] < m_VolZoneInfo.MaxIJK[0]; ++IJK[0]){
 // 	for (int i = 0; i < 3; ++i){
-// 	TmpPoint[i] = m_VolZoneInfo.MinXYZ[i] + static_cast<double>(IJK[i]) * DelXYZ[i];
+// 	TmpPoint[i] = m_VolZoneInfo.MinXYZ[i] + static_cast<double>(IJK[i]) * PointSpacingV123[i];
 // 	}
 // 	if (PointIsInterior(TmpPoint)){
 // 	SetIndexAndWeightsForPoint(TmpPoint, m_VolZoneInfo);
@@ -1747,15 +1784,15 @@ Boolean_t FESurface_c::DoIntegration(Boolean_t IntegrateVolume,
 // 		*/
 // 		vec3 FarPoint = m_VolZoneInfo.MinXYZ - 1.;
 // 		
-// 		vec3 DelXYZ = m_VolZoneInfo.DelXYZ, SubDelXYZ, TmpPoint, TmpSubPoint;
+// 		vec3 PointSpacingV123 = m_VolZoneInfo.PointSpacingV123, SubDelXYZ, TmpPoint, TmpSubPoint;
 // 		double CellVolume = 1.0;
 // 
 // 		for (int i = 0; i < 3; ++i){
-// // 			DelXYZ[i] = (m_VolZoneInfo.MaxXYZ[i] - m_VolZoneInfo.MinXYZ[i]) / static_cast<double>(m_VolZoneInfo.MaxIJK[i] - 1);
-// 			CellVolume *= DelXYZ[i];
+// // 			PointSpacingV123[i] = (m_VolZoneInfo.MaxXYZ[i] - m_VolZoneInfo.MinXYZ[i]) / static_cast<double>(m_VolZoneInfo.MaxIJK[i] - 1);
+// 			CellVolume *= PointSpacingV123[i];
 // 		}
 // 
-// 		SubDelXYZ = DelXYZ / static_cast<double>(ResolutionScale);
+// 		SubDelXYZ = PointSpacingV123 / static_cast<double>(ResolutionScale);
 // 		double SubCellFactor = 1.0 / static_cast<double>(ResolutionScale * ResolutionScale * ResolutionScale);
 // 		double SubCellVolume = CellVolume * SubCellFactor;
 // 
@@ -1807,7 +1844,7 @@ Boolean_t FESurface_c::DoIntegration(Boolean_t IntegrateVolume,
 // 							GetCellCornerIndices(i, TmpIJK[0], TmpIJK[1], TmpIJK[2]);
 // 
 // 							for (int j = 0; j < 3; ++j)
-// 								TmpPoint[j] = m_VolZoneInfo.MinXYZ[j] + static_cast<double>(TmpIJK[j]) * DelXYZ[j];
+// 								TmpPoint[j] = m_VolZoneInfo.MinXYZ[j] + static_cast<double>(TmpIJK[j]) * PointSpacingV123[j];
 // 
 // 							//Boolean_t IsInside = VolNodeInFEVolume[Index[i]] = PointIsInterior(TmpPoint);
 // 							VolNodeInFEVolume[Index[i]] = PointIsInterior(TmpPoint, FarPoint);
@@ -1827,7 +1864,7 @@ Boolean_t FESurface_c::DoIntegration(Boolean_t IntegrateVolume,
 // 						*	Get the midpoint of the cell by taking the 0,0,0 corner and adding 0.5*dXYZ to it.
 // 						*/
 // 						for (int i = 0; i < 3; ++i)
-// 							TmpPoint[i] = m_VolZoneInfo.MinXYZ[i] + (static_cast<double>(IJK[i]) - 0.5) * DelXYZ[i];
+// 							TmpPoint[i] = m_VolZoneInfo.MinXYZ[i] + (static_cast<double>(IJK[i]) - 0.5) * PointSpacingV123[i];
 // 
 // 						/*
 // 						*	Add the value of each integrating variable for the cell midpoint to the
@@ -1856,7 +1893,7 @@ Boolean_t FESurface_c::DoIntegration(Boolean_t IntegrateVolume,
 // 						*	are entirely contained in the cell and span the cell.
 // 						*/
 // 						for (int i = 0; i < 3; ++i)
-// 							TmpPoint[i] = m_VolZoneInfo.MinXYZ[i] + static_cast<double>(IJK[i] - 1) * DelXYZ[i] + (SubDelXYZ[i] / 2.0);
+// 							TmpPoint[i] = m_VolZoneInfo.MinXYZ[i] + static_cast<double>(IJK[i] - 1) * PointSpacingV123[i] + (SubDelXYZ[i] / 2.0);
 // 
 // 						for (TmpIJK[0] = 0; TmpIJK[0] < ResolutionScale; ++TmpIJK[0]){
 // 							for (TmpIJK[1] = 0; TmpIJK[1] < ResolutionScale; ++TmpIJK[1]){
@@ -1995,7 +2032,7 @@ Boolean_t FESurface_c::DoIntegrationNew(int ResolutionScale, Boolean_t Integrate
 // 					VolIndex = IndexFromIJK(VolIJK[0], VolIJK[1], VolIJK[2], m_VolZoneInfo.MaxIJK[0], m_VolZoneInfo.MaxIJK[1]);
 					ZoneIndex = IndexFromIJK(ZoneIJK[0], ZoneIJK[1], ZoneIJK[2], ZoneNumIJK[0], ZoneNumIJK[1]) - 1;
 					for (int ii = 0; ii < 3; ++ii){
-						VolPt[ii] = m_VolZoneInfo.MinXYZ[ii] + static_cast<double>(VolIJK[ii]-1) * m_VolZoneInfo.DelXYZ[ii];
+						VolPt[ii] = m_VolZoneInfo.MinXYZ[ii] + static_cast<double>(VolIJK[ii]-1) * m_VolZoneInfo.PointSpacingV123[ii];
 						NodeIsInterior[ZoneIndex] = NodeIsInterior[ZoneIndex] && (ZoneIJK[ii] > 1 && ZoneIJK[ii] < ZoneNumIJK[ii]);
 					}
 					if (ZoneIJK[0] == 11 && ZoneIJK[1] == 6 && ZoneIJK[2] == 6){
@@ -2041,11 +2078,11 @@ Boolean_t FESurface_c::DoIntegrationNew(int ResolutionScale, Boolean_t Integrate
 // 		double CellVolume = 1.0;
 
 // 		for (int i = 0; i < 3; ++i){
-// 			// 			DelXYZ[i] = (m_VolZoneInfo.MaxXYZ[i] - m_VolZoneInfo.MinXYZ[i]) / static_cast<double>(m_VolZoneInfo.MaxIJK[i] - 1);
-// 			CellVolume *= m_VolZoneInfo.DelXYZ[i];
+// 			// 			PointSpacingV123[i] = (m_VolZoneInfo.MaxXYZ[i] - m_VolZoneInfo.MinXYZ[i]) / static_cast<double>(m_VolZoneInfo.MaxIJK[i] - 1);
+// 			CellVolume *= m_VolZoneInfo.PointSpacingV123[i];
 // 		}
 
-		SubDelXYZ = m_VolZoneInfo.DelXYZ / static_cast<double>(ResolutionScale);
+		SubDelXYZ = m_VolZoneInfo.PointSpacingV123 / static_cast<double>(ResolutionScale);
 		double SubDivideFactorUser = 1.0 / static_cast<double>(ResolutionScale * ResolutionScale * ResolutionScale);
 		double SubCellVolumeUser = CellVolume * SubDivideFactorUser;
 		double SubDivideFactor, SubCellVolume;
@@ -2062,7 +2099,7 @@ Boolean_t FESurface_c::DoIntegrationNew(int ResolutionScale, Boolean_t Integrate
 				for (VolIJK[0] = ZoneMinIJK[0]; VolIJK[0] <= ZoneMaxIJK[0]; ++VolIJK[0]){
 					ZoneIndex = IndexFromIJK(ZoneIJK[0], ZoneIJK[1], ZoneIJK[2], ZoneNumIJK[0], ZoneNumIJK[1]) - 1; 
 					for (int ii = 0; ii < 3; ++ii){
-						VolPt[ii] = m_VolZoneInfo.MinXYZ[ii] + static_cast<double>(VolIJK[ii] - 1) * m_VolZoneInfo.DelXYZ[ii];
+						VolPt[ii] = m_VolZoneInfo.MinXYZ[ii] + static_cast<double>(VolIJK[ii] - 1) * m_VolZoneInfo.PointSpacingV123[ii];
 					}
 					if (ZoneIJK[0] == 11 && ZoneIJK[1] == 6 && ZoneIJK[2] == 6){
 						int a = 1;
@@ -2114,10 +2151,10 @@ Boolean_t FESurface_c::DoIntegrationNew(int ResolutionScale, Boolean_t Integrate
 #if defined(RECORD_INT_POINTS) && defined(_DEBUG)
 						m_CheckPts.push_back(VolPt);
 #endif
-						SubDivideIntegrateCellAtPoint(VolPt, FarPoints, m_VolZoneInfo.DelXYZ * 0.5, CheckNodeMinDistSqrToSurfaceNode[ZoneIndex], CheckNodeMinDistNodeNum[ZoneIndex], ResolutionScale - 1, IntegrateVolume);
+						SubDivideIntegrateCellAtPoint(VolPt, FarPoints, m_VolZoneInfo.PointSpacingV123 * 0.5, CheckNodeMinDistSqrToSurfaceNode[ZoneIndex], CheckNodeMinDistNodeNum[ZoneIndex], ResolutionScale - 1, IntegrateVolume);
 // 						for (int ii = 0; ii < 3; ++ii){
-// 							VolPt[ii] = m_VolZoneInfo.MinXYZ[ii] + static_cast<double>(VolIJK[ii]-1) * m_VolZoneInfo.DelXYZ[ii];
-// 							VolPt[ii] = MAX(m_VolZoneInfo.MinXYZ[ii], MIN(m_VolZoneInfo.MaxXYZ[ii], VolPt[ii] - (m_VolZoneInfo.DelXYZ[ii] / 2.) + (SubDelXYZ[ii] / 2.)));
+// 							VolPt[ii] = m_VolZoneInfo.MinXYZ[ii] + static_cast<double>(VolIJK[ii]-1) * m_VolZoneInfo.PointSpacingV123[ii];
+// 							VolPt[ii] = MAX(m_VolZoneInfo.MinXYZ[ii], MIN(m_VolZoneInfo.MaxXYZ[ii], VolPt[ii] - (m_VolZoneInfo.PointSpacingV123[ii] / 2.) + (SubDelXYZ[ii] / 2.)));
 // 						}
 // 						VolSubPt[0] = VolPt[0];
 // 						for (int i = 0; i < ResolutionScale; ++i){
@@ -2206,7 +2243,7 @@ Boolean_t FESurface_c::CalcMaxNodeDistSqr(){
 // 		}
 // 	}
 // 	
-	m_MinNodeDistanceSqr = sum(square(m_VolZoneInfo.DelXYZ));
+	m_MinNodeDistanceSqr = sum(square(m_VolZoneInfo.PointSpacingV123));
 	
 	m_RefinedXYZList = m_XYZList;
 	m_ElemList.resize(m_NumElems, vector<LgIndex_t>(3, -1));
@@ -2694,37 +2731,39 @@ vector<double> FESurface_c::TriSphereElemAreas() const
 		*	as they're found.
 		*/
 
-		vec3 T[3];
-		double A, B, C;
+// 		vec3 T[3];
+// 		double A, B, C;
 
 		for (int ElemNum = 0; ElemNum < m_NumElems; ++ElemNum) {
 			/*
 			*	Get the corners of the triangle element.
 			*/
 			
-			for (int i = 0; i < 3; ++i) {
-				T[i] = m_XYZList[m_ElemList[ElemNum][i]];
-			}
+// 			for (int i = 0; i < 3; ++i) {
+// 				T[i] = m_XYZList[m_ElemList[ElemNum][i]];
+// 			}
+// 
+// 			/*
+// 			*	Get the area of the element
+// 			*/
+// 			A = T[0][2] * (T[1][1] - T[2][1])
+// 				+ T[1][2] * (T[2][1] - T[0][1])
+// 				+ T[2][2] * (T[0][1] - T[1][1]);
+// 
+// 			B = T[0][0] * (T[1][2] - T[2][2])
+// 				+ T[1][0] * (T[2][2] - T[0][2])
+// 				+ T[2][0] * (T[0][2] - T[1][2]);
+// 
+// 			C = T[0][1] * (T[1][0] - T[2][0])
+// 				+ T[1][1] * (T[2][0] - T[0][0])
+// 				+ T[2][1] * (T[0][0] - T[1][0]);
 
-			/*
-			*	Get the area of the element
-			*/
-			A = T[0][2] * (T[1][1] - T[2][1])
-				+ T[1][2] * (T[2][1] - T[0][1])
-				+ T[2][2] * (T[0][1] - T[1][1]);
-
-			B = T[0][0] * (T[1][2] - T[2][2])
-				+ T[1][0] * (T[2][2] - T[0][2])
-				+ T[2][0] * (T[0][2] - T[1][2]);
-
-			C = T[0][1] * (T[1][0] - T[2][0])
-				+ T[1][1] * (T[2][0] - T[0][0])
-				+ T[2][1] * (T[0][0] - T[1][0]);
-
-			AreaFactors[ElemNum] = 0.5 * sqrt(A * A + B * B + C * C);
+// 			AreaFactors[ElemNum] = 0.5 * sqrt(A * A + B * B + C * C);
+			AreaFactors[ElemNum] = TriArea(m_XYZList[m_ElemList[ElemNum][0]], m_XYZList[m_ElemList[ElemNum][1]], m_XYZList[m_ElemList[ElemNum][2]]);
 			TotalArea += AreaFactors[ElemNum];
 		}
 
+#pragma omp parallel for
 		for (int ElemNum = 0; ElemNum < m_NumElems; ++ElemNum) {
 			AreaFactors[ElemNum] /= TotalArea;
 		}
@@ -2813,19 +2852,12 @@ vector<vec3> FESurface_c::GetSphereIntersectionPath(vec3 const & SphereCenter, d
 	/*
 	 *	Get list of edges, stored as "n1,n2" where n1 < n2.
 	 */
-	std::map<string, std::set<int> > Edges;
+	std::map<Edge, std::set<int> > EdgeToElemMap;
 	int elemNum = 0;
-	for (auto const elem : m_ElemList){
-		for (int i = 0; i < elem.size(); ++i) {
-			string eStr = GetEdgeString(elem[i], elem[(i + 1) % elem.size()]);
-			if (Edges.count(eStr)){
-				Edges[eStr].insert(elemNum);
-			}
-			else {
-				Edges[eStr] = { elemNum };
-			}
+	for (int ti = 0; ti < m_ElemList.size(); ++ti){
+		for (int ci = 0; ci < m_ElemList[ti].size(); ++ci){
+			EdgeToElemMap[MakeEdge(m_ElemList[ti][ci], m_ElemList[ti][(ci + 1) % m_ElemList[ti].size()])].insert(ti);
 		}
-		elemNum++;
 	}
 
 	double RadSqr = SphereRadius * SphereRadius;
@@ -2861,171 +2893,276 @@ vector<vec3> FESurface_c::GetSphereIntersectionPath(vec3 const & SphereCenter, d
 	 */
 	vector<vec3> IntPoints;
 	if (InsideNodeFound && OutsideNodeFound) {
+		// Remove duplicate nodes
+// 		this->RemoveDupicateNodes();
+
 		/*
 		 *	There could be artifact edges that are huge compared to the rest,
 		 *	so we'll check for that by comparing edge length to the edge
 		 *	length standard deviation.
 		 */
-		vector<double> EdgeLengths;
-		EdgeLengths.reserve(Edges.size());
+		vec EdgeLengths(EdgeToElemMap.size());
 		double MaxLen = DBL_MIN;
 		double MinLen = DBL_MAX;
-		for (auto const edge : Edges){
-			vector<int> e = SplitStringInt(edge.first);
+		int ei = 0;
+		for (auto const & edge : EdgeToElemMap){
 			if (UseXYZList)
-				EdgeLengths.push_back(Distance(m_XYZList[e[0]], m_XYZList[e[1]]));
+				EdgeLengths[ei] = Distance(m_XYZList[edge.first.first], m_XYZList[edge.first.second]);
 			else
-				EdgeLengths.push_back(Distance(XYZVecPtr[e[0]], XYZVecPtr[e[1]]));
-
-			if (EdgeLengths.back() > MaxLen)
-				MaxLen = EdgeLengths.back();
-			else if (EdgeLengths.back() < MinLen)
-				MinLen = EdgeLengths.back();
+				EdgeLengths[ei] = Distance(XYZVecPtr[edge.first.first], XYZVecPtr[edge.first.second]);
+			ei++;
 		}
 
-		double EdgeLenMean = 0.0;
-		for (auto const & i : EdgeLengths) EdgeLenMean += i;
-		EdgeLenMean /= (double)EdgeLengths.size();
+		double EdgeLenMean = mean(EdgeLengths),
+			EdgeLenStdDev = stddev(EdgeLengths);
 
-		double EdgeLenStdDev = 0.0;
-		for (auto const & i : EdgeLengths) EdgeLenStdDev += abs(i - EdgeLenMean);
-		EdgeLenStdDev /= (double)EdgeLengths.size();
+		EdgeLengths = abs(EdgeLengths - EdgeLenMean);
 
 		/*
 		 *	Now loop over the edges to check if they straddle the sphere radius.
 		 *	When an intersecting edge is found, confirm that it's not an outlier in terms
 		 *	of edge length (use stddevCheckFactor * stddev as the cutoff), then add it to the map of intersecting edges.
 		 */
-		std::map<string, std::set<int> > IntEdges;
-		std::map<string, vec3> IntEdgesPoints;
+		std::map<Edge, std::set<int> > IntEdges;
+		std::map<Edge, vec3> IntEdgesPoints;
 
 		double StdDevCheckFactor = 100000;
 
 		int edgeNum = 0;
-		for (auto const & edge : Edges){
-			if (abs(EdgeLengths[edgeNum] - EdgeLenMean) < StdDevCheckFactor * EdgeLenStdDev) {
-				vector<int> e = SplitStringInt(edge.first);
-				double dist1, dist2;
+		for (auto const & edge : EdgeToElemMap){
+			if (EdgeLengths[edgeNum]< StdDevCheckFactor * EdgeLenStdDev) {
+				std::pair<double, double> dist;
 				if (UseXYZList) {
-					dist1 = DistSqr(m_XYZList[e[0]], SphereCenter);
-					dist2 = DistSqr(m_XYZList[e[1]], SphereCenter);
+					dist.first = DistSqr(m_XYZList[edge.first.first], SphereCenter);
+					dist.second = DistSqr(m_XYZList[edge.first.second], SphereCenter);
 				}
 				else {
-					dist1 = DistSqr(XYZVecPtr[e[0]], SphereCenter);
-					dist2 = DistSqr(XYZVecPtr[e[1]], SphereCenter);
+					dist.first = DistSqr(XYZVecPtr[edge.first.first], SphereCenter);
+					dist.second = DistSqr(XYZVecPtr[edge.first.second], SphereCenter);
 				}
+				if (abs(dist.second - dist.first) > 1e-16) {
 
-				int closeNode = 0;
-				if (dist1 > dist2){
-					closeNode = 1;
-					double tmpDbl = dist2;
-					dist2 = dist1;
-					dist1 = tmpDbl;
-				}
+					int closeNode = 0;
+// 					if (dist.first > dist.second) {
+// 						closeNode = 1;
+// 						dist = std::make_pair(dist.second, dist.first);
+// 					}
 
-				if (dist1 < RadSqr && dist2 > RadSqr){
-					vec3 v1, v2;
-					if (UseXYZList){
-						v1 = m_XYZList[e[closeNode]];
-						v2 = m_XYZList[e[(closeNode + 1) % 2]];
+					if ((dist.first < RadSqr && dist.second > RadSqr)
+						|| (dist.second < RadSqr && dist.first > RadSqr)) {
+						vec3 v1, v2;
+// 						if (UseXYZList) {
+// 							if (closeNode = 0) {
+								v1 = m_XYZList[edge.first.first];
+								v2 = m_XYZList[edge.first.second];
+// 							}
+// 							else {
+// 								v1 = m_XYZList[edge.first.second];
+// 								v2 = m_XYZList[edge.first.first];
+// 							}
+// 						}
+// 						else {
+// 							if (closeNode = 0) {
+// 								v1 = XYZVecPtr[edge.first.first];
+// 								v2 = XYZVecPtr[edge.first.second];
+// 							}
+// 							else {
+// 								v1 = XYZVecPtr[edge.first.second];
+// 								v2 = XYZVecPtr[edge.first.first];
+// 							}
+// 						}
+						IntEdges.insert(edge);
+						dist.first = sqrt(dist.first);
+						dist.second = sqrt(dist.second);
+						IntEdgesPoints[edge.first] = (v1 + (v2 - v1) * (SphereRadius - dist.first) / (dist.second - dist.first));
 					}
-					else {
-						v1 = XYZVecPtr[e[closeNode]];
-						v2 = XYZVecPtr[e[(closeNode + 1) % 2]];
-					}
-					IntEdges.insert(edge);
-					dist1 = sqrt(dist1);
-					dist2 = sqrt(dist2);
-					IntEdgesPoints[edge.first] = (v1 + (v2 - v1) * (SphereRadius - dist1) / (dist2 - dist1));
 				}
 			}
 
 			edgeNum++;
 		}
 
+		// New method:
+		// Assume the end point (first point) of the intersection path is the point farthest from
+		// the midpoint of all the intersection points.
+		// The second point is then the point closest to the first point.
+		// The next point is then the closest point to the last point that hasn't
+		// already been added to the path, until all points are added.
+		vector<vec3> InitialIntPoints;
+		InitialIntPoints.reserve(IntEdgesPoints.size());
+		for (auto const & p : IntEdgesPoints) {
+			InitialIntPoints.push_back(p.second);
+		}
+// 		RemoveDuplicatePointsFromVec3Vec(InitialIntPoints, EdgeLenMean * 0.1); // do duplicate search during path formation
 
-		/*
-		 *	Now we have all the valid intersecting edges, so we need to get the
-		 *	intersection points themselves, and in the correct order.
-		 *	We can get a correct order by identifying the endpoint of the 
-		 *	intersection path.
-		 *	For an edge that is interior to the intersection path, both of its
-		 *	participating elements will be in the element set of other intersecting
-		 *	edges. So if both elements can be found in the element sets of the other
-		 *	intersecting edges, then it is an interior edge. Conversely, if only one
-		 *	of an intersecting edge's elements can be found in the element sets of
-		 *	the other intersecting edges, then it is an endpoint edge and can be used
-		 *	as the first intersection point.
-		 *	The remaining points can be deduced by shared element numbers.
-		 */
-		IntPoints.reserve(IntEdges.size());
-		vector<bool> EdgeUsed(IntEdges.size(), false);
-		edgeNum = 0;
-		std::set<int> elemSet;
+		IntPoints.reserve(InitialIntPoints.size());
+// 		vector<bool> PointUsed(InitialIntPoints.size(), false);
+		vec3 MidPt = zeros(3);
+		for (auto const & p : InitialIntPoints){
+			MidPt += p;
+		}
+		MidPt /= (double)InitialIntPoints.size();
 
-		/*
-		 *	First find an endpoint.
-		 */
-		for (auto const & edge : IntEdges){
-			/*
-			 * Search the other edges' elements for the elements of this
-			 * edge. If the number of hits is 1 then it's an endpoint.
-			 */
-			int NumHits = 0;
-			int otherEdgeNum = 0;
-			for (auto const & elem : edge.second){
-				for (auto const & otherEdge : IntEdges){
-					if (edgeNum != otherEdgeNum++ && otherEdge.second.count(elem)){
-						NumHits++;
-						break;
+		double MaxDist = DBL_MIN;
+		int MaxPtNum = -1;
+		vector<vec3>::iterator PtIt = InitialIntPoints.end();
+		for (auto it = InitialIntPoints.begin(); it != InitialIntPoints.end(); ++it) {
+			double TmpDist = DistSqr(*it, MidPt);
+			if (TmpDist > MaxDist) {
+				MaxDist = TmpDist;
+				PtIt = it;
+			}
+		}
+
+		if (PtIt != InitialIntPoints.end()){
+			auto CheckPoints = InitialIntPoints;
+
+			IntPoints.push_back(*PtIt);
+
+			InitialIntPoints.erase(PtIt);
+
+			double MinDist;
+			double CheckDist = 0.0005;
+			CheckDist *= CheckDist;
+
+			while (!InitialIntPoints.empty()){
+				MinDist = DBL_MAX;
+				for (auto it = InitialIntPoints.begin(); it != InitialIntPoints.end(); ++it){
+					double TmpDist = DistSqr(*it, IntPoints.back());
+					if (TmpDist < MinDist){
+						MinDist = TmpDist;
+						PtIt = it;
 					}
 				}
-				if (NumHits >= 2) break;
-			}
-
-			if (NumHits == 1 || edge.second.size() == 1){
-				IntPoints.push_back(IntEdgesPoints[edge.first]);
-				elemSet = edge.second;
-				EdgeUsed[edgeNum] = true;
-				break;
-			}
-
-			edgeNum++;
-		}
-
-		/*
-		 * Now loop over the remaining edges until all the intersection points are found.
-		 */
-		int iter = 0;
-		while (IntPoints.size() < IntEdges.size() && iter < 1.5 * (double)IntEdges.size()){
-			iter++;
-
-			edgeNum = 0;
-			for (auto const & edge : IntEdges) {
-				if (!EdgeUsed[edgeNum]) {
-					for (auto const & elem : elemSet) {
-						if (edge.second.count(elem)){
-							IntPoints.push_back(IntEdgesPoints[edge.first]);
-							EdgeUsed[edgeNum] = true;
-							elemSet = edge.second;
-							break;
-						}
-					}
+				if (MinDist > 0 && (InitialIntPoints.size() == 1 || MinDist > CheckDist)){
+					IntPoints.push_back(*PtIt);
 				}
-				edgeNum++;
+				InitialIntPoints.erase(PtIt);
 			}
 		}
 
-		if (iter > IntEdges.size()){
-			TecUtilDialogErrMsg("Failed to generate ordered sphere-surface intersection points.");
-		}
+// 		for (int ni = 0; ni < InitialIntPoints.size(); ++ni) {
+// 			double TmpDist = DistSqr(InitialIntPoints[ni], MidPt);
+// 			if (TmpDist > MaxDist){
+// 				MaxDist = TmpDist;
+// 				MaxPtNum = ni;
+// 			}
+// 		}
+// 
+// 		if (MaxPtNum >= 0) {
+// 			IntPoints.push_back(InitialIntPoints[MaxPtNum]);
+// // 
+//  			double CheckDist = EdgeLenMean * 0.05;
+//  			CheckDist *= CheckDist;
+// 
+// // 			PointUsed[MaxPtNum] = true;
+// 
+// 			auto CheckPoints = InitialIntPoints;
+// 
+// 			while (IntPoints.size() < InitialIntPoints.size()) {
+// 				double MinDist = DBL_MAX;
+// 				int MinPtNum = -1;
+// 				for (int ni = 0; ni < InitialIntPoints.size(); ++ni) {
+// 					if (!PointUsed[ni]) {
+// 						double TmpDist = DistSqr(IntPoints.back(), InitialIntPoints[ni]);
+// 						if (TmpDist < MinDist) {
+// 							MinDist = TmpDist;
+// 							MinPtNum = ni;
+// 						}
+// 					}
+// 				}
+// 				if (MinPtNum >= 0 && (MinDist > CheckDist || InitialIntPoints.size())) {
+// 					IntPoints.push_back(InitialIntPoints[MinPtNum]);
+// 					PointUsed[MinPtNum] = true;
+// 				}
+// 			}
+// 		}
+
+
+		
+		// Old method based on shared elements of edges.
+// 		/*
+// 		 *	Now we have all the valid intersecting edges, so we need to get the
+// 		 *	intersection points themselves, and in the correct order.
+// 		 *	We can get a correct order by identifying the endpoint of the 
+// 		 *	intersection path.
+// 		 *	For an edge that is interior to the intersection path, both of its
+// 		 *	participating elements will be in the element set of other intersecting
+// 		 *	edges. So if both elements can be found in the element sets of the other
+// 		 *	intersecting edges, then it is an interior edge. Conversely, if only one
+// 		 *	of an intersecting edge's elements can be found in the element sets of
+// 		 *	the other intersecting edges, then it is an endpoint edge and can be used
+// 		 *	as the first intersection point.
+// 		 *	The remaining points can be deduced by shared element numbers.
+// 		 */
+// 		IntPoints.reserve(IntEdges.size());
+// 		vector<bool> EdgeUsed(IntEdges.size(), false);
+// 		edgeNum = 0;
+// 		std::set<int> elemSet;
+// 
+// 		/*
+// 		 *	First find an endpoint.
+// 		 */
+// 		for (auto const & edge : IntEdges){
+// 			/*
+// 			 * Search the other edges' elements for the elements of this
+// 			 * edge. If the number of hits is 1 then it's an endpoint.
+// 			 */
+// 			int NumHits = 0;
+// 			int otherEdgeNum = 0;
+// 			for (auto const & elem : edge.second){
+// 				for (auto const & otherEdge : IntEdges){
+// 					if (edgeNum != otherEdgeNum++ && otherEdge.second.count(elem)){
+// 						NumHits++;
+// 						break;
+// 					}
+// 				}
+// 				if (NumHits >= 2) break;
+// 			}
+// 
+// 			if (NumHits == 1 || edge.second.size() == 1){
+// 				IntPoints.push_back(IntEdgesPoints[edge.first]);
+// 				elemSet = edge.second;
+// 				EdgeUsed[edgeNum] = true;
+// 				break;
+// 			}
+// 
+// 			edgeNum++;
+// 		}
+// 
+// 		/*
+// 		 * Now loop over the remaining edges until all the intersection points are found.
+// 		 */
+// 		int iter = 0;
+// 		while (IntPoints.size() < IntEdges.size() && iter < 1.5 * (double)IntEdges.size()){
+// 			iter++;
+// 
+// 			edgeNum = 0;
+// 			for (auto const & edge : IntEdges) {
+// 				if (!EdgeUsed[edgeNum]) {
+// 					for (auto const & elem : elemSet) {
+// 						if (edge.second.count(elem)){
+// 							IntPoints.push_back(IntEdgesPoints[edge.first]);
+// 							EdgeUsed[edgeNum] = true;
+// 							elemSet = edge.second;
+// 							break;
+// 						}
+// 					}
+// 				}
+// 				edgeNum++;
+// 			}
+// 		}
+// 
+// 		if (iter > IntEdges.size()){
+// 			TecUtilDialogErrMsg("Failed to generate ordered sphere-surface intersection points.");
+// 		}
 
 	}
 
 	return IntPoints;
 }
 
-int FESurface_c::GetClosestNodeToPoint(vec3 const & Point) const{
+int FESurface_c::GetClosestNodeToPoint(vec3 const & Point, double * ClosestNodeDistance) const{
 	int MinNodeInd = -1;
 	if (this->IsMade()){
 		double MinDistSqr = DBL_MAX,
@@ -3038,6 +3175,8 @@ int FESurface_c::GetClosestNodeToPoint(vec3 const & Point) const{
 				MinNodeInd = ni;
 			}
 		}
+		if (ClosestNodeDistance != nullptr)
+			*ClosestNodeDistance = sqrt(MinDistSqr);
 	}
 	return MinNodeInd;
 }

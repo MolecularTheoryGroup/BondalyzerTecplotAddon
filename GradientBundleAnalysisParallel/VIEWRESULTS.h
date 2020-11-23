@@ -1,6 +1,4 @@
-
-#ifndef VIEWRESULTS_H_
-#define VIEWRESULTS_H_
+#pragma once
 
 #include <string>
 #include <vector>
@@ -33,5 +31,5 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
 	ArbParam_t ClientData);
 
 void ExportGBAData();
-
-#endif
+bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin);
+void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t AbsoluteRadius);

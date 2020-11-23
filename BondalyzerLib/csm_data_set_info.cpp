@@ -166,6 +166,25 @@ vector<double> SplitStringDbl(string const &s, string const & delim) {
 	return tokens;
 }
 
+string StringJoin(vector<string> const & strVec, string const & delim){
+	if (strVec.size() == 0){
+		return "";
+	}
+	stringstream ss;
+	ss << strVec[0];
+
+	for (int i = 1; i < strVec.size(); ++i){
+		ss << delim << strVec[i];
+	}
+
+	return ss.str();
+}
+
+string DoubleToString(double const & Val, int Precision){
+	stringstream ss;
+	ss << std::fixed << std::setprecision(Precision) << Val;
+	return ss.str();
+}
 
 Boolean_t StringIsInt(string const & s){
 	Boolean_t IsInt = TRUE;
@@ -176,9 +195,31 @@ Boolean_t StringIsInt(string const & s){
 }
 
 Boolean_t StringIsFloat(string const & s){
-	for (auto const & i : s) if (!isdigit(i) && i != '.') return FALSE;
+	for (auto const & i : s) if (!isdigit(i) && i != '.' && i != 'e' && i != 'E' && i != '-' && i != '+') return FALSE;
 
 	return TRUE;
+}
+
+string IntVectorToRangeString(vector<int> Items){
+	std::sort(Items.begin(), Items.end());
+
+	stringstream ss;
+	int i = 0;
+	while (i < Items.size()){
+		ss << Items[i];
+		int j = i + 1;
+		while (j < Items.size() && Items[j] == Items[j - 1] + 1)
+			j++;
+		
+		if (j > i + 1)
+			ss << "-" << to_string(Items[j - 1]);
+		
+		i = j;
+
+		if (i < Items.size())
+			ss << ",";
+	}
+	return ss.str();
 }
 
 
@@ -551,41 +592,30 @@ vec3 GetDelXYZ_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum){
 	LgIndex_t IJK[3];
 	TecUtilZoneGetIJK(ZoneNum, &IJK[0], &IJK[1], &IJK[2]);
 
-	vec3 Pt1, Pt2;
+	FieldVecPointer_c XYZ;
+	XYZ.GetReadPtr(ZoneNum, XYZVarNums);
+	DelXYZ[0] = Distance(XYZ[IndexFromIJK(2, 1, 1, IJK[0], IJK[1])-1], XYZ[IndexFromIJK(1, 1, 1, IJK[0], IJK[1])-1]);
+	DelXYZ[1] = Distance(XYZ[IndexFromIJK(1, 2, 1, IJK[0], IJK[1])-1], XYZ[IndexFromIJK(1, 1, 1, IJK[0], IJK[1])-1]);
+	DelXYZ[2] = Distance(XYZ[IndexFromIJK(1, 1, 2, IJK[0], IJK[1])-1], XYZ[IndexFromIJK(1, 1, 1, IJK[0], IJK[1])-1]);
 
-	for (int i = 0; i < 3; ++i){
-		Pt1[i] = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[i], IndexFromIJK(1, 1, 1, IJK[0], IJK[1]));
-		Pt2[i] = TecUtilDataValueGetByZoneVar(ZoneNum,
-											XYZVarNums[i],
-											IndexFromIJK(MIN(2, IJK[0]),
-														MIN(2, IJK[1]),
-														MIN(2, IJK[2]),
-														IJK[0], IJK[1]));
-	}
-
-	for (int i = 0; i < 3; ++i)
-		DelXYZ[i] = ABS(Pt2[i] - Pt1[i]);
-
-// 		for (int i = 0; i < 3; ++i){
-// 			if (IJK[i] > 1){
-// 				double pt1, pt2;
-// 				pt1 = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[i], IndexFromIJK(1,1,1,IJK[0],IJK[1]));
-// 				switch (i){
-// 					case 0:
-// 						pt2 = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[i], IndexFromIJK(2,1,1,IJK[0],IJK[1]));
-// 						break;
-// 					case 1:
-// 						pt2 = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[i], IndexFromIJK(1, 2, 1, IJK[0], IJK[1]));
-// 						break;
-// 					default:
-// 						pt2 = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[i], IndexFromIJK(1, 1, 2, IJK[0], IJK[1]));
-// 						break;
-// 				}
-// 				DelXYZ[i] = ABS(pt2-pt1);
-// 			}
-// 			else
-// 				DelXYZ[i] = 0.0;
-// 		}
+// 	vec3 Pt1, Pt2;
+// 
+// 	for (int i = 0; i < 3; ++i){
+// 		Pt1[i] = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[i], IndexFromIJK(1, 1, 1, IJK[0], IJK[1]));
+// 		Pt2[i] = TecUtilDataValueGetByZoneVar(ZoneNum,
+// 											XYZVarNums[i],
+// 											IndexFromIJK(MIN(2, IJK[0]),
+// 														MIN(2, IJK[1]),
+// 														MIN(2, IJK[2]),
+// 														IJK[0], IJK[1]));
+// 	}
+// 
+// 	for (int i = 0; i < 3; ++i)
+// 		DelXYZ[i] = ABS(Pt2[i] - Pt1[i]);
+// 
+// 	DelXYZ[0] = ABS(TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[0], IndexFromIJK(2, 1, 1, IJK[0], IJK[1])) - TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[0], IndexFromIJK(1, 1, 1, IJK[0], IJK[1])));
+// 	DelXYZ[1] = ABS(TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[1], IndexFromIJK(1, 2, 1, IJK[0], IJK[1])) - TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[1], IndexFromIJK(1, 1, 1, IJK[0], IJK[1])));
+// 	DelXYZ[2] = ABS(TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[2], IndexFromIJK(1, 1, 2, IJK[0], IJK[1])) - TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[2], IndexFromIJK(1, 1, 1, IJK[0], IJK[1])));
 
 	return DelXYZ;
 }
@@ -642,26 +672,34 @@ void ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneN
 	for (int i = 0; i < 3; ++i)
 		REQUIRE(XYZVarNums[i] >= 1 && XYZVarNums[i] <= TecUtilDataSetGetNumVars());
 
-	LgIndex_t IJK[2][3];
-	IJK[0][0] = IJK[0][1] = IJK[0][2] = 1;
-	TecUtilZoneGetIJK(ZoneNum, &IJK[1][0], &IJK[1][1], &IJK[1][2]);
+//   	LgIndex_t IJK[2][3];
+//   	IJK[0][0] = IJK[0][1] = IJK[0][2] = 1;
+//   	TecUtilZoneGetIJK(ZoneNum, &IJK[1][0], &IJK[1][1], &IJK[1][2]);
+//   
+//   	MinXYZ.fill(DBL_MAX);
+//   	MaxXYZ.fill(DBL_MIN);
+//   
+//   	double  Value;
+//   
+//   	for (int i = 0; i < 2; ++i){
+//   		for (int j = 0; j < 2; ++j){
+//   			for (int k = 0; k < 2; ++k){
+//   				for (int dir = 0; dir < 3; ++dir){
+//   					Value = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[dir], IndexFromIJK(IJK[i][0], IJK[j][1], IJK[k][2], IJK[1][0], IJK[1][1]));
+//   					MinXYZ[dir] = MIN(MinXYZ[dir], Value);
+//   					MaxXYZ[dir] = MAX(MaxXYZ[dir], Value);
+//   				}
+//   			}
+//   		}
+//   	}
 
-	MinXYZ.fill(DBL_MAX);
-	MaxXYZ.fill(DBL_MIN);
+	vector<int> IJK(3);
+	TecUtilZoneGetIJK(ZoneNum, &IJK[0], &IJK[1], &IJK[2]);
 
-	double  Value;
-
-	for (int i = 0; i < 2; ++i){
-		for (int j = 0; j < 2; ++j){
-			for (int k = 0; k < 2; ++k){
-				for (int dir = 0; dir < 3; ++dir){
-					Value = TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[dir], IndexFromIJK(IJK[i][0], IJK[j][1], IJK[k][2], IJK[1][0], IJK[1][1]));
-					MinXYZ[dir] = MIN(MinXYZ[dir], Value);
-					MaxXYZ[dir] = MAX(MaxXYZ[dir], Value);
-				}
-			}
-		}
-	}
+	FieldVecPointer_c XYZ;
+	XYZ.GetReadPtr(ZoneNum, XYZVarNums);
+	MinXYZ = XYZ[IndexFromIJK(1, 1, 1, IJK[0], IJK[1])-1];
+	MaxXYZ = XYZ[IndexFromIJK(IJK[0], IJK[1], IJK[2], IJK[0], IJK[1])-1];
 
 	// 		for (int i = 0; i < 3; ++i){
 	// 			MinMaxPts[0][i] = MIN(MinMaxPts[0][i], TecUtilDataValueGetByZoneVar(ZoneNum, XYZVarNums[i], IndexFromIJK(1, 1, 1, IJK[0], IJK[1])));
@@ -730,15 +768,19 @@ void ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneN
 	*	Begin other functions
 	*/
 
-void StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale, Boolean_t ShowButton){
+void StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale, Boolean_t ShowButton, Boolean_t RelaunchStatus){
 	TecUtilLockStart(AddOnID);
 // 	TecUtilDrawGraphics(TRUE);
 	TecUtilStatusSuspend(FALSE);
 
+	if (RelaunchStatus)
+		TecUtilStatusFinishPercentDone();
+
 	StatusNumValues = 0;
 	StatusMeanList.resize(StatusMaxNumValues, duration<double>(0));
 
-	TecUtilStatusStartPercentDone(StatusStr.c_str(), ShowButton, ShowScale);
+	for (int i = 0; i < 1; ++i)
+		TecUtilStatusStartPercentDone(StatusStr.c_str(), ShowButton, ShowScale);
 // 	TecUtilDialogLaunchPercentDone(StatusStr.c_str(), ShowScale);
 
 	TecUtilStatusSuspend(TRUE);
@@ -780,7 +822,8 @@ Boolean_t StatusUpdate(unsigned int CurrentNum,
 	unsigned int TotalNum,
 	string const & ProgresssText,
 	AddOn_pa const & AddOnID,
-	high_resolution_clock::time_point StartTime)
+	high_resolution_clock::time_point StartTime,
+	bool DisplayCount)
 {
 	unsigned int Percent = MAX(0, MIN(static_cast<int>((static_cast<double>(CurrentNum) + 0.5) / static_cast<double>(TotalNum)* 100.), 100));
 
@@ -791,7 +834,10 @@ Boolean_t StatusUpdate(unsigned int CurrentNum,
 	TecUtilStatusSuspend(FALSE);
 	if (ProgresssText != string("")){
 		stringstream ss;
-		ss << ProgresssText << "  (" << Percent << "% Complete)";
+		if (DisplayCount)
+			ss << ProgresssText << ", " << CurrentNum << "/" << TotalNum << ", " << Percent << "% ";
+		else
+			ss << ProgresssText << ", " << Percent << "% ";
 		if (StartTime != high_resolution_clock::time_point() && Percent > 0 && Percent < 100)
 		{
 			if (CurrentNum > (int)(0.04 * (double)TotalNum)){
@@ -805,8 +851,8 @@ Boolean_t StatusUpdate(unsigned int CurrentNum,
 				// 			}
 				// 			Mean /= (double)MIN(StatusNumValues, StatusMaxNumValues);
 				// 			duration<double> Remaining = Mean * (double)(TotalNum - CurrentNum);
-				duration<double> Remaining = (Elapsed / (double)CurrentNum) * (double)(TotalNum - CurrentNum);
-				ss << " (Ela. " << PrintDuration(Elapsed) << ". Rem. " << PrintDuration(Remaining) << ". Est. Tot. " << PrintDuration(Elapsed + Remaining) << ")";
+				duration<double> Remaining = (Elapsed / (double)CurrentNum) * (double)(TotalNum - CurrentNum) + duration<double>(1);
+				ss << " (ela-" << PrintDuration(Elapsed) << ", rem-" << PrintDuration(Remaining) << ", tot-" << PrintDuration(Elapsed + Remaining) << ")";
 			}
 			else{
 				ss << " Please wait";
@@ -815,7 +861,9 @@ Boolean_t StatusUpdate(unsigned int CurrentNum,
 		TecUtilStatusSetPercentDoneText(ss.str().c_str());
 		// 		TecUtilDialogSetPercentDoneText(ss.str().c_str());
 	}
-	Boolean_t IsOk = TecUtilStatusCheckPercentDone(Percent);
+	Boolean_t IsOk;
+	for (int i = 0; i < 1; ++i)
+		IsOk = TecUtilStatusCheckPercentDone(Percent);
 // 	Boolean_t IsOk = TecUtilDialogCheckPercentDone(Percent);
 	TecUtilStatusSuspend(TRUE);
 // 	TecUtilDrawGraphics(FALSE);
@@ -832,7 +880,8 @@ LgIndex_t IndexFromIJK(LgIndex_t I,
 	LgIndex_t MaxI,
 	LgIndex_t MaxJ)
 {
-	return I + (J - 1) * MaxI + (K - 1) * MaxI * MaxJ;
+	int ind = I + ((J - 1) + (K - 1) * MaxJ) * MaxI;
+	return ind;
 }
 
 /**
@@ -1065,7 +1114,7 @@ void SetZoneStyle(vector<int> ZoneNums,
 			TecUtilZoneSetScatter(SV_COLOR, ZoneSet.getRef(), 0, (Color != InvalidColor_C ? Color : ColorDefault));
 		}
 		else if (ZoneStyle <= ZoneStyle_Path) {
-			double SizeDefault = 0.2;
+			double SizeDefault = 0.1;
 			TecUtilZoneSetScatter(SV_SHOW, ZoneSet.getRef(), 0, FALSE);
 			TecUtilZoneSetMesh(SV_SHOW, ZoneSet.getRef(), 0, TRUE);
 			TecUtilZoneSetMesh(SV_COLOR, ZoneSet.getRef(), 0, (Color != InvalidColor_C ? Color : ColorDefault));
@@ -1079,10 +1128,42 @@ void SetZoneStyle(vector<int> ZoneNums,
 		}
 		else if (ZoneStyle <= ZoneStyle_Volume) {
 			double SizeDefault = 0.1;
-			TecUtilZoneSetScatter(SV_SHOW, ZoneSet.getRef(), 0, FALSE);
+			TecUtilZoneSetMesh(SV_SHOW, ZoneSet.getRef(), 0, FALSE);
+			TecUtilZoneSetContour(SV_SHOW, ZoneSet.getRef(), 0, FALSE);
+			TecUtilZoneSetShade(SV_SHOW, ZoneSet.getRef(), 0, FALSE);
+			TecUtilZoneSetScatter(SV_SHOW, ZoneSet.getRef(), 0, TRUE);
+			TecUtilZoneSetScatter(SV_FRAMESIZE, ZoneSet.getRef(), 0.1, 0);
+			TecUtilZoneSetScatter(SV_FILLMODE, ZoneSet.getRef(), 0, FillMode_UseLineColor);
+			TecUtilZoneSetScatter(SV_COLOR, ZoneSet.getRef(), 0, Green_C);
+			TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, ZoneSet.getRef(), GeomShape_Circle);
+			
 			TecUtilZoneSetEdgeLayer(SV_SHOW, ZoneSet.getRef(), 0, TRUE);
 			TecUtilZoneSetEdgeLayer(SV_LINETHICKNESS, ZoneSet.getRef(), (Size > 0 ? Size : SizeDefault), 0);
 			TecUtilZoneSetEdgeLayer(SV_COLOR, ZoneSet.getRef(), 0, (Color != InvalidColor_C ? Color : ColorDefault));
 		}
 	}
+}
+
+
+int ZoneFinalSourceZoneNum(int ZoneNum, bool MaintainZoneType){
+	int SourceZoneNum = -1;
+	if (ZoneNum <= 0)
+		return SourceZoneNum;
+
+	int MyZoneNum = ZoneNum;
+	string ZoneNumStr;
+
+	string ZoneType;
+	if (MaintainZoneType && !AuxDataZoneGetItem(MyZoneNum, CSMAuxData.CC.ZoneType, ZoneType))
+		return SourceZoneNum;
+
+	do {
+		SourceZoneNum = MyZoneNum;
+		if (!AuxDataZoneGetItem(MyZoneNum, CSMAuxData.GBA.SourceZoneNum, ZoneNumStr))
+			break;
+		if (!MaintainZoneType || AuxDataZoneItemMatches(stoi(ZoneNumStr), CSMAuxData.CC.ZoneType, ZoneType))
+			MyZoneNum = stoi(ZoneNumStr);
+	} while (SourceZoneNum != MyZoneNum);
+
+	return SourceZoneNum;
 }

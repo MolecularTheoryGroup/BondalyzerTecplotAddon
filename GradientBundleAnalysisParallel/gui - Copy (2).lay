@@ -1,0 +1,1904 @@
+#!MC 1400
+# Created by Tecplot 360 build 14.0.2.35002
+$!SETSTYLEBASE FACTORY
+$!GLOBALLINKING 
+  LINKCOLORMAPS = YES
+$!GLOBALCOLORMAP  1
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 1 RESETTOFACTORY
+$!GLOBALCOLORMAP  1
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  2
+  CONTOURCOLORMAP = LGRAINBOW
+$!COLORMAPCONTROL 2 RESETTOFACTORY
+$!GLOBALCOLORMAP  2
+  LGRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.1667
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.3333
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 0.6667
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    CONTROLPOINT 6
+      {
+      COLORMAPFRACTION = 0.8333
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 7
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 255
+        }
+      }
+    }
+$!GLOBALCOLORMAP  3
+  CONTOURCOLORMAP = MODERN
+$!COLORMAPCONTROL 3 RESETTOFACTORY
+$!GLOBALCOLORMAP  3
+  MODERN
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 100
+        G = 35
+        B = 100
+        }
+      TRAILRGB
+        {
+        R = 100
+        G = 35
+        B = 100
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.1429
+      LEADRGB
+        {
+        R = 35
+        G = 35
+        B = 100
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.2857
+      LEADRGB
+        {
+        R = 35
+        G = 100
+        B = 100
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.4286
+      LEADRGB
+        {
+        R = 35
+        G = 100
+        B = 35
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 0.5714
+      LEADRGB
+        {
+        R = 100
+        G = 100
+        B = 35
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 6
+      {
+      COLORMAPFRACTION = 0.7143
+      LEADRGB
+        {
+        R = 85
+        G = 46
+        B = 10
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 7
+      {
+      COLORMAPFRACTION = 0.8571
+      LEADRGB
+        {
+        R = 100
+        G = 35
+        B = 35
+        }
+      TRAILRGB
+        {
+        R = 217
+        G = 117
+        B = 26
+        }
+      }
+    CONTROLPOINT 8
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  4
+  CONTOURCOLORMAP = GRAYSCALE
+$!COLORMAPCONTROL 4 RESETTOFACTORY
+$!GLOBALCOLORMAP  4
+  GRAYSCALE
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 0
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.125
+      LEADRGB
+        {
+        R = 32
+        G = 32
+        B = 32
+        }
+      TRAILRGB
+        {
+        R = 32
+        G = 32
+        B = 32
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 64
+        G = 64
+        B = 64
+        }
+      TRAILRGB
+        {
+        R = 64
+        G = 64
+        B = 64
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.375
+      LEADRGB
+        {
+        R = 96
+        G = 96
+        B = 96
+        }
+      TRAILRGB
+        {
+        R = 96
+        G = 96
+        B = 96
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 128
+        G = 128
+        B = 128
+        }
+      TRAILRGB
+        {
+        R = 128
+        G = 128
+        B = 128
+        }
+      }
+    CONTROLPOINT 6
+      {
+      COLORMAPFRACTION = 0.625
+      LEADRGB
+        {
+        R = 160
+        G = 160
+        B = 160
+        }
+      TRAILRGB
+        {
+        R = 160
+        G = 160
+        B = 160
+        }
+      }
+    CONTROLPOINT 7
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 192
+        G = 192
+        B = 192
+        }
+      TRAILRGB
+        {
+        R = 192
+        G = 192
+        B = 192
+        }
+      }
+    CONTROLPOINT 8
+      {
+      COLORMAPFRACTION = 0.875
+      LEADRGB
+        {
+        R = 224
+        G = 224
+        B = 224
+        }
+      TRAILRGB
+        {
+        R = 224
+        G = 224
+        B = 224
+        }
+      }
+    CONTROLPOINT 9
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 255
+        }
+      }
+    }
+$!GLOBALCOLORMAP  5
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 5 RESETTOFACTORY
+$!GLOBALCOLORMAP  5
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  6
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 6 RESETTOFACTORY
+$!GLOBALCOLORMAP  6
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  7
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 7 RESETTOFACTORY
+$!GLOBALCOLORMAP  7
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!GLOBALCOLORMAP  8
+  CONTOURCOLORMAP = SMRAINBOW
+$!COLORMAPCONTROL 8 RESETTOFACTORY
+$!GLOBALCOLORMAP  8
+  SMRAINBOW
+    {
+    CONTROLPOINT 1
+      {
+      COLORMAPFRACTION = 0
+      LEADRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 0
+        B = 255
+        }
+      }
+    CONTROLPOINT 2
+      {
+      COLORMAPFRACTION = 0.25
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 255
+        }
+      }
+    CONTROLPOINT 3
+      {
+      COLORMAPFRACTION = 0.5
+      LEADRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 0
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 4
+      {
+      COLORMAPFRACTION = 0.75
+      LEADRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 255
+        B = 0
+        }
+      }
+    CONTROLPOINT 5
+      {
+      COLORMAPFRACTION = 1
+      LEADRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      TRAILRGB
+        {
+        R = 255
+        G = 0
+        B = 0
+        }
+      }
+    }
+$!PLOTOPTIONS 
+  SUBDIVIDEALLCELLS = NO
+$!GLOBALPAPER 
+  PAPERSIZEINFO
+    {
+    LETTER
+      {
+      WIDTH = 8.5
+      HEIGHT = 11
+      LEFTHARDCLIPOFFSET = 0.125
+      RIGHTHARDCLIPOFFSET = 0.125
+      TOPHARDCLIPOFFSET = 0.125
+      BOTTOMHARDCLIPOFFSET = 0.125
+      }
+    CUSTOM1
+      {
+      WIDTH = 3
+      HEIGHT = 3
+      }
+    }
+$!PAGE 
+  NAME = ''
+  PAPERATTRIBUTES
+    {
+    BACKGROUNDCOLOR = WHITE
+    ISTRANSPARENT = NO
+    ORIENTPORTRAIT = NO
+    SHOWGRID = NO
+    SHOWRULER = NO
+    SHOWPAPER = YES
+    PAPERSIZE = LETTER
+    RULERSPACING = ONEINCH
+    PAPERGRIDSPACING = HALFINCH
+    REGIONINWORKAREA
+      {
+      X1 = -6.115
+      Y1 = -4.03
+      X2 = 18.67
+      Y2 = 18.85
+      }
+    }
+### Frame Number 1 ###
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  BACKGROUNDCOLOR = CUSTOM2
+  HEADERCOLOR = BLUE
+  XYPOS
+    {
+    X = 3.6434
+    Y = 8.2003
+    }
+  WIDTH = 10.832
+  HEIGHT = 7.9751
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!FRAMENAME  = 'ID=1 TITLE="Gradient Bundle Analysis" MODE=MODELESS OKCLOSEBUTTON=T HELPBUTTON=F'
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!SKETCHAXIS 
+  DEPXTOYRATIO = 1
+$!SKETCHAXIS 
+  XDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 1.0001
+    GRSPACING = 0.2
+    }
+$!SKETCHAXIS 
+  YDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 0.73632731813146235
+    GRSPACING = 0.2
+    }
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 1.362979158585118
+    Y = 1.97845790802702
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TAB1 Type=Tab'
+  TEXT = 'TAB:Group=1                                                                                                                                                       \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+### Frame Number 2 ###
+$!CREATENEWFRAME 
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  BACKGROUNDCOLOR = CUSTOM26
+  HEADERCOLOR = CYAN
+  XYPOS
+    {
+    X = -0.83484
+    Y = 0.08123
+    }
+  WIDTH = 10.737
+  HEIGHT = 7.4622
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!FRAMENAME  = 'TABPAGE=T ID=1 POS=1 TITLE="Setup"'
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!SKETCHAXIS 
+  DEPXTOYRATIO = 1
+$!SKETCHAXIS 
+  XDETAIL
+    {
+    RANGEMIN = -0.67510806902717002
+    RANGEMAX = 1.7453467182068727
+    GRSPACING = 0.2
+    }
+$!SKETCHAXIS 
+  YDETAIL
+    {
+    RANGEMIN = -0.57764327349123101
+    RANGEMAX = 1.1045694221684386
+    GRSPACING = 0.2
+    }
+$!LINKING 
+  BETWEENFRAMES
+    {
+    LINKFRAMESIZEANDPOSITION = YES
+    }
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 83.07520823422823
+    Y = 9.442935349089133
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNRun Type=PushButton'
+  TEXT = '       Run\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 85.33401607468522
+    Y = 21.11607785845692
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFSTPts Type=TextField'
+  TEXT = 'TF:    '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 58.6201188767563
+    Y = 21.58030347210514
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL19 Type=Label'
+  TEXT = '# Gradient path points:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 33.68861780435025
+    Y = 19.05534116101473
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLGPperGB Type=Label'
+  TEXT = 'Label'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 33.51601058534855
+    Y = 22.28836521881908
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCNumEdgeGPs Type=Scale SHOWLABEL=F'
+  TEXT = 'SC:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 3.913872526576878
+    Y = 19.2720164946947
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL20 Type=Label'
+  TEXT = '# Gadient paths \nper gradient bundle:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 95.84982544487913
+    Y = 39.06164225689579
+    }
+  TEXTSHAPE
+    {
+    ISITALIC = YES
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  ANCHOR = RIGHT
+  MACROFUNCTIONCOMMAND = 'VarName=LBLNumTri Type=Label'
+  TEXT = '--> Num Triangles'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 60.43685124521618
+    Y = 38.40133641984846
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFLevel Type=Spin'
+  TEXT = 'TFS:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 13.13718324768082
+    Y = 36.5614927851566
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFRad Type=TextField'
+  TEXT = 'TF:   '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 3.57168427863687
+    Y = 37.22179862220404
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLRad Type=Label'
+  TEXT = 'Radius:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 24.79743626105331
+    Y = 34.07609431517047
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = HOLLOW
+    MARGIN = 55
+    COLOR = WHITE
+    FILLCOLOR = CUSTOM2
+    }
+  LINESPACING = 1.5
+  MACROFUNCTIONCOMMAND = 'VarName=RBRadMode Type=RadioBox'
+  TEXT = '<math>7</math>  Absolute\n<math>7</math>  Fraction of min CP dist.'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 78.82009067388347
+    Y = 51.58852935543739
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFCutoff Type=TextField'
+  TEXT = 'TF:             '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 57.50553780275731
+    Y = 52.24966804196723
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLCutoff Type=Label'
+  TEXT = 'System Rho Cutoff:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 5.513690071315569
+    Y = 51.43339592552956
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLOpenSys Type=Toggle'
+  TEXT = '<math>7</math>   Open System'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 26.46099925817084
+    Y = 62.1233091580234
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLSelVars Type=MultiList'
+  TEXT = 'MLST:                                                                                                                \n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 67.6221158858809
+    Y = 90.97832260131273
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCPrecise Type=Scale SHOWLABEL=F'
+  TEXT = 'SC:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 55.90670901596588
+    Y = 92.56497408174096
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL23 Type=Label'
+  TEXT = 'Precision:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 25.70390092138391
+    Y = 91.57503842755864
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLInt Type=Toggle'
+  TEXT = '<math>7</math>   Integrate'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 3.018600401565815
+    Y = 62.2490688851769
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLSelCPs Type=MultiList'
+  TEXT = 'MLST:                      \n\n\n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 45.87917300328254
+    Y = 39.06164225689579
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLLevel Type=Label'
+  TEXT = 'Refinement:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.00150275594761
+    Y = 91.94672174668624
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLPrecise Type=Label'
+  TEXT = 'Label'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 26.45305824872487
+    Y = 51.32345936846414
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLsGP Type=Toggle'
+  TEXT = '<math>7</math>   Save GPs'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 43.00950166759021
+    Y = 51.32345936846414
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLsGB Type=Toggle'
+  TEXT = '<math>7</math>   Save GBs'
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 1.809835433959928
+    Y = 16.44737191582387
+    }
+  MACROFUNCTIONCOMMAND = 'Gradient Bundle Parameters'
+  RAWDATA
+95.6077635288 11.2884350121 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 1.809835433959961
+    Y = 30.47795020742138
+    }
+  MACROFUNCTIONCOMMAND = ' Sphere Mesh Parameters '
+  RAWDATA
+95.2987372875 15.1179984212 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 1.809835433959961
+    Y = 48.77761249386817
+    }
+  MACROFUNCTIONCOMMAND = ' System Boundary Parameters '
+  RAWDATA
+95.6077635288 8.70201587677 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 24.76282517905937
+    Y = 60.21608558948497
+    }
+  MACROFUNCTIONCOMMAND = ' Integration Variables '
+  RAWDATA
+72.6731956005 37.2440069914 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 1.354090532868157
+    Y = 60.19386700623923
+    }
+  MACROFUNCTIONCOMMAND = ' Select CP(s) '
+  RAWDATA
+22.2770810127 37.1880352497 
+### Frame Number 3 ###
+$!CREATENEWFRAME 
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  BACKGROUNDCOLOR = CUSTOM26
+  HEADERCOLOR = PURPLE
+  XYPOS
+    {
+    X = -0.83484
+    Y = 0.08123
+    }
+  WIDTH = 10.737
+  HEIGHT = 7.4622
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!FRAMENAME  = 'TABPAGE=T ID=3 POS=3 TITLE="Results"'
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!SKETCHAXIS 
+  DEPXTOYRATIO = 1
+$!SKETCHAXIS 
+  XDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 1.2102273936170218
+    GRSPACING = 0.2
+    }
+$!SKETCHAXIS 
+  YDETAIL
+    {
+    RANGEMIN = 0
+    RANGEMAX = 0.84110634782983518
+    GRSPACING = 0.2
+    }
+$!LINKING 
+  BETWEENFRAMES
+    {
+    LINKFRAMESIZEANDPOSITION = YES
+    }
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 5.060707672422836
+    Y = 68.54694812528442
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SLSelSphere Type=SingleList'
+  TEXT = 'SLST:                                   \n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 4.552648341497587
+    Y = 60.39238951053081
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLSphereVis Type=Toggle'
+  TEXT = '<math>7</math>   Visible'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 15.52551694535203
+    Y = 60.58725567470452
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNSphereDel Type=PushButton'
+  TEXT = 'Delete'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 5.338278433755368
+    Y = 14.87518856800026
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SLSelVar Type=SingleList'
+  TEXT = 'SLST:                                   \n\n\n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 36.34181026349449
+    Y = 39.01805775782419
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLSelGB Type=MultiList'
+  TEXT = 'MLST:                                            \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 70.87004297530632
+    Y = 73.40052498227711
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNAllGB Type=PushButton'
+  TEXT = '         Activate All'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 70.90688657284781
+    Y = 79.85789694679021
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNTogMode Type=PushButton'
+  TEXT = '      Toggle Mode'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 4.119887262821841
+    Y = 6.637249631224296
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFNumContours Type=TextField'
+  TEXT = 'TF:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 16.68672527349138
+    Y = 7.136925123108573
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL9 Type=Label'
+  TEXT = 'Number of contours'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 39.44088167150841
+    Y = 4.863323790489282
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = HOLLOW
+    MARGIN = 55
+    COLOR = WHITE
+    FILLCOLOR = CUSTOM2
+    }
+  LINESPACING = 1.5
+  MACROFUNCTIONCOMMAND = 'VarName=RBLogLin Type=RadioBox'
+  TEXT = '<math>7</math>  log\n<math>7</math>  linear'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 74.72102866563532
+    Y = 11.24882888436093
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = HOLLOW
+    MARGIN = 55
+    COLOR = WHITE
+    FILLCOLOR = CUSTOM2
+    }
+  ANCHOR = HEADLEFT
+  LINESPACING = 1.5
+  MACROFUNCTIONCOMMAND = 'VarName=RBCntSrc Type=RadioBox'
+  TEXT = '<math>7</math>  selected\n<math>7</math>  all'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 50.32650415218755
+    Y = 7.388539467810551
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLCntSrc Type=Label'
+  TEXT = 'Make contour values from'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.47883847101426
+    Y = 7.388539467810484
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL13 Type=Label'
+  TEXT = 'sphere(s)'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 71.86420440101166
+    Y = 16.46588954255944
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNExport Type=PushButton'
+  TEXT = 'Export to CSV'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 69.78026940083716
+    Y = 26.64934138981628
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLExGBs Type=Toggle'
+  TEXT = '<math>7</math>   Active gradient bundles only'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 4.696425986087316
+    Y = 55.7395711607663
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLShowMesh Type=Toggle'
+  TEXT = '<math>7</math>   Show Mesh'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 51.60527349206251
+    Y = 17.1023448745887
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNSelGB Type=PushButton'
+  TEXT = 'Select GB'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 43.72987631083091
+    Y = 17.1023448745887
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFGrpNum Type=TextField'
+  TEXT = 'TF:   '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 35.38663375249643
+    Y = 17.10234487458869
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL20 Type=Label'
+  TEXT = 'Group #'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 35.38663375249643
+    Y = 25.23151572340147
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL21 Type=Label'
+  TEXT = '1. Activate boundary w/ toggle mode\n2. Select GB within boundary'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 70.7527284309357
+    Y = 86.37848188943363
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNFndBas Type=PushButton'
+  TEXT = 'Find Gradient Bundles'
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 3.250125546769381
+    Y = 53.23234994530054
+    }
+  MACROFUNCTIONCOMMAND = ' CP Sphere '
+  RAWDATA
+29.8090428114 39.745503664 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 3.713533631481177
+    Y = 12.85001058379847
+    }
+  MACROFUNCTIONCOMMAND = 'Properties'
+  RAWDATA
+29.2509973049 38.2241487503 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 34.76936542362758
+    Y = 34.98479902395303
+    }
+  MACROFUNCTIONCOMMAND = 'Gradient Bundles'
+  RAWDATA
+60.9716534615 58.3016574383 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 68.14816272034659
+    Y = 13.19469684012289
+    }
+  MACROFUNCTIONCOMMAND = ' Export '
+  RAWDATA
+27.6511251926 19.0537512302 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 34.79256759136268
+    Y = 13.19469684012292
+    }
+  MACROFUNCTIONCOMMAND = ' GB Region '
+  RAWDATA
+32.0176810026 18.9415574074 
+$!FRAMECONTROL ACTIVATEBYNUMBER
+  FRAME = 3
+$!SETSTYLEBASE CONFIG

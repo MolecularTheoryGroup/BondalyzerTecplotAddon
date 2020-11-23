@@ -1,5 +1,4 @@
-#ifndef LOADDATA_H_
-#define LOADDATA_H_
+#pragma once
 
 #include <string>
 #include <vector>
@@ -36,6 +35,8 @@ Boolean_t LoadVASPData();
 
 void LoadGaussianCubeFiles();
 
+void LoadFLAPWCHARGEFiles();
+
 void LoadTurboMoleCubeFiles();
 Boolean_t LoadBinaryPLTFileData();
 
@@ -44,5 +45,3 @@ void SpinValueChangedInt(LgIndex_t DialogIndex);
 
 void MakeDensfScriptForZones();
 void ImportAdditionalTape41Files(Boolean_t MatchZones = TRUE, Boolean_t MatchDataSet = FALSE);
-
-#endif
