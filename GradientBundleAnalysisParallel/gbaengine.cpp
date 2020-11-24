@@ -1991,6 +1991,29 @@ void NewMainFunction() {
 			}
 		}
 
+
+		// Perform element subdivision based on the minimum normalized arc length difference 
+		// between the element midpoint and the nearest ring surface and bond path 
+		// intersection points.
+		// The normalization is according to the maximum bond path or ring surface intersection achieved by any element on the sphere.
+		// The number of subdivisions is determined by a minimum element solid angle threshold specified by the user.
+		// Elements near bond path intersections will have this solid angle when the subdivision is complete, 
+		// while elements along ring surface intersections will have larger solid angles than this (less subdivision).
+		// If an element is sufficiently far from a ring surface intersecting sphere node, then only its distance
+		// to the nearest bond path intersecting node will be used.
+		// In this way, the same amount of subdivision will occur around bond path intersections despite
+		// the presence of ring surface intersections.
+		// This fraction is determined by a linear combination of the
+		// minimum normalized bond path and ring surface intersection arc length differences, d_b and d_r respectively.
+		// Some parameters are defined to control the behavior of the linear combination:
+		//	* d_r_c, double in (0,1), a cutoff value for d_r
+		//	* w_b, double in (0,1), the weight given to d_b if d_r < d_r_c
+ 		 
+		// First determine the maximum subdivision level
+// 		int MaxSubdivisions = int(double(MaxNumElems) / double(NumElems));
+
+
+
 		// Perform midpoint subdivision for elements with bond path nodes before 
 		// Splitting them according to the angular constraint.
 		// This decreases the size of any resulting artifacts in the contours
@@ -2247,56 +2270,56 @@ void NewMainFunction() {
 
 #ifdef SUPERDEBUG
 // 			ElemTodo = { 196 }; // base 0 (tecplot is base 1)
-// // 			ElemTodo = { 21255 };
-//        			ElemTodo.clear();
-// // 				for (int i = 0; i < NumElems; ++i) {
-//  				for (int i = 190; i < NumElems; ++i){
-// // 					if (ElemTypes[i] == NETypeR)
-// 						ElemTodo.push_back(i);
-// 				}
+  			ElemTodo = { 603 };
+        			ElemTodo.clear();
+ // 				for (int i = 0; i < NumElems; ++i) {
+  				for (int i = 0; i < NumElems; ++i){
+  					if (ElemTypes[i] >= NETypeR && ElemTypes[i] < NETypeB)
+ 						ElemTodo.push_back(i);
+ 				}
 
-				// Get ring and bond type elements and their n-th nearest neighbors
-				int MaxBFSDepth = 1; // if 3, gets ring/bond elems and their 4 nearest neighbors
-				vector<vector<int> > SphereElemConnectivity;
-				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
-				std::set<int> ElemTodoSet;
-				auto CompNEType = NETypeR;
-
-				for (int i = 0; i < NumElems; ++i) {
-					if (ElemTypes[i] >= CompNEType) {
-						ElemTodoSet.insert(i);
-						// BFS with depth limit
-						std::queue<int> ToCheck;
-						vector<bool> Visited(SphereElems.size(), false);
-						int CurDepth = 0;
-						ToCheck.push(i);
-						ToCheck.push(-1); //Depth level marker
-						Visited[i] = true;
-						while (!ToCheck.empty()) {
-							if (ToCheck.front() == -1) {
-								// Moving down another depth
-								ToCheck.push(-1);
-								if (++CurDepth > MaxBFSDepth)
-									break;
-							}
-							else {
-								int e = ToCheck.front();
-// 								if (ElemTypes[e] >= CompNEType) {
-									ElemTodoSet.insert(e);
-// 								}
-								for (int n : SphereElemConnectivity[e]) {
-									if (!Visited[n]) {
-										ToCheck.push(n);
-										Visited[n] = true;
-									}
-								}
-							}
-							ToCheck.pop();
-						}
-					}
-				}
-
-				ElemTodo = vector<int>(ElemTodoSet.begin(), ElemTodoSet.end());
+//				// Get ring and bond type elements and their n-th nearest neighbors
+//				int MaxBFSDepth = 1; // if 3, gets ring/bond elems and their 4 nearest neighbors
+//				vector<vector<int> > SphereElemConnectivity;
+//				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
+//				std::set<int> ElemTodoSet;
+//				auto CompNEType = NETypeR;
+//
+//				for (int i = 0; i < NumElems; ++i) {
+//					if (ElemTypes[i] >= CompNEType) {
+//						ElemTodoSet.insert(i);
+//						// BFS with depth limit
+//						std::queue<int> ToCheck;
+//						vector<bool> Visited(SphereElems.size(), false);
+//						int CurDepth = 0;
+//						ToCheck.push(i);
+//						ToCheck.push(-1); //Depth level marker
+//						Visited[i] = true;
+//						while (!ToCheck.empty()) {
+//							if (ToCheck.front() == -1) {
+//								// Moving down another depth
+//								ToCheck.push(-1);
+//								if (++CurDepth > MaxBFSDepth)
+//									break;
+//							}
+//							else {
+//								int e = ToCheck.front();
+//// 								if (ElemTypes[e] >= CompNEType) {
+//									ElemTodoSet.insert(e);
+//// 								}
+//								for (int n : SphereElemConnectivity[e]) {
+//									if (!Visited[n]) {
+//										ToCheck.push(n);
+//										Visited[n] = true;
+//									}
+//								}
+//							}
+//							ToCheck.pop();
+//						}
+//					}
+//				}
+//
+//				ElemTodo = vector<int>(ElemTodoSet.begin(), ElemTodoSet.end());
    					
 //   			ElemTodo.clear();
 //   			for (int ti = 0; ti < NumElems; ++ti) {
@@ -2716,8 +2739,10 @@ void NewMainFunction() {
 				int InnerPoints = NumGPPoints - NumGPPointsOuter;
 
 				for (int i = 0; i < GradPaths.size(); ++i){
-					if (GradPaths[i].IsMade() && InnerGradPaths[i].IsMade()){
+					if (GradPaths[i].IsMade()){
 						GradPaths[i].Resample(NumGPPointsOuter, ResampleMethod);
+					}
+					if (InnerGradPaths[i].IsMade()) {
 						InnerGradPaths[i].Resample(InnerPoints, ResampleMethod);
 					}
 				}
