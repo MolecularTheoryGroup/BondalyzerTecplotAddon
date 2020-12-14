@@ -132,7 +132,7 @@ public:
 	bool HasEdge(Edge const & e, int searchDepthLimit, vector<int> * Path = nullptr) const;
 	bool HasEdge(int e1, int e2, int searchDepth, vector<int> * Path = nullptr) const { return HasEdge(MakeEdge(e1, e2), searchDepth, Path); }
 
-	vec3 ClosestPoint(vec3 const & Pt, int & TotCPOffset, double & MinDist);
+	vec3 ClosestPoint(vec3 const & Pt, int & TotCPOffset, double & MinDist) const;
 
 	Boolean_t IsValid() const;
 

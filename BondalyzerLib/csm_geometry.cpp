@@ -22,7 +22,7 @@
 
 #include "updateSphericalTriangulation.h"
 
-//#define _GBADEBUG
+// #define _GBADEBUG
 
 using namespace arma;
 
@@ -2183,7 +2183,7 @@ void IntTrigonalPrism(vector<vec3 const*> const & InVptr,
 	for (int vi = 0; vi < Vptr.size() - 1; ++vi) {
 		if (!IsDegenerate[vi]) {
 			for (int vj = vi + 1; vj < Vptr.size(); ++vj) {
-				if (approx_equal(*Vptr[vi], *Vptr[vj], "absdiff", 1e-10)) {
+				if (approx_equal(*Vptr[vi], *Vptr[vj], "absdiff", 1e-30)) {
 					IsDegenerate[vj] = true;
 					DegenerateParent[vj] = vi;
 				}
@@ -2821,7 +2821,7 @@ bool GetPerimeterEdges(vector<vector<int> > const & TriElems, vector<vec3> const
 	return IsOk;
 }
 
-bool GetSortedParameterEdgeMidpoints(vector<vector<int> > const & TriElems, 
+bool GetSortedPerimeterEdgeMidpoints(vector<vector<int> > const & TriElems, 
 	vector<vec3> const & NodeList, 
 	vector<vec3> & SortedEdgeMidpoints,
 	vector<vector<int> > & PerimeterEdges)
@@ -3213,6 +3213,8 @@ void TriangleEdgeMidPointSubdivide(
 	elems[TriNum] = vector<int>({ elems[TriNum][0], NewNodes[0], NewNodes[2] });
 	return;
 }
+
+
 
 
 /*

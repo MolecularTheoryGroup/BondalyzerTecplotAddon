@@ -280,11 +280,13 @@ void NewMainFunction() {
 	double EdgeGPCheckDistance = GBADefaultEdgeGPSpacing;
 	EdgeGPCheckDistance = (double)TecGUIScaleGetValue(SCEGPDist_SC_T1_1) / 10.;
 	double RingBondEdgeGPCheckDistanceFactor = 1.0;
-	int MaxEdgeGPs = 50;
+	int MaxEdgeGPs = 100;
 	bool MinEdgeGPs = false;
 
+	bool TestRun = TecGUIToggleGet(TGLSphTest_TOG_T1_1);
+
 #ifdef _DEBUG
-	MaxEdgeGPs = -1;
+// 	MaxEdgeGPs = -1;
 #endif
 
 	LgIndex_t * CPNums = nullptr;
@@ -309,9 +311,10 @@ void NewMainFunction() {
 	int MaxGBSubdivisionLevel = GBADefaultMaxGBSubdivisionLevel;
 	// 	TecGUITextFieldGetLgIndex(TFGBMaxSD_TF_T1_1, &MaxGBSubdivisionLevel);
 
-	int NumberOfPreBondPathElemSubdivision = GBADefaultNumberOfPreBondPathElemSubdivision;
-	// 	TecGUITextFieldGetLgIndex(SCBPGBInit_SC_T1_1, &NumberOfPreBondPathElemSubdivision);
-	NumberOfPreBondPathElemSubdivision = TecGUIScaleGetValue(SCBPGBInit_SC_T1_1);
+	int NumberOfPreBondPathElemSubdivision = GBAMaxSubdivisionLevel;
+// 	// 	TecGUITextFieldGetLgIndex(SCBPGBInit_SC_T1_1, &NumberOfPreBondPathElemSubdivision);
+// 	NumberOfPreBondPathElemSubdivision = TecGUIScaleGetValue(SCBPGBInit_SC_T1_1);
+
 
 	GPResampleMethod_e ResampleMethod = GPResampleMethod_Linear;
 
@@ -366,8 +369,10 @@ void NewMainFunction() {
 	RadiusMode = (RadMode)TecGUIRadioBoxGetToggle(RBRadMode_RADIO_T1_1);
 	double UserRadius = 0.25;
 	TecGUITextFieldGetDouble(TFRad_TF_T1_1, &UserRadius);
-	int Level = 3;
-	TecGUITextFieldGetLgIndex(TFLevel_TFS_T1_1, &Level);
+	int Level = TecGUIScaleGetValue(SCMinGBs_SC_T1_1);
+	int MaxSubdivisions = TecGUIScaleGetValue(SCBPGBInit_SC_T1_1);
+	int SubdivisionTightness = TecGUIScaleGetValue(SCSDtight_SC_T1_1);
+
 	LgIndex_t NumGPPoints = 100;
 	TecGUITextFieldGetLgIndex(TFSTPts_TF_T1_1, &NumGPPoints);
 
@@ -836,7 +841,7 @@ void NewMainFunction() {
 									vec3 SeedPt = RingCPPos + (PrincDir * offset * iter * dir);
 									GP.SetupGradPath(
 										SeedPt,
-										StreamDir_Reverse, NumGPPoints, GPType_Classic, GPTerminate_AtCP, nullptr,
+										StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr,
 										&CPs, &GPTermRadius, &CutoffVal, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 									GP.SetTerminalCPTypeNum(CPTypeNum_Cage);
 									GP.SetStartEndCPNum(CPGlobalNum, 0);
@@ -1992,6 +1997,7 @@ void NewMainFunction() {
 		}
 
 
+
 		// Perform element subdivision based on the minimum normalized arc length difference 
 		// between the element midpoint and the nearest ring surface and bond path 
 		// intersection points.
@@ -2008,133 +2014,378 @@ void NewMainFunction() {
 		// Some parameters are defined to control the behavior of the linear combination:
 		//	* d_r_c, double in (0,1), a cutoff value for d_r
 		//	* w_b, double in (0,1), the weight given to d_b if d_r < d_r_c
+		//	
+		
  		 
-		// First determine the maximum subdivision level
-// 		int MaxSubdivisions = int(double(MaxNumElems) / double(NumElems));
-
-
-
-		// Perform midpoint subdivision for elements with bond path nodes before 
-		// Splitting them according to the angular constraint.
-		// This decreases the size of any resulting artifacts in the contours
-		// of condensed charge density.
-
+		
+		// Each time you subdivide the area of the new elements is 1/4 that of the original, so ElemSubdivisionLevel will
+		// be incremented by 4 for edge-midpoint subdivision (1 elem -> 4 elements), and by 2 for the elements that are split as the result of a neighbor element's subdivision.
+		vector<int> ElemSubdivisionLevel(NumElems, 0); 
 		std::queue<int> ElemsToSubdivide;
-		vector<int> ElemSubdivisionLevel(NumElems, 0);
-		for (int si = 0; si < NumberOfPreBondPathElemSubdivision; ++si) {
-			for (int ti = 0; ti < NumElems; ++ti)
-				if (ElemTypes[ti] >= NETypeB)
-					ElemsToSubdivide.push(ti);
+		if (MaxSubdivisions > 0) {
+			// First determine the maximum subdivision level (assuming uniform elements)
+// 		int MaxSubdivisions = 6;// int(double(MaxNumElems) / double(NumElems));
+			MaxSubdivisions++;
+			vec DistCutoffVals = (LogSpace(1, pow(2, SubdivisionTightness+5), MaxSubdivisions + 1) - 1.0) / (pow(2, SubdivisionTightness+5) - 1);
+			int MaxAreaSubdivisions = MaxSubdivisions * 4;
 
-			if (!ElemsToSubdivide.empty()) {
-				std::map<Edge, int> NewEdgeNodes;
-				while (!ElemsToSubdivide.empty()) {
-					int ti = ElemsToSubdivide.front();
-					ElemSubdivisionLevel[ti] += 4;
-					auto oldElem = SphereElems[ti];
+			double SphereArea = pow(Radius, 2.0) * 4.0 * PI;
+			double MinElementArea = 1.0 / double(NumElems) * SphereArea / pow(4.0,MaxSubdivisions-1);
+			double d_r_c = 0.3;
+			double w_b = 0.2;
 
-					// Premake edge objects for element
-					vector<Edge> ElemEdges(3);
-					for (int ci = 0; ci < 3; ++ci)
-						ElemEdges[ci] = MakeEdge(oldElem[ci], oldElem[(ci + 1) % 3]);
+			// Outer loop MaxSubdivisions times
+			for (int si = 0; si < MaxSubdivisions; ++si) {
 
-					// Make new nodes at midpoints of edges, using existing nodes if present.
-					// Also add new node types.
-					for (int ci = 0; ci < 3; ++ci) {
-						if (!NewEdgeNodes.count(ElemEdges[ci])) {
-							int NewNodeNum = SphereNodes.size();
-							oldElem.push_back(NewNodeNum);
-							NewEdgeNodes[ElemEdges[ci]] = NewNodeNum;
-							SphereNodes.emplace_back((SphereNodes[ElemEdges[ci].first] + SphereNodes[ElemEdges[ci].second]) * 0.5);
-							SphereNodes.back() = CPPos + normalise(SphereNodes.back() - CPPos) * Radius;
-							if (EdgeIntSurfNums.count(ElemEdges[ci])) {
-								NodeTypes.push_back(NETypeR);
-								int EdgeIntSurfNum = EdgeIntSurfNums[ElemEdges[ci]];
-								NodeIntSurfNums.push_back(EdgeIntSurfNum);
-								EdgeIntSurfNums[MakeEdge(ElemEdges[ci].first, NewNodeNum)] = EdgeIntSurfNum;
-								EdgeIntSurfNums[MakeEdge(ElemEdges[ci].second, NewNodeNum)] = EdgeIntSurfNum;
-								EdgeIntSurfNums.erase(ElemEdges[ci]);
+				// Get maximum bond path and ring surface arc distances to any element
+				double MaxBPDistance = -1.0;
+				double MaxRSDistance = -1.0;
+				double MinBPDistance = DBL_MAX;
+				double MinRSDistance = DBL_MAX;
+				for (int ti = 0; ti < NumElems; ++ti) {
+					for (int ni = 0; ni < NumNodes; ++ni) {
+						if (NodeTypes[ni] >= NETypeR) {
+							double tmpDist = VectorAngle(SphereNodes[ni] - CPPos, TriangleElemMidPoint(SphereNodes, SphereElems, ti) - CPPos);
+							if (NodeTypes[ni] >= NETypeB) {
+								MaxBPDistance = MAX(MaxBPDistance, tmpDist);
+								MinBPDistance = MIN(MinBPDistance, tmpDist);
 							}
 							else {
-								NodeTypes.push_back(NETypeC);
-								NodeIntSurfNums.push_back(-1);
+								MaxRSDistance = MAX(MaxRSDistance, tmpDist);
+								MinRSDistance = MIN(MinRSDistance, tmpDist);
 							}
 						}
-						else {
-							oldElem.push_back(NewEdgeNodes[ElemEdges[ci]]);
+					}
+				}
+				double MaxArcDistance = MAX(MaxBPDistance, MaxRSDistance);
+
+				if (MaxArcDistance > 0) {
+					if (MaxRSDistance > 0.0){
+						MaxRSDistance -= MinRSDistance;
+					}
+					MaxBPDistance -= MinBPDistance;
+					// Now loop over elements, adding them to the subdivision queue if necessary
+					// Get maximum bond path and ring surface arc distances to any element
+					for (int ti = 0; ti < NumElems; ++ti) {
+						// only look at element if its area isn't already too small
+						double ElemArea = TriangleElemArea(SphereNodes, SphereElems, ti);
+						if (ElemArea / MinElementArea > 2.0) {
+							double d_b = DBL_MAX;
+							double d_r = DBL_MAX;
+							for (int ni = 0; ni < NumNodes; ++ni) {
+								if (NodeTypes[ni] >= NETypeR) {
+									double tmpDist = VectorAngle(SphereNodes[ni] - CPPos, TriangleElemMidPoint(SphereNodes, SphereElems, ti) - CPPos);
+									if (NodeTypes[ni] >= NETypeB) {
+										d_b = MIN(d_b, tmpDist);
+									}
+									else {
+										d_r = MIN(d_r, tmpDist);
+									}
+								}
+							}
+							double d;
+							d_b -= MinBPDistance;
+							if (MaxRSDistance > 0.0){
+								d_r -= MinRSDistance;
+// 								d_b = (1.0 - (d_b / MaxBPDistance));
+// 								d_r = (1.0 - (d_r / MaxRSDistance));
+								d_b /= MaxBPDistance;
+								d_r /= MaxRSDistance;
+
+  								if (d_r > d_b){//d_r_c) {
+  									d = d_b;
+  								}
+  								else {
+  									d = w_b * d_b + (1.0 - w_b) * d_r;
+  								}
+//  								d = MIN(d_r, d_b);
+
+// 								d = (1 - d_b) * d_b +  d_b * d_r;
+							}
+							else{
+								d = d_b / MaxBPDistance;
+							}
+
+
+// 							int SubdivisionLevel = int(round(double(MaxSubdivisions) * d));
+							int SubdivisionLevel = MaxSubdivisions;
+							for (int i = 1; i < MaxSubdivisions; ++i){
+								if (d <= DistCutoffVals[i]){
+									SubdivisionLevel = i;
+									break;
+								}
+							}
+							SubdivisionLevel = (MaxSubdivisions - SubdivisionLevel) * 4;
+							if (SubdivisionLevel > ElemSubdivisionLevel[ti]) {
+								ElemsToSubdivide.push(ti);
+							}
 						}
 					}
 
-					// Make new elements
-					vector<int> newElems(4);
-					for (int ei = 0; ei < 3; ++ei) {
-						newElems[ei] = SphereElems.size();
-						SphereElems.push_back({
-							oldElem[ElemSubdivisionNewElemIndices[ei][0]],
-							oldElem[ElemSubdivisionNewElemIndices[ei][1]],
-							oldElem[ElemSubdivisionNewElemIndices[ei][2]]
-							});
-						ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[ti]);
-						ElemTypes.push_back(NETypeInvalid);
-					}
-					SphereElems[ti] = {
-							oldElem[ElemSubdivisionNewElemIndices[3][0]],
-							oldElem[ElemSubdivisionNewElemIndices[3][1]],
-							oldElem[ElemSubdivisionNewElemIndices[3][2]]
-					};
-					newElems[3] = ti;
-					ElemTypes[ti] = NETypeInvalid;
-					for (int ei = 0; ei < 4; ++ei) {
-						for (int ni : SphereElems[newElems[ei]])
-							ElemTypes[newElems[ei]] = MAX(ElemTypes[newElems[ei]], NodeTypes[ni]);
+					if (ElemsToSubdivide.empty()) {
+						break;
 					}
 
-					ElemsToSubdivide.pop();
-				}
+					// subdivide any elements in the queue
+					while (!ElemsToSubdivide.empty()) {
+						if (!ElemsToSubdivide.empty()) {
+							std::map<Edge, int> NewEdgeNodes;
+							while (!ElemsToSubdivide.empty()) {
+								int ti = ElemsToSubdivide.front();
+								ElemSubdivisionLevel[ti] += 4;
+								auto oldElem = SphereElems[ti];
 
-				// Now update triangles that were not subdivided but share an edge with a triangle
-				// that was subdivided. Loop over all elements and check if any of its edges are in
-				// the NewEdgeNodes map. If an edge was split, then split the triangle in two
-				// by creating a new edge to the existing node for the split edge.
+								// Premake edge objects for element
+								vector<Edge> ElemEdges(3);
+								for (int ci = 0; ci < 3; ++ci)
+									ElemEdges[ci] = MakeEdge(oldElem[ci], oldElem[(ci + 1) % 3]);
 
-				for (int ti = 0; ti < SphereElems.size(); ++ti) {
-					bool TriSplit = false;
-					for (int ci = 0; ci < 3 && !TriSplit; ++ci) {
-						Edge e = MakeEdge(SphereElems[ti][ci], SphereElems[ti][(ci + 1) % 3]);
-						if (NewEdgeNodes.count(e)) {
-							// This edge was already split for the triangle on its other side.
-							// Split the current triangle into two triangles by introducing a new
-							// edge between the node at the center of the current edge and the
-							// opposite corner of the triangle.
-							int EdgeNodeNum = NewEdgeNodes[e];
-							int OppositeCornerNode = SphereElems[ti][(ci + 2) % 3];
-							SphereElems.push_back({ e.first, OppositeCornerNode, EdgeNodeNum });
-							SphereElems[ti] = { e.second, EdgeNodeNum, OppositeCornerNode };
+								// Make new nodes at midpoints of edges, using existing nodes if present.
+								// Also add new node types.
+								for (int ci = 0; ci < 3; ++ci) {
+									if (!NewEdgeNodes.count(ElemEdges[ci])) {
+										int NewNodeNum = SphereNodes.size();
+										oldElem.push_back(NewNodeNum);
+										NewEdgeNodes[ElemEdges[ci]] = NewNodeNum;
+										SphereNodes.emplace_back((SphereNodes[ElemEdges[ci].first] + SphereNodes[ElemEdges[ci].second]) * 0.5);
+										SphereNodes.back() = CPPos + normalise(SphereNodes.back() - CPPos) * Radius;
+										if (EdgeIntSurfNums.count(ElemEdges[ci])) {
+											NodeTypes.push_back(NETypeR);
+											int EdgeIntSurfNum = EdgeIntSurfNums[ElemEdges[ci]];
+											NodeIntSurfNums.push_back(EdgeIntSurfNum);
+											EdgeIntSurfNums[MakeEdge(ElemEdges[ci].first, NewNodeNum)] = EdgeIntSurfNum;
+											EdgeIntSurfNums[MakeEdge(ElemEdges[ci].second, NewNodeNum)] = EdgeIntSurfNum;
+											EdgeIntSurfNums.erase(ElemEdges[ci]);
+										}
+										else {
+											NodeTypes.push_back(NETypeC);
+											NodeIntSurfNums.push_back(-1);
+										}
+									}
+									else {
+										oldElem.push_back(NewEdgeNodes[ElemEdges[ci]]);
+									}
+								}
 
-							ElemTypes.push_back(NETypeInvalid);
-							ElemSubdivisionLevel[ti] += 2;
-							ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[ti]);
-							ElemTypes[ti] = NETypeInvalid;
+								// Make new elements
+								vector<int> newElems(4);
+								for (int ei = 0; ei < 3; ++ei) {
+									newElems[ei] = SphereElems.size();
+									SphereElems.push_back({
+										oldElem[ElemSubdivisionNewElemIndices[ei][0]],
+										oldElem[ElemSubdivisionNewElemIndices[ei][1]],
+										oldElem[ElemSubdivisionNewElemIndices[ei][2]]
+										});
+									ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[ti]);
+									ElemTypes.push_back(NETypeInvalid);
+								}
+								SphereElems[ti] = {
+										oldElem[ElemSubdivisionNewElemIndices[3][0]],
+										oldElem[ElemSubdivisionNewElemIndices[3][1]],
+										oldElem[ElemSubdivisionNewElemIndices[3][2]]
+								};
+								newElems[3] = ti;
+								ElemTypes[ti] = NETypeInvalid;
+								for (int ei = 0; ei < 4; ++ei) {
+									for (int ni : SphereElems[newElems[ei]])
+										ElemTypes[newElems[ei]] = MAX(ElemTypes[newElems[ei]], NodeTypes[ni]);
+								}
 
-							for (int ei = 0; ei < 3; ++ei)
-								ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[SphereElems[ti][ei]]);
-							for (int ei = 0; ei < 3; ++ei)
-								ElemTypes.back() = MAX(ElemTypes.back(), NodeTypes[SphereElems.back()[ei]]);
+								ElemsToSubdivide.pop();
+							}
 
-							TriSplit = true;
+							// Now update triangles that were not subdivided but share an edge with a triangle
+							// that was subdivided. Loop over all elements and check if any of its edges are in
+							// the NewEdgeNodes map. If an edge was split, then split the triangle in two
+							// by creating a new edge to the existing node for the split edge.
+
+							for (int ti = 0; ti < SphereElems.size(); ++ti) {
+								bool TriSplit = false;
+								for (int ci = 0; ci < 3 && !TriSplit; ++ci) {
+									Edge e = MakeEdge(SphereElems[ti][ci], SphereElems[ti][(ci + 1) % 3]);
+									if (NewEdgeNodes.count(e)) {
+										// This edge was already split for the triangle on its other side.
+										// Split the current triangle into two triangles by introducing a new
+										// edge between the node at the center of the current edge and the
+										// opposite corner of the triangle.
+										int EdgeNodeNum = NewEdgeNodes[e];
+										int OppositeCornerNode = SphereElems[ti][(ci + 2) % 3];
+										SphereElems.push_back({ e.first, OppositeCornerNode, EdgeNodeNum });
+										SphereElems[ti] = { e.second, EdgeNodeNum, OppositeCornerNode };
+
+										ElemTypes.push_back(NETypeInvalid);
+										ElemSubdivisionLevel[ti] += 2;
+										ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[ti]);
+										ElemTypes[ti] = NETypeInvalid;
+
+										for (int ei = 0; ei < 3; ++ei)
+											ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[SphereElems[ti][ei]]);
+										for (int ei = 0; ei < 3; ++ei)
+											ElemTypes.back() = MAX(ElemTypes.back(), NodeTypes[SphereElems.back()[ei]]);
+
+										TriSplit = true;
+									}
+								}
+
+								if (TriSplit) // remaining edges on triangle still need to be checked, so repeat this triangle
+									ti--;
+							}
 						}
-					}
 
-					if (TriSplit) // remaining edges on triangle still need to be checked, so repeat this triangle
-						ti--;
+
+
+						NumNodes = SphereNodes.size();
+						NumElems = SphereElems.size();
+
+						// Jiggle Mesh
+			// Do a few iterations of jiggle mesh to make the mesh
+			// less ugly.
+						vector<std::set<int> > NodeConnectivity;
+						GetMeshNodeConnectivity(SphereElems, NumNodes, NodeConnectivity);
+
+						vector<bool> NodeIsConstrained(NumNodes, false);
+						for (int ni = 0; ni < NumNodes; ++ni) {
+							if (NodeTypes[ni] > NETypeC) {
+								NodeIsConstrained[ni] = true;
+								if (MaxSubdivisions > 0 && NodeTypes[ni] >= NETypeB) {
+									for (int nj : NodeConnectivity[ni])
+										NodeIsConstrained[nj] = true;
+								}
+							}
+						}
+
+// 						while (TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, Radius) > SphereJiggleMeshMaxMovedNodeDistTol) {}
+
+						for (int i = 0; i < 10 && TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, Radius) > SphereJiggleMeshMaxMovedNodeDistTol; ++i) {}
+					}
 				}
+				
 			}
-
-
-
-			NumNodes = SphereNodes.size();
-			NumElems = SphereElems.size();
 		}
+
+		//// Old explicit subdivision around bond points:
+		//// 
+		//// Perform midpoint subdivision for elements with bond path nodes before 
+		//// Splitting them according to the angular constraint.
+		//// This decreases the size of any resulting artifacts in the contours
+		//// of condensed charge density.
+
+		//std::queue<int> ElemsToSubdivide;
+		//vector<int> ElemSubdivisionLevel(NumElems, 0);
+		//for (int si = 0; si < NumberOfPreBondPathElemSubdivision; ++si) {
+		//	for (int ti = 0; ti < NumElems; ++ti)
+		//		if (ElemTypes[ti] >= NETypeB)
+		//			ElemsToSubdivide.push(ti);
+
+		//	if (!ElemsToSubdivide.empty()) {
+		//		std::map<Edge, int> NewEdgeNodes;
+		//		while (!ElemsToSubdivide.empty()) {
+		//			int ti = ElemsToSubdivide.front();
+		//			ElemSubdivisionLevel[ti] += 4;
+		//			auto oldElem = SphereElems[ti];
+
+		//			// Premake edge objects for element
+		//			vector<Edge> ElemEdges(3);
+		//			for (int ci = 0; ci < 3; ++ci)
+		//				ElemEdges[ci] = MakeEdge(oldElem[ci], oldElem[(ci + 1) % 3]);
+
+		//			// Make new nodes at midpoints of edges, using existing nodes if present.
+		//			// Also add new node types.
+		//			for (int ci = 0; ci < 3; ++ci) {
+		//				if (!NewEdgeNodes.count(ElemEdges[ci])) {
+		//					int NewNodeNum = SphereNodes.size();
+		//					oldElem.push_back(NewNodeNum);
+		//					NewEdgeNodes[ElemEdges[ci]] = NewNodeNum;
+		//					SphereNodes.emplace_back((SphereNodes[ElemEdges[ci].first] + SphereNodes[ElemEdges[ci].second]) * 0.5);
+		//					SphereNodes.back() = CPPos + normalise(SphereNodes.back() - CPPos) * Radius;
+		//					if (EdgeIntSurfNums.count(ElemEdges[ci])) {
+		//						NodeTypes.push_back(NETypeR);
+		//						int EdgeIntSurfNum = EdgeIntSurfNums[ElemEdges[ci]];
+		//						NodeIntSurfNums.push_back(EdgeIntSurfNum);
+		//						EdgeIntSurfNums[MakeEdge(ElemEdges[ci].first, NewNodeNum)] = EdgeIntSurfNum;
+		//						EdgeIntSurfNums[MakeEdge(ElemEdges[ci].second, NewNodeNum)] = EdgeIntSurfNum;
+		//						EdgeIntSurfNums.erase(ElemEdges[ci]);
+		//					}
+		//					else {
+		//						NodeTypes.push_back(NETypeC);
+		//						NodeIntSurfNums.push_back(-1);
+		//					}
+		//				}
+		//				else {
+		//					oldElem.push_back(NewEdgeNodes[ElemEdges[ci]]);
+		//				}
+		//			}
+
+		//			// Make new elements
+		//			vector<int> newElems(4);
+		//			for (int ei = 0; ei < 3; ++ei) {
+		//				newElems[ei] = SphereElems.size();
+		//				SphereElems.push_back({
+		//					oldElem[ElemSubdivisionNewElemIndices[ei][0]],
+		//					oldElem[ElemSubdivisionNewElemIndices[ei][1]],
+		//					oldElem[ElemSubdivisionNewElemIndices[ei][2]]
+		//					});
+		//				ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[ti]);
+		//				ElemTypes.push_back(NETypeInvalid);
+		//			}
+		//			SphereElems[ti] = {
+		//					oldElem[ElemSubdivisionNewElemIndices[3][0]],
+		//					oldElem[ElemSubdivisionNewElemIndices[3][1]],
+		//					oldElem[ElemSubdivisionNewElemIndices[3][2]]
+		//			};
+		//			newElems[3] = ti;
+		//			ElemTypes[ti] = NETypeInvalid;
+		//			for (int ei = 0; ei < 4; ++ei) {
+		//				for (int ni : SphereElems[newElems[ei]])
+		//					ElemTypes[newElems[ei]] = MAX(ElemTypes[newElems[ei]], NodeTypes[ni]);
+		//			}
+
+		//			ElemsToSubdivide.pop();
+		//		}
+
+		//		// Now update triangles that were not subdivided but share an edge with a triangle
+		//		// that was subdivided. Loop over all elements and check if any of its edges are in
+		//		// the NewEdgeNodes map. If an edge was split, then split the triangle in two
+		//		// by creating a new edge to the existing node for the split edge.
+
+		//		for (int ti = 0; ti < SphereElems.size(); ++ti) {
+		//			bool TriSplit = false;
+		//			for (int ci = 0; ci < 3 && !TriSplit; ++ci) {
+		//				Edge e = MakeEdge(SphereElems[ti][ci], SphereElems[ti][(ci + 1) % 3]);
+		//				if (NewEdgeNodes.count(e)) {
+		//					// This edge was already split for the triangle on its other side.
+		//					// Split the current triangle into two triangles by introducing a new
+		//					// edge between the node at the center of the current edge and the
+		//					// opposite corner of the triangle.
+		//					int EdgeNodeNum = NewEdgeNodes[e];
+		//					int OppositeCornerNode = SphereElems[ti][(ci + 2) % 3];
+		//					SphereElems.push_back({ e.first, OppositeCornerNode, EdgeNodeNum });
+		//					SphereElems[ti] = { e.second, EdgeNodeNum, OppositeCornerNode };
+
+		//					ElemTypes.push_back(NETypeInvalid);
+		//					ElemSubdivisionLevel[ti] += 2;
+		//					ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[ti]);
+		//					ElemTypes[ti] = NETypeInvalid;
+
+		//					for (int ei = 0; ei < 3; ++ei)
+		//						ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[SphereElems[ti][ei]]);
+		//					for (int ei = 0; ei < 3; ++ei)
+		//						ElemTypes.back() = MAX(ElemTypes.back(), NodeTypes[SphereElems.back()[ei]]);
+
+		//					TriSplit = true;
+		//				}
+		//			}
+
+		//			if (TriSplit) // remaining edges on triangle still need to be checked, so repeat this triangle
+		//				ti--;
+		//		}
+		//	}
+
+
+
+		//	NumNodes = SphereNodes.size();
+		//	NumElems = SphereElems.size();
+		//}
 
 		for (int bi : IntBondPathNodes) {
 			// Need elems around each bond path node, the edges of
@@ -2221,6 +2472,32 @@ void NewMainFunction() {
 		OutConstrainedSegmentIndices.resize(NumNodes, -1);
 		NodeIntSurfNums.resize(NumNodes, -1);
 
+		vector<std::set<int> > NodeConnectivity;
+		GetMeshNodeConnectivity(SphereElems, NumNodes, NodeConnectivity);
+
+		vector<bool> NodeIsConstrained(NumNodes, false);
+		for (int ni = 0; ni < NumNodes; ++ni) {
+			if (NodeTypes[ni] > NETypeC) {
+				NodeIsConstrained[ni] = true;
+				if (MaxSubdivisions > 0 && NodeTypes[ni] >= NETypeB) {
+					for (int nj : NodeConnectivity[ni])
+						NodeIsConstrained[nj] = true;
+				}
+			}
+		}
+
+// 		while (TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, Radius) > SphereJiggleMeshMaxMovedNodeDistTol) {}
+		for (int i = 0; i < 10 && TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, Radius) > SphereJiggleMeshMaxMovedNodeDistTol; ++i) {}
+
+		if (TestRun) {
+			auto TmpSphere = FESurface_c(SphereNodes, SphereElems);
+			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after bond path intersection element subdivision");
+			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_PlusEquals);
+			continue;
+// 			StatusDrop(AddOnID);
+// 			return;
+		}
+
 #ifdef DEBUG_SAVEZONES
 		TmpSphere = FESurface_c(SphereNodes, SphereElems);
 		TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after bond path intersection element subdivision");
@@ -2270,56 +2547,56 @@ void NewMainFunction() {
 
 #ifdef SUPERDEBUG
 // 			ElemTodo = { 196 }; // base 0 (tecplot is base 1)
-  			ElemTodo = { 603 };
-        			ElemTodo.clear();
- // 				for (int i = 0; i < NumElems; ++i) {
-  				for (int i = 0; i < NumElems; ++i){
-  					if (ElemTypes[i] >= NETypeR && ElemTypes[i] < NETypeB)
- 						ElemTodo.push_back(i);
- 				}
+//   			ElemTodo = { 788,791 };
+//         			ElemTodo.clear();
+//  // 				for (int i = 0; i < NumElems; ++i) {
+//   				for (int i = 0; i < NumElems; ++i){
+//   					if (ElemTypes[i] > NETypeR)
+//  						ElemTodo.push_back(i);
+//  				}
 
 //				// Get ring and bond type elements and their n-th nearest neighbors
-//				int MaxBFSDepth = 1; // if 3, gets ring/bond elems and their 4 nearest neighbors
-//				vector<vector<int> > SphereElemConnectivity;
-//				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
-//				std::set<int> ElemTodoSet;
-//				auto CompNEType = NETypeR;
-//
-//				for (int i = 0; i < NumElems; ++i) {
-//					if (ElemTypes[i] >= CompNEType) {
-//						ElemTodoSet.insert(i);
-//						// BFS with depth limit
-//						std::queue<int> ToCheck;
-//						vector<bool> Visited(SphereElems.size(), false);
-//						int CurDepth = 0;
-//						ToCheck.push(i);
-//						ToCheck.push(-1); //Depth level marker
-//						Visited[i] = true;
-//						while (!ToCheck.empty()) {
-//							if (ToCheck.front() == -1) {
-//								// Moving down another depth
-//								ToCheck.push(-1);
-//								if (++CurDepth > MaxBFSDepth)
-//									break;
-//							}
-//							else {
-//								int e = ToCheck.front();
-//// 								if (ElemTypes[e] >= CompNEType) {
-//									ElemTodoSet.insert(e);
-//// 								}
-//								for (int n : SphereElemConnectivity[e]) {
-//									if (!Visited[n]) {
-//										ToCheck.push(n);
-//										Visited[n] = true;
-//									}
-//								}
-//							}
-//							ToCheck.pop();
-//						}
-//					}
-//				}
-//
-//				ElemTodo = vector<int>(ElemTodoSet.begin(), ElemTodoSet.end());
+				int MaxBFSDepth = 2; // if 3, gets ring/bond elems and their 4 nearest neighbors
+				vector<vector<int> > SphereElemConnectivity;
+				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
+				std::set<int> ElemTodoSet;
+				auto CompNEType = NETypeB;
+
+				for (int i = 0; i < NumElems; ++i) {
+					if (ElemTypes[i] >= CompNEType) {
+						ElemTodoSet.insert(i);
+						// BFS with depth limit
+						std::queue<int> ToCheck;
+						vector<bool> Visited(SphereElems.size(), false);
+						int CurDepth = 0;
+						ToCheck.push(i);
+						ToCheck.push(-1); //Depth level marker
+						Visited[i] = true;
+						while (!ToCheck.empty()) {
+							if (ToCheck.front() == -1) {
+								// Moving down another depth
+								ToCheck.push(-1);
+								if (++CurDepth > MaxBFSDepth)
+									break;
+							}
+							else {
+								int e = ToCheck.front();
+// 								if (ElemTypes[e] >= CompNEType) {
+									ElemTodoSet.insert(e);
+// 								}
+								for (int n : SphereElemConnectivity[e]) {
+									if (!Visited[n]) {
+										ToCheck.push(n);
+										Visited[n] = true;
+									}
+								}
+							}
+							ToCheck.pop();
+						}
+					}
+				}
+
+				ElemTodo = vector<int>(ElemTodoSet.begin(), ElemTodoSet.end());
    					
 //   			ElemTodo.clear();
 //   			for (int ti = 0; ti < NumElems; ++ti) {
@@ -2470,18 +2747,19 @@ void NewMainFunction() {
 			vector<std::set<int> > NodeConnectivity;
 			GetMeshNodeConnectivity(SphereElems, NumNodes, NodeConnectivity);
 
-			vector<bool> NodeIsConstrained(NumNodes, false);
-			for (int ni = 0; ni < NumNodes; ++ni) {
-				if (NodeTypes[ni] > NETypeC){
-					NodeIsConstrained[ni] = true;
-// 					if (NodeTypes[ni] >= NETypeB){
-// 						for (int nj : NodeConnectivity[ni])
-// 							NodeIsConstrained[nj] = true;
-// 					}
-				}
-			}
-
-			while(TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, Radius) > SphereJiggleMeshMaxMovedNodeDistTol){}
+ 			vector<bool> NodeIsConstrained(NumNodes, false);
+ 			for (int ni = 0; ni < NumNodes; ++ni) {
+ 				if (NodeTypes[ni] > NETypeC){
+ 					NodeIsConstrained[ni] = true;
+ // 					if (NodeTypes[ni] >= NETypeB){
+ // 						for (int nj : NodeConnectivity[ni])
+ // 							NodeIsConstrained[nj] = true;
+ // 					}
+ 				}
+ 			}
+ 
+//  			while(TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, Radius) > SphereJiggleMeshMaxMovedNodeDistTol){}
+			for (int i = 0; i < 10 && TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, Radius) > SphereJiggleMeshMaxMovedNodeDistTol; ++i) {}
 
 
 #ifdef DEBUG_SAVEZONES
@@ -2578,15 +2856,15 @@ void NewMainFunction() {
 #endif
 				if (!GradPaths[ni].IsMade()) {
 // 					if (!RadialSphereApprx) {
-						InnerGradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Forward, NumGPPoints, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPNCPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
+						InnerGradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Forward, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPNCPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
 						InnerGradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Nuclear);
 // 					}
 					if (NodeTypes[ni] == NETypeC) {
-						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
+						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
 						GradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Cage);
 					}
 					else if (NodeTypes[ni] == NETypeR) {
-						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &RTypeTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr, &IntSurfs[NodeIntSurfNums[ni]]);
+						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &RTypeTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr, &IntSurfs[NodeIntSurfNums[ni]]);
 						GradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Ring);
 					}
 					else continue;
@@ -2686,7 +2964,7 @@ void NewMainFunction() {
 							GradPaths[ni].RemoveKinks();
 							
 							if (!RadialSphereApprx) {
-								GradPaths[ni] = ConcatenateResample({ GradPaths[ni],InnerGradPaths[ni] }, NumGPPoints, {}, ResampleMethod);
+								GradPaths[ni] = ConcatenateResample({ GradPaths[ni],InnerGradPaths[ni] }, NumGPPoints * 2, {}, ResampleMethod);
 							}
 						}
 						else continue;
@@ -2708,58 +2986,74 @@ void NewMainFunction() {
 
 			int NumGPPointsOuter;
 
-			if (RadialSphereApprx){
+			if (RadialSphereApprx) {
 				/*
 				 *	Resample inner and outer grad paths as if they were connected, using the lengths of the outer grad
 				 *	paths to determine the number of points for their corresponding inner grad paths.
-				 *	Outer path lengths should be 
+				 *	Outer path lengths should be
 				 */
 
 				double AvgOuterGradPathLength = 0.0, AvgInnerGradPathLength = 0.0, MaxOuterGradPathLength = DBL_MIN;
-				int NumMadeGradPaths = 0;
+				int NumMadeGradPaths = 0, NumMadeInnerGradPaths = 0;
 
-				for (int i = 0; i < GradPaths.size(); ++i){
-					if (GradPaths[i].IsMade() && InnerGradPaths[i].IsMade()){
+				for (int i = 0; i < GradPaths.size(); ++i) {
+					if (GradPaths[i].IsMade()) {
 						NumMadeGradPaths++;
 						double OuterLength = GradPaths[i].GetLength();
-						if (OuterLength > MaxOuterGradPathLength){
+						if (OuterLength > MaxOuterGradPathLength) {
 							MaxOuterGradPathLength = OuterLength;
 						}
 						AvgOuterGradPathLength += OuterLength;
+					}
+				}
+				for (int i = 0; i < InnerGradPaths.size(); ++i) {
+					if (InnerGradPaths[i].IsMade()) {
 						AvgInnerGradPathLength += InnerGradPaths[i].GetLength();
+						NumMadeInnerGradPaths++;
 					}
 				}
 
 				REQUIRE(NumMadeGradPaths > 0);
+				REQUIRE(NumMadeInnerGradPaths > 0);
 
 				AvgOuterGradPathLength /= double(NumMadeGradPaths);
-				AvgInnerGradPathLength /= double(NumMadeGradPaths);
-// 				NumGPPointsOuter = int(AvgOuterGradPathLength / (AvgInnerGradPathLength + AvgOuterGradPathLength) * double(NumGPPoints));
+				AvgInnerGradPathLength /= double(NumMadeInnerGradPaths);
+				// 				NumGPPointsOuter = int(AvgOuterGradPathLength / (AvgInnerGradPathLength + AvgOuterGradPathLength) * double(NumGPPoints));
 				NumGPPointsOuter = int(MaxOuterGradPathLength / (AvgInnerGradPathLength + MaxOuterGradPathLength) * double(NumGPPoints));
 				int InnerPoints = NumGPPoints - NumGPPointsOuter;
 
-				for (int i = 0; i < GradPaths.size(); ++i){
-					if (GradPaths[i].IsMade()){
+				for (int i = 0; i < GradPaths.size(); ++i) {
+					if (GradPaths[i].IsMade()) {
 						GradPaths[i].Resample(NumGPPointsOuter, ResampleMethod);
 					}
+				}
+				for (int i = 0; i < InnerGradPaths.size(); ++i) {
 					if (InnerGradPaths[i].IsMade()) {
 						InnerGradPaths[i].Resample(InnerPoints, ResampleMethod);
 					}
 				}
 
-// 				int MinInnerGPNumPoints = INT_MAX;
-// 
-// 				for (const auto &  g : InnerGradPaths){
-// 					if (g.IsMade()) {
-// 						MinInnerGPNumPoints = MIN(MinInnerGPNumPoints, g.GetCount());
-// 					}
-// 				}
-// 				for (auto & g : InnerGradPaths){
-// 					if (g.IsMade() && g.GetCount() > MinInnerGPNumPoints){
-// 						g.Resample(MinInnerGPNumPoints, ResampleMethod);
-// 					}
-// 				}
+				// 				int MinInnerGPNumPoints = INT_MAX;
+				// 
+				// 				for (const auto &  g : InnerGradPaths){
+				// 					if (g.IsMade()) {
+				// 						MinInnerGPNumPoints = MIN(MinInnerGPNumPoints, g.GetCount());
+				// 					}
+				// 				}
+				// 				for (auto & g : InnerGradPaths){
+				// 					if (g.IsMade() && g.GetCount() > MinInnerGPNumPoints){
+				// 						g.Resample(MinInnerGPNumPoints, ResampleMethod);
+				// 					}
+				// 				}
 			}
+			else {
+				for (int i = 0; i < GradPaths.size(); ++i) {
+					if (GradPaths[i].IsMade()) {
+						GradPaths[i].Resample(NumGPPoints, ResampleMethod);
+					}
+				}
+			}
+			
 
 			if (UserQuit) {
 				TecUtilDataLoadEnd();
@@ -2820,7 +3114,8 @@ void NewMainFunction() {
 							*	to update them to the correct side.
 							*	There could be 0, 1, or 2 R type nodes on the triangle.
 							*	If 1, can use the guaranteed C type node to find the correct
-							*	ring path.
+							*	ring path, by comparing distances of the two possible ring path
+							*	segment terminuses to that of the C type node path.
 							*	If 2, can check both ring paths for each node to find the pair
 							*  whose end points are closest together.
 							*  Also if 2 then we'll do them both together, so can break after
@@ -2835,7 +3130,8 @@ void NewMainFunction() {
 									*	All three nodes of the triangle are type R, meaning the
 									*	gradient bundle has edges going to two different cages
 									*	(It's impossible for a triangle to go to three different
-									*	rings, so it has to be two).
+									*	rings, as that would mean there's a bond point interior
+									*	to the element, so it has to be two).
 									*
 									*	In this case we'll just look for the cage CP (last point
 									*	of ring path segment) that's closest to the ring cps (midpoint of the
@@ -2844,6 +3140,9 @@ void NewMainFunction() {
 									*	present (otherwise couldn't have two rings this close to each
 									*	other) and is the common terminus of the correct paths, where
 									*	the other two cage points are not common among the correct paths.
+									*	(Even if the presumed cage point isn't in the system, the end
+									*	points of the ring path segments both falling to where the cage 
+									*	*would* be still provide an approximate location.)
 									*/
 
 
@@ -3080,9 +3379,9 @@ void NewMainFunction() {
 
 					GradPath_c TmpGP;
 					if (RadialSphereApprx)
-						TmpGP.SetupGradPath(vec3(), StreamDir_Reverse, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
+						TmpGP.SetupGradPath(vec3(), StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
 					else
-						TmpGP.SetupGradPath(vec3(), StreamDir_Both, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
+						TmpGP.SetupGradPath(vec3(), StreamDir_Both, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
 					TmpGP.SetTerminalCPTypeNum(CPTypeNum_Cage);
 
 					int NumGPsOld = GradPaths.size();
@@ -3093,7 +3392,7 @@ void NewMainFunction() {
 					// 				NumEdges = EdgeDistList.size();
 					NumEdges = 0;
 					for (auto const & e : EdgeDistList) {
-						if (e.second >= EdgeGPCheckDistance * 0.9) {
+						if (e.second >= EdgeGPCheckDistance) {
 							NumEdges++;
 						}
 					}
@@ -3108,7 +3407,7 @@ void NewMainFunction() {
 					else {
 						NumToDo = 0;
 						for (auto const & e : EdgeDistList) {
-							if (e.second >= EdgeGPCheckDistance * 0.9)
+							if (e.second >= EdgeGPCheckDistance)
 								NumToDo++;
 						}
 					}
@@ -3668,7 +3967,7 @@ void NewMainFunction() {
 							bool BadGP = false;
 							int BadEdge1, BadEdge2, BadNode;
 
-							GradPath_c GP(vec3(), StreamDir_Reverse, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+							GradPath_c GP(vec3(), StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 							GP.SetTerminalCPTypeNum(CPTypeNum_Cage);
 							vector<int> GPNumPointList = { -1, BondPathPtNum };
 							std::list<std::pair<vec3, GradPath_c> > EdgeGPs;
@@ -3837,6 +4136,478 @@ void NewMainFunction() {
 				GradPaths[ni].MakeRhoValuesMonotomic(&ThVolInfo[omp_get_thread_num()]);
 			}
 
+// 			int NumGPPointsOuter;
+
+// 			if (RadialSphereApprx) {
+// 				/*
+// 				 *	Resample inner and outer grad paths as if they were connected, using the lengths of the outer grad
+// 				 *	paths to determine the number of points for their corresponding inner grad paths.
+// 				 *	Outer path lengths should be
+// 				 */
+// 
+// 				double AvgOuterGradPathLength = 0.0, AvgInnerGradPathLength = 0.0, MaxOuterGradPathLength = DBL_MIN;
+// 				int NumMadeGradPaths = 0, NumMadeInnerGradPaths = 0;
+// 
+// 				for (int i = 0; i < GradPaths.size(); ++i) {
+// 					if (GradPaths[i].IsMade()) {
+// 						NumMadeGradPaths++;
+// 						double OuterLength = GradPaths[i].GetLength();
+// 						if (OuterLength > MaxOuterGradPathLength) {
+// 							MaxOuterGradPathLength = OuterLength;
+// 						}
+// 						AvgOuterGradPathLength += OuterLength;
+// 					}
+// 				}
+// 				for (int i = 0; i < InnerGradPaths.size(); ++i) {
+// 					if (InnerGradPaths[i].IsMade()) {
+// 						AvgInnerGradPathLength += InnerGradPaths[i].GetLength();
+// 						NumMadeInnerGradPaths++;
+// 					}
+// 				}
+// 
+// 				REQUIRE(NumMadeGradPaths > 0);
+// 				REQUIRE(NumMadeInnerGradPaths > 0);
+// 
+// 				AvgOuterGradPathLength /= double(NumMadeGradPaths);
+// 				AvgInnerGradPathLength /= double(NumMadeInnerGradPaths);
+// 				// 				NumGPPointsOuter = int(AvgOuterGradPathLength / (AvgInnerGradPathLength + AvgOuterGradPathLength) * double(NumGPPoints));
+// 				NumGPPointsOuter = int(MaxOuterGradPathLength / (AvgInnerGradPathLength + MaxOuterGradPathLength) * double(NumGPPoints));
+// 				int InnerPoints = NumGPPoints - NumGPPointsOuter;
+// 
+// 				for (int i = 0; i < GradPaths.size(); ++i) {
+// 					if (GradPaths[i].IsMade()) {
+// 						GradPaths[i].Resample(NumGPPointsOuter, ResampleMethod);
+// 					}
+// 				}
+// 				for (int i = 0; i < InnerGradPaths.size(); ++i){
+// 					if (InnerGradPaths[i].IsMade()) {
+// 						InnerGradPaths[i].Resample(InnerPoints, ResampleMethod);
+// 					}
+// 				}
+// 
+// 				// 				int MinInnerGPNumPoints = INT_MAX;
+// 				// 
+// 				// 				for (const auto &  g : InnerGradPaths){
+// 				// 					if (g.IsMade()) {
+// 				// 						MinInnerGPNumPoints = MIN(MinInnerGPNumPoints, g.GetCount());
+// 				// 					}
+// 				// 				}
+// 				// 				for (auto & g : InnerGradPaths){
+// 				// 					if (g.IsMade() && g.GetCount() > MinInnerGPNumPoints){
+// 				// 						g.Resample(MinInnerGPNumPoints, ResampleMethod);
+// 				// 					}
+// 				// 				}
+// 			}
+// 			else{
+// 				for (int i = 0; i < GradPaths.size(); ++i) {
+// 					if (GradPaths[i].IsMade()) {
+// 						GradPaths[i].Resample(NumGPPoints, ResampleMethod);
+// 					}
+// 				}
+// 			}
+
+
+			/*
+			 *	Before moving on to integration (and GB creation), align the path representation
+			 *	of all paths with that of bond path GPs.
+			 *	Do this by making a FIFO queue<std::pair<GradPath*, GradPath*> >, where pair.first points to 
+			 *	the GP to be aligned according to the nodes of pair.second, and the queue is filled using a 
+			 *	breadth-first search starting from the set of bond GPs.
+			 *	So the bond GPs' nearest neighbors will be the first to be aligned, and will use the bond
+			 *	GPs as the alignment source.
+			 *	The BFS will have to use the element connectivity because the GPs no longer map one-to-one 
+			 *	to the sphere nodes, and the edge GP information so that the queue
+			 *	will include all nodal and edge GPs, including those that have been concatenated to bond path and ring line 
+			 *	segments.
+			 *	When the queue is formed, we simply go through the queue, aligning each pair.first GP according
+			 *	to the pair.second GP.
+			 *	
+			 *	When complete, this will guarantee that the tetrahedra that are eventually integrated are as regular as possible.
+			 */
+			if (false){
+				std::queue<std::pair<GradPath_c*, GradPath_c const *> > GPQueue;
+				std::queue<std::pair<int, std::pair<int, int> > > GPIndQueue; // GB and source/target GP indices for each GP
+				vector<GradPath_c*> FinishedGPs;
+
+				 /* 
+				  * First, populate the queue with the GPs corresponding to the edges added 
+				  * after the bond point for bond path nodes.
+				  * For bond path elements, the order these edges are added is inconsequential
+				  * (I'm pretty sure), but for bond-ring elements, need to start with the edge
+				  * closest to bond-ring-cage GP, since it's the path with two right angles to
+				  * which the others need to be aligned.
+				  */
+
+				for (int ti = 0; ti < NumElems; ++ti){
+					if (ElemTypes[ti] > NETypeR) {
+						// We know that the first node of the element is the bond node.
+						
+						int NumEdgePaths = SphereElemGPInds[ti].size() - 4;
+						if (NumEdgePaths > 0) {
+							if (ElemTypes[ti] == NETypeB || (NodeTypes[SphereElems[ti][1]] == NETypeR && NodeTypes[SphereElems[ti][2]] == NETypeR)) {
+								// If the other two nodes of the element are BOTH ring type,
+								// then we'll split them so each half is aligned to its closer
+								// bond-ring-cage path.
+								// This is also the behavior to follow for bond-only elements.
+								// 
+
+								// First one half, using the element's fourth node as its first
+								// alignment source GP.
+								// For odd number of edge paths, this pass gets one more pass
+								// compared to the next pass.
+								for (int i = 0; i < NumEdgePaths / 2 + 1; ++i) {
+									if (GradPaths[SphereElemGPInds[ti][4 + i]].IsMade() && GradPaths[SphereElemGPInds[ti][3 + i]].IsMade()) {
+										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][4 + i], SphereElemGPInds[ti][3 + i])));
+										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+									}
+								}
+
+								// Now the other half, in reverse order
+								for (int i = 0; i < NumEdgePaths / 2; ++i) {
+									int e1 = SphereElemGPInds[ti].size() - i - 1;
+									int e2 = (e1 + 1) % SphereElemGPInds[ti].size();
+									if (GradPaths[SphereElemGPInds[ti][e1]].IsMade() && GradPaths[SphereElemGPInds[ti][e2]].IsMade()) {
+										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][e1], SphereElemGPInds[ti][e2])));
+										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+									}
+								}
+							}
+							else if (NodeTypes[SphereElems[ti][1]] == NETypeR) {
+								// If ONLY the second node of the element is ring type, then add
+								// the post-bond point edges in reverse order (relative to their
+								// order in SphereElemGPInds).
+								for (int i = 0; i < NumEdgePaths; ++i) {
+									int e1 = SphereElemGPInds[ti].size() - i - 1;
+									int e2 = (e1 + 1) % SphereElemGPInds[ti].size();
+									if (GradPaths[SphereElemGPInds[ti][e1]].IsMade() && GradPaths[SphereElemGPInds[ti][e2]].IsMade()) {
+										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][e1], SphereElemGPInds[ti][e2])));
+										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+									}
+								}
+							}
+							else if (NodeTypes[SphereElems[ti][2]] == NETypeR) {
+								// If ONLY the third node is ring type, then add the post-bond
+								// point edges in original order.
+								for (int i = 0; i < NumEdgePaths; ++i) {
+									if (GradPaths[SphereElemGPInds[ti][4 + i]].IsMade() && GradPaths[SphereElemGPInds[ti][3 + i]].IsMade()) {
+										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][4 + i], SphereElemGPInds[ti][3 + i])));
+										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+									}
+								}
+							}
+						}
+					}
+				}
+
+				/*
+				 * Now start the breadth-first search of elements (since we are
+				 * no longer able to generate node connectivity, as we're not
+				 * interested in nodes but rather GPs), using a FIFO element queue first
+				 * populated with the bond path elements.
+				 * The search will grow out from each bond path on the sphere simultaneously,
+				 * guaranteeing that, to the extent that the sphere meshing is distributed in
+				 * a physically reasonable way, we'll be aligning each GP according to the
+				 * "closest" bond path GPs.
+				 * 
+				 * Because we're searching by elements, but are thinking in terms of nodal
+				 * connectivity, it's less straightforward to keep track of which
+				 * nodes and edges have already been visited.
+				 * We'll keep track of nodes and edges separately, so that we can discern
+				 * between edges that have been added, and those for which only one, the other,
+				 * or both nodes have been added but not the corresponding edge GPs.
+				 * By only operating on edges where one or more nodes have already been processed,
+				 * we'll effectively be moving the BFS out from bond path nodes according to 
+				 * nodal connectivity.
+				 * 
+				 * How an edge is identified depends on the type of element:
+				 *	*	For cage- and ring-type elements, the edge can be identified simply by 
+				 *		the SphereElemGPInds[ti] indices. 
+				 *		This still recovers shared edges with nodes of type cage-cage and cage-ring, 
+				 *		and preserves the correct mapping of node and edge GPs along ring surfaces.
+				 *	
+				 *	*	For bond type elements, the bond node itself is no longer pointed to by
+				 *		SphereElemGPInds[ti], which instead points to the two new gradient paths
+				 *		made by concatenating the existing bond path (and ring line if bond-ring element).
+				 *		To recover shared edges with a bond type node, they will be identified using
+				 *		the SphereElems[ti][0] node index, which then reveals the correspondance to
+				 *		the other elements that share the same bond node.
+				 *		Because we're only using edges as a means of checking whether one has been 
+				 *		visited already in the search, no information is lost here, and we still use
+				 *		SphereElemGPInds[ti] for identifying whether nodes have been visited and
+				 *		recovering GPs.
+				 *		
+				 * 
+				 * The search will move out according to sphere elements, but we'll be concerned
+				 * more with edges.
+				 * There are four possibilities when encountering an edge:
+				 * 1. One node in the edge will have already been added, and the corresponding edge GPs will
+				 *		be added to the GP queue in order of increasing distance from the already added node.
+				 * 2. Both nodes in the edge have been added, but the GPs corresponding to the edge have not.
+				 *		This is what happens when the searches starting from two different bond paths collide.
+				 *		Here we'll split the corresponding edge GPs, adding have in order of increasing distance
+				 *		from their respective node.
+				 * 3. Both nodes and the corresponding edge GPs have been added: ignore and move on.
+				 * 4. Neither nodes have been added: ignore and they'll be added in a subsequent iteration.
+				 */
+
+				// Prepare queue and sets for workspace
+				std::queue<int> ElemIndQueue;
+				std::set<Edge> EdgeWasVisited;
+				std::set<int> NodeWasVisited, ElemWasVisited;
+
+				// First add the bond(-ring) type elements to the queue
+				// and bond-type nodes to the node set, setting up the
+				// initial conditions for the BFS to progress.
+				for (int ti = 0; ti < NumElems; ++ti){
+					if (ElemTypes[ti] > NETypeR){
+						// First and last nodes of element points to the bond node
+						NodeWasVisited.insert(SphereElemGPInds[ti][0]);
+						NodeWasVisited.insert(SphereElemGPInds[ti].back());
+						ElemWasVisited.insert(ti);
+						if (SphereElemGPInds[ti].size() > 3){
+							bool ElemMade = true;
+							for (int i = 0; i < SphereElemGPInds[ti].size() && ElemMade; ++i) {
+								ElemMade = GradPaths[SphereElemGPInds[ti][i]].IsMade();
+							}
+							if (ElemMade) {
+								ElemIndQueue.push(ti);
+							}
+						}
+					}
+				}
+
+				// Get element connectivity
+				vector<vector<int> > SphereElemConnectivity;
+				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
+
+				// Start the element BFS
+				while (!ElemIndQueue.empty()){
+					// Get front element
+					int ti = ElemIndQueue.front();
+					ElemIndQueue.pop();
+
+					// Add neighboring elems
+					for (int tj : SphereElemConnectivity[ti]){
+						if (!ElemWasVisited.count(tj)){
+							ElemWasVisited.insert(tj);
+							bool ElemMade = true;
+							for (int i = 0; i < SphereElemGPInds[tj].size() && ElemMade; ++i){
+								ElemMade = GradPaths[SphereElemGPInds[tj][i]].IsMade();
+							}
+							if (ElemMade) {
+								ElemIndQueue.push(tj);
+							}
+						}
+					}
+
+					// Check elem edges for cases 1, 2, or 3, as indicated in the above comments
+					for (int ci = 0; ci < 3; ++ci){
+						int cj = (ci + 1) % 3;
+						Edge e = MakeEdge(SphereElemGPInds[ti][ci], SphereElemGPInds[ti][cj]);
+						Edge egp = MakeEdge(SphereElemGPInds[ti][ci], SphereElemGPInds[ti][cj]);
+						if (ElemTypes[ti] > NETypeR) {
+							cj = (ci + 1);
+							e = MakeEdge(
+								NodeTypes[SphereElems[ti][ci]] == NETypeB ? SphereElems[ti][ci] : SphereElemGPInds[ti][ci],
+								NodeTypes[SphereElems[ti][cj % 3]] == NETypeB ? SphereElems[ti][cj % 3] : SphereElemGPInds[ti][cj]);
+						}
+						if (!EdgeWasVisited.count(e) && GradPaths[egp.first].IsMade() && GradPaths[egp.second].IsMade()){
+							// Edge wasn't visited. See which case from comments above; 1, 2, or 4
+							if (!NodeWasVisited.count(SphereElemGPInds[ti][ci]) && !NodeWasVisited.count(SphereElemGPInds[ti][cj])){
+								// case 4; continue
+								continue;
+							}
+							else {
+								EdgeWasVisited.insert(e);
+								auto EdgeGPInds = EdgeGPMap[egp];
+								int NumEdgeGPs = EdgeGPInds.size();
+								GradPath_c *GP1 = &GradPaths[SphereElemGPInds[ti][ci]], *GP2 = &GradPaths[SphereElemGPInds[ti][cj]];
+								if (GP1->IsMade() && GP2->IsMade()) {
+									if (NumEdgeGPs > 0) {
+										double DistFront = 0.0, DistBack = 0.0;
+										int ind1, ind2;
+										vec3 vec1, vec2;
+										if (GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(GradPaths[EdgeGPInds.front()], vec1, ind1, ind2, vec2, DistFront)
+											&& GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(GradPaths[EdgeGPInds.back()], vec1, ind1, ind2, vec2, DistBack))
+										{
+											bool ciCloser = (DistFront < DistBack);
+											if (!NodeWasVisited.count(SphereElemGPInds[ti][ci])) {
+												// SphereElemGPInds[ti][ci] hasn't been added but SphereElemGPInds[ti][cj] has, so add edge
+												// GPs and SphereElemGPInds[ti][ci] to the gp queue starting from SphereElemGPInds[ti][cj].
+												if (ciCloser) {
+													// Add in reverse order
+													for (int i = 0; i < NumEdgeGPs; ++i) {
+														if (i == 0) {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.back(), SphereElemGPInds[ti][cj])));
+														}
+														else {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i])));
+														}
+														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+													}
+													// Then add ci
+													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], EdgeGPInds.front())));
+													GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+												}
+												else {
+													// Add in forward order
+													for (int i = 0; i < NumEdgeGPs; ++i) {
+														if (i == 0) {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.front(), SphereElemGPInds[ti][cj])));
+														}
+														else {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
+														}
+														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+													}
+													// Then add ci
+													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], EdgeGPInds.back())));
+													GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+												}
+												NodeWasVisited.insert(SphereElemGPInds[ti][ci]);
+											}
+											if (!NodeWasVisited.count(SphereElemGPInds[ti][cj])) {
+												// SphereElemGPInds[ti][cj] hasn't been added but SphereElemGPInds[ti][ci] has, so add edge
+												// GPs and SphereElemGPInds[ti][cj] to the gp queue starting from SphereElemGPInds[ti][ci].
+												if (ciCloser) {
+													// Add in forward order
+													for (int i = 0; i < NumEdgeGPs; ++i) {
+														if (i == 0) {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.front(), SphereElemGPInds[ti][ci])));
+														}
+														else {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
+														}
+														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+													}
+													// Then add ci
+													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], EdgeGPInds.back())));
+													GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+												}
+												else {
+													// Add in reverse order
+													for (int i = 0; i < NumEdgeGPs; ++i) {
+														if (i == 0) {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.back(), SphereElemGPInds[ti][ci])));
+														}
+														else {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i])));
+														}
+														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+													}
+													// Then add ci
+													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], EdgeGPInds.front())));
+													GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+												}
+												NodeWasVisited.insert(SphereElemGPInds[ti][cj]);
+											}
+											else {
+												// both ci and cj have been added already, so split the edge gps as we did before.
+												if (ciCloser) {
+													// ci get's low half of edge gps
+													for (int i = 0; i < NumEdgeGPs / 2 + 1; ++i) {
+														if (i == 0) {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], SphereElemGPInds[ti][ci])));
+														}
+														else {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
+														}
+														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+													}
+													// cj get's upper half of edge gps
+													for (int i = 0; i < NumEdgeGPs / 2; ++i) {
+														if (i == 0) {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], SphereElemGPInds[ti][cj])));
+														}
+														else {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i - 2])));
+														}
+														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+													}
+												}
+												else {
+													// cj get's low half of edge gps
+													for (int i = 0; i < NumEdgeGPs / 2 + 1; ++i) {
+														if (i == 0) {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], SphereElemGPInds[ti][cj])));
+														}
+														else {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
+														}
+														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+													}
+													// ci get's upper half of edge gps
+													for (int i = 0; i < NumEdgeGPs / 2; ++i) {
+														if (i == 0) {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], SphereElemGPInds[ti][ci])));
+														}
+														else {
+															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i - 2])));
+														}
+														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+													}
+												}
+											}
+										}
+									}
+									else {
+										// No edge GPs between node GPs, so only need to look for the case where
+										// one node GP was added and the other wasn't, and the unadded GP will
+										// point to the added as its parent.
+										// Don't care about the cases where neither or both GPs are already added.
+										if (!NodeWasVisited.count(SphereElemGPInds[ti][ci]) && NodeWasVisited.count(SphereElemGPInds[ti][cj])) {
+											// Add ci to queue pointing to cj
+											GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], SphereElemGPInds[ti][cj])));
+											NodeWasVisited.insert(SphereElemGPInds[ti][ci]);
+										}
+										else if (NodeWasVisited.count(SphereElemGPInds[ti][ci]) && !NodeWasVisited.count(SphereElemGPInds[ti][cj])) {
+											// Add cj to queue pointing to ci
+											GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], SphereElemGPInds[ti][ci])));
+											NodeWasVisited.insert(SphereElemGPInds[ti][cj]);
+										}
+										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
+									}
+								}
+							}
+						}// else case 3; continue
+					}
+
+					
+				}
+
+				/*
+				 *	The GP queue is now full of <GradPath*, GradPath*> pairs, where
+				 *	pair.first will have it's points aligned with those of pair.second,
+				 *	in the optimal order such that the placement of nodes along
+				 *	bond-path GPs are applied to all other GPs.
+				 *	Rather than having misalignment occur at bond and ring type nodes,
+				 *	it will now occur at the maximum "distance" (in terms of mesh edge steps)
+				 *	from bond path nodes.
+				 *	
+				 *	At this point we simply move through the GP queue, aligning paths as we go,
+				 *	and the ordering is such that the source (pair.second) path is guaranteed
+				 *	to have had its points already aligned with its "parent" GP.
+				 */
+				while (!GPQueue.empty()){
+					auto GPPair = GPQueue.front();
+					GPQueue.pop();
+
+					auto sourceGP = *GPPair.second;
+					sourceGP.SaveAsOrderedZone("alignment source gp");
+					auto constraintPointNums = sourceGP.GetCPCoincidentPoints(&CPs);
+					vector<vec3> constraintPoints;
+					for (int i : constraintPointNums){
+						constraintPoints.push_back(sourceGP[i]);
+					}
+					SaveVec3VecAsScatterZone(constraintPoints, "source GP constraint points");
+					GPPair.first->SaveAsOrderedZone("alignment target GP before");
+
+// 					GPPair.first->AlignToOtherPath(*GPPair.second);
+// 					GPPair.first->ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+// 
+// 					GPPair.first->SaveAsOrderedZone("alignment target GP after");
+				}
+			}
 
 			/*
 			 * We now have all the gradient paths completed in a single vector,
@@ -4004,7 +4775,7 @@ void NewMainFunction() {
 							double DistFront = 0.0, DistBack = 0.0;
 							int ind1, ind2;
 							vec3 vec1, vec2;
-							if (GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(GradPaths[EdgeGPInds.front()], vec1, ind1, ind2, vec2, DistFront)
+							if (!EdgeGPInds.empty() && GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(GradPaths[EdgeGPInds.front()], vec1, ind1, ind2, vec2, DistFront)
 								&& GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(GradPaths[EdgeGPInds.back()], vec1, ind1, ind2, vec2, DistBack))
 							{
 								if (DistFront < DistBack) {
@@ -8296,7 +9067,7 @@ void FindSphereBasins() {
 				int ThreadNum = omp_get_thread_num();
 				vector<vec3> SeedPts;
 				vector<vector<int> > BasinPerimeterEdges;
-				if (GetSortedParameterEdgeMidpoints(BasinElems[i][j], BasinNodes[i][j], SeedPts, BasinPerimeterEdges)) {
+				if (GetSortedPerimeterEdgeMidpoints(BasinElems[i][j], BasinNodes[i][j], SeedPts, BasinPerimeterEdges)) {
 					/*
 					 *	Prepare workspace for wedge cap
 					 */

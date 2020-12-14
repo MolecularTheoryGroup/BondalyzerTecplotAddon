@@ -334,7 +334,7 @@ Boolean_t CritPoints_c::IsValid() const{
 	return IsOk;
 }
 
-vec3 CritPoints_c::ClosestPoint(vec3 const & Pt, int & TotCPOffset, double & MinDist){
+vec3 CritPoints_c::ClosestPoint(vec3 const & Pt, int & TotCPOffset, double & MinDist) const{
 	vec3 MinPt;
 	double MinDistSqr = DBL_MAX;
 	int MinInd;

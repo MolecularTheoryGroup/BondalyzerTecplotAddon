@@ -502,49 +502,70 @@ static void TGLOpenSys_TOG_T1_1_CB(LgIndex_t const *I)
 	TecUtilLockFinish(AddOnID);
 }
 
+// 
+// /**
+// */
+// static LgIndex_t  TFLevel_TFS_T1_1_ValueChanged_CB(char const *S)
+// {
+// 	LgIndex_t IsOk = 1;
+// 	TecUtilLockStart(AddOnID);
+// 	TRACE1("Spin Control Text field (TFLevel_TFS_T1_1) Value Changed,  New value is: %s\n", S);
+// 	LgIndex_t Value;
+// 	if (TecGUITextFieldGetLgIndex(TFLevel_TFS_T1_1, &Value)){
+// 		if (Value < GBAMinSphereRefinementLevel)
+// 			TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBAMinSphereRefinementLevel).c_str());
+// 		else if (Value > GBAMaxSphereRefinementLevel)
+// 			TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBAMaxSphereRefinementLevel).c_str());
+// 	}
+// 	else{
+// 		TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBADefaultSphereMeshRefinementLevel).c_str());
+// 	}
+// 	GBAProcessSystemUpdateNumTriangles();
+// 	TecUtilLockFinish(AddOnID);
+// 	return (IsOk);
+// }
+// 
+// 
+// /**
+// */
+// static void TFLevel_TFS_T1_1_ButtonUp_CB(void)
+// {
+// 	TecUtilLockStart(AddOnID);
+// 	TRACE0("Spin control (TFLevel_TFS_T1_1) up callback called.\n");
+// 	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_T1_1, 1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel);
+// 	GBAProcessSystemUpdateNumTriangles();
+// 	TecUtilLockFinish(AddOnID);
+// }
+// 
+// 
+// /**
+// */
+// static void TFLevel_TFS_T1_1_ButtonDown_CB(void)
+// {
+// 	TecUtilLockStart(AddOnID);
+// 	TRACE0("Spin control (TFLevel_TFS_T1_1) down callback called.\n");
+// 	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_T1_1, -1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel);
+// 	GBAProcessSystemUpdateNumTriangles();
+// 	TecUtilLockFinish(AddOnID);
+// }
 
 /**
-*/
-static LgIndex_t  TFLevel_TFS_T1_1_ValueChanged_CB(char const *S)
+ */
+static void SCMinGBs_SC_T1_1_CB(const LgIndex_t *I)
 {
-	LgIndex_t IsOk = 1;
 	TecUtilLockStart(AddOnID);
-	TRACE1("Spin Control Text field (TFLevel_TFS_T1_1) Value Changed,  New value is: %s\n", S);
-	LgIndex_t Value;
-	if (TecGUITextFieldGetLgIndex(TFLevel_TFS_T1_1, &Value)){
-		if (Value < GBAMinSphereRefinementLevel)
-			TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBAMinSphereRefinementLevel).c_str());
-		else if (Value > GBAMaxSphereRefinementLevel)
-			TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBAMaxSphereRefinementLevel).c_str());
-	}
-	else{
-		TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBADefaultSphereMeshRefinementLevel).c_str());
-	}
+	TRACE1("Scale (SCMinGBs_SC_T1_1) Value Changed,  New value is: %d\n", *I);
 	GBAProcessSystemUpdateNumTriangles();
 	TecUtilLockFinish(AddOnID);
-	return (IsOk);
 }
 
 
 /**
-*/
-static void TFLevel_TFS_T1_1_ButtonUp_CB(void)
+ */
+static void SCMinGBs_SCD_T1_1_CB(const LgIndex_t *I)
 {
 	TecUtilLockStart(AddOnID);
-	TRACE0("Spin control (TFLevel_TFS_T1_1) up callback called.\n");
-	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_T1_1, 1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel);
-	GBAProcessSystemUpdateNumTriangles();
-	TecUtilLockFinish(AddOnID);
-}
-
-
-/**
-*/
-static void TFLevel_TFS_T1_1_ButtonDown_CB(void)
-{
-	TecUtilLockStart(AddOnID);
-	TRACE0("Spin control (TFLevel_TFS_T1_1) down callback called.\n");
-	TecGUISpinTextFieldIncLgIndex(TFLevel_TFS_T1_1, -1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel);
+	TRACE1("Scale (SCMinGBs_SCD_T1_1) Value Changed on drag,  New value is: %d\n", *I);
 	GBAProcessSystemUpdateNumTriangles();
 	TecUtilLockFinish(AddOnID);
 }
@@ -805,9 +826,13 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 // 	TecGUITextFieldSetString(TFGBMaxSD_TF_T1_1, to_string(GBADefaultMaxGBSubdivisionLevel).c_str());
 // 	TecGUITextFieldSetString(TFBPGBInit_TF_T1_1, to_string(GBADefaultNumberOfPreBondPathElemSubdivision).c_str());
 // 	
-	TecGUIScaleSetLimits(SCBPGBInit_SC_T1_1, 0, GBADefaultMaxNumberOfPreBondPathElemSubdivision, 0);
-	TecGUIScaleSetValue(SCBPGBInit_SC_T1_1, GBADefaultNumberOfPreBondPathElemSubdivision);
-	TecGUILabelSetText(LBLBPGBInit_LBL_T1_1, to_string(GBADefaultNumberOfPreBondPathElemSubdivision).c_str());
+	TecGUIScaleSetLimits(SCBPGBInit_SC_T1_1, 0, GBAMaxMaxSubdivisionLevel, 0);
+	TecGUIScaleSetValue(SCBPGBInit_SC_T1_1, GBAMaxSubdivisionLevel);
+	TecGUILabelSetText(LBLBPGBInit_LBL_T1_1, to_string(GBAMaxSubdivisionLevel).c_str());
+
+	TecGUIScaleSetLimits(SCSDtight_SC_T1_1, GBAMinSubdivisionTightness, GBAMaxSubdivisionTightness, 0);
+	TecGUIScaleSetValue(SCSDtight_SC_T1_1, GBADefaultSubdivisionTightness);
+	TecGUILabelSetText(LBLSDtight_LBL_T1_1, to_string(GBADefaultSubdivisionTightness).c_str());
 
 	TecGUIScaleSetLimits(SCBPGBs_SC_T1_1, 1, GBADefaultMaxBPAngularGBs, 0);
 	TecGUIScaleSetValue(SCBPGBs_SC_T1_1, GBADefaultBPAngularGBs);
@@ -833,7 +858,8 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	*/
 	TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(GBADefaultSphereRadius).c_str());
 	TecGUIRadioBoxSetToggle(RBRadMode_RADIO_T1_1, 2);
-	TecGUITextFieldSetString(TFLevel_TFS_T1_1, to_string(GBADefaultSphereMeshRefinementLevel).c_str());
+	TecGUIScaleSetLimits(SCMinGBs_SC_T1_1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel, 0);
+	TecGUIScaleSetValue(SCMinGBs_SC_T1_1, GBADefaultSphereMeshRefinementLevel);
 	GBAProcessSystemUpdateNumTriangles();
 	TecGUITextFieldSetString(TFSTPts_TF_T1_1, to_string(DefaultNumGPPts).c_str());
 
@@ -857,14 +883,41 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	return TRUE;
 }
 
+string humancount(long int N, long int d = 1){
+	long int K = 1000,
+		M = K * 1000,
+		G = M * 1000;
 
+	stringstream stream;
 
-void GBAProcessSystemUpdateNumTriangles(){
-	LgIndex_t Level;
-	TecGUITextFieldGetLgIndex(TFLevel_TFS_T1_1, &Level);
-	LgIndex_t NumTriangles = 20 * (int)pow(4, Level);
+	if (N < K) {
+		stream << N;
+	}
+	else if (N < M) {
+		stream << std::fixed << std::setprecision(d) << double(N) / double(K) << "k";
+	}
+	else if (N < G) {
+		stream << std::fixed << std::setprecision(d) << double(N) / double(M) << "M";
+	}
+	else {
+		stream << std::fixed << std::setprecision(d) << double(N) / double(G) << "G";
+	}
+
+	return stream.str();
+}
+
+void GBAProcessSystemUpdateNumTriangles() {
 	stringstream ss;
-	ss << NumTriangles << " Triangles";
+	LgIndex_t Level = TecGUIScaleGetValue(SCMinGBs_SC_T1_1);
+	long int NumTriangles = 20 * (int)pow(4, Level);
+	LgIndex_t MaxLevel = Level + TecGUIScaleGetValue(SCBPGBInit_SC_T1_1);
+	if (MaxLevel == Level){
+		ss << "appx. " << humancount(NumTriangles) << " GBs";
+	}
+	else {
+		long int MaxNumTriangles = double(NumTriangles) + (20 * (int)pow(4, MaxLevel)) / pow(2,TecGUIScaleGetValue(SCSDtight_SC_T1_1));
+		ss << humancount(NumTriangles) << "-" << humancount(MaxNumTriangles) << " GBs";
+	}
 	TecGUILabelSetText(LBLNumTri_LBL_T1_1, ss.str().c_str());
 }
 
@@ -966,6 +1019,7 @@ static void SCBPGBInit_SC_T1_1_CB(const LgIndex_t *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Scale (SCBPGBInit_SC_T1_1) Value Changed,  New value is: %d\n", *I);
+	GBAProcessSystemUpdateNumTriangles();
 	TecGUILabelSetText(LBLBPGBInit_LBL_T1_1, to_string(*I).c_str());
 	TecUtilLockFinish(AddOnID);
 }
@@ -977,6 +1031,7 @@ static void SCBPGBInit_SCD_T1_1_CB(const LgIndex_t *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Scale (SCBPGBInit_SCD_T1_1) Value Changed on drag,  New value is: %d\n", *I);
+	GBAProcessSystemUpdateNumTriangles();
 	TecGUILabelSetText(LBLBPGBInit_LBL_T1_1, to_string(*I).c_str());
 	TecUtilLockFinish(AddOnID);
 }
@@ -1410,5 +1465,40 @@ static void TGLRadAbs_TOG_T3_1_CB(const LgIndex_t *I)
 	ResizeSpheresCallback();
 	TecUtilLockFinish(AddOnID);
 }
+
+
+/**
+ */
+static void SCSDtight_SC_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCSDtight_SC_T1_1) Value Changed,  New value is: %d\n", *I);
+	GBAProcessSystemUpdateNumTriangles();
+	TecGUILabelSetText(LBLSDtight_LBL_T1_1, to_string(*I).c_str());
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void SCSDtight_SCD_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Scale (SCSDtight_SCD_T1_1) Value Changed on drag,  New value is: %d\n", *I);
+	GBAProcessSystemUpdateNumTriangles();
+	TecGUILabelSetText(LBLSDtight_LBL_T1_1, to_string(*I).c_str());
+	TecUtilLockFinish(AddOnID);
+}
+
+
+/**
+ */
+static void TGLSphTest_TOG_T1_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Toggle (TGLSphTest_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
+	TecUtilLockFinish(AddOnID);
+}
+
 
 #include "guibld.cpp"

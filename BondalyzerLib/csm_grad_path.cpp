@@ -18,6 +18,8 @@
 #include <gsl/gsl_odeiv2.h>
 #include <gsl/gsl_multiroots.h>
 
+#include <Set.h>
+
 #include "CSM_DATA_TYPES.h"
 #include "CSM_CALC_VARS.h"
 #include "CSM_DATA_SET_INFO.h"
@@ -28,6 +30,7 @@
 
 #include <armadillo>
 using namespace arma;
+using namespace tecplot::toolbox;
 
 using std::list;
 using std::vector;
@@ -573,6 +576,31 @@ Boolean_t GradPathBase_c::ResampleAdaptive(int TargetNumPoints, vector<int> & Pr
 	return TRUE;
 }
 
+/*
+ *	Redefines m_XYZList according to the nodes of rhs, but along the current m_XYZlist.
+ *	That is, for each point i on rhs, define this-> point i as the closest point
+ *	along the path to point i.
+ */
+Boolean_t GradPath_c::AlignToOtherPath(GradPath_c const & rhs){
+	GradPath_c thiscopy = GradPath_c(*this);
+	if (this->GetCount() != rhs.GetCount()){
+		this->m_XYZList.resize(rhs.GetCount());
+		this->m_RhoList.resize(rhs.GetCount());
+		this->m_XYZList[0] = thiscopy[0];
+		this->m_RhoList[0] = thiscopy.RhoAt(0);
+		this->m_XYZList.back() = thiscopy[-1];
+		this->m_RhoList.back() = thiscopy.RhoAt(-1);
+	}
+
+
+
+	for (int i = 1; i < this->GetCount() - 1; ++i){
+		this->m_XYZList[i] = thiscopy.ClosestPoint(rhs[i]);
+	}
+
+	return TRUE;
+}
+
 // Removes occurrances of having neighboring segments with > 90 degree turns
 // (gradient paths shouldn't do that)
 void GradPathBase_c::RemoveKinks(double const & AngleCutoff){
@@ -593,6 +621,7 @@ void GradPathBase_c::RemoveKinks(double const & AngleCutoff){
 	}
 }
 
+
 Boolean_t GradPathBase_c::Resample(int NumPoints, vector<int> & ProtectedPoints, GPResampleMethod_e Method){
 	Boolean_t IsOk = m_GradPathMade && NumPoints > 3;
 
@@ -605,8 +634,8 @@ Boolean_t GradPathBase_c::Resample(int NumPoints, vector<int> & ProtectedPoints,
 
 	int OldCount = GetCount();
 
-// 	if (IsOk && NumPoints < OldCount){
-	if (IsOk){
+	// 	if (IsOk && NumPoints < OldCount){
+	if (IsOk) {
 		NewXYZList.resize(NumPoints);
 
 		NewRhoList.resize(NumPoints);
@@ -629,10 +658,10 @@ Boolean_t GradPathBase_c::Resample(int NumPoints, vector<int> & ProtectedPoints,
 
 		int OldI = 0;
 
-		for (int NewI = 1; NewI < NumPoints - 1; ++NewI){
+		for (int NewI = 1; NewI < NumPoints - 1; ++NewI) {
 			ArcLength += DelLength;
 
-			while (OldI < OldCount - 1 && ArcLengthI < ArcLength){
+			while (OldI < OldCount - 1 && ArcLengthI < ArcLength) {
 				++OldI;
 
 				ArcLengthIm1 = ArcLengthI;
@@ -651,7 +680,7 @@ Boolean_t GradPathBase_c::Resample(int NumPoints, vector<int> & ProtectedPoints,
 			}
 
 			double Ratio;
-			
+
 			if (std::find(NewProtectedPoints.begin(), NewProtectedPoints.end(), OldI) != NewProtectedPoints.end()) {
 				NewXYZList[NewI] = m_XYZList[OldI];
 				NewRhoList[NewI] = m_RhoList[OldI];
@@ -663,10 +692,10 @@ Boolean_t GradPathBase_c::Resample(int NumPoints, vector<int> & ProtectedPoints,
 			}
 
 
-			if (OldI >= OldCount){
-				while (NewI < NumPoints){
+			if (OldI >= OldCount) {
+				while (NewI < NumPoints) {
 					NewI++;
-					if (NewI < NumPoints){
+					if (NewI < NumPoints) {
 						NewXYZList[NewI] = PtIm1 + (PtI - PtIm1) * Ratio;
 
 						NewRhoList[NewI] = RhoIm1 + Ratio * (RhoI - RhoIm1);
@@ -686,11 +715,11 @@ Boolean_t GradPathBase_c::Resample(int NumPoints, vector<int> & ProtectedPoints,
 
 		IsOk = NewXYZList.size() == NumPoints;
 
-		if (IsOk){
+		if (IsOk) {
 			IsOk = (NewRhoList.size() == NumPoints);
 		}
 
-		if (IsOk){
+		if (IsOk) {
 			m_XYZList.swap(NewXYZList);
 
 			m_RhoList.swap(NewRhoList);
@@ -727,6 +756,51 @@ Boolean_t GradPathBase_c::Reverse(){
 		m_StartEndCPNum[1] = TmpInt;
 	}
 	return IsOk;
+}
+
+vector<int> GradPathBase_c::GetCPCoincidentPoints(CritPoints_c const * CPs, double tol) const {
+	vector<int> outPoints;
+	// Check distance to saddle CPs, don't care about max/min
+	// keep track of the closest point to each saddle point, then 
+	// check that distance against the tolerance.
+	if (CPs != nullptr) {
+		std::map<int, std::pair<int, double> > MinSaddlePointDist;
+		for (int i = 0; i < m_XYZList.size(); ++i) {
+			int CPOffSet;
+			double MinDist;
+			vec ClosestPt = CPs->ClosestPoint(m_XYZList[i], CPOffSet, MinDist);
+			if (CPOffSet >= 0) {
+				auto CPType = CPs->GetTypeFromTotOffset(CPOffSet);
+				if ((CPType == CPType_Bond || CPType == CPType_Ring)) {
+					if (MinSaddlePointDist.count(CPOffSet)) {
+						if (MinDist < MinSaddlePointDist[CPOffSet].second) {
+							MinSaddlePointDist[CPOffSet] = std::make_pair(i, MinDist);
+						}
+					}
+					else {
+						MinSaddlePointDist[CPOffSet] = std::make_pair(i, MinDist);
+					}
+				}
+			}
+		}
+
+		for (auto p : MinSaddlePointDist) {
+			if (p.second.second < tol) {
+				outPoints.push_back(p.second.first);
+			}
+		}
+	}
+	return outPoints;
+
+	// Find bends close to 90 deg, which only* happens when a GP passes through a saddle CP
+
+// 	for (int i = 1; i < m_XYZList.size() - 1; ++i){
+// 		if (VectorAngle(m_XYZList[i-1] - m_XYZList[i], m_XYZList[i+1] - m_XYZList[i]) < PIOVER2 * 1.1){
+// 			outPoints.push_back(i);
+// 		}
+// 	}
+// 
+// 	return outPoints;
 }
 
 /*
@@ -832,11 +906,36 @@ GradPath_c ConcatenateResample(vector<GradPath_c> GPList, int NumPoints, vector<
 		}
 	}
 
-	GradPath_c GP = GPList[0];
-	GP.Resample(NumPointsList[0], Method);
-	for (int i = 1; i < GPList.size(); ++i){
-		GPList[i].Resample(NumPointsList[i], Method);
-		GP += GPList[i];
+	TotNumPoints = 0;
+
+	GradPath_c GP;
+
+	while (TotNumPoints != NumPoints) {
+		auto GPListCopy = GPList;
+
+		GP = GPListCopy[0];
+		GP.Resample(NumPointsList[0], Method);
+		for (int i = 1; i < GPListCopy.size(); ++i) {
+			GPListCopy[i].Resample(NumPointsList[i], Method);
+			GP += GPListCopy[i];
+		}
+
+		TotNumPoints = GP.GetCount();
+		if (TotNumPoints != NumPoints) {
+			int maxPathNum = 0;
+			for (int i = 1; i < NumPointsList.size(); ++i) {
+				if (NumPointsList[i] > NumPointsList[maxPathNum]) {
+					maxPathNum = i;
+				}
+			}
+			if (TotNumPoints > NumPoints) {
+				
+				NumPointsList[maxPathNum]--;
+			}
+			else if (TotNumPoints < NumPoints) {
+				NumPointsList[maxPathNum]++;
+			}
+		}
 	}
 
 	return GP;
@@ -1500,8 +1599,7 @@ bool GradPathBase_c::GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOth
 
 				if (IsDeviating) {
   					if (HardDeviation){
- // 						Path1->GetDeviationMidpointRhoBasedFromOtherGP(*Path2, GP_DeviationAngleMaxCutoff * 0.3, OutPt, Ind1, Ind2, Pt2);
- 						Path1->GetDeviationMidpointClosestPointBasedFromOtherGP(*Path2, GP_DeviationAngleMaxCutoff * 0.2, OutPt, Ind1, Ind2, Pt2);
+ 						Path1->GetDeviationMidpointClosestPointBasedFromOtherGP(*Path2, GP_DeviationAngleMaxCutoff * 0.15, OutPt, Ind1, Ind2, Pt2);
   					}
  					else {
 //  						double Len1 = Path1->GetLength(Ind1),
@@ -1509,7 +1607,11 @@ bool GradPathBase_c::GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOth
 //  							LenSum = Len1 + Len2,
 //  							Len1Ratio = Len1 / LenSum;
 // 						 					OutPt = Path1->XYZAt(Ind1) * (1.0 - Len1Ratio) + Pt2 * Len1Ratio;
+ 						
+// 						Ind1--;
+// 						Pt2 = Path2->ClosestPoint(Path1->XYZAt(Ind1), Ind2);
 						OutPt = (Path1->XYZAt(Ind1) + Pt2) * 0.5;
+
  					}
 
 					if (Path1 != this){
@@ -2006,13 +2108,14 @@ GradPath_c::GradPath_c(vector<GradPath_c const *> const & GPs,
 		for (int i = 0; i < GPs.size(); ++i){
 			GradPath_c tmpGP = *GPs[i];
 			tmpGP.SaveAsOrderedZone("GP " + to_string(i + 1));
+			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_PlusEquals);
 		}
 	}
 
 	*this = *GPs[0];
 
 	this->Clear();
-	this->SetSurfPtr(&Surf);
+	this->SetSurfPtr(&Surf, 5);
 	this->SetStartPoint(SeedPoint);
 	this->SetDir(GPDir);
 	if (TermPoint != nullptr) {
@@ -2390,7 +2493,7 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 		vector<vec3> SurfXYZList;
 		vector<double> SurfRhoList;
 
-		if (m_Surface != nullptr && m_Surface->IsMade()){
+		if (m_Surface != nullptr && m_Surface->IsMade() && m_SurfGPProjectionFrequency <= 1){
 			if (!m_Surface->ProjectPointToSurface(y, m_StartPoint, SurfLastProjectedElem, SurfProjectionFound)){
 				TecUtilDialogErrMsg("Projection of point to FESurface failed");
 			}
@@ -2813,6 +2916,10 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 	m_RhoList.shrink_to_fit();
 	m_ODE_Data.Direction = OldDir;
 
+	if (m_Surface != nullptr && m_Surface->IsMade() && m_SurfGPProjectionFrequency > 1) {
+		this->ProjectPathToSurface(m_Surface);
+	}
+
 	return IsOk;
 }
 
@@ -2888,7 +2995,7 @@ Boolean_t GradPath_c::ProjectPathToSurface(FESurface_c const * SurfPtr)
 #pragma omp parallel for
 	for (int i = 0; i < m_XYZList.size(); ++i){
 		int ThNum = omp_get_thread_num();
-		int ProjectedElemNum;
+		int ProjectedElemNum = -1;
 		bool PointIsInterior;
 		SPtr->ProjectPointToSurface(m_XYZList[i], ProjectedPoint[ThNum], ProjectedElemNum, PointIsInterior);
 		m_XYZList[i] = ProjectedPoint[ThNum];

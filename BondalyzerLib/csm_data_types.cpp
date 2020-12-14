@@ -113,19 +113,49 @@ vec3 const Rotate(vec3 const & Point, double const & Angle, vec3 const & Axis){
 	return vec3(TmpVec4.subvec(0, 2));
 }
 
-double const TriangleArea(vec3 const & A, vec3 const & B, vec3 const & C){
-	vec3 AB = B - A, AC = C - A;
+vec3 TriangleMidPoint(vec3 const & a, vec3 const & b, vec3 const & c){
+	return (a + b + c) / 3.0;
+}
+
+vec3 TriangleElemMidPoint(vector<vec3> const & Nodes, vector<vector<int> > const & TriElems, int const & i){
+	return TriangleMidPoint(Nodes[TriElems[i][0]], Nodes[TriElems[i][1]], Nodes[TriElems[i][2]]);
+}
+
+// double const TriangleArea(vec3 const & A, vec3 const & B, vec3 const & C) {
+double const TriangleArea(vec3 const & p1, vec3 const & p2, vec3 const & p3) {
+	
+// 	vec3 AB = B - A, AC = C - A;
+// // 
+// 	double M = norm(AB)*norm(AC);
+// 	double Theta = acos(dot(AB, AC) / M);
 // 
-	double M = norm(AB)*norm(AC);
-	double Theta = acos(dot(AB, AC) / M);
+// 	double b = 0.5 * M * sin(Theta);
+// 
+// 	double a = 0.5 * sqrt(pow(AB[1]*AC[2] - AB[2]*AC[1], 2)
+// 		+ pow(AB[2]*AC[0] - AB[0]*AC[2], 2)
+// 		+ pow(AB[0]*AC[1] - AB[1]*AC[0], 2));
+// 
+// 	return a;
+// 	
+	vec3 ABC;
 
-	double b = 0.5 * M * sin(Theta);
+	ABC[0] = p1[2] * (p2[1] - p3[1])
+		+ p2[2] * (p3[1] - p1[1])
+		+ p3[2] * (p1[1] - p2[1]);
 
-	double a = 0.5 * sqrt(pow(AB[1]*AC[2] - AB[2]*AC[1], 2)
-		+ pow(AB[2]*AC[0] - AB[0]*AC[2], 2)
-		+ pow(AB[0]*AC[1] - AB[1]*AC[0], 2));
+	ABC[1] = p1[0] * (p2[2] - p3[2])
+		+ p2[0] * (p3[2] - p1[2])
+		+ p3[0] * (p1[2] - p2[2]);
 
-	return a;
+	ABC[2] = p1[1] * (p2[0] - p3[0])
+		+ p2[1] * (p3[0] - p1[0])
+		+ p3[1] * (p1[0] - p2[0]);
+
+	return 0.5 * norm(ABC);
+}
+
+double TriangleElemArea(vector<vec3> const & Nodes, vector<vector<int> > const & TriElems, int const & i){
+	return TriangleArea(Nodes[TriElems[i][0]], Nodes[TriElems[i][1]], Nodes[TriElems[i][2]]);
 }
 
 /*

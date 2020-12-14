@@ -3688,7 +3688,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				|| (Path2->IsSGP && Path2->SaddleEndGPs[0].GetStartEndCPNum(1) != Path1->CPNum))
 				&& ((Path1->CPNum >= 0 && Path2->CPNum >= 0 && Path1->CPNum != Path2->CPNum)
 					|| (Path1->GP.GetMaxSeparationMidpointFromOtherGP(Path2->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist) && MaxDist > CheckDist))
-				&& Path1->GP.GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOtherGP(Path2->GP, GPDeviationCheckAngleFactor, GPDeviationCheckDistFactor, GPDeviationStartPtLengthFactor, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MinCPDist * 0.2))
+				&& Path1->GP.GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOtherGP(Path2->GP, GPDeviationCheckAngleFactor, GPDeviationCheckDistFactor, GPDeviationStartPtLengthFactor, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MinCPDist * 0.05))
 			{
 				// Paths deviate. Need to seed a new GP between them once their
 				// deviation angle is path the check angle.
@@ -4300,6 +4300,8 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 // 		if (DebugMode) {
 // 			TecUtilDialogMessageBox("Finished with saddle-saddle paths", MessageBoxType_Information);
 // 		}
+// 		
+// 		return TRUE;
 
 		// DEBUG;
 #ifdef DEBUG_PRINTPATHS

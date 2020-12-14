@@ -129,6 +129,8 @@ public:
 
 	void RemoveKinks(double const & AngleCutoff = GB_DefaultKinkCheckAngle);
 
+	vector<int> GradPathBase_c::GetCPCoincidentPoints(CritPoints_c const * CPs, double tol = 1e-5) const;
+
 	Boolean_t Resample(int NumPoints, vector<int> & ProtectedPoints, GPResampleMethod_e Method = GPResampleMethod_Adaptive);
 	Boolean_t Resample(int NumPoints, GPResampleMethod_e Method = GPResampleMethod_Adaptive) { vector<int> v; return Resample(NumPoints, v, Method); }
 	Boolean_t Reverse();
@@ -405,6 +407,7 @@ public:
 
 
 	Boolean_t ReinterpolateRhoValuesFromVolume(VolExtentIndexWeights_s * VolInfo = nullptr, FieldDataPointer_c * RhoPtr = nullptr);
+	Boolean_t AlignToOtherPath(GradPath_c const & rhs);
 
 	Boolean_t ProjectPathToSurface(FESurface_c const * SurfPtr = nullptr);
 
@@ -433,6 +436,7 @@ private:
 		*/
 	GradPathParams_s m_ODE_Data;
 
+	vector<int> m_CPCoincidentPoints;
 
 	// If terminating at:
 	// Point

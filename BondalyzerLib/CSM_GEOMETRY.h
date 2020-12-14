@@ -65,7 +65,7 @@ void NewIntegrateUsingIsosurfaces2(vector<GradPath_c const *> const & GPsIn,
 	vec3 const * BondCPPos,
 	AddOn_pa * AddOnID);
 
-bool GetSortedParameterEdgeMidpoints(vector<vector<int> > const & TriElems,
+bool GetSortedPerimeterEdgeMidpoints(vector<vector<int> > const & TriElems,
 	vector<vec3> const & NodeList,
 	vector<vec3> & SortedEdgeMidpoints,
 	vector<vector<int> > & PerimeterEdges);
