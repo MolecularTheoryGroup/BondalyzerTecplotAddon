@@ -407,7 +407,7 @@ public:
 
 
 	Boolean_t ReinterpolateRhoValuesFromVolume(VolExtentIndexWeights_s * VolInfo = nullptr, FieldDataPointer_c * RhoPtr = nullptr);
-	Boolean_t AlignToOtherPath(GradPath_c const & rhs);
+	Boolean_t AlignToOtherPath(GradPath_c const & rhs, vector<int> ConstrainedInds = {});
 
 	Boolean_t ProjectPathToSurface(FESurface_c const * SurfPtr = nullptr);
 

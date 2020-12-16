@@ -326,12 +326,14 @@ double GradPathBase_c::GetLength(int AtInd) const {
 
 	double Length = 0.0;
 
-	if (AtInd == 0 || abs(AtInd) > GetCount()) {
+	if (AtInd == 0){
+		return 0.0;
+	}
+	else if (abs(AtInd) > GetCount()) {
 		AtInd = GetCount() - 1;
 	}
-	else{
-		if (AtInd < 0)
-			AtInd += GetCount();
+	else if (AtInd < 0) {
+		AtInd += GetCount();
 	}
 
 	for (int i = 0; i < AtInd; ++i)
@@ -344,8 +346,12 @@ int GradPathBase_c::GetIndAtLength(double const & Length) const{
 	int i = 0;
 	if (Length > 0.0){
 		double checkLength = 0.0;
-		for (i = 1; i < GetCount() - 1 && checkLength < Length; ++i) {
+		for (i = 1; i < GetCount() - 1; ++i) {
 			checkLength += Distance(m_XYZList[i-1], m_XYZList[i]);
+			if (checkLength > Length){
+				i--;
+				break;
+			}
 		}
 	}
 
@@ -581,22 +587,150 @@ Boolean_t GradPathBase_c::ResampleAdaptive(int TargetNumPoints, vector<int> & Pr
  *	That is, for each point i on rhs, define this-> point i as the closest point
  *	along the path to point i.
  */
-Boolean_t GradPath_c::AlignToOtherPath(GradPath_c const & rhs){
+Boolean_t GradPath_c::AlignToOtherPath(GradPath_c const & rhs, vector<int> ConstrainedInds){
+	REQUIRE(this->IsMade() && rhs.IsMade() && !ConstrainedInds.empty());
 	GradPath_c thiscopy = GradPath_c(*this);
-	if (this->GetCount() != rhs.GetCount()){
+	if (this->GetCount() != rhs.GetCount()) {
 		this->m_XYZList.resize(rhs.GetCount());
 		this->m_RhoList.resize(rhs.GetCount());
 		this->m_XYZList[0] = thiscopy[0];
-		this->m_RhoList[0] = thiscopy.RhoAt(0);
 		this->m_XYZList.back() = thiscopy[-1];
+		this->m_RhoList[0] = thiscopy.RhoAt(0);
 		this->m_RhoList.back() = thiscopy.RhoAt(-1);
 	}
 
+	GradPath_c NewGP;
 
+	// 1. Find the closest points on *this to the constrained points of rhs.
+	// 2. Reconstruct *this as the concatenated set of gradient paths starting/ending
+	//    at the closest points (or at *this's original starting/ending points).
+	// At least one ConstrainedInds is required, so at least two paths will be
+	// made and concatenated. The first and last paths will be made explicitly, and 
+	// the rest made in a loop.
+	// 
+	// 
+	
+	ConstrainedInds.insert(ConstrainedInds.begin(), 0);
+	ConstrainedInds.push_back(rhs.GetCount() - 1);
 
-	for (int i = 1; i < this->GetCount() - 1; ++i){
-		this->m_XYZList[i] = thiscopy.ClosestPoint(rhs[i]);
+// 	{
+// 		// Do the first path.
+// 		// First, get *this's closest point to constraint point
+// 		int ClosestInd;
+// 		vec3 ClosestPt = this->ClosestPoint(rhs[ConstrainedInds.front()], ClosestInd);
+// 		// Get length of new path
+// 		double tmpLength = this->GetLength(ClosestInd) + Distance(this->XYZAt(ClosestInd), ClosestPt);
+// 		int NumPts = ConstrainedInds.front();
+// 		// Step size for getting new points
+// 		double ArcLenStep = tmpLength / double(NumPts - 1);
+// 		// Prepare workspace
+// 		double CurLen = 0.0;
+// 		vector<vec3> tmpPts(NumPts);
+// 		// Add first point
+// 		tmpPts.front() = this->XYZAt(0);
+// 		// Add all but last point
+// 		for (int i = 1; i < NumPts - 1; ++i) {
+// 			CurLen += ArcLenStep; // Incremented arc length at which to get new point
+// 			int CurInd = this->GetIndAtLength(CurLen); // index of point BEFORE CurLen is met
+// 			double IndLen = this->GetLength(CurInd); // exact length at CurInd
+// 			double LenDiff = CurLen - IndLen; // length discrepancy
+// 			vec3 NewPt;
+// 			if (LenDiff > 0.0) {
+// 				// Linearly interpolate down current segment of path to achieve desired length
+// 				double SegLen = Distance(this->XYZAt(CurInd), this->XYZAt(CurInd + 1));
+// 				double LenDiffRatio = LenDiff / SegLen; // SegLen cannot be zero because of how CurInd was determined
+// 				vec3 Seg = this->XYZAt(CurInd + 1) - this->XYZAt(CurInd);
+// 				NewPt = this->XYZAt(CurInd) + Seg * LenDiffRatio;
+// 			}
+// 			else {
+// 				// CurLen corresponds perfectly to one of the existing points, so just use that
+// 				NewPt = this->XYZAt(CurInd);
+// 			}
+// 		}
+// 		// Add last point
+// 		tmpPts.push_back(NewPt);
+// 		// Add to NewGP
+// 		NewGP += GradPath_c(tmpPts);
+// 	}
+// 	
+	
+	// Do each path segment
+	for (int i = 0; i < ConstrainedInds.size() - 1; ++i){
+		int j = i + 1;
+		// Do the first path.
+		// First, get *this's closest points to constraint points
+		int ClosestIndI, ClosestIndJ;
+		vec3 ClosestPtI, ClosestPtJ;
+		if (i == 0) {
+			ClosestPtI = this->XYZAt(0);
+			ClosestIndI = 0;
+		}
+		else {
+			ClosestPtI = this->ClosestPoint(rhs[ConstrainedInds[i]], ClosestIndI);
+		}
+		if (j == ConstrainedInds.size() - 1){
+			ClosestPtJ = this->XYZAt(-1);
+			ClosestIndJ = this->GetCount() - 1;
+		}
+		else{
+			ClosestPtJ = this->ClosestPoint(rhs[ConstrainedInds[j]], ClosestIndJ);
+		}
+		// Get length of new path
+		double LenI = this->GetLength(ClosestIndI) + Distance(this->XYZAt(ClosestIndI), ClosestPtI);
+		double LenJ = this->GetLength(ClosestIndJ) + Distance(this->XYZAt(ClosestIndJ), ClosestPtJ);
+		double tmpLength = LenJ - LenI;
+		int NumPts = ConstrainedInds[j] - ConstrainedInds[i] + 1;
+		// Step size for getting new points
+		double ArcLenStep = tmpLength / double(NumPts - 1);
+		// Prepare workspace
+		vector<vec3> tmpPts;
+		tmpPts.reserve(NumPts);
+		// Add first point
+		tmpPts.push_back(ClosestPtI);
+		// Add all but last point
+		double CurLen = LenI;
+		for (int i = 1; i < NumPts - 1; ++i) {
+			CurLen += ArcLenStep; // Incremented arc length at which to get new point
+			int CurInd = this->GetIndAtLength(CurLen); // index of point BEFORE CurLen is met
+			double IndLen = this->GetLength(CurInd); // exact length at CurInd
+			double LenDiff = CurLen - IndLen; // length discrepancy
+			vec3 NewPt;
+			if (LenDiff > 0.0) {
+				// Linearly interpolate down current segment of path to achieve desired length
+				double SegLen = Distance(this->XYZAt(CurInd), this->XYZAt(CurInd + 1));
+				double LenDiffRatio = LenDiff / SegLen; // SegLen cannot be zero because of how CurInd was determined
+				vec3 Seg = this->XYZAt(CurInd + 1) - this->XYZAt(CurInd);
+				NewPt = this->XYZAt(CurInd) + Seg * LenDiffRatio;
+			}
+			else {
+				// CurLen corresponds perfectly to one of the existing points, so just use that
+				NewPt = this->XYZAt(CurInd);
+			}
+			tmpPts.push_back(NewPt);
+		}
+		// Add last point
+		tmpPts.push_back(ClosestPtJ);
+		// Add to NewGP
+		NewGP += GradPath_c(tmpPts);
 	}
+
+	this->m_XYZList = NewGP.m_XYZList;
+
+
+// 	ConstrainedInds.insert(ConstrainedInds.begin(), 0);
+// 	ConstrainedInds.push_back(rhs.GetCount() - 1);
+// 
+// 	for (int i = 1; i < ConstrainedInds.size(); ++i) {
+// 		auto tmpGP = this->SubGP(ConstrainedInds[i - 1], ConstrainedInds[i]);
+// 		tmpGP.Resample(ConstrainedInds[i] - ConstrainedInds[i - 1] + 1, GPResampleMethod_Linear);
+// 		NewGP += tmpGP;
+// 	}
+// 
+// 	this->m_XYZList = NewGP.m_XYZList;
+
+// 		for (int i = 1; i < this->GetCount() - 1; ++i) {
+// 			this->m_XYZList[i] = thiscopy.ClosestPoint(rhs[i]);
+// 		}
 
 	return TRUE;
 }

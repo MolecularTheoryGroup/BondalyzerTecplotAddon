@@ -126,7 +126,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <SDLCheck>false</SDLCheck>
       <AdditionalIncludeDirectories>$(TEC360HOME)include;$(SolutionDir)armadillo\include;$(ProjectDir)spdlog;$(SolutionDir)..\gsl-1.16;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>

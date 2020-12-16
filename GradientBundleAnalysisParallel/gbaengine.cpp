@@ -52,7 +52,7 @@ using namespace arma;
 using namespace tecplot::toolbox;
 
 
-#define SUPERDEBUG
+// #define SUPERDEBUG
 // #define DEBUG_SAVEZONES
 
 #ifdef _DEBUG
@@ -2504,6 +2504,11 @@ void NewMainFunction() {
 		TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
 #endif
 
+		bool RingPresent = false;
+		for (int i = 0; i < NodeTypes.size() && !RingPresent; ++i){
+			RingPresent = (NodeTypes[i] == NETypeR);
+		}
+
 		/*
 		 *	Setup and seed all type C and R paths.
 		 *	R paths will be combined with the ring path segments found above.
@@ -2550,53 +2555,53 @@ void NewMainFunction() {
 //   			ElemTodo = { 788,791 };
 //         			ElemTodo.clear();
 //  // 				for (int i = 0; i < NumElems; ++i) {
-//   				for (int i = 0; i < NumElems; ++i){
-//   					if (ElemTypes[i] > NETypeR)
-//  						ElemTodo.push_back(i);
-//  				}
+  				for (int i = 0; i < NumElems; ++i){
+  					if (ElemTypes[i] > NETypeR)
+ 						ElemTodo.push_back(i);
+ 				}
 
 //				// Get ring and bond type elements and their n-th nearest neighbors
-				int MaxBFSDepth = 2; // if 3, gets ring/bond elems and their 4 nearest neighbors
-				vector<vector<int> > SphereElemConnectivity;
-				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
-				std::set<int> ElemTodoSet;
-				auto CompNEType = NETypeB;
-
-				for (int i = 0; i < NumElems; ++i) {
-					if (ElemTypes[i] >= CompNEType) {
-						ElemTodoSet.insert(i);
-						// BFS with depth limit
-						std::queue<int> ToCheck;
-						vector<bool> Visited(SphereElems.size(), false);
-						int CurDepth = 0;
-						ToCheck.push(i);
-						ToCheck.push(-1); //Depth level marker
-						Visited[i] = true;
-						while (!ToCheck.empty()) {
-							if (ToCheck.front() == -1) {
-								// Moving down another depth
-								ToCheck.push(-1);
-								if (++CurDepth > MaxBFSDepth)
-									break;
-							}
-							else {
-								int e = ToCheck.front();
-// 								if (ElemTypes[e] >= CompNEType) {
-									ElemTodoSet.insert(e);
+// 				int MaxBFSDepth = 1; // if 3, gets ring/bond elems and their 4 nearest neighbors
+// 				vector<vector<int> > SphereElemConnectivity;
+// 				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
+// 				std::set<int> ElemTodoSet;
+// 				auto CompNEType = NETypeB;
+// 
+// 				for (int i = 0; i < NumElems; ++i) {
+// 					if (ElemTypes[i] >= CompNEType) {
+// 						ElemTodoSet.insert(i);
+// 						// BFS with depth limit
+// 						std::queue<int> ToCheck;
+// 						vector<bool> Visited(SphereElems.size(), false);
+// 						int CurDepth = 0;
+// 						ToCheck.push(i);
+// 						ToCheck.push(-1); //Depth level marker
+// 						Visited[i] = true;
+// 						while (!ToCheck.empty()) {
+// 							if (ToCheck.front() == -1) {
+// 								// Moving down another depth
+// 								ToCheck.push(-1);
+// 								if (++CurDepth > MaxBFSDepth)
+// 									break;
+// 							}
+// 							else {
+// 								int e = ToCheck.front();
+// // 								if (ElemTypes[e] >= CompNEType) {
+// 									ElemTodoSet.insert(e);
+// // 								}
+// 								for (int n : SphereElemConnectivity[e]) {
+// 									if (!Visited[n]) {
+// 										ToCheck.push(n);
+// 										Visited[n] = true;
+// 									}
 // 								}
-								for (int n : SphereElemConnectivity[e]) {
-									if (!Visited[n]) {
-										ToCheck.push(n);
-										Visited[n] = true;
-									}
-								}
-							}
-							ToCheck.pop();
-						}
-					}
-				}
-
-				ElemTodo = vector<int>(ElemTodoSet.begin(), ElemTodoSet.end());
+// 							}
+// 							ToCheck.pop();
+// 						}
+// 					}
+// 				}
+// 
+// 				ElemTodo = vector<int>(ElemTodoSet.begin(), ElemTodoSet.end());
    					
 //   			ElemTodo.clear();
 //   			for (int ti = 0; ti < NumElems; ++ti) {
@@ -2993,43 +2998,48 @@ void NewMainFunction() {
 				 *	Outer path lengths should be
 				 */
 
-				double AvgOuterGradPathLength = 0.0, AvgInnerGradPathLength = 0.0, MaxOuterGradPathLength = DBL_MIN;
-				int NumMadeGradPaths = 0, NumMadeInnerGradPaths = 0;
+// 				double AvgOuterGradPathLength = 0.0, AvgInnerGradPathLength = 0.0, MaxOuterGradPathLength = DBL_MIN;
+// 				int NumMadeGradPaths = 0, NumMadeInnerGradPaths = 0;
+// 
+// 				for (int i = 0; i < GradPaths.size(); ++i) {
+// 					if (GradPaths[i].IsMade()) {
+// 						NumMadeGradPaths++;
+// 						double OuterLength = GradPaths[i].GetLength();
+// 						if (OuterLength > MaxOuterGradPathLength) {
+// 							MaxOuterGradPathLength = OuterLength;
+// 						}
+// 						AvgOuterGradPathLength += OuterLength;
+// 					}
+// 				}
+// 				for (int i = 0; i < InnerGradPaths.size(); ++i) {
+// 					if (InnerGradPaths[i].IsMade()) {
+// 						AvgInnerGradPathLength += InnerGradPaths[i].GetLength();
+// 						NumMadeInnerGradPaths++;
+// 					}
+// 				}
+// 
+// 				REQUIRE(NumMadeGradPaths > 0);
+// 				REQUIRE(NumMadeInnerGradPaths > 0);
+// 
+// 				AvgOuterGradPathLength /= double(NumMadeGradPaths);
+// 				AvgInnerGradPathLength /= double(NumMadeInnerGradPaths);
+// 				// 				NumGPPointsOuter = int(AvgOuterGradPathLength / (AvgInnerGradPathLength + AvgOuterGradPathLength) * double(NumGPPoints));
+// 				NumGPPointsOuter = int(MaxOuterGradPathLength / (AvgInnerGradPathLength + MaxOuterGradPathLength) * double(NumGPPoints));
+// 				int InnerPoints = NumGPPoints - NumGPPointsOuter;
+
+				int NumGPPointsSphereInterior = NumGPPoints / 10;
+				NumGPPoints = (NumGPPoints * 9) / 10;
+				int NumGPPointsPathSegment = NumGPPoints / (RingPresent ? 3 : 2);
+				
 
 				for (int i = 0; i < GradPaths.size(); ++i) {
 					if (GradPaths[i].IsMade()) {
-						NumMadeGradPaths++;
-						double OuterLength = GradPaths[i].GetLength();
-						if (OuterLength > MaxOuterGradPathLength) {
-							MaxOuterGradPathLength = OuterLength;
-						}
-						AvgOuterGradPathLength += OuterLength;
+						GradPaths[i].Resample(NumGPPoints, ResampleMethod);
 					}
 				}
 				for (int i = 0; i < InnerGradPaths.size(); ++i) {
 					if (InnerGradPaths[i].IsMade()) {
-						AvgInnerGradPathLength += InnerGradPaths[i].GetLength();
-						NumMadeInnerGradPaths++;
-					}
-				}
-
-				REQUIRE(NumMadeGradPaths > 0);
-				REQUIRE(NumMadeInnerGradPaths > 0);
-
-				AvgOuterGradPathLength /= double(NumMadeGradPaths);
-				AvgInnerGradPathLength /= double(NumMadeInnerGradPaths);
-				// 				NumGPPointsOuter = int(AvgOuterGradPathLength / (AvgInnerGradPathLength + AvgOuterGradPathLength) * double(NumGPPoints));
-				NumGPPointsOuter = int(MaxOuterGradPathLength / (AvgInnerGradPathLength + MaxOuterGradPathLength) * double(NumGPPoints));
-				int InnerPoints = NumGPPoints - NumGPPointsOuter;
-
-				for (int i = 0; i < GradPaths.size(); ++i) {
-					if (GradPaths[i].IsMade()) {
-						GradPaths[i].Resample(NumGPPointsOuter, ResampleMethod);
-					}
-				}
-				for (int i = 0; i < InnerGradPaths.size(); ++i) {
-					if (InnerGradPaths[i].IsMade()) {
-						InnerGradPaths[i].Resample(InnerPoints, ResampleMethod);
+						InnerGradPaths[i].Resample(NumGPPointsSphereInterior, ResampleMethod);
 					}
 				}
 
@@ -3167,7 +3177,7 @@ void NewMainFunction() {
 										}
 									}
 									// 									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][ni]], IntSurfRingCagePaths[SurfNum][MinPathNum] }, NumGPPoints, { -1, RNodeRingPathSegmentLength[SphereElems[ti][ni]] }, ResampleMethod));
-									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][ni]], IntSurfRingCagePaths[SurfNum][MinPathNum] }, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, {}, ResampleMethod));
+									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][ni]], IntSurfRingCagePaths[SurfNum][MinPathNum] }, NumGPPoints, {}, ResampleMethod));
 									tri->at(ni) = GradPaths.size() - 1;
 								}
 
@@ -3215,11 +3225,11 @@ void NewMainFunction() {
 
 									tri->at(c1) = GradPaths.size();
 									// 									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][c1]], IntSurfRingCagePaths[SurfNumI][minI] }, NumGPPoints, { -1, RNodeRingPathSegmentLength[SphereElems[ti][c1]] }, ResampleMethod));
-									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][c1]], IntSurfRingCagePaths[SurfNumI][minI] }, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, {}, ResampleMethod));
+									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][c1]], IntSurfRingCagePaths[SurfNumI][minI] }, NumGPPoints, {}, ResampleMethod));
 
 									tri->at(c2) = GradPaths.size();
 									// 									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][c2]], IntSurfRingCagePaths[SurfNumJ][minJ] }, NumGPPoints, { -1, RNodeRingPathSegmentLength[SphereElems[ti][c2]] }, ResampleMethod));
-									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][c2]], IntSurfRingCagePaths[SurfNumJ][minJ] }, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, {}, ResampleMethod));
+									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][c2]], IntSurfRingCagePaths[SurfNumJ][minJ] }, NumGPPoints, {}, ResampleMethod));
 
 									break;
 								}
@@ -3241,7 +3251,7 @@ void NewMainFunction() {
 
 									tri->at(c1) = GradPaths.size();
 									// 									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][c1]], IntSurfRingCagePaths[SurfNum][minI] }, NumGPPoints, { -1, RNodeRingPathSegmentLength[SphereElems[ti][c1]] }, ResampleMethod));
-									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][c1]], IntSurfRingCagePaths[SurfNum][minI] }, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, {}, ResampleMethod));
+									GradPaths.push_back(ConcatenateResample({ GradPaths[SphereElems[ti][c1]], IntSurfRingCagePaths[SurfNum][minI] }, NumGPPoints, {}, ResampleMethod));
 
 									break;
 								}
@@ -3611,7 +3621,7 @@ void NewMainFunction() {
 												GPList.push_back(*GPPtr);
 											}
 
-											GP = ConcatenateResample(GPList, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, {}, ResampleMethod);
+											GP = ConcatenateResample(GPList, NumGPPoints, {}, ResampleMethod);
 
 											// 											if (SurfPtr == nullptr) {
 											// 												GP.Seed(false);
@@ -3926,7 +3936,7 @@ void NewMainFunction() {
 							string tmpStr;
 							if (NodeTypes[SphereElems[ti][c2]] == NETypeR) {
 								int TmpInt;
-								NewGPs[ei - 1] = ConcatenateResample({ NewGPs[ei - 1], *RPPtr }, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, {}, ResampleMethod);
+								NewGPs[ei - 1] = ConcatenateResample({ NewGPs[ei - 1], *RPPtr }, NumGPPoints, {}, ResampleMethod);
 								NewGPs[ei - 1].MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
 								GPList.push_back(*RPPtr);
 								GPNumPointList.push_back(-1);
@@ -3934,7 +3944,7 @@ void NewMainFunction() {
 							GPList.push_back(*BPPtr);
 							GPNumPointList.push_back(BNodeBondPathSegmentLength[SphereElems[ti][c1]]);
 
-							GP = ConcatenateResample(GPList, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, GPNumPointList, ResampleMethod);
+							GP = ConcatenateResample(GPList, NumGPPoints, GPNumPointList, ResampleMethod);
 
 							if (GP.RhoAt(0) < GP.RhoAt(-1))
 								GP.Reverse();
@@ -3971,7 +3981,7 @@ void NewMainFunction() {
 							GP.SetTerminalCPTypeNum(CPTypeNum_Cage);
 							vector<int> GPNumPointList = { -1, BondPathPtNum };
 							std::list<std::pair<vec3, GradPath_c> > EdgeGPs;
-							// Mode bounding seed points 1% closer to eachother
+							// Move bounding seed points 1% closer to eachother
 							vec3 SeedPts[2];
 							for (int i = 0; i < 2; ++i) {
 								SeedPts[i] = NewGPs[i][1];
@@ -4047,7 +4057,7 @@ void NewMainFunction() {
 										GP.Seed(false);
 										GP.RemoveKinks();
 // 										GP.SaveAsOrderedZone("midpoint gp forward " + to_string(Iter));
-										GP = ConcatenateResample({ GP, TmpGP }, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, {}, ResampleMethod);
+										GP = ConcatenateResample({ GP, TmpGP }, NumGPPoints, {}, ResampleMethod);
 										GP.MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
 										if (DistSqr(BCP, GP[0]) > DistSqr(BCP, GP[-1]))
 											GP.Reverse();
@@ -4079,13 +4089,13 @@ void NewMainFunction() {
 							if (Dist1 < Dist2){
 								for (auto gp = EdgeGPs.begin(); gp != EdgeGPs.end(); ++gp){
 									tri->push_back(GradPaths.size());
-									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, GPNumPointList, ResampleMethod));
+									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, NumGPPoints, GPNumPointList, ResampleMethod));
 								}
 							}
 							else{
 								for (auto gp = EdgeGPs.rbegin(); gp != EdgeGPs.rend(); ++gp) {
 									tri->push_back(GradPaths.size());
-									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, RadialSphereApprx ? NumGPPointsOuter : NumGPPoints, GPNumPointList, ResampleMethod));
+									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, NumGPPoints, GPNumPointList, ResampleMethod));
 								}
 							}
 						}
@@ -4136,77 +4146,6 @@ void NewMainFunction() {
 				GradPaths[ni].MakeRhoValuesMonotomic(&ThVolInfo[omp_get_thread_num()]);
 			}
 
-// 			int NumGPPointsOuter;
-
-// 			if (RadialSphereApprx) {
-// 				/*
-// 				 *	Resample inner and outer grad paths as if they were connected, using the lengths of the outer grad
-// 				 *	paths to determine the number of points for their corresponding inner grad paths.
-// 				 *	Outer path lengths should be
-// 				 */
-// 
-// 				double AvgOuterGradPathLength = 0.0, AvgInnerGradPathLength = 0.0, MaxOuterGradPathLength = DBL_MIN;
-// 				int NumMadeGradPaths = 0, NumMadeInnerGradPaths = 0;
-// 
-// 				for (int i = 0; i < GradPaths.size(); ++i) {
-// 					if (GradPaths[i].IsMade()) {
-// 						NumMadeGradPaths++;
-// 						double OuterLength = GradPaths[i].GetLength();
-// 						if (OuterLength > MaxOuterGradPathLength) {
-// 							MaxOuterGradPathLength = OuterLength;
-// 						}
-// 						AvgOuterGradPathLength += OuterLength;
-// 					}
-// 				}
-// 				for (int i = 0; i < InnerGradPaths.size(); ++i) {
-// 					if (InnerGradPaths[i].IsMade()) {
-// 						AvgInnerGradPathLength += InnerGradPaths[i].GetLength();
-// 						NumMadeInnerGradPaths++;
-// 					}
-// 				}
-// 
-// 				REQUIRE(NumMadeGradPaths > 0);
-// 				REQUIRE(NumMadeInnerGradPaths > 0);
-// 
-// 				AvgOuterGradPathLength /= double(NumMadeGradPaths);
-// 				AvgInnerGradPathLength /= double(NumMadeInnerGradPaths);
-// 				// 				NumGPPointsOuter = int(AvgOuterGradPathLength / (AvgInnerGradPathLength + AvgOuterGradPathLength) * double(NumGPPoints));
-// 				NumGPPointsOuter = int(MaxOuterGradPathLength / (AvgInnerGradPathLength + MaxOuterGradPathLength) * double(NumGPPoints));
-// 				int InnerPoints = NumGPPoints - NumGPPointsOuter;
-// 
-// 				for (int i = 0; i < GradPaths.size(); ++i) {
-// 					if (GradPaths[i].IsMade()) {
-// 						GradPaths[i].Resample(NumGPPointsOuter, ResampleMethod);
-// 					}
-// 				}
-// 				for (int i = 0; i < InnerGradPaths.size(); ++i){
-// 					if (InnerGradPaths[i].IsMade()) {
-// 						InnerGradPaths[i].Resample(InnerPoints, ResampleMethod);
-// 					}
-// 				}
-// 
-// 				// 				int MinInnerGPNumPoints = INT_MAX;
-// 				// 
-// 				// 				for (const auto &  g : InnerGradPaths){
-// 				// 					if (g.IsMade()) {
-// 				// 						MinInnerGPNumPoints = MIN(MinInnerGPNumPoints, g.GetCount());
-// 				// 					}
-// 				// 				}
-// 				// 				for (auto & g : InnerGradPaths){
-// 				// 					if (g.IsMade() && g.GetCount() > MinInnerGPNumPoints){
-// 				// 						g.Resample(MinInnerGPNumPoints, ResampleMethod);
-// 				// 					}
-// 				// 				}
-// 			}
-// 			else{
-// 				for (int i = 0; i < GradPaths.size(); ++i) {
-// 					if (GradPaths[i].IsMade()) {
-// 						GradPaths[i].Resample(NumGPPoints, ResampleMethod);
-// 					}
-// 				}
-// 			}
-
-
 			/*
 			 *	Before moving on to integration (and GB creation), align the path representation
 			 *	of all paths with that of bond path GPs.
@@ -4224,14 +4163,17 @@ void NewMainFunction() {
 			 *	
 			 *	When complete, this will guarantee that the tetrahedra that are eventually integrated are as regular as possible.
 			 */
-			if (false){
-				std::queue<std::pair<GradPath_c*, GradPath_c const *> > GPQueue;
+			if (true){
 				std::queue<std::pair<int, std::pair<int, int> > > GPIndQueue; // GB and source/target GP indices for each GP
 				vector<GradPath_c*> FinishedGPs;
 
 				 /* 
 				  * First, populate the queue with the GPs corresponding to the edges added 
 				  * after the bond point for bond path nodes.
+				  * 
+				  * Becuase all the bond-path GPs need to also be aligned, for each bond path
+				  * we'll check 
+				  * 
 				  * For bond path elements, the order these edges are added is inconsequential
 				  * (I'm pretty sure), but for bond-ring elements, need to start with the edge
 				  * closest to bond-ring-cage GP, since it's the path with two right angles to
@@ -4258,7 +4200,6 @@ void NewMainFunction() {
 								for (int i = 0; i < NumEdgePaths / 2 + 1; ++i) {
 									if (GradPaths[SphereElemGPInds[ti][4 + i]].IsMade() && GradPaths[SphereElemGPInds[ti][3 + i]].IsMade()) {
 										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][4 + i], SphereElemGPInds[ti][3 + i])));
-										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 									}
 								}
 
@@ -4268,7 +4209,6 @@ void NewMainFunction() {
 									int e2 = (e1 + 1) % SphereElemGPInds[ti].size();
 									if (GradPaths[SphereElemGPInds[ti][e1]].IsMade() && GradPaths[SphereElemGPInds[ti][e2]].IsMade()) {
 										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][e1], SphereElemGPInds[ti][e2])));
-										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 									}
 								}
 							}
@@ -4281,7 +4221,6 @@ void NewMainFunction() {
 									int e2 = (e1 + 1) % SphereElemGPInds[ti].size();
 									if (GradPaths[SphereElemGPInds[ti][e1]].IsMade() && GradPaths[SphereElemGPInds[ti][e2]].IsMade()) {
 										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][e1], SphereElemGPInds[ti][e2])));
-										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 									}
 								}
 							}
@@ -4291,7 +4230,6 @@ void NewMainFunction() {
 								for (int i = 0; i < NumEdgePaths; ++i) {
 									if (GradPaths[SphereElemGPInds[ti][4 + i]].IsMade() && GradPaths[SphereElemGPInds[ti][3 + i]].IsMade()) {
 										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][4 + i], SphereElemGPInds[ti][3 + i])));
-										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 									}
 								}
 							}
@@ -4443,11 +4381,9 @@ void NewMainFunction() {
 														else {
 															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i])));
 														}
-														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 													}
 													// Then add ci
 													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], EdgeGPInds.front())));
-													GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 												}
 												else {
 													// Add in forward order
@@ -4458,11 +4394,9 @@ void NewMainFunction() {
 														else {
 															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
 														}
-														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 													}
 													// Then add ci
 													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], EdgeGPInds.back())));
-													GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 												}
 												NodeWasVisited.insert(SphereElemGPInds[ti][ci]);
 											}
@@ -4478,11 +4412,9 @@ void NewMainFunction() {
 														else {
 															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
 														}
-														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 													}
 													// Then add ci
 													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], EdgeGPInds.back())));
-													GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 												}
 												else {
 													// Add in reverse order
@@ -4493,11 +4425,9 @@ void NewMainFunction() {
 														else {
 															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i])));
 														}
-														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 													}
 													// Then add ci
 													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], EdgeGPInds.front())));
-													GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 												}
 												NodeWasVisited.insert(SphereElemGPInds[ti][cj]);
 											}
@@ -4512,7 +4442,6 @@ void NewMainFunction() {
 														else {
 															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
 														}
-														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 													}
 													// cj get's upper half of edge gps
 													for (int i = 0; i < NumEdgeGPs / 2; ++i) {
@@ -4522,7 +4451,6 @@ void NewMainFunction() {
 														else {
 															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i - 2])));
 														}
-														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 													}
 												}
 												else {
@@ -4534,7 +4462,6 @@ void NewMainFunction() {
 														else {
 															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
 														}
-														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 													}
 													// ci get's upper half of edge gps
 													for (int i = 0; i < NumEdgeGPs / 2; ++i) {
@@ -4544,7 +4471,6 @@ void NewMainFunction() {
 														else {
 															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i - 2])));
 														}
-														GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 													}
 												}
 											}
@@ -4565,7 +4491,6 @@ void NewMainFunction() {
 											GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], SphereElemGPInds[ti][ci])));
 											NodeWasVisited.insert(SphereElemGPInds[ti][cj]);
 										}
-										GPQueue.push(std::make_pair(&GradPaths[GPIndQueue.back().second.first], &GradPaths[GPIndQueue.back().second.second]));
 									}
 								}
 							}
@@ -4588,24 +4513,39 @@ void NewMainFunction() {
 				 *	and the ordering is such that the source (pair.second) path is guaranteed
 				 *	to have had its points already aligned with its "parent" GP.
 				 */
-				while (!GPQueue.empty()){
-					auto GPPair = GPQueue.front();
-					GPQueue.pop();
+				vector<vector<int> > GPConstraintInds(GradPaths.size());
+				while (!GPIndQueue.empty()){
+					auto GPInds = GPIndQueue.front();
+					GPIndQueue.pop();
 
-					auto sourceGP = *GPPair.second;
-					sourceGP.SaveAsOrderedZone("alignment source gp");
-					auto constraintPointNums = sourceGP.GetCPCoincidentPoints(&CPs);
-					vector<vec3> constraintPoints;
-					for (int i : constraintPointNums){
-						constraintPoints.push_back(sourceGP[i]);
+// 					auto sourceGP = GradPaths[GPInds.second.second];
+// 					std::stringstream ss;
+// 					ss << "GB " << GPInds.first << ": alignment source gp " << GPInds.second.second << " --> " << GPInds.second.first;
+// 					sourceGP.SaveAsOrderedZone(ss.str().c_str(), Green_C);
+
+					if (GPConstraintInds[GPInds.second.second].empty()) {
+						GPConstraintInds[GPInds.second.second] = GradPaths[GPInds.second.second].GetCPCoincidentPoints(&CPs);
 					}
-					SaveVec3VecAsScatterZone(constraintPoints, "source GP constraint points");
-					GPPair.first->SaveAsOrderedZone("alignment target GP before");
+					GPConstraintInds[GPInds.second.first] = GPConstraintInds[GPInds.second.second];
 
-// 					GPPair.first->AlignToOtherPath(*GPPair.second);
-// 					GPPair.first->ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+// 					vector<vec3> constraintPoints;
+// 					for (int i : GPConstraintInds[GPInds.second.second]){
+// 						constraintPoints.push_back(sourceGP[i]);
+// 					}
+// 					ss.str("");
+// 					ss << "GB " << GPInds.first << ": constraint points for gp " << GPInds.second.second;
+// 					SaveVec3VecAsScatterZone(constraintPoints, ss.str().c_str());
 // 
-// 					GPPair.first->SaveAsOrderedZone("alignment target GP after");
+// 					ss.str("");
+// 					ss << "GB " << GPInds.first << ": target gp before " << GPInds.second.first << " <-- " << GPInds.second.second;
+// 					GradPaths[GPInds.second.first].SaveAsOrderedZone(ss.str().c_str(), Cyan_C);
+
+					GradPaths[GPInds.second.first].AlignToOtherPath(GradPaths[GPInds.second.second], GPConstraintInds[GPInds.second.second]);
+					GradPaths[GPInds.second.first].ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+
+// 					ss.str("");
+// 					ss << "GB " << GPInds.first << ": target gp after " << GPInds.second.first << " <-- " << GPInds.second.second;
+// 					GradPaths[GPInds.second.first].SaveAsOrderedZone(ss.str().c_str(), Blue_C);
 				}
 			}
 
