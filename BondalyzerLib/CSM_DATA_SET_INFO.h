@@ -384,6 +384,8 @@ struct CSMZoneName_s{
 		FESurface = "FE Volume";
 
 	vector<string> CPType = vector<string>({ "Nuclear", "Bond", "Ring", "Cage", "Ring FF", "Cage FF" });
+	vector<double> CPScatterSize = { 2.5, 1.0, 1.0, 1.1, 0, 0 };
+	vector<GeomShape_e> CPScatterSymbol = { GeomShape_Sphere, GeomShape_Sphere, GeomShape_Sphere, GeomShape_Octahedron, GeomShape_Invalid, GeomShape_Invalid };
 	CSMZoneName_s(){
 		for (string & i : CPType) i = CriticalPoints + Delim + i;
 	}
@@ -519,3 +521,5 @@ void SetZoneStyle(vector<int> ZoneNums = {},
 	double const Size = -1);
 
 int ZoneFinalSourceZoneNum(int ZoneNum, bool MaintainZoneType = false);
+
+void SetZoneNum(int OldZoneNum = TecUtilDataSetGetNumZones(), int NewZoneNum = 1);

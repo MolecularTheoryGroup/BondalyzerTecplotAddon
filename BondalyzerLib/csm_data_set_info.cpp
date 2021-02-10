@@ -1167,3 +1167,21 @@ int ZoneFinalSourceZoneNum(int ZoneNum, bool MaintainZoneType){
 
 	return SourceZoneNum;
 }
+
+void SetZoneNum(int OldZoneNum, int NewZoneNum){
+	REQUIRE(OldZoneNum >= 1 && OldZoneNum <= TecUtilDataSetGetNumZones());
+	REQUIRE(NewZoneNum >= 1 && NewZoneNum <= TecUtilDataSetGetNumZones());
+	if (OldZoneNum == 1 || NewZoneNum == TecUtilDataSetGetNumZones()){
+		return;
+	}
+
+	Set DeleteZones;
+	int NumZones = TecUtilDataSetGetNumZones();
+	for (int i = NewZoneNum; i < OldZoneNum; ++i) {
+		TecUtilZoneCopy(i, 1, 0, 1, 1, 0, 1, 1, 0, 1);
+		DeleteZones += i;
+	}
+	if (!DeleteZones.isEmpty()) {
+		TecUtilDataSetDeleteZone(DeleteZones.getRef());
+	}
+}

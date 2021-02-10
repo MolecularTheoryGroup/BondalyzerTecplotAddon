@@ -759,7 +759,6 @@ vector<int> CritPoints_c::SaveAsOrderedZone(vector<int> const & XYZVarNum, int R
 	if (SaveCPTypeZones){
 		TecUtilZoneSetActive(CPZoneSet, AssignOp_MinusEquals);
 		Set_pa CPTypeZoneSet = TecUtilSetAlloc(TRUE);
-		vector<double> ScatterSize = { 2.5,1,0.5,0.5,0.5,0.5 };
 		for (int t = 0; t < 6; ++t){
 			if (NumCPs(t) > 0){
 				// 				DataTypes.push_back(FieldDataType_Int16);
@@ -780,8 +779,8 @@ vector<int> CritPoints_c::SaveAsOrderedZone(vector<int> const & XYZVarNum, int R
 				TecUtilSetAddMember(CPZoneSet, NewZoneNums.back(), TRUE);
 				TecUtilSetClear(CPTypeZoneSet);
 				TecUtilSetAddMember(CPTypeZoneSet, NewZoneNums.back(), TRUE);
-				TecUtilZoneSetScatter(SV_COLOR, CPTypeZoneSet, 0.0, CPColorList[t]);
-				TecUtilZoneSetScatter(SV_FRAMESIZE, CPTypeZoneSet, ScatterSize[t], TRUE);
+
+				SetCPZone(NewZoneNums.back());
 
 				TecUtilDataLoadBegin();
 
@@ -862,6 +861,8 @@ void SetCPZone(int ZoneNum){
 		if (!CPTypeFound && CSMZoneName.CPType[t] == ZoneName){
 			AuxDataZoneSetItem(ZoneNum, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.CPSubTypes[t]);
 			TecUtilZoneSetScatter(SV_COLOR, TmpSet, 0.0, CPColorList[t]);
+			TecUtilZoneSetScatter(SV_FRAMESIZE, TmpSet, CSMZoneName.CPScatterSize[t], FALSE);
+			TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TmpSet, CSMZoneName.CPScatterSymbol[t]);
 			CPTypeFound = true;
 		}
 
@@ -874,22 +875,24 @@ void SetCPZone(int ZoneNum){
 		}
 		if (CPTypeFound) break;
 	}
-	if (!CPTypeFound){
+	if (CPTypeFound) {
+		TecUtilZoneSetActive(TmpSet, AssignOp_PlusEquals);
+	}
+	else{
 		TecUtilZoneSetScatter(SV_COLOR, TmpSet, 0.0, Black_C);
+		TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TmpSet, GeomShape_Sphere);
+		TecUtilZoneSetScatter(SV_FRAMESIZE, TmpSet, 1.0, FALSE);
 		TecUtilZoneSetActive(TmpSet, AssignOp_MinusEquals);
 	}
 
 	TecUtilStateChanged(StateChange_ZonesAdded, (ArbParam_t)TmpSet);
 
 	TecUtilZoneSetScatter(SV_SHOW, TmpSet, 0.0, TRUE);
-	TecUtilZoneSetScatter(SV_FRAMESIZE, TmpSet, 1, FALSE);
-	TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, TmpSet, GeomShape_Sphere);
 	TecUtilZoneSetMesh(SV_SHOW, TmpSet, 0.0, FALSE);
 	TecUtilZoneSetContour(SV_SHOW, TmpSet, 0.0, FALSE);
 	TecUtilZoneSetShade(SV_SHOW, TmpSet, 0.0, FALSE);
 	TecUtilZoneSetVector(SV_SHOW, TmpSet, 0.0, FALSE);
 
-	TecUtilZoneSetActive(TmpSet, AssignOp_PlusEquals);
 
 	TecUtilSetDealloc(&TmpSet);
 	TecUtilStringDealloc(&ZoneName);

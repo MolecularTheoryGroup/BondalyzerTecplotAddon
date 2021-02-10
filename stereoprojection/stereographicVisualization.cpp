@@ -200,6 +200,7 @@ private:
     std::vector<FieldDataType_e> m_fieldDataTypes;
     std::vector<FieldData_pa> m_fieldDataRefs;
     std::vector<void*> m_fieldDataRawPtrs;
+	std::vector<std::pair<std::pair<std::string, std::string>,Boolean_t > > m_srcAuxData; // < <name, value>, retain >
     NodeMap_t* m_nodeMapRawPtr;
 
     void getInfoFromCurDataset()
@@ -225,6 +226,17 @@ private:
         }
         if ( m_zoneType != ZoneType_Ordered ) // TODO: Support poly(?)
             TecUtilDataNodeGetReadableRawPtr(m_srcZoneNum, &m_nodeMapRawPtr);
+
+		auto srcAuxRef = TecUtilAuxDataZoneGetRef(m_srcZoneNum);
+		m_srcAuxData.reserve(TecUtilAuxDataGetNumItems(srcAuxRef));
+		for (int i = 1; i <= TecUtilAuxDataGetNumItems(srcAuxRef); ++i) {
+			char *name, *value;
+			Boolean_t retain;
+			TecUtilAuxDataGetStrItemByIndex(srcAuxRef, i, &name, &value, &retain);
+			m_srcAuxData.push_back(std::make_pair(std::make_pair(name, value), retain));
+			TecUtilStringDealloc(&name);
+			TecUtilStringDealloc(&value);
+		}
 
         if ( m_getStyleInfo )
         {
@@ -288,6 +300,8 @@ public:
     FieldData_pa fieldDataGetRef(EntIndex_t varNum) { return m_fieldDataRefs[varNum - 1]; }
     void* fieldDataGetRawPtr(EntIndex_t varNum) { return m_fieldDataRawPtrs[varNum - 1]; }
     NodeMap_t* nodeMapRawPtr() { return m_nodeMapRawPtr; }
+	std::vector<std::pair<std::pair<std::string, std::string>, Boolean_t > > getAuxData() const { return m_srcAuxData; }
+
 
     // convenient access to arrays for sending to TecUtilCreateZoneX
     FieldDataType_e* getFieldDataTypesArray() { return &m_fieldDataTypes[0]; }
@@ -392,6 +406,13 @@ void createProjectedZone(
             free(copyOfNodeRawPtr);
         }
     }
+
+	//copy aux data
+	auto dstAuxRef = TecUtilAuxDataZoneGetRef(dstZoneNum);
+	auto srcAuxData = srcDatasetInfo.getAuxData();
+	for (auto a : srcAuxData){
+		TecUtilAuxDataSetStrItem(dstAuxRef, a.first.first.c_str(), a.first.second.c_str(), a.second);
+	}
 
     Set dstZoneSet(dstZoneNum);
     TecUtilStateChanged(StateChange_ZonesAdded, ArbParam_t(dstZoneSet.getRef()));

@@ -260,7 +260,7 @@ static void TGLSmoothAll_TOG_T3_1_CB(const LgIndex_t *I)
 
 void SmoothGBAIntResults()
 {
-	int NumSmoothingPasses = 5;
+	int NumSmoothingPasses = 1;
 	double SmoothingCoefficient = 0.5;
 
 	LgIndex_t *SelectedNums;
@@ -877,7 +877,7 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	TecGUITextFieldSetString(TFNumContours_TF_T3_1, GBAOldNumContours.c_str());
 	TecGUIRadioBoxSetToggle(RBLogLin_RADIO_T3_1, GBALogLin);
 	TecGUIRadioBoxSetToggle(RBCntSrc_RADIO_T3_1, GBACntSrc);
-	TecGUIToggleSet(TGLExGBs_TOG_T3_1, TRUE);
+	TecGUIToggleSet(TGLExGBs_TOG_T3_1, FALSE);
 	TecGUIToggleSet(TGLShowMesh_TOG_T3_1, FALSE);
 
 	return TRUE;

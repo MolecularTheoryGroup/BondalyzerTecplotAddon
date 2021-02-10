@@ -129,10 +129,11 @@ public:
 
 	void RemoveKinks(double const & AngleCutoff = GB_DefaultKinkCheckAngle);
 
-	vector<int> GradPathBase_c::GetCPCoincidentPoints(CritPoints_c const * CPs, double tol = 1e-5) const;
+	vector<int> GradPathBase_c::GetCPCoincidentPoints(CritPoints_c const * CPs, std::set<CPType_e> const & CPTypes = {}, double tol = 1e-8) const;
 
 	Boolean_t Resample(int NumPoints, vector<int> & ProtectedPoints, GPResampleMethod_e Method = GPResampleMethod_Adaptive);
 	Boolean_t Resample(int NumPoints, GPResampleMethod_e Method = GPResampleMethod_Adaptive) { vector<int> v; return Resample(NumPoints, v, Method); }
+	Boolean_t ResampleByRhoVals(vector<double> const & RhoVals, vector<int> const & ProtectedPoints);
 	Boolean_t Reverse();
 	GradPathBase_c & ConcatenateResample(GradPathBase_c & rhs, int NumPoints, GPResampleMethod_e Method = GPResampleMethod_Adaptive);
 	GradPathBase_c & ConcatenateResample(GradPathBase_c & rhs, int NumPoints, int & BrigePtNum, GPResampleMethod_e Method = GPResampleMethod_Adaptive);
@@ -140,6 +141,7 @@ public:
 	Boolean_t Trim(vec3 const & Point, double const & Radius);
 	void PointAppend(vec3 const & Point, double const & Rho);
 	void PointPrepend(vec3 const & Point, double const & Rho);
+	bool ReplaceRhoList(vector<double> const & RhoList) { if (m_RhoList.size() == RhoList.size()) { m_RhoList = RhoList; return true; } else return false; }
 
 	LgIndex_t GetZoneNum() const { return m_ZoneNum; }
 	EntIndex_t SaveAsOrderedZone(string const & ZoneName = "Gradient Path", ColorIndex_t const MeshColor = Black_C);
@@ -159,7 +161,7 @@ public:
 	Boolean_t IsMade() const { return m_GradPathMade; }
 	Boolean_t IsReady() const { return m_GradPathReady; }
 	double GetLength();
-	double GetLength(int AtInd = 0) const;
+	double GetLength(int AtInd = -1) const;
 	int GetIndAtLength(double const & Length) const;
 	int GetCount() const {
 		return static_cast<const int>(m_XYZList.size());
@@ -194,6 +196,7 @@ public:
 	double GetMaxSeparationFromNeighboringGPs(vector<GradPathBase_c const *> GPs, vector<int> & IndList, int & Ind) const;
 
 	vector<vec3> const * GetXYZListPtr() const { return &m_XYZList; }
+	vector<double> const * GetRhoListPtr() const { return &m_RhoList; }
 
 	vec3 XYZAt(int i) const { return operator[](i); }
 	double RhoAt(int i) const;
@@ -305,7 +308,8 @@ public:
 		StreamDir_e GPDir,
 		vector<std::pair<int, int> > StartEndGPInds = {},
 		vec3 const * TermPoint = nullptr,
-		double const * TermPointRadiu = nullptr);
+		double const * TermPointRadiu = nullptr,
+		GPTerminate_e GPTermType = GPTerminate_Invalid);
 
 	// Construct from vector<vec3> points and optional vector<double> rho values
 	GradPath_c(vector<vec3> const & XYZList, vector<double> const RhoList = vector<double>());
@@ -407,7 +411,7 @@ public:
 
 
 	Boolean_t ReinterpolateRhoValuesFromVolume(VolExtentIndexWeights_s * VolInfo = nullptr, FieldDataPointer_c * RhoPtr = nullptr);
-	Boolean_t AlignToOtherPath(GradPath_c const & rhs, vector<int> ConstrainedInds = {});
+	Boolean_t AlignToOtherPath(GradPath_c const & rhs, vector<int> AlignmentPointInds = {}, vector<int> ProtectedPointInds = {});
 
 	Boolean_t ProjectPathToSurface(FESurface_c const * SurfPtr = nullptr);
 
@@ -445,7 +449,7 @@ private:
 	vector<FieldDataPointer_c> m_CPXYZPtrs;
 	int m_NumCPs;
 	// ...using CritPoints_c
-	CritPoints_c * m_CPs;
+	CritPoints_c * m_CPs = nullptr;
 	// if surface grad path
 	FESurface_c const * m_Surface;
 	int m_SurfGPProjectionFrequency = -1;

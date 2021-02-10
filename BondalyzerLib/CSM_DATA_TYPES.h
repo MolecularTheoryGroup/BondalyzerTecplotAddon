@@ -152,7 +152,7 @@ int ElementCoreElectronCount(int AtomicNumber);
 
 vec const LogSpace(double const & low, double const & high, int n);
 
-
+std::pair<double, double> MinMax(vector<double> const & Vals);
 double DistSqr(vec const & A, vec const & B);
 double Distance(vec const & A, vec const & B);
 double VectorAngle(vec3 const & A, vec3 const & B);

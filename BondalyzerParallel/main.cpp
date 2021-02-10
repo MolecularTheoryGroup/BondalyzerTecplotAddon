@@ -197,6 +197,20 @@ static void STDCALL GradientPathToolCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL SymmetryMirrorCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		SymmetryMirrorGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 
 static void STDCALL CalcVarsMenuCallback(void)
 {
@@ -727,6 +741,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Gradient path tool").c_str(),
 		'\0',
 		GradientPathToolCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Symmetry mirror volume zone").c_str(),
+		'\0',
+		SymmetryMirrorCallback);
 
 // 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 		string(to_string(MenuNum++) + ". Gaussian blur").c_str(),

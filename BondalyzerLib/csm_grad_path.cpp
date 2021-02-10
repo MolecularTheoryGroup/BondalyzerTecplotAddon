@@ -278,9 +278,9 @@ GradPathBase_c & GradPathBase_c::operator+=(GradPathBase_c const & rhs)
 				break;
 			case 3:
 				if (approx_equal(this->XYZAt(0), rhs.XYZAt(-1), "absdiff", 0.001))
-					offset = 1;
-				m_XYZList.insert(m_XYZList.begin(), rhs.m_XYZList.cbegin() + offset, rhs.m_XYZList.cend());
-				m_RhoList.insert(m_RhoList.begin(), rhs.m_RhoList.cbegin() + offset, rhs.m_RhoList.cend());
+					offset = -1;
+				m_XYZList.insert(m_XYZList.begin(), rhs.m_XYZList.cbegin(), rhs.m_XYZList.cend() + offset);
+				m_RhoList.insert(m_RhoList.begin(), rhs.m_RhoList.cbegin(), rhs.m_RhoList.cend() + offset);
 				m_StartEndCPNum[0] = rhs.m_StartEndCPNum[0];
 				break;
 			case 4:
@@ -326,15 +326,11 @@ double GradPathBase_c::GetLength(int AtInd) const {
 
 	double Length = 0.0;
 
-	if (AtInd == 0){
-		return 0.0;
-	}
-	else if (abs(AtInd) > GetCount()) {
-		AtInd = GetCount() - 1;
-	}
-	else if (AtInd < 0) {
+
+	if (AtInd < 0) {
 		AtInd += GetCount();
 	}
+	AtInd = CLAMP(AtInd, 0, GetCount() - 1);
 
 	for (int i = 0; i < AtInd; ++i)
 		Length += Distance(m_XYZList[i], m_XYZList[i + 1]);
@@ -587,8 +583,8 @@ Boolean_t GradPathBase_c::ResampleAdaptive(int TargetNumPoints, vector<int> & Pr
  *	That is, for each point i on rhs, define this-> point i as the closest point
  *	along the path to point i.
  */
-Boolean_t GradPath_c::AlignToOtherPath(GradPath_c const & rhs, vector<int> ConstrainedInds){
-	REQUIRE(this->IsMade() && rhs.IsMade() && !ConstrainedInds.empty());
+Boolean_t GradPath_c::AlignToOtherPath(GradPath_c const & rhs, vector<int> AlignmentPointInds, vector<int> ProtectedPointInds){
+	REQUIRE(this->IsMade() && rhs.IsMade() && !AlignmentPointInds.empty());
 	GradPath_c thiscopy = GradPath_c(*this);
 	if (this->GetCount() != rhs.GetCount()) {
 		this->m_XYZList.resize(rhs.GetCount());
@@ -601,26 +597,31 @@ Boolean_t GradPath_c::AlignToOtherPath(GradPath_c const & rhs, vector<int> Const
 
 	GradPath_c NewGP;
 
+	vector<vec3> ProtectedPoints;
+	for (int i : ProtectedPointInds){
+		ProtectedPoints.push_back(this->XYZAt(i));
+	}
+
 	// 1. Find the closest points on *this to the constrained points of rhs.
 	// 2. Reconstruct *this as the concatenated set of gradient paths starting/ending
 	//    at the closest points (or at *this's original starting/ending points).
-	// At least one ConstrainedInds is required, so at least two paths will be
+	// At least one AlignmentPointInds is required, so at least two paths will be
 	// made and concatenated. The first and last paths will be made explicitly, and 
 	// the rest made in a loop.
 	// 
 	// 
 	
-	ConstrainedInds.insert(ConstrainedInds.begin(), 0);
-	ConstrainedInds.push_back(rhs.GetCount() - 1);
+	AlignmentPointInds.insert(AlignmentPointInds.begin(), 0);
+	AlignmentPointInds.push_back(rhs.GetCount() - 1);
 
 // 	{
 // 		// Do the first path.
 // 		// First, get *this's closest point to constraint point
 // 		int ClosestInd;
-// 		vec3 ClosestPt = this->ClosestPoint(rhs[ConstrainedInds.front()], ClosestInd);
+// 		vec3 ClosestPt = this->ClosestPoint(rhs[AlignmentPointInds.front()], ClosestInd);
 // 		// Get length of new path
 // 		double tmpLength = this->GetLength(ClosestInd) + Distance(this->XYZAt(ClosestInd), ClosestPt);
-// 		int NumPts = ConstrainedInds.front();
+// 		int NumPts = AlignmentPointInds.front();
 // 		// Step size for getting new points
 // 		double ArcLenStep = tmpLength / double(NumPts - 1);
 // 		// Prepare workspace
@@ -655,7 +656,7 @@ Boolean_t GradPath_c::AlignToOtherPath(GradPath_c const & rhs, vector<int> Const
 // 	
 	
 	// Do each path segment
-	for (int i = 0; i < ConstrainedInds.size() - 1; ++i){
+	for (int i = 0; i < AlignmentPointInds.size() - 1; ++i){
 		int j = i + 1;
 		// Do the first path.
 		// First, get *this's closest points to constraint points
@@ -666,20 +667,20 @@ Boolean_t GradPath_c::AlignToOtherPath(GradPath_c const & rhs, vector<int> Const
 			ClosestIndI = 0;
 		}
 		else {
-			ClosestPtI = this->ClosestPoint(rhs[ConstrainedInds[i]], ClosestIndI);
+			ClosestPtI = this->ClosestPoint(rhs[AlignmentPointInds[i]], ClosestIndI);
 		}
-		if (j == ConstrainedInds.size() - 1){
+		if (j == AlignmentPointInds.size() - 1){
 			ClosestPtJ = this->XYZAt(-1);
 			ClosestIndJ = this->GetCount() - 1;
 		}
 		else{
-			ClosestPtJ = this->ClosestPoint(rhs[ConstrainedInds[j]], ClosestIndJ);
+			ClosestPtJ = this->ClosestPoint(rhs[AlignmentPointInds[j]], ClosestIndJ);
 		}
 		// Get length of new path
 		double LenI = this->GetLength(ClosestIndI) + Distance(this->XYZAt(ClosestIndI), ClosestPtI);
 		double LenJ = this->GetLength(ClosestIndJ) + Distance(this->XYZAt(ClosestIndJ), ClosestPtJ);
 		double tmpLength = LenJ - LenI;
-		int NumPts = ConstrainedInds[j] - ConstrainedInds[i] + 1;
+		int NumPts = AlignmentPointInds[j] - AlignmentPointInds[i] + 1;
 		// Step size for getting new points
 		double ArcLenStep = tmpLength / double(NumPts - 1);
 		// Prepare workspace
@@ -716,13 +717,19 @@ Boolean_t GradPath_c::AlignToOtherPath(GradPath_c const & rhs, vector<int> Const
 
 	this->m_XYZList = NewGP.m_XYZList;
 
+	for (vec3 p : ProtectedPoints){
+		int MinDistInd;
+		this->ClosestPoint(p, MinDistInd);
+		this->m_XYZList[MinDistInd] = p;
+	}
 
-// 	ConstrainedInds.insert(ConstrainedInds.begin(), 0);
-// 	ConstrainedInds.push_back(rhs.GetCount() - 1);
+
+// 	AlignmentPointInds.insert(AlignmentPointInds.begin(), 0);
+// 	AlignmentPointInds.push_back(rhs.GetCount() - 1);
 // 
-// 	for (int i = 1; i < ConstrainedInds.size(); ++i) {
-// 		auto tmpGP = this->SubGP(ConstrainedInds[i - 1], ConstrainedInds[i]);
-// 		tmpGP.Resample(ConstrainedInds[i] - ConstrainedInds[i - 1] + 1, GPResampleMethod_Linear);
+// 	for (int i = 1; i < AlignmentPointInds.size(); ++i) {
+// 		auto tmpGP = this->SubGP(AlignmentPointInds[i - 1], AlignmentPointInds[i]);
+// 		tmpGP.Resample(AlignmentPointInds[i] - AlignmentPointInds[i - 1] + 1, GPResampleMethod_Linear);
 // 		NewGP += tmpGP;
 // 	}
 // 
@@ -873,17 +880,82 @@ Boolean_t GradPathBase_c::Resample(int NumPoints, vector<int> & ProtectedPoints,
 	return IsOk;
 }
 
+/*
+ *	Resample path so that all but the terminal points are those determined by RhoVals[1] through RhoVals[-2]
+ */
+Boolean_t GradPathBase_c::ResampleByRhoVals(vector<double> const & RhoVals, vector<int> const & ProtectedPoints){
+
+	vector<vec3> ProtectedPts;
+	ProtectedPts.reserve(ProtectedPoints.size());
+	for (auto i : ProtectedPoints){
+		if (i > 0 && i < this->GetCount() - 1) {
+			ProtectedPts.push_back(this->XYZAt(i));
+		}
+	}
+	Boolean_t IsOk = TRUE;
+	vector<vec3> NewXYZList(RhoVals.size());
+	int ind;
+	double weight;
+	for (int i = 1; i < RhoVals.size() - 1; ++i){
+		bool isfound = false;
+		for (int j = 0; j < this->m_RhoList.size() && !isfound; ++j){
+			if (abs(RhoVals[i] - this->RhoAt(j)) < 1e-10){
+				NewXYZList[i] = this->XYZAt(j);
+				isfound = true;
+			}
+		}
+		if (!isfound) {
+			this->GetPointAtRhoValue(RhoVals[i], NewXYZList[i], ind, weight);
+		}
+	}
+
+	vector<double> NewRhoList = RhoVals;
+	NewRhoList.front() = this->RhoAt(0);
+	NewRhoList.back() = this->RhoAt(-1);
+
+	if (abs(NewRhoList.front() - NewRhoList[1]) > abs(NewRhoList.front() - NewRhoList[NewRhoList.size()-1])) {
+		// Ordering of rho values was opposite that of the gradient path, so flip the end points to match.
+		NewXYZList.front() = this->XYZAt(-1);
+		NewRhoList.front() = this->RhoAt(-1);
+		NewXYZList.back() = this->XYZAt(0);
+		NewRhoList.back() = this->RhoAt(0);
+	}
+	else{
+		NewXYZList.front() = this->XYZAt(0);
+		NewXYZList.back() = this->XYZAt(-1);
+	}
+
+	for (int i = 0; i < NewXYZList.size() - 2; ++i) {
+		if (sum(NewXYZList[i] == NewXYZList[i + 1]) == 3){
+			NewXYZList[i + 1] = (NewXYZList[i] + NewXYZList[i + 2]) * 0.5;
+		}
+	}
+
+	this->m_XYZList = NewXYZList;
+	this->m_RhoList = NewRhoList;
+
+	for (auto const & p : ProtectedPts){
+		int ind;
+		this->ClosestPoint(p, ind);
+		this->m_XYZList[ind] = p;
+	}
+
+	return IsOk;
+}
+
 Boolean_t GradPathBase_c::Reverse(){
 	Boolean_t IsOk = m_GradPathMade;
 	if (IsOk){
-		vector<vec3> NewXYZList;
-		vector<double> NewRhoList;
+// 		vector<vec3> NewXYZList;
+// 		vector<double> NewRhoList;
+// 
+// 		NewXYZList.insert(NewXYZList.begin(), m_XYZList.crbegin(), m_XYZList.crend());
+// 		m_XYZList = NewXYZList;
+		std::reverse(m_XYZList.begin(), m_XYZList.end());
 
-		NewXYZList.insert(NewXYZList.begin(), m_XYZList.crbegin(), m_XYZList.crend());
-		m_XYZList = NewXYZList;
-
-		NewRhoList.insert(NewRhoList.begin(), m_RhoList.crbegin(), m_RhoList.crend());
-		m_RhoList = NewRhoList;
+// 		NewRhoList.insert(NewRhoList.begin(), m_RhoList.crbegin(), m_RhoList.crend());
+// 		m_RhoList = NewRhoList;
+		std::reverse(m_RhoList.begin(), m_RhoList.end());
 
 		int TmpInt = m_StartEndCPNum[0];
 		m_StartEndCPNum[0] = m_StartEndCPNum[1];
@@ -892,7 +964,7 @@ Boolean_t GradPathBase_c::Reverse(){
 	return IsOk;
 }
 
-vector<int> GradPathBase_c::GetCPCoincidentPoints(CritPoints_c const * CPs, double tol) const {
+vector<int> GradPathBase_c::GetCPCoincidentPoints(CritPoints_c const * CPs, std::set<CPType_e> const & CPTypes, double tol) const {
 	vector<int> outPoints;
 	// Check distance to saddle CPs, don't care about max/min
 	// keep track of the closest point to each saddle point, then 
@@ -905,7 +977,7 @@ vector<int> GradPathBase_c::GetCPCoincidentPoints(CritPoints_c const * CPs, doub
 			vec ClosestPt = CPs->ClosestPoint(m_XYZList[i], CPOffSet, MinDist);
 			if (CPOffSet >= 0) {
 				auto CPType = CPs->GetTypeFromTotOffset(CPOffSet);
-				if ((CPType == CPType_Bond || CPType == CPType_Ring)) {
+				if (CPTypes.empty() || CPTypes.count(CPType)) {
 					if (MinSaddlePointDist.count(CPOffSet)) {
 						if (MinDist < MinSaddlePointDist[CPOffSet].second) {
 							MinSaddlePointDist[CPOffSet] = std::make_pair(i, MinDist);
@@ -919,7 +991,7 @@ vector<int> GradPathBase_c::GetCPCoincidentPoints(CritPoints_c const * CPs, doub
 		}
 
 		for (auto p : MinSaddlePointDist) {
-			if (p.second.second < tol) {
+			if (p.second.second <= tol) {
 				outPoints.push_back(p.second.first);
 			}
 		}
@@ -1457,8 +1529,8 @@ bool GradPathBase_c::GetPointAtRhoValue(double const & RhoValue, vec3 & OutVec, 
 		Weight = (RhoValue - m_RhoList[Ind]) / (m_RhoList[ind2] - m_RhoList[Ind]);
 
 
-		if (!RhoIsAscending)
-			ind2 = Ind - 1;
+// 		if (!RhoIsAscending)
+// 			ind2 = Ind - 1;
 
 		if (ind2 < 0){
 			ind2 = 0;
@@ -1861,7 +1933,8 @@ bool GradPathBase_c::GetMaxSeparationMidpointFromOtherGPRhoBased(GradPathBase_c 
 bool GradPathBase_c::GetSeparationMidpointAtDistFromOtherGP(GradPathBase_c const & GP, vec3 & OutPt, int & Ind1, int & Ind2, vec3 & Pt2, const double & MaxDist, const double & StartPtAsFactorOfLength) const {
 	REQUIRE(IsMade() && m_XYZList.size() > 3);
 	REQUIRE(GP.IsMade() && GP.GetCount() > 3);
-	REQUIRE(DistSqr(m_XYZList[0], GP.XYZAt(0)) < 0.1);
+	double distSqr = DistSqr(m_XYZList[0], GP.XYZAt(0));
+	REQUIRE(distSqr < MaxDist * MaxDist);
 
 	double MaxDistSqr = MaxDist * MaxDist;
 	double Weight;
@@ -1902,43 +1975,40 @@ bool GradPathBase_c::GetSeparationMidpointAtDistFromOtherGP(GradPathBase_c const
 		// Don't allow Ind2 to go to below what it was previously, as this
 		// can result in an infinite loop.
 		int OldInd2 = Ind2;
-		if (Path2->GetPointAtRhoValue(Path1->RhoAt(Ind1), Pt2, Ind2, Weight)) {
-			Ind2 = CLAMP(Ind2, OldInd2, Path2->GetCount() - 2);
+		Path2->GetPointAtRhoValue(Path1->RhoAt(Ind1), Pt2, Ind2, Weight);
+		Ind2 = CLAMP(Ind2, OldInd2, Path2->GetCount() - 2);
 
-			double PointDistSqr = DistSqr(Path1->XYZAt(Ind1), Pt2);
+		double PointDistSqr = DistSqr(Path1->XYZAt(Ind1), Pt2);
 
-			if (!DistanceFromStartPointReached){
-				DistanceFromStartPointReached = VectorAngle(Path1->XYZAt(Ind1) - Path1->XYZAt(0), Path2->XYZAt(Ind1) - Path2->XYZAt(0)) < 3.0 * PIOVER2;
-			}
+		if (!DistanceFromStartPointReached){
+			DistanceFromStartPointReached = VectorAngle(Path1->XYZAt(Ind1) - Path1->XYZAt(0), Path2->XYZAt(Ind1) - Path2->XYZAt(0)) < 3.0 * PIOVER2;
+		}
 
-			if (DistanceFromStartPointReached && PointDistSqr > MaxDistSqr){
-				OutPt = (Path1->XYZAt(Ind1) + Pt2) * 0.5;
-				if (Path1 != this) {
-					int tmpInd = Ind2;
-					Ind2 = Ind1;
-					Ind1 = tmpInd;
-					Pt2 = GP.XYZAt(Ind2);
-				}
-				return true;
-			}
-
-			vec3 v1 = Path1->XYZAt(Ind1 + 1) - Path1->XYZAt(Ind1);
-			vec3 v2 = Path2->XYZAt(Ind2 + 1) - Path2->XYZAt(Ind2);
-
-			if (dot(v1, v1) > dot(v2, v2)) {
-				// Path2 has the shorter length than Path1, so switch it to Path1 for the next iteration.
-				auto tmpPath = Path2;
-				Path2 = Path1;
-				Path1 = tmpPath;
-
+		if (DistanceFromStartPointReached && PointDistSqr > MaxDistSqr){
+			OutPt = (Path1->XYZAt(Ind1) + Pt2) * 0.5;
+			if (Path1 != this) {
 				int tmpInd = Ind2;
 				Ind2 = Ind1;
 				Ind1 = tmpInd;
+				Pt2 = GP.XYZAt(Ind2);
 			}
-			Ind1++;
+			return true;
 		}
-		else
-			break;
+
+		vec3 v1 = Path1->XYZAt(Ind1 + 1) - Path1->XYZAt(Ind1);
+		vec3 v2 = Path2->XYZAt(Ind2 + 1) - Path2->XYZAt(Ind2);
+
+		if (dot(v1, v1) > dot(v2, v2)) {
+			// Path2 has the shorter length than Path1, so switch it to Path1 for the next iteration.
+			auto tmpPath = Path2;
+			Path2 = Path1;
+			Path1 = tmpPath;
+
+			int tmpInd = Ind2;
+			Ind2 = Ind1;
+			Ind1 = tmpInd;
+		}
+		Ind1++;
 
 		// Set Path1 and Path2 based on distance
 	} while (Ind1 < Path1->GetCount() - 2 && Ind2 < Path2->GetCount() - 2);
@@ -2210,7 +2280,8 @@ GradPath_c::GradPath_c(vector<GradPath_c const *> const & GPs,
 	StreamDir_e GPDir,
 	vector<std::pair<int, int> > StartEndGPInds,
 	vec3 const * TermPoint,
-	double const * TermPointRadius)
+	double const * TermPointRadius,
+	GPTerminate_e GPTermType)
 {
 	REQUIRE(GPs.size() > 1);
 	REQUIRE(GPDir == StreamDir_Forward || GPDir == StreamDir_Reverse);
@@ -2253,8 +2324,11 @@ GradPath_c::GradPath_c(vector<GradPath_c const *> const & GPs,
 	this->SetStartPoint(SeedPoint);
 	this->SetDir(GPDir);
 	if (TermPoint != nullptr) {
+		if (GPTermType == GPTerminate_Invalid){
+			GPTermType = GPTerminate_AtPoint;
+		}
 		this->SetTermPoint(*TermPoint);
-		this->SetGPTermType(GPTerminate_AtPoint);
+		this->SetGPTermType(GPTermType);
 		this->SetTermPointRadius(TermPointRadius != nullptr ? *TermPointRadius : 1e-4);
 	}
 	else{
@@ -2269,7 +2343,7 @@ GradPath_c::GradPath_c(vector<GradPath_c const *> const & GPs,
 	this->RemoveKinks();
 	this->MakeRhoValuesMonotomic();
 
-	if (TermPoint != nullptr){
+	if (TermPoint != nullptr && GPTermType == GPTerminate_AtPoint){
 		double TermDistSqr = DistSqr(this->XYZAt(-1), *TermPoint);
 		if (TermDistSqr > 1e-2){
 			if (GPs.size() == 2){
@@ -3009,7 +3083,7 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 		// 	if (m_GPType && MR.pos != nullptr)
 		// 		gsl_vector_free(MR.pos);
 
-		if (m_StartEndCPNum[1] < 0 && m_CPs != NULL){
+		if (m_StartEndCPNum[1] < 0 && m_CPs != nullptr){
 			/*
 			*	Check to see if terminating point coincides with a CP
 			*/

@@ -39,8 +39,16 @@ struct VolExtentIndexWeights_s{
 	VolExtentIndexWeights_s & operator=(VolExtentIndexWeights_s const & rhs);
 	Boolean_t operator==(VolExtentIndexWeights_s const & rhs) const;
 
+	vec3 XYZ_to_Fractional(vec3 const & XYZ) const {
+		return this->BasisInverse * (XYZ - this->MinXYZ);
+	}
+
+	vec3 Fractional_to_XYZ(vec3 const & UVW) const {
+		return this->BasisVectors * UVW + this->MinXYZ;
+	}
+
 	bool PointIsInterior(vec3 const & r){
-		vec3 CheckPt = this->BasisInverse * (r - this->MinXYZ);
+		vec3 CheckPt = this->XYZ_to_Fractional(r);
 		for (int i = 0; i < 3; ++i){
 			if (CheckPt[i] < 0.0 || CheckPt[i] > 1.0){
 				return false;
@@ -48,6 +56,7 @@ struct VolExtentIndexWeights_s{
 		}
 		return true;
 	}
+
 
 	bool IsReady() const { return (MaxIJK[0] > 0 && MaxIJK[1] > 0 && MaxIJK[2] > 0); }
 };

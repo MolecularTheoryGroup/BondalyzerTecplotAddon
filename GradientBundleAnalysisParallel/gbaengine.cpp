@@ -52,7 +52,7 @@ using namespace arma;
 using namespace tecplot::toolbox;
 
 
-// #define SUPERDEBUG
+//  #define SUPERDEBUG
 // #define DEBUG_SAVEZONES
 
 #ifdef _DEBUG
@@ -279,8 +279,8 @@ void NewMainFunction() {
 
 	double EdgeGPCheckDistance = GBADefaultEdgeGPSpacing;
 	EdgeGPCheckDistance = (double)TecGUIScaleGetValue(SCEGPDist_SC_T1_1) / 10.;
-	double RingBondEdgeGPCheckDistanceFactor = 1.0;
-	int MaxEdgeGPs = 100;
+	double RingBondEdgeGPCheckDistanceFactor = 0.6;
+	int MaxEdgeGPs = 300;
 	bool MinEdgeGPs = false;
 
 	bool TestRun = TecGUIToggleGet(TGLSphTest_TOG_T1_1);
@@ -559,9 +559,9 @@ void NewMainFunction() {
 			Radius = UserRadius;
 
 
-		double GPNCPTermRadius = MAX(0.000001, Radius * 0.001);
-		double GPTermRadius = MIN(0.001, GPNCPTermRadius);
-		double RTypeGPTermRadiusFactor = 10.0;
+		double GPNCPTermRadius = MAX(0.001, Radius * 0.05);
+		double GPTermRadius = MIN(0.01, GPNCPTermRadius);
+		double RTypeGPTermRadiusFactor = 1.0;
 		double RTypeTermRadius = GPTermRadius * RTypeGPTermRadiusFactor;
 
 
@@ -1283,7 +1283,7 @@ void NewMainFunction() {
 #endif
 
 			/*
-			 *	Do the same check again, but this time checking sphere nodes to see of they are close enough to
+			 *	Do the same check again, but this time checking sphere nodes to see if they are close enough to
 			 *	a constraint segment.
 			 *	If so, project the node to the segment and add it to tmpConstraintNodes and split the segment.
 			 */
@@ -1781,6 +1781,9 @@ void NewMainFunction() {
 		// reinterpolate rho values and force to be monotomic for bond path segments
 		for (auto & b : IntBondPathSegments){
 			b.second.MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
+			if (b.second.RhoAt(0) < b.second.RhoAt(-1)){
+				b.second.Reverse();
+			}
 		}
 
 		// Get all node types;
@@ -2022,6 +2025,7 @@ void NewMainFunction() {
 		// be incremented by 4 for edge-midpoint subdivision (1 elem -> 4 elements), and by 2 for the elements that are split as the result of a neighbor element's subdivision.
 		vector<int> ElemSubdivisionLevel(NumElems, 0); 
 		std::queue<int> ElemsToSubdivide;
+		MaxSubdivisions = TecGUIScaleGetValue(SCBPGBInit_SC_T1_1);
 		if (MaxSubdivisions > 0) {
 			// First determine the maximum subdivision level (assuming uniform elements)
 // 		int MaxSubdivisions = 6;// int(double(MaxNumElems) / double(NumElems));
@@ -2534,7 +2538,6 @@ void NewMainFunction() {
 			NotMadeGPs,
 			InvalidGBs;
 
-		vector<FESurface_c> GradientBundles, InnerGradientBundles;
 		vector<vector<GradPath_c const*> > GPPtrList;
 		vector<vector<int> > SphereElemGPInds(SphereElems);
 
@@ -2552,56 +2555,56 @@ void NewMainFunction() {
 
 #ifdef SUPERDEBUG
 // 			ElemTodo = { 196 }; // base 0 (tecplot is base 1)
-//   			ElemTodo = { 788,791 };
+  			ElemTodo = { 3041 };
 //         			ElemTodo.clear();
 //  // 				for (int i = 0; i < NumElems; ++i) {
-  				for (int i = 0; i < NumElems; ++i){
-  					if (ElemTypes[i] > NETypeR)
- 						ElemTodo.push_back(i);
- 				}
+// 			for (int i = 0; i < NumElems; ++i) {
+// 				if (ElemTypes[i] >= NETypeR)
+// 					ElemTodo.push_back(i);
+// 			}
 
 //				// Get ring and bond type elements and their n-th nearest neighbors
-// 				int MaxBFSDepth = 1; // if 3, gets ring/bond elems and their 4 nearest neighbors
-// 				vector<vector<int> > SphereElemConnectivity;
-// 				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
-// 				std::set<int> ElemTodoSet;
-// 				auto CompNEType = NETypeB;
-// 
-// 				for (int i = 0; i < NumElems; ++i) {
-// 					if (ElemTypes[i] >= CompNEType) {
-// 						ElemTodoSet.insert(i);
-// 						// BFS with depth limit
-// 						std::queue<int> ToCheck;
-// 						vector<bool> Visited(SphereElems.size(), false);
-// 						int CurDepth = 0;
-// 						ToCheck.push(i);
-// 						ToCheck.push(-1); //Depth level marker
-// 						Visited[i] = true;
-// 						while (!ToCheck.empty()) {
-// 							if (ToCheck.front() == -1) {
-// 								// Moving down another depth
-// 								ToCheck.push(-1);
-// 								if (++CurDepth > MaxBFSDepth)
-// 									break;
-// 							}
-// 							else {
-// 								int e = ToCheck.front();
-// // 								if (ElemTypes[e] >= CompNEType) {
-// 									ElemTodoSet.insert(e);
-// // 								}
-// 								for (int n : SphereElemConnectivity[e]) {
-// 									if (!Visited[n]) {
-// 										ToCheck.push(n);
-// 										Visited[n] = true;
-// 									}
-// 								}
-// 							}
-// 							ToCheck.pop();
-// 						}
-// 					}
-// 				}
-// 
-// 				ElemTodo = vector<int>(ElemTodoSet.begin(), ElemTodoSet.end());
+//   				int MaxBFSDepth = 4; // if 3, gets ring/bond elems and their 4 nearest neighbors
+//   				vector<vector<int> > SphereElemConnectivity;
+//   				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
+//   				std::set<int> ElemTodoSet;
+//   				auto CompNEType = NETypeR;
+//   
+//   				for (int i = 0; i < NumElems; ++i) {
+//   					if (ElemTypes[i] >= CompNEType) {
+//   						ElemTodoSet.insert(i);
+//   						// BFS with depth limit
+//   						std::queue<int> ToCheck;
+//   						vector<bool> Visited(SphereElems.size(), false);
+//   						int CurDepth = 0;
+//   						ToCheck.push(i);
+//   						ToCheck.push(-1); //Depth level marker
+//   						Visited[i] = true;
+//   						while (!ToCheck.empty()) {
+//   							if (ToCheck.front() == -1) {
+//   								// Moving down another depth
+//   								ToCheck.push(-1);
+//   								if (++CurDepth > MaxBFSDepth)
+//   									break;
+//   							}
+//   							else {
+//   								int e = ToCheck.front();
+//   // 								if (ElemTypes[e] >= CompNEType) {
+//   									ElemTodoSet.insert(e);
+//   // 								}
+//   								for (int n : SphereElemConnectivity[e]) {
+//   									if (!Visited[n]) {
+//   										ToCheck.push(n);
+//   										Visited[n] = true;
+//   									}
+//   								}
+//   							}
+//   							ToCheck.pop();
+//   						}
+//   					}
+//   				}
+//   
+//   				ElemTodo = vector<int>(ElemTodoSet.begin(), ElemTodoSet.end());
    					
 //   			ElemTodo.clear();
 //   			for (int ti = 0; ti < NumElems; ++ti) {
@@ -2691,8 +2694,6 @@ void NewMainFunction() {
 					newElems[3] = ti;
 					ElemTypes[ti] = NETypeInvalid;
 					IntVals[ti] = vector<double>(IntVarNumList.size() + 1, 0.0);
-					if (SaveGBs)
-						GradientBundles[ti] = FESurface_c();
 					for (int ei = 0; ei < 4; ++ei) {
 						for (int ni : SphereElems[newElems[ei]])
 							ElemTypes[newElems[ei]] = MAX(ElemTypes[newElems[ei]], NodeTypes[ni]);
@@ -2989,7 +2990,10 @@ void NewMainFunction() {
 				}
  			}
 
-			int NumGPPointsOuter;
+// 			int NumGPPointsOuter;
+			int NumGPPointsSphereInterior = NumGPPoints / 10;
+// 			NumGPPoints = (NumGPPoints * 9) / 10;
+// 			int NumGPPointsPathSegment = NumGPPoints / (RingPresent ? 3 : 2);
 
 			if (RadialSphereApprx) {
 				/*
@@ -3026,10 +3030,6 @@ void NewMainFunction() {
 // 				// 				NumGPPointsOuter = int(AvgOuterGradPathLength / (AvgInnerGradPathLength + AvgOuterGradPathLength) * double(NumGPPoints));
 // 				NumGPPointsOuter = int(MaxOuterGradPathLength / (AvgInnerGradPathLength + MaxOuterGradPathLength) * double(NumGPPoints));
 // 				int InnerPoints = NumGPPoints - NumGPPointsOuter;
-
-				int NumGPPointsSphereInterior = NumGPPoints / 10;
-				NumGPPoints = (NumGPPoints * 9) / 10;
-				int NumGPPointsPathSegment = NumGPPoints / (RingPresent ? 3 : 2);
 				
 
 				for (int i = 0; i < GradPaths.size(); ++i) {
@@ -3362,6 +3362,7 @@ void NewMainFunction() {
 							// because the distance check function here only uses the points of the path
 							// that calls the method.
 							// Otherwise, just use the path with the shortest number of points.
+							// 
 							vec3 TmpVec;
 							int TmpInt;
 							if (NodeTypes[en.first] >= NETypeB) {
@@ -3388,10 +3389,10 @@ void NewMainFunction() {
 					// Prepare edge GPs
 
 					GradPath_c TmpGP;
-					if (RadialSphereApprx)
+// 					if (RadialSphereApprx)
 						TmpGP.SetupGradPath(vec3(), StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
-					else
-						TmpGP.SetupGradPath(vec3(), StreamDir_Both, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
+// 					else
+// 						TmpGP.SetupGradPath(vec3(), StreamDir_Both, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
 					TmpGP.SetTerminalCPTypeNum(CPTypeNum_Cage);
 
 					int NumGPsOld = GradPaths.size();
@@ -3402,7 +3403,14 @@ void NewMainFunction() {
 					// 				NumEdges = EdgeDistList.size();
 					NumEdges = 0;
 					for (auto const & e : EdgeDistList) {
-						if (e.second >= EdgeGPCheckDistance) {
+						auto e2 = GPIndEdgeToNodeIndEdgeMap[e.first];
+						auto en = e2.second;
+						double TmpCheckDistance = EdgeGPCheckDistance;
+						if (NodeTypes[en.first] >= NETypeR || NodeTypes[en.second] >= NETypeR)
+						{
+							TmpCheckDistance *= RingBondEdgeGPCheckDistanceFactor;
+						}
+						if (e.second >= TmpCheckDistance) {
 							NumEdges++;
 						}
 					}
@@ -3417,8 +3425,16 @@ void NewMainFunction() {
 					else {
 						NumToDo = 0;
 						for (auto const & e : EdgeDistList) {
-							if (e.second >= EdgeGPCheckDistance)
+							auto e2 = GPIndEdgeToNodeIndEdgeMap[e.first];
+							auto en = e2.second;
+							double TmpCheckDistance = EdgeGPCheckDistance;
+							if (NodeTypes[en.first] >= NETypeR || NodeTypes[en.second] >= NETypeR)
+							{
+								TmpCheckDistance *= RingBondEdgeGPCheckDistanceFactor;
+							}
+							if (e.second >= TmpCheckDistance) {
 								NumToDo++;
+							}
 						}
 					}
 
@@ -3447,8 +3463,30 @@ void NewMainFunction() {
 						auto en = e2.second;
 						auto NodeEdge = MakeEdge(en);
 						auto egp = e2.first;
+						
+						double TmpCheckDistance = EdgeGPCheckDistance;
+						if (NodeTypes[en.first] >= NETypeR || NodeTypes[en.second] >= NETypeR)
+						{
+							TmpCheckDistance *= RingBondEdgeGPCheckDistanceFactor;
+						}
 
-						if (!UserQuit && (MinEdgeGPs || e.second >= EdgeGPCheckDistance)) {
+// 						if ((NodeTypes[en.first] == NETypeB && NodeTypes[en.second] != NETypeB)
+// 							|| (NodeTypes[en.first] != NETypeB && NodeTypes[en.second] == NETypeB)
+// 							|| (NodeTypes[en.first] == NETypeR && NodeTypes[en.second] == NETypeC)
+// 							|| (NodeTypes[en.first] == NETypeC && NodeTypes[en.second] == NETypeR)
+// 							)
+// 						{
+// 							TmpCheckDistance *= RingBondEdgeGPCheckDistanceFactor;
+// 						}
+// 						else if (
+// 							NodeTypes[en.first] == NETypeR
+// 							&& NodeTypes[en.second] == NETypeR
+// 							&& NodeIntSurfNums[en.first] == NodeIntSurfNums[en.second])
+// 						{
+// 							TmpCheckDistance *= RingBondEdgeGPCheckDistanceFactor * 0.5;
+// 						}
+
+						if (!UserQuit && (MinEdgeGPs || e.second >= TmpCheckDistance)) {
 							NumCompleted++;
 							std::list<std::pair<vec3, GradPath_c> > EdgeGPs;
 							vector<int> EdgeGPNums;
@@ -3484,6 +3522,11 @@ void NewMainFunction() {
 									BadEdge2 = e.first.second;
 									TecUtilDialogErrMsg(string("Bad GP in edge GP generation. edge (" + to_string(BadEdge1) + "," + to_string(BadEdge2) + "), node " + to_string(BadNode)).c_str());
 								}
+							}
+
+							for (auto & e : EdgeGPs){
+								e.second.SetVolInfo(VolInfo);
+								e.second.SetRhoPtr(RhoPtr);
 							}
 
 							FESurface_c const * SurfPtr = nullptr;
@@ -3545,6 +3588,8 @@ void NewMainFunction() {
 							auto GPInner = GP;
 							GP.SetDir(StreamDir_Reverse);
 							GPInner.SetDir(StreamDir_Forward);
+							GPInner.SetTermPoint(CPPos);
+							GPInner.SetGPTermType(GPTerminate_AtPoint);
 							GPInner.SetTerminalCPTypeNum(CPTypeNum_Nuclear);
 							if (SurfPtr != nullptr) {
 								GP.SetSurfPtr(SurfPtr);
@@ -3553,19 +3598,7 @@ void NewMainFunction() {
 							else {
 								GP.SetTerminalCPTypeNum(CPTypeNum_Cage);
 							}
-							double TmpCheckDistance = EdgeGPCheckDistance;
-							if ((NodeTypes[en.first] == NETypeB && NodeTypes[en.second] != NETypeB)
-								|| (NodeTypes[en.first] != NETypeB && NodeTypes[en.second] == NETypeB)
-								|| (NodeTypes[en.first] == NETypeR && NodeTypes[en.second] == NETypeC)
-								|| (NodeTypes[en.first] == NETypeC && NodeTypes[en.second] == NETypeR)
-								|| (
-									NodeTypes[en.first] == NETypeR
-									&& NodeTypes[en.second] == NETypeR
-									&& NodeIntSurfNums[en.first] == NodeIntSurfNums[en.second])
-								)
-							{
-								TmpCheckDistance *= RingBondEdgeGPCheckDistanceFactor;
-							}
+							
 							bool DidConverge = true;
 							int Iter = 0;
 							while (!UserQuit && Pt2 != EdgeGPs.cend() && Iter <= MaxEdgeGPs && DidConverge)
@@ -3583,7 +3616,7 @@ void NewMainFunction() {
 								// Always check of GP2 to GP1
 								// If one GP is a bond path segment, need to use that as the basis for the distance check
 								// 
-								if (approx_equal(Pt1->first, Pt2->first, "absdiff", 1e-6)) {
+								if (approx_equal(Pt1->first, Pt2->first, "absdiff", 1e-10)) {
 									DidConverge = !EdgeGPs.size() > 2;
 								}
 								Iter++;
@@ -3604,42 +3637,87 @@ void NewMainFunction() {
 									else
 										DistCheckSuccessful = GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(*GP2, TmpVec1, TmpInd1, TmpInd2, TmpVec2, TmpDist);
 									if (DistCheckSuccessful) {
-										// 								if (Pt1->second.GetMaxSeparationMidpointFromOtherGP(Pt2->second, TmpVec1, TmpInd1, TmpInd2, TmpVec2, TmpDist)) {
 										if (TmpDist > TmpCheckDistance || (Iter == 1 && MinEdgeGPs)) {
-											vec3 Midpt = (Pt1->first + Pt2->first) * 0.5;
-											GP.Clear();
-											GP.SetStartPoint(Midpt);
-											GP.Seed(false);
-											vector<GradPath_c> GPList = { GP };
-											if (!RadialSphereApprx) {
-												GPInner.Clear();
-												GPInner.SetStartPoint(Midpt);
-												GPInner.Seed(false);
-												GPList.push_back(GPInner);
+											vec3 Midpt;
+											vec3 EdgeMidpt = (Pt1->first + Pt2->first) * 0.5;
+											vector<GradPath_c> GPList;
+											vector<int> GPNumPointsList;
+											if (NodeTypes[en.first] == NodeTypes[en.second]
+												&& (NodeTypes[en.first] == NETypeC || EdgeIntSurfNums.count(en))) {
+												// no strong deviation along cage-cage edges or ring-ring (if they're both on
+												// the same ring, so simply seed an edge 
+												// GP from the midpoint of Pt1 and Pt2 on the edge
+												GP.Clear();
+												GP.SetStartPoint(EdgeMidpt);
+												GP.Seed(false);
+												GPList = { GP };
+												GPNumPointsList.push_back(-1);
+
+												if (!RadialSphereApprx) {
+													GPInner.Clear();
+													GPInner.SetStartPoint(EdgeMidpt);
+													GPInner.Seed(false);
+													GPList.push_back(GPInner);
+													GPNumPointsList.push_back(-1);
+												}
 											}
+											else {
+												double EdgeDist = Distance(Pt1->first, Pt2->first);
+
+												if (GP1->GetSeparationMidpointAtDistFromOtherGP(*GP2, Midpt, TmpInd1, TmpInd2, TmpVec2, MAX(EdgeDist * 2.0, TmpDist * 0.1), 0.0)) {
+													// all other types of edge have one path that makes one or more 90-degree turns
+													// while the other path makes fewer, so we'll use that region of path deviation
+													// to define the new GPs
+													GP.Clear();
+													GP.SetStartPoint(Midpt);
+													GP.Seed(false);
+													GPList = { GP };
+													GPNumPointsList.push_back(-1);
+													if (RadialSphereApprx) {
+// 														GPInner.Clear();
+// 														GPInner.SetStartPoint(Midpt);
+// 														GPInner.Seed(false);
+// 														GPInner.Trim(CPPos, Radius);
+// 														GPList.push_back(GPInner);
+// 														GPNumPointsList.push_back(-1);
+// 														EdgeMidpt = GPInner[-1];
+
+														double TermDist = Distance(EdgeMidpt, Pt1->first) * 3;
+														GradPath_c BackGP({ GP1,GP2 }, Midpt, StreamDir_Forward, { std::make_pair(0, MIN(TmpInd1 + 5, GP1->GetCount() - 1)), std::make_pair(0, MIN(TmpInd2 + 5, GP2->GetCount() - 1)) }, &EdgeMidpt, &TermDist, GPTerminate_AtPointRadius);
+// 														BackGP = BackGP.SubGP(0, -2);
+														vec3 endPt = CPPos + normalise(BackGP[-1] - CPPos) * Radius;
+														endPt = ProjectPointToLine(endPt, SphereNodes[en.first], SphereNodes[en.second]);
+														EdgeMidpt = endPt;
+														BackGP.PointAppend(endPt, GP1->RhoAt(0));
+														GPList.push_back(BackGP);
+														GPNumPointsList.push_back(-1);
+													}
+													else {
+// 														GPInner.Clear();
+// 														GPInner.SetStartPoint(Midpt);
+// 														GPInner.Seed(false);
+// 														GPList.push_back(GPInner);
+// 														GPNumPointsList.push_back(-1);
+// 														GPInner.Trim(CPPos, Radius);
+// 														EdgeMidpt = GPInner[-1];
+
+														GradPath_c BackGP({ GP1,GP2 }, Midpt, StreamDir_Forward, { std::make_pair(0, MIN(TmpInd1 + 5, GP1->GetCount() - 1)), std::make_pair(0, MIN(TmpInd2 + 5, GP2->GetCount() - 1)) }, &CPPos, &GPTermRadius);
+														GPList.push_back(BackGP);
+														GPNumPointsList.push_back(-1);
+														BackGP.Trim(CPPos, Radius);
+														EdgeMidpt = BackGP[-1];
+													}
+												}
+											}
+
 											if (SurfPtr != nullptr) {
 												GPList.push_back(*GPPtr);
+												GPNumPointsList.push_back(-1);
 											}
 
 											GP = ConcatenateResample(GPList, NumGPPoints, {}, ResampleMethod);
-
-											// 											if (SurfPtr == nullptr) {
-											// 												GP.Seed(false);
-											// 											}
-											// 											else {
-											// 												GP.Seed(false);
-											// 												if (RadialSphereApprx) {
-											// 													GP = ConcatenateResample({ GP, *GPPtr }, NumGPPoints, {}, ResampleMethod);
-											// 												}
-											// 												else {
-											// 													GPInner.Clear();
-											// 													GPInner.SetStartPoint(Midpt);
-											// 													GPInner.Seed(false);
-											// 													GP = ConcatenateResample({ GP, GPInner, *GPPtr }, NumGPPoints, {}, ResampleMethod);
-											// 												}
-											// 											}
 											GP.MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
-											EdgeGPs.emplace(Pt2, Midpt, GP);
+											EdgeGPs.emplace(Pt2, EdgeMidpt, GP);
 											Pt2--;
 											continue;
 										}
@@ -3707,6 +3785,7 @@ void NewMainFunction() {
 
 			// For all B type nodes, get the average of the index of the closest
 			// points to the bond point for all neighboring node GPs.
+			// (This now doesn't do anything, as the GPs are "aligned" according to rho value.
 			// 
 			std::map<int, int> BNodeBondPathSegmentLength;
 #ifdef SUPERDEBUG
@@ -3836,13 +3915,16 @@ void NewMainFunction() {
 						 *	to the bond point and use that to determine the seed direction.
 						 */
 						GradPath_c const * BPPtr = &IntBondPathSegments[SphereElems[ti][c1]];
+						vec3 BCP = BPPtr->XYZAt(-1);
+						double BCPRho = BPPtr->RhoAt(-1);
 						int BondCPNum;
 						for (int bi = 0; bi < CPs.NumBonds(); ++bi) {
-							if (sum(CPs.GetXYZ(CPTypeNum_Bond, bi) == BPPtr->XYZAt(0)) == 3) {
+							if (sum(CPs.GetXYZ(CPTypeNum_Bond, bi) == BCP) == 3) {
 								BondCPNum = CPs.GetTotOffsetFromTypeNumOffset(CPTypeNum_Bond, bi);
 								break;
 							}
 						}
+
 
 						int NewGPNums[2];
 
@@ -3858,7 +3940,7 @@ void NewMainFunction() {
 // 							Edge TmpEdge = MakeEdge(SphereElems[ti][c1], SphereElems[ti][c2]);
 							Edge TmpEdge = MakeEdge(SphereElemGPInds[ti][c1], SphereElemGPInds[ti][c2]);
 							if (EdgeGPMap.count(TmpEdge)){
-								if (SphereElems[ti][c1] < SphereElems[ti][c2])
+								if (DistSqr(BCP, GradPaths[EdgeGPMap[TmpEdge].front()].ClosestPoint(BCP)) < DistSqr(BCP, GradPaths[EdgeGPMap[TmpEdge].back()].ClosestPoint(BCP)))
 									GPPtr = &GradPaths[EdgeGPMap[TmpEdge].front()];
 								else
 									GPPtr = &GradPaths[EdgeGPMap[TmpEdge].back()];
@@ -3873,19 +3955,19 @@ void NewMainFunction() {
 
 							int ClosestPointNum;
 // 							vec3 ClosestPt = GradPaths[tri->at(c2)].ClosestPoint(BPPtr->XYZAt(0), ClosestPointNum);
-							vec3 ClosestPt = GPPtr->ClosestPoint(BPPtr->XYZAt(0), ClosestPointNum);
-							vec3 v1 = BPPtr->XYZAt(1) - BPPtr->XYZAt(0);
+							vec3 ClosestPt = GPPtr->ClosestPoint(BCP, ClosestPointNum);
+							vec3 v1 = BPPtr->XYZAt(-5) - BPPtr->XYZAt(-1);
 							//  								vec3 v1 = EigenVectors.col(2);
 // 							vec3 v1 = CPs.GetPrincDir(BondCPNum);
-							vec3 v2 = ClosestPt - BPPtr->XYZAt(0);
+							vec3 v2 = ClosestPt - BCP;
 							vec3 v3 = cross(v1, v2);
 
 							v2 = normalise(cross(v1, v3));
 
-							vec3 SeedPt = BPPtr->XYZAt(0) + v2 * 0.01;
+							vec3 SeedPt = BCP + v2 * 0.01;
 
-							if (DistSqr(SeedPt, ClosestPt) > DistSqr(BPPtr->XYZAt(0), ClosestPt))
-								SeedPt = BPPtr->XYZAt(0) + v2 * (-0.01);
+							if (DistSqr(SeedPt, ClosestPt) > DistSqr(BCP, ClosestPt))
+								SeedPt = BCP + v2 * (-0.01);
 
 							FESurface_c const * SurfPtr = nullptr;
 							GradPath_c const * RPPtr = nullptr;
@@ -3928,7 +4010,7 @@ void NewMainFunction() {
 							GP.MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
 
 							NewGPs[ei - 1] = GP;
-							NewGPs[ei - 1].PointPrepend(BPPtr->XYZAt(0), BPPtr->RhoAt(0));
+							NewGPs[ei - 1].PointPrepend(BCP, BCPRho);
 
 							vector<GradPath_c> GPList = { GP };
 							vector<int> GPNumPointList = { -1 };
@@ -3944,7 +4026,8 @@ void NewMainFunction() {
 							GPList.push_back(*BPPtr);
 							GPNumPointList.push_back(BNodeBondPathSegmentLength[SphereElems[ti][c1]]);
 
-							GP = ConcatenateResample(GPList, NumGPPoints, GPNumPointList, ResampleMethod);
+// 							GP = ConcatenateResample(GPList, NumGPPoints, GPNumPointList, ResampleMethod);
+							GP = ConcatenateResample(GPList, NumGPPoints, {}, ResampleMethod);
 
 							if (GP.RhoAt(0) < GP.RhoAt(-1))
 								GP.Reverse();
@@ -4023,12 +4106,11 @@ void NewMainFunction() {
 							double TmpDist;
 							vec3 TmpVec1, TmpVec2;
 							vec3 Midpt;
-							vec3 BCP = BPPtr->XYZAt(0);
 							int TmpInd1, TmpInd2;
 							int Iter = 0;
 							double TmpCheckDistance = EdgeGPCheckDistance * RingBondEdgeGPCheckDistanceFactor;
 							double TmpTermDist = 0.05;
-							while (!UserQuit && Pt2 != EdgeGPs.end() && Iter <= MaxEdgeGPs && !approx_equal(Pt1->first, Pt2->first, "absdiff", 1e-8)) {
+							while (!UserQuit && Pt2 != EdgeGPs.end() && Iter <= MaxEdgeGPs && !approx_equal(Pt1->first, Pt2->first, "absdiff", 1e-10)) {
 								// 								if (Pt1->second.GetMaxSeparationMidpointFromOtherGPRhoBased(Pt2->second, TmpVec1, TmpInd1, TmpInd2, TmpVec2, TmpDist)) {
 // 								if (Pt1->second.GetMaxSeparationMidpointFromOtherGP(Pt2->second, TmpVec1, TmpInd1, TmpInd2, TmpVec2, TmpDist)) {
 								UserQuit = !StatusUpdate(NumCompleted, NumToDo, TmpString + ": " + to_string(Iter + 1), AddOnID, Time1);
@@ -4089,13 +4171,15 @@ void NewMainFunction() {
 							if (Dist1 < Dist2){
 								for (auto gp = EdgeGPs.begin(); gp != EdgeGPs.end(); ++gp){
 									tri->push_back(GradPaths.size());
-									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, NumGPPoints, GPNumPointList, ResampleMethod));
+									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, NumGPPoints, {}, ResampleMethod));
+// 									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, NumGPPoints, GPNumPointList, ResampleMethod));
 								}
 							}
 							else{
 								for (auto gp = EdgeGPs.rbegin(); gp != EdgeGPs.rend(); ++gp) {
 									tri->push_back(GradPaths.size());
-									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, NumGPPoints, GPNumPointList, ResampleMethod));
+									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, NumGPPoints, {}, ResampleMethod));
+// 									GradPaths.push_back(ConcatenateResample({ gp->second, *BPPtr }, NumGPPoints, GPNumPointList, ResampleMethod));
 								}
 							}
 						}
@@ -4143,9 +4227,347 @@ void NewMainFunction() {
 
 #pragma omp parallel for schedule(dynamic)
 			for (int ni = 0; ni < NumGPs; ++ni){
-				GradPaths[ni].MakeRhoValuesMonotomic(&ThVolInfo[omp_get_thread_num()]);
+				if (GradPaths[ni].IsMade()) {
+					GradPaths[ni].MakeRhoValuesMonotomic(&ThVolInfo[omp_get_thread_num()]);
+					if (GradPaths[ni].RhoAt(0) < GradPaths[ni].RhoAt(-1)) {
+						GradPaths[ni].Reverse();
+					}
+				}
 			}
 
+#if 1
+			/*
+			 *	Before moving on to integration, align all grad paths according to iso values of 
+			 *	log(rho). 
+			 *	This is to make sure that gradient bundle tetrahedral decomposition results in the most
+			 *	regular tetrahedra possible, which can be an issue as some gradient paths are much longer
+			 *	than others. 
+			 *	
+			 *	There will be one or more sets of rho values to use, for each cage CP coincident
+			 *	with the bader atom, and one for GPs truncated at the system boundary in open systems.
+			 *	Each bond path or ring surface-coincident gradient bundle has a unique set of gradient paths,
+			 *	and so all gradient paths that terminate at a given cage can have its points resampled according
+			 *	to the iso-rho values for that cage (or system boundary).
+			 *	Rho values at bond and ring CPs will be included in the list of iso-rho values so that bond and
+			 *	ring-coincident gradient paths keep their cp-coincident points.
+			 *	
+			 *	Start by collecting the set of unique terminating rho values within some tolerance.
+			 *	When the resampling occurs, the path endpoints won't change, so it doesn't matter that we 
+			 *	actually capture the rho values at the end, just that we can effectively categorize them.
+			 *	Use a map of <double> -> set<double> to store the min rho values and point towards
+			 *	a set of rho isovalues.
+			 *	First we'll load the path terminal rho values into the map if it's not already in it,
+			 *	then compute the isorho values for the unique set.
+			 *	
+			 *	The only "valid" terminal rho values are either the rho value used for GP truncation
+			 *	or the rho values of cage CPs.
+			 *	We'll only include GPs that have one of these terminal rho values
+			 */
+
+			std::set<double> ValidRhoVals({ CutoffVal });
+			
+			for (int i = 0; i < CPs.NumCages(); ++i){
+				ValidRhoVals.insert(CPs.GetRho(CPTypeNum_Cage, i));
+			}
+
+			std::map<double, std::set<double> > RhoMinMapToIsoRhoVals;
+			vector<double> GradPathMinRho(GradPaths.size(), -1.0);
+			vector<bool> GradPathChecked(GradPaths.size(), false);
+			double RhoHighValue;
+			double RhoRelTol = 1e-1; // relative tolorance of 10%
+			if (RadialSphereApprx){
+				vec SphereNodeRhoVals(SphereNodes.size());
+				for (int i = 0; i < SphereNodes.size(); ++i){
+					SphereNodeRhoVals[i] = ValAtPointByPtr(SphereNodes[i], VolInfo, RhoPtr);
+				}
+				RhoHighValue = mean(SphereNodeRhoVals);
+
+			}
+			else{
+				RhoHighValue = ValAtPointByPtr(CPPos, VolInfo, RhoPtr);
+			}
+
+//  			std::set<double> BondRingCPRhoVals;
+//  			vector<vector<int> > GradPathCPCoincidentInds(GradPaths.size());
+//  			for (int ti = 0; ti < SphereElemGPInds.size(); ++ti) {
+//  				// Include edge GPs for the element if present
+//  				auto GPInds = SphereElemGPInds[ti];
+//  				for (int c1 = 0; c1 < 3; ++c1) {
+//  					int ni = SphereElems[ti][c1];
+//  					if (NodeTypes[ni] == NETypeR)
+//  						ni = SphereElemGPInds[ti][c1];
+//  
+//  					int nj = SphereElems[ti][(c1 + 1) % 3];
+//  					if (NodeTypes[nj] == NETypeR)
+//  						nj = SphereElemGPInds[ti][(c1 + 1) % 3];
+//  
+//  					Edge TmpEdge = MakeEdge(ni, nj);
+//  					if (EdgeGPMap.count(TmpEdge)) {
+//  						auto EdgeGPInds = EdgeGPMap[TmpEdge];
+//  						if (!EdgeGPInds.empty()) {
+//  							GPInds.insert(GPInds.end(), EdgeGPInds.cbegin(), EdgeGPInds.cend());
+//  						}
+//  					}
+//  				}
+//  				for (int gi : GPInds) {
+//  					if (!GradPathChecked[gi]){
+//  						GradPathChecked[gi] = true;
+//  						if (GradPaths[gi].IsMade()) {
+//  							double TermRhoVal = GradPaths[gi].RhoAt(-1);
+//  							double ClosestValidTermVal = DBL_MIN;
+//  							for (auto v : ValidRhoVals){
+//  								if (abs(v - TermRhoVal) < abs(ClosestValidTermVal - TermRhoVal)){
+//  									ClosestValidTermVal = v;
+//  								}
+//  							}
+//  							if (abs(TermRhoVal - ClosestValidTermVal) / TermRhoVal < RhoRelTol){
+//  								GradPathMinRho[gi] = ClosestValidTermVal;
+//  								RhoMinMapToIsoRhoVals.emplace(ClosestValidTermVal, std::set<double>());
+//  
+//  								if (ElemTypes[ti] >= NETypeR) {
+//  									GradPathCPCoincidentInds[gi] = GradPaths[gi].GetCPCoincidentPoints(&CPs);
+//  									for (int cpind : GradPathCPCoincidentInds[gi]) {
+//  										auto pathrho = GradPaths[gi].RhoAt(cpind);
+//  										bool InSet = false;
+//  										for (auto cprho : BondRingCPRhoVals) {
+//  											if (abs(pathrho - cprho) / pathrho < RhoRelTol) {
+//  												InSet = true;
+//  												break;
+//  											}
+//  										}
+//  
+//  										if (!InSet) {
+//  											BondRingCPRhoVals.insert(pathrho);
+//  										}
+//  									}
+//  								}
+//  							}
+//  						}
+//  					}
+//  				}
+//  			}
+//  			vector<int> GPsToDo;
+//  			GPsToDo.reserve(GradPaths.size());
+//  			for (int i = 0; i < GradPathMinRho.size(); ++i) {
+//  				if (GradPathMinRho[i] > 0) {
+//  					GPsToDo.push_back(i);
+//  				}
+//  			}
+//  
+//  			
+//  
+//  			/*
+//  			  *	Now generate log values for each <min,max> and add bond/ring rho values.
+//  			  */
+//  			for (auto & m : RhoMinMapToIsoRhoVals) {
+//  				auto RhoVals = conv_to<vector<double> >::from(LogSpace(m.first, RhoHighValue * 0.999, NumGPPoints - BondRingCPRhoVals.size()));
+//  				m.second = std::set<double>(RhoVals.begin(), RhoVals.end());
+//  				for (auto cprho : BondRingCPRhoVals) {
+//  					m.second.insert(cprho);
+//  				}
+//  			}
+//  
+//  			/*
+//  			 * Now resample all Gradpaths.
+//  			 * First store the isorho vals in descending order as vectors that can be passed to the resample function.
+//  			 */
+//  			std::map<double,vector<double> > RhoMinMaxMapToIsoRhoValsVec;
+//  			for (auto const & m : RhoMinMapToIsoRhoVals) {
+//  				RhoMinMaxMapToIsoRhoValsVec[m.first] = vector<double>(m.second.crbegin(), m.second.crend());
+//  			}
+//  
+//  			NumToDo = GPsToDo.size();
+//  #pragma omp parallel for
+//  			for (int gi = 0; gi < NumToDo; ++gi) {
+//  				GradPaths[GPsToDo[gi]].ResampleByRhoVals(RhoMinMaxMapToIsoRhoValsVec[GradPathMinRho[GPsToDo[gi]]], GradPathCPCoincidentInds[GPsToDo[gi]]);
+//  			}
+
+			std::set<CPType_e> SaddleCPTypes = { CPType_Bond, CPType_Ring };
+// 			std::set<double> BondRingCPRhoVals;
+// 			for (int ti = 0; ti < SphereElemGPInds.size(); ++ti) {
+// 				// Include edge GPs for the element if present
+// 				auto GPInds = SphereElemGPInds[ti];
+// 				for (int c1 = 0; c1 < 3; ++c1) {
+// 					int ni = SphereElems[ti][c1];
+// 					if (NodeTypes[ni] == NETypeR)
+// 						ni = SphereElemGPInds[ti][c1];
+// 
+// 					int nj = SphereElems[ti][(c1 + 1) % 3];
+// 					if (NodeTypes[nj] == NETypeR)
+// 						nj = SphereElemGPInds[ti][(c1 + 1) % 3];
+// 
+// 					Edge TmpEdge = MakeEdge(ni, nj);
+// 					if (EdgeGPMap.count(TmpEdge)) {
+// 						auto EdgeGPInds = EdgeGPMap[TmpEdge];
+// 						if (!EdgeGPInds.empty()) {
+// 							GPInds.insert(GPInds.end(), EdgeGPInds.cbegin(), EdgeGPInds.cend());
+// 						}
+// 					}
+// 				}
+// 				for (int gi : GPInds) {
+// 					if (!GradPathChecked[gi]) {
+// 						GradPathChecked[gi] = true;
+// 						if (GradPaths[gi].IsMade()) {
+// 							if (ElemTypes[ti] > NETypeR) {
+// 								for (int cpind : GradPaths[gi].GetCPCoincidentPoints(&CPs, SaddleCPTypes)) {
+// 									auto pathrho = GradPaths[gi].RhoAt(cpind);
+// 									bool InSet = false;
+// 									for (auto cprho : BondRingCPRhoVals) {
+// 										if (abs(pathrho - cprho) / pathrho < RhoRelTol) {
+// 											InSet = true;
+// 											break;
+// 										}
+// 									}
+// 
+// 									if (!InSet) {
+// 										BondRingCPRhoVals.insert(pathrho);
+// 									}
+// 								}
+// 							}
+// 						}
+// 					}
+// 				}
+// 			}
+
+			std::map<int, int> TerminalCPIndToMaxLenGPIndMap;
+			for (int ti = 0; ti < SphereElemGPInds.size(); ++ti) {
+				// Include edge GPs for the element if present
+				if (ElemTypes[ti] > NETypeR) {
+					auto GPInds = SphereElemGPInds[ti];
+					for (int c1 = 0; c1 < 3; ++c1) {
+						int ni = SphereElems[ti][c1];
+						if (NodeTypes[ni] == NETypeR)
+							ni = SphereElemGPInds[ti][c1];
+
+						int nj = SphereElems[ti][(c1 + 1) % 3];
+						if (NodeTypes[nj] == NETypeR)
+							nj = SphereElemGPInds[ti][(c1 + 1) % 3];
+
+						Edge TmpEdge = MakeEdge(ni, nj);
+						if (EdgeGPMap.count(TmpEdge)) {
+							auto EdgeGPInds = EdgeGPMap[TmpEdge];
+							if (!EdgeGPInds.empty()) {
+								GPInds.insert(GPInds.end(), EdgeGPInds.cbegin(), EdgeGPInds.cend());
+							}
+						}
+					}
+					for (int gi : GPInds) {
+						if (!GradPathChecked[gi]) {
+							GradPathChecked[gi] = true;
+							if (GradPaths[gi].IsMade()) {
+								double TermCPInd = GradPaths[gi].GetStartEndCPNum(1);
+								auto TermCPType = CPs.GetTypeFromTotOffset(TermCPInd);
+								if (TermCPType == CPType_Cage || TermCPType == CPType_Invalid) {
+									double PathLen = GradPaths[gi].GetLength();
+									if (TerminalCPIndToMaxLenGPIndMap.count(TermCPInd)) {
+										if (PathLen > GradPaths[TerminalCPIndToMaxLenGPIndMap[TermCPInd]].GetLength()) {
+											TerminalCPIndToMaxLenGPIndMap[TermCPInd] = gi;
+										}
+									}
+									else {
+										TerminalCPIndToMaxLenGPIndMap[TermCPInd] = gi;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+			std::map<int, vector<double> > TerminalCPIndToRhoValsMap;
+			for (auto r : TerminalCPIndToMaxLenGPIndMap){
+				auto GPRhoPtr = GradPaths[r.second].GetRhoListPtr();
+				auto RhoVals = vector<double>(GPRhoPtr->cbegin(), GPRhoPtr->cend());
+				// Check for duplicate rho vals in list, and if present shift them over, protecting CP-coincident points
+				auto CPPts = GradPaths[r.second].GetCPCoincidentPoints(&CPs, SaddleCPTypes);
+				auto CPPtsSet = std::set<int>(CPPts.begin(), CPPts.end());
+				for (int i = 2; i < RhoVals.size() - 1; ++i) {
+					if (abs(RhoVals[i] - RhoVals[i-1]) < 1e-8){
+						if (!CPPtsSet.count(i)){
+							RhoVals[i] = (RhoVals[i] + RhoVals[i + 1]) * 0.5;
+						}
+						else if (!CPPtsSet.count(i-1)){
+							RhoVals[i-1] = (RhoVals[i-1] + RhoVals[i-2]) * 0.5;
+						}
+					}
+				}
+				GradPaths[r.second].ReplaceRhoList(RhoVals);
+				TerminalCPIndToRhoValsMap[r.first] = RhoVals;
+			}
+
+			NumGPs = GradPaths.size();
+#ifndef _DEBUG
+#pragma omp parallel for schedule(dynamic)
+#endif
+			for (int gi = 0; gi < NumGPs; ++gi) {
+				if (GradPaths[gi].IsMade()) {
+					double TermCPInd = GradPaths[gi].GetStartEndCPNum(1);
+					auto TermCPType = CPs.GetTypeFromTotOffset(TermCPInd);
+					if ((TermCPType == CPType_Cage || TermCPType == CPType_Invalid) && gi != TerminalCPIndToMaxLenGPIndMap[TermCPInd]) {
+						auto CPPts = GradPaths[gi].GetCPCoincidentPoints(&CPs, SaddleCPTypes);
+						auto RhoVals = TerminalCPIndToRhoValsMap[TermCPInd];
+						for (auto cpInd : CPPts) {
+							double cpVal = GradPaths[gi].RhoAt(cpInd);
+							int MinInd = -1;
+							double MinDiff = DBL_MAX;
+							for (int i = 0; i < RhoVals.size(); ++i) {
+								double tmpDiff = abs(log(RhoVals[i]) - log(cpVal));
+								if (tmpDiff < MinDiff) {
+									MinDiff = tmpDiff;
+									MinInd = i;
+								}
+							}
+							RhoVals[MinInd] = cpVal;
+						}
+
+						// Resample twice to better converge at the right points.
+// 						for (int i = 0; i < 2; ++i) {
+							GradPaths[gi].ResampleByRhoVals(RhoVals, GradPaths[gi].GetCPCoincidentPoints(&CPs, SaddleCPTypes));
+							GradPaths[gi].ReinterpolateRhoValuesFromVolume(&ThVolInfo[omp_get_thread_num()]);
+// 						}
+					}
+				}
+			}
+
+// 			NumGPs = GradPaths.size();
+// #pragma omp parallel for schedule(dynamic)
+// 			for (int gi = 0; gi < NumGPs; ++gi) {
+// 				if (GradPaths[gi].IsMade()) {
+// 					GradPaths[gi].ReinterpolateRhoValuesFromVolume(&ThVolInfo[omp_get_thread_num()]);
+// 					if (GradPaths[gi].RhoAt(0) < GradPaths[gi].RhoAt(-1)) {
+// 						GradPaths[gi].Reverse();
+// 					}
+// 					if (abs(GradPaths[gi].RhoAt(0) - RhoHighValue) / RhoHighValue < RhoRelTol) {
+// 						auto CPPts = GradPaths[gi].GetCPCoincidentPoints(&CPs, SaddleCPTypes);
+// 						auto RhoVals = conv_to<vector<double> >::from(LogSpace(GradPaths[gi].RhoAt(-1), RhoHighValue, NumGPPoints));
+// 						for (auto cpInd : CPPts){
+// 							double cpVal = GradPaths[gi].RhoAt(cpInd);
+// 							int MinInd = -1;
+// 							double MinDiff = DBL_MAX;
+// 							for (int i = 0; i < RhoVals.size(); ++i){
+// 								double tmpDiff = abs(log(RhoVals[i]) - log(cpVal));
+// 								if (tmpDiff < MinDiff){
+// 									MinDiff = tmpDiff;
+// 									MinInd = i;
+// 								}
+// 							}
+// 							RhoVals[MinInd] = cpVal;
+// 						}
+// 						std::reverse(RhoVals.begin(), RhoVals.end());
+// 
+// 						// Resample twice to better converge at the right points.
+// 						for (int i = 0; i < 2; ++i) {
+// 							GradPaths[gi].ResampleByRhoVals(RhoVals, GradPaths[gi].GetCPCoincidentPoints(&CPs, SaddleCPTypes));
+// 							GradPaths[gi].ReinterpolateRhoValuesFromVolume(&ThVolInfo[omp_get_thread_num()]);
+// 						}
+// 					}
+// 				}
+// 			}
+			 
+
+#endif
+
+#if 0
 			/*
 			 *	Before moving on to integration (and GB creation), align the path representation
 			 *	of all paths with that of bond path GPs.
@@ -4163,370 +4585,369 @@ void NewMainFunction() {
 			 *	
 			 *	When complete, this will guarantee that the tetrahedra that are eventually integrated are as regular as possible.
 			 */
-			if (true){
-				std::queue<std::pair<int, std::pair<int, int> > > GPIndQueue; // GB and source/target GP indices for each GP
-				vector<GradPath_c*> FinishedGPs;
+			std::queue<std::pair<int, std::pair<int, int> > > GPIndQueue; // GB and source/target GP indices for each GP
+			vector<GradPath_c*> FinishedGPs;
 
-				 /* 
-				  * First, populate the queue with the GPs corresponding to the edges added 
-				  * after the bond point for bond path nodes.
-				  * 
-				  * Becuase all the bond-path GPs need to also be aligned, for each bond path
-				  * we'll check 
-				  * 
-				  * For bond path elements, the order these edges are added is inconsequential
-				  * (I'm pretty sure), but for bond-ring elements, need to start with the edge
-				  * closest to bond-ring-cage GP, since it's the path with two right angles to
-				  * which the others need to be aligned.
-				  */
+				/* 
+				* First, populate the queue with the GPs corresponding to the edges added 
+				* after the bond point for bond path nodes.
+				* 
+				* Becuase all the bond-path GPs need to also be aligned, for each bond path
+				* we'll check 
+				* 
+				* For bond path elements, the order these edges are added is inconsequential
+				* (I'm pretty sure), but for bond-ring elements, need to start with the edge
+				* closest to bond-ring-cage GP, since it's the path with two right angles to
+				* which the others need to be aligned.
+				*/
 
-				for (int ti = 0; ti < NumElems; ++ti){
-					if (ElemTypes[ti] > NETypeR) {
-						// We know that the first node of the element is the bond node.
+			for (int ti = 0; ti < NumElems; ++ti){
+				if (ElemTypes[ti] > NETypeR) {
+					// We know that the first node of the element is the bond node.
 						
-						int NumEdgePaths = SphereElemGPInds[ti].size() - 4;
-						if (NumEdgePaths > 0) {
-							if (ElemTypes[ti] == NETypeB || (NodeTypes[SphereElems[ti][1]] == NETypeR && NodeTypes[SphereElems[ti][2]] == NETypeR)) {
-								// If the other two nodes of the element are BOTH ring type,
-								// then we'll split them so each half is aligned to its closer
-								// bond-ring-cage path.
-								// This is also the behavior to follow for bond-only elements.
-								// 
+					int NumEdgePaths = SphereElemGPInds[ti].size() - 4;
+					if (NumEdgePaths > 0) {
+						if (ElemTypes[ti] == NETypeB || (NodeTypes[SphereElems[ti][1]] == NETypeR && NodeTypes[SphereElems[ti][2]] == NETypeR)) {
+							// If the other two nodes of the element are BOTH ring type,
+							// then we'll split them so each half is aligned to its closer
+							// bond-ring-cage path.
+							// This is also the behavior to follow for bond-only elements.
+							// 
 
-								// First one half, using the element's fourth node as its first
-								// alignment source GP.
-								// For odd number of edge paths, this pass gets one more pass
-								// compared to the next pass.
-								for (int i = 0; i < NumEdgePaths / 2 + 1; ++i) {
-									if (GradPaths[SphereElemGPInds[ti][4 + i]].IsMade() && GradPaths[SphereElemGPInds[ti][3 + i]].IsMade()) {
-										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][4 + i], SphereElemGPInds[ti][3 + i])));
-									}
-								}
-
-								// Now the other half, in reverse order
-								for (int i = 0; i < NumEdgePaths / 2; ++i) {
-									int e1 = SphereElemGPInds[ti].size() - i - 1;
-									int e2 = (e1 + 1) % SphereElemGPInds[ti].size();
-									if (GradPaths[SphereElemGPInds[ti][e1]].IsMade() && GradPaths[SphereElemGPInds[ti][e2]].IsMade()) {
-										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][e1], SphereElemGPInds[ti][e2])));
-									}
+							// First one half, using the element's fourth node as its first
+							// alignment source GP.
+							// For odd number of edge paths, this pass gets one more pass
+							// compared to the next pass.
+							for (int i = 0; i < NumEdgePaths / 2 + 1; ++i) {
+								if (GradPaths[SphereElemGPInds[ti][4 + i]].IsMade() && GradPaths[SphereElemGPInds[ti][3 + i]].IsMade()) {
+									GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][4 + i], SphereElemGPInds[ti][3 + i])));
 								}
 							}
-							else if (NodeTypes[SphereElems[ti][1]] == NETypeR) {
-								// If ONLY the second node of the element is ring type, then add
-								// the post-bond point edges in reverse order (relative to their
-								// order in SphereElemGPInds).
-								for (int i = 0; i < NumEdgePaths; ++i) {
-									int e1 = SphereElemGPInds[ti].size() - i - 1;
-									int e2 = (e1 + 1) % SphereElemGPInds[ti].size();
-									if (GradPaths[SphereElemGPInds[ti][e1]].IsMade() && GradPaths[SphereElemGPInds[ti][e2]].IsMade()) {
-										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][e1], SphereElemGPInds[ti][e2])));
-									}
+
+							// Now the other half, in reverse order
+							for (int i = 0; i < NumEdgePaths / 2; ++i) {
+								int e1 = SphereElemGPInds[ti].size() - i - 1;
+								int e2 = (e1 + 1) % SphereElemGPInds[ti].size();
+								if (GradPaths[SphereElemGPInds[ti][e1]].IsMade() && GradPaths[SphereElemGPInds[ti][e2]].IsMade()) {
+									GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][e1], SphereElemGPInds[ti][e2])));
 								}
 							}
-							else if (NodeTypes[SphereElems[ti][2]] == NETypeR) {
-								// If ONLY the third node is ring type, then add the post-bond
-								// point edges in original order.
-								for (int i = 0; i < NumEdgePaths; ++i) {
-									if (GradPaths[SphereElemGPInds[ti][4 + i]].IsMade() && GradPaths[SphereElemGPInds[ti][3 + i]].IsMade()) {
-										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][4 + i], SphereElemGPInds[ti][3 + i])));
-									}
+						}
+						else if (NodeTypes[SphereElems[ti][1]] == NETypeR) {
+							// If ONLY the second node of the element is ring type, then add
+							// the post-bond point edges in reverse order (relative to their
+							// order in SphereElemGPInds).
+							for (int i = 0; i < NumEdgePaths; ++i) {
+								int e1 = SphereElemGPInds[ti].size() - i - 1;
+								int e2 = (e1 + 1) % SphereElemGPInds[ti].size();
+								if (GradPaths[SphereElemGPInds[ti][e1]].IsMade() && GradPaths[SphereElemGPInds[ti][e2]].IsMade()) {
+									GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][e1], SphereElemGPInds[ti][e2])));
+								}
+							}
+						}
+						else if (NodeTypes[SphereElems[ti][2]] == NETypeR) {
+							// If ONLY the third node is ring type, then add the post-bond
+							// point edges in original order.
+							for (int i = 0; i < NumEdgePaths; ++i) {
+								if (GradPaths[SphereElemGPInds[ti][4 + i]].IsMade() && GradPaths[SphereElemGPInds[ti][3 + i]].IsMade()) {
+									GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][4 + i], SphereElemGPInds[ti][3 + i])));
 								}
 							}
 						}
 					}
 				}
+			}
 
-				/*
-				 * Now start the breadth-first search of elements (since we are
-				 * no longer able to generate node connectivity, as we're not
-				 * interested in nodes but rather GPs), using a FIFO element queue first
-				 * populated with the bond path elements.
-				 * The search will grow out from each bond path on the sphere simultaneously,
-				 * guaranteeing that, to the extent that the sphere meshing is distributed in
-				 * a physically reasonable way, we'll be aligning each GP according to the
-				 * "closest" bond path GPs.
-				 * 
-				 * Because we're searching by elements, but are thinking in terms of nodal
-				 * connectivity, it's less straightforward to keep track of which
-				 * nodes and edges have already been visited.
-				 * We'll keep track of nodes and edges separately, so that we can discern
-				 * between edges that have been added, and those for which only one, the other,
-				 * or both nodes have been added but not the corresponding edge GPs.
-				 * By only operating on edges where one or more nodes have already been processed,
-				 * we'll effectively be moving the BFS out from bond path nodes according to 
-				 * nodal connectivity.
-				 * 
-				 * How an edge is identified depends on the type of element:
-				 *	*	For cage- and ring-type elements, the edge can be identified simply by 
-				 *		the SphereElemGPInds[ti] indices. 
-				 *		This still recovers shared edges with nodes of type cage-cage and cage-ring, 
-				 *		and preserves the correct mapping of node and edge GPs along ring surfaces.
-				 *	
-				 *	*	For bond type elements, the bond node itself is no longer pointed to by
-				 *		SphereElemGPInds[ti], which instead points to the two new gradient paths
-				 *		made by concatenating the existing bond path (and ring line if bond-ring element).
-				 *		To recover shared edges with a bond type node, they will be identified using
-				 *		the SphereElems[ti][0] node index, which then reveals the correspondance to
-				 *		the other elements that share the same bond node.
-				 *		Because we're only using edges as a means of checking whether one has been 
-				 *		visited already in the search, no information is lost here, and we still use
-				 *		SphereElemGPInds[ti] for identifying whether nodes have been visited and
-				 *		recovering GPs.
-				 *		
-				 * 
-				 * The search will move out according to sphere elements, but we'll be concerned
-				 * more with edges.
-				 * There are four possibilities when encountering an edge:
-				 * 1. One node in the edge will have already been added, and the corresponding edge GPs will
-				 *		be added to the GP queue in order of increasing distance from the already added node.
-				 * 2. Both nodes in the edge have been added, but the GPs corresponding to the edge have not.
-				 *		This is what happens when the searches starting from two different bond paths collide.
-				 *		Here we'll split the corresponding edge GPs, adding have in order of increasing distance
-				 *		from their respective node.
-				 * 3. Both nodes and the corresponding edge GPs have been added: ignore and move on.
-				 * 4. Neither nodes have been added: ignore and they'll be added in a subsequent iteration.
-				 */
+			/*
+				* Now start the breadth-first search of elements (since we are
+				* no longer able to generate node connectivity, as we're not
+				* interested in nodes but rather GPs), using a FIFO element queue first
+				* populated with the bond path elements.
+				* The search will grow out from each bond path on the sphere simultaneously,
+				* guaranteeing that, to the extent that the sphere meshing is distributed in
+				* a physically reasonable way, we'll be aligning each GP according to the
+				* "closest" bond path GPs.
+				* 
+				* Because we're searching by elements, but are thinking in terms of nodal
+				* connectivity, it's less straightforward to keep track of which
+				* nodes and edges have already been visited.
+				* We'll keep track of nodes and edges separately, so that we can discern
+				* between edges that have been added, and those for which only one, the other,
+				* or both nodes have been added but not the corresponding edge GPs.
+				* By only operating on edges where one or more nodes have already been processed,
+				* we'll effectively be moving the BFS out from bond path nodes according to 
+				* nodal connectivity.
+				* 
+				* How an edge is identified depends on the type of element:
+				*	*	For cage- and ring-type elements, the edge can be identified simply by 
+				*		the SphereElemGPInds[ti] indices. 
+				*		This still recovers shared edges with nodes of type cage-cage and cage-ring, 
+				*		and preserves the correct mapping of node and edge GPs along ring surfaces.
+				*	
+				*	*	For bond type elements, the bond node itself is no longer pointed to by
+				*		SphereElemGPInds[ti], which instead points to the two new gradient paths
+				*		made by concatenating the existing bond path (and ring line if bond-ring element).
+				*		To recover shared edges with a bond type node, they will be identified using
+				*		the SphereElems[ti][0] node index, which then reveals the correspondance to
+				*		the other elements that share the same bond node.
+				*		Because we're only using edges as a means of checking whether one has been 
+				*		visited already in the search, no information is lost here, and we still use
+				*		SphereElemGPInds[ti] for identifying whether nodes have been visited and
+				*		recovering GPs.
+				*		
+				* 
+				* The search will move out according to sphere elements, but we'll be concerned
+				* more with edges.
+				* There are four possibilities when encountering an edge:
+				* 1. One node in the edge will have already been added, and the corresponding edge GPs will
+				*		be added to the GP queue in order of increasing distance from the already added node.
+				* 2. Both nodes in the edge have been added, but the GPs corresponding to the edge have not.
+				*		This is what happens when the searches starting from two different bond paths collide.
+				*		Here we'll split the corresponding edge GPs, adding have in order of increasing distance
+				*		from their respective node.
+				* 3. Both nodes and the corresponding edge GPs have been added: ignore and move on.
+				* 4. Neither nodes have been added: ignore and they'll be added in a subsequent iteration.
+				*/
 
-				// Prepare queue and sets for workspace
-				std::queue<int> ElemIndQueue;
-				std::set<Edge> EdgeWasVisited;
-				std::set<int> NodeWasVisited, ElemWasVisited;
+			// Prepare queue and sets for workspace
+			std::queue<int> ElemIndQueue;
+			std::set<Edge> EdgeWasVisited;
+			std::set<int> NodeWasVisited, ElemWasVisited;
 
-				// First add the bond(-ring) type elements to the queue
-				// and bond-type nodes to the node set, setting up the
-				// initial conditions for the BFS to progress.
-				for (int ti = 0; ti < NumElems; ++ti){
-					if (ElemTypes[ti] > NETypeR){
-						// First and last nodes of element points to the bond node
-						NodeWasVisited.insert(SphereElemGPInds[ti][0]);
-						NodeWasVisited.insert(SphereElemGPInds[ti].back());
-						ElemWasVisited.insert(ti);
-						if (SphereElemGPInds[ti].size() > 3){
-							bool ElemMade = true;
-							for (int i = 0; i < SphereElemGPInds[ti].size() && ElemMade; ++i) {
-								ElemMade = GradPaths[SphereElemGPInds[ti][i]].IsMade();
-							}
-							if (ElemMade) {
-								ElemIndQueue.push(ti);
-							}
+			// First add the bond(-ring) type elements to the queue
+			// and bond-type nodes to the node set, setting up the
+			// initial conditions for the BFS to progress.
+			for (int ti = 0; ti < NumElems; ++ti){
+				if (ElemTypes[ti] > NETypeR){
+					// First and last nodes of element points to the bond node
+					NodeWasVisited.insert(SphereElemGPInds[ti][0]);
+					NodeWasVisited.insert(SphereElemGPInds[ti].back());
+					ElemWasVisited.insert(ti);
+					if (SphereElemGPInds[ti].size() > 3){
+						bool ElemMade = true;
+						for (int i = 0; i < SphereElemGPInds[ti].size() && ElemMade; ++i) {
+							ElemMade = GradPaths[SphereElemGPInds[ti][i]].IsMade();
+						}
+						if (ElemMade) {
+							ElemIndQueue.push(ti);
+						}
+					}
+				}
+			}
+
+			// Get element connectivity
+			vector<vector<int> > SphereElemConnectivity;
+			GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
+
+			// Start the element BFS
+			while (!ElemIndQueue.empty()){
+				// Get front element
+				int ti = ElemIndQueue.front();
+				ElemIndQueue.pop();
+
+				// Add neighboring elems
+				for (int tj : SphereElemConnectivity[ti]){
+					if (!ElemWasVisited.count(tj)){
+						ElemWasVisited.insert(tj);
+						bool ElemMade = true;
+						for (int i = 0; i < SphereElemGPInds[tj].size() && ElemMade; ++i){
+							ElemMade = GradPaths[SphereElemGPInds[tj][i]].IsMade();
+						}
+						if (ElemMade) {
+							ElemIndQueue.push(tj);
 						}
 					}
 				}
 
-				// Get element connectivity
-				vector<vector<int> > SphereElemConnectivity;
-				GetTriElementConnectivityList(&SphereElems, SphereElemConnectivity, 1);
-
-				// Start the element BFS
-				while (!ElemIndQueue.empty()){
-					// Get front element
-					int ti = ElemIndQueue.front();
-					ElemIndQueue.pop();
-
-					// Add neighboring elems
-					for (int tj : SphereElemConnectivity[ti]){
-						if (!ElemWasVisited.count(tj)){
-							ElemWasVisited.insert(tj);
-							bool ElemMade = true;
-							for (int i = 0; i < SphereElemGPInds[tj].size() && ElemMade; ++i){
-								ElemMade = GradPaths[SphereElemGPInds[tj][i]].IsMade();
-							}
-							if (ElemMade) {
-								ElemIndQueue.push(tj);
-							}
-						}
+				// Check elem edges for cases 1, 2, or 3, as indicated in the above comments
+				for (int ci = 0; ci < 3; ++ci){
+					int cj = (ci + 1) % 3;
+					Edge e = MakeEdge(SphereElemGPInds[ti][ci], SphereElemGPInds[ti][cj]);
+					Edge egp = MakeEdge(SphereElemGPInds[ti][ci], SphereElemGPInds[ti][cj]);
+					if (ElemTypes[ti] > NETypeR) {
+						cj = (ci + 1);
+						e = MakeEdge(
+							NodeTypes[SphereElems[ti][ci]] == NETypeB ? SphereElems[ti][ci] : SphereElemGPInds[ti][ci],
+							NodeTypes[SphereElems[ti][cj % 3]] == NETypeB ? SphereElems[ti][cj % 3] : SphereElemGPInds[ti][cj]);
 					}
-
-					// Check elem edges for cases 1, 2, or 3, as indicated in the above comments
-					for (int ci = 0; ci < 3; ++ci){
-						int cj = (ci + 1) % 3;
-						Edge e = MakeEdge(SphereElemGPInds[ti][ci], SphereElemGPInds[ti][cj]);
-						Edge egp = MakeEdge(SphereElemGPInds[ti][ci], SphereElemGPInds[ti][cj]);
-						if (ElemTypes[ti] > NETypeR) {
-							cj = (ci + 1);
-							e = MakeEdge(
-								NodeTypes[SphereElems[ti][ci]] == NETypeB ? SphereElems[ti][ci] : SphereElemGPInds[ti][ci],
-								NodeTypes[SphereElems[ti][cj % 3]] == NETypeB ? SphereElems[ti][cj % 3] : SphereElemGPInds[ti][cj]);
+					if (!EdgeWasVisited.count(e) && GradPaths[egp.first].IsMade() && GradPaths[egp.second].IsMade()){
+						// Edge wasn't visited. See which case from comments above; 1, 2, or 4
+						if (!NodeWasVisited.count(SphereElemGPInds[ti][ci]) && !NodeWasVisited.count(SphereElemGPInds[ti][cj])){
+							// case 4; continue
+							continue;
 						}
-						if (!EdgeWasVisited.count(e) && GradPaths[egp.first].IsMade() && GradPaths[egp.second].IsMade()){
-							// Edge wasn't visited. See which case from comments above; 1, 2, or 4
-							if (!NodeWasVisited.count(SphereElemGPInds[ti][ci]) && !NodeWasVisited.count(SphereElemGPInds[ti][cj])){
-								// case 4; continue
-								continue;
-							}
-							else {
-								EdgeWasVisited.insert(e);
-								auto EdgeGPInds = EdgeGPMap[egp];
-								int NumEdgeGPs = EdgeGPInds.size();
-								GradPath_c *GP1 = &GradPaths[SphereElemGPInds[ti][ci]], *GP2 = &GradPaths[SphereElemGPInds[ti][cj]];
-								if (GP1->IsMade() && GP2->IsMade()) {
-									if (NumEdgeGPs > 0) {
-										double DistFront = 0.0, DistBack = 0.0;
-										int ind1, ind2;
-										vec3 vec1, vec2;
-										if (GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(GradPaths[EdgeGPInds.front()], vec1, ind1, ind2, vec2, DistFront)
-											&& GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(GradPaths[EdgeGPInds.back()], vec1, ind1, ind2, vec2, DistBack))
-										{
-											bool ciCloser = (DistFront < DistBack);
-											if (!NodeWasVisited.count(SphereElemGPInds[ti][ci])) {
-												// SphereElemGPInds[ti][ci] hasn't been added but SphereElemGPInds[ti][cj] has, so add edge
-												// GPs and SphereElemGPInds[ti][ci] to the gp queue starting from SphereElemGPInds[ti][cj].
-												if (ciCloser) {
-													// Add in reverse order
-													for (int i = 0; i < NumEdgeGPs; ++i) {
-														if (i == 0) {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.back(), SphereElemGPInds[ti][cj])));
-														}
-														else {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i])));
-														}
+						else {
+							EdgeWasVisited.insert(e);
+							auto EdgeGPInds = EdgeGPMap[egp];
+							int NumEdgeGPs = EdgeGPInds.size();
+							GradPath_c *GP1 = &GradPaths[SphereElemGPInds[ti][ci]], *GP2 = &GradPaths[SphereElemGPInds[ti][cj]];
+							if (GP1->IsMade() && GP2->IsMade()) {
+								if (NumEdgeGPs > 0) {
+									double DistFront = 0.0, DistBack = 0.0;
+									int ind1, ind2;
+									vec3 vec1, vec2;
+									if (GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(GradPaths[EdgeGPInds.front()], vec1, ind1, ind2, vec2, DistFront)
+										&& GP1->GetMaxSeparationMidpointFromOtherGPRhoBased(GradPaths[EdgeGPInds.back()], vec1, ind1, ind2, vec2, DistBack))
+									{
+										bool ciCloser = (DistFront < DistBack);
+										if (!NodeWasVisited.count(SphereElemGPInds[ti][ci])) {
+											// SphereElemGPInds[ti][ci] hasn't been added but SphereElemGPInds[ti][cj] has, so add edge
+											// GPs and SphereElemGPInds[ti][ci] to the gp queue starting from SphereElemGPInds[ti][cj].
+											if (ciCloser) {
+												// Add in reverse order
+												for (int i = 0; i < NumEdgeGPs; ++i) {
+													if (i == 0) {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.back(), SphereElemGPInds[ti][cj])));
 													}
-													// Then add ci
-													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], EdgeGPInds.front())));
-												}
-												else {
-													// Add in forward order
-													for (int i = 0; i < NumEdgeGPs; ++i) {
-														if (i == 0) {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.front(), SphereElemGPInds[ti][cj])));
-														}
-														else {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
-														}
+													else {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i])));
 													}
-													// Then add ci
-													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], EdgeGPInds.back())));
 												}
-												NodeWasVisited.insert(SphereElemGPInds[ti][ci]);
-											}
-											if (!NodeWasVisited.count(SphereElemGPInds[ti][cj])) {
-												// SphereElemGPInds[ti][cj] hasn't been added but SphereElemGPInds[ti][ci] has, so add edge
-												// GPs and SphereElemGPInds[ti][cj] to the gp queue starting from SphereElemGPInds[ti][ci].
-												if (ciCloser) {
-													// Add in forward order
-													for (int i = 0; i < NumEdgeGPs; ++i) {
-														if (i == 0) {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.front(), SphereElemGPInds[ti][ci])));
-														}
-														else {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
-														}
-													}
-													// Then add ci
-													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], EdgeGPInds.back())));
-												}
-												else {
-													// Add in reverse order
-													for (int i = 0; i < NumEdgeGPs; ++i) {
-														if (i == 0) {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.back(), SphereElemGPInds[ti][ci])));
-														}
-														else {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i])));
-														}
-													}
-													// Then add ci
-													GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], EdgeGPInds.front())));
-												}
-												NodeWasVisited.insert(SphereElemGPInds[ti][cj]);
+												// Then add ci
+												GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], EdgeGPInds.front())));
 											}
 											else {
-												// both ci and cj have been added already, so split the edge gps as we did before.
-												if (ciCloser) {
-													// ci get's low half of edge gps
-													for (int i = 0; i < NumEdgeGPs / 2 + 1; ++i) {
-														if (i == 0) {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], SphereElemGPInds[ti][ci])));
-														}
-														else {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
-														}
+												// Add in forward order
+												for (int i = 0; i < NumEdgeGPs; ++i) {
+													if (i == 0) {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.front(), SphereElemGPInds[ti][cj])));
 													}
-													// cj get's upper half of edge gps
-													for (int i = 0; i < NumEdgeGPs / 2; ++i) {
-														if (i == 0) {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], SphereElemGPInds[ti][cj])));
-														}
-														else {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i - 2])));
-														}
+													else {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
 													}
 												}
-												else {
-													// cj get's low half of edge gps
-													for (int i = 0; i < NumEdgeGPs / 2 + 1; ++i) {
-														if (i == 0) {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], SphereElemGPInds[ti][cj])));
-														}
-														else {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
-														}
+												// Then add ci
+												GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], EdgeGPInds.back())));
+											}
+											NodeWasVisited.insert(SphereElemGPInds[ti][ci]);
+										}
+										if (!NodeWasVisited.count(SphereElemGPInds[ti][cj])) {
+											// SphereElemGPInds[ti][cj] hasn't been added but SphereElemGPInds[ti][ci] has, so add edge
+											// GPs and SphereElemGPInds[ti][cj] to the gp queue starting from SphereElemGPInds[ti][ci].
+											if (ciCloser) {
+												// Add in forward order
+												for (int i = 0; i < NumEdgeGPs; ++i) {
+													if (i == 0) {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.front(), SphereElemGPInds[ti][ci])));
 													}
-													// ci get's upper half of edge gps
-													for (int i = 0; i < NumEdgeGPs / 2; ++i) {
-														if (i == 0) {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], SphereElemGPInds[ti][ci])));
-														}
-														else {
-															GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i - 2])));
-														}
+													else {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
+													}
+												}
+												// Then add ci
+												GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], EdgeGPInds.back())));
+											}
+											else {
+												// Add in reverse order
+												for (int i = 0; i < NumEdgeGPs; ++i) {
+													if (i == 0) {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds.back(), SphereElemGPInds[ti][ci])));
+													}
+													else {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i])));
+													}
+												}
+												// Then add ci
+												GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], EdgeGPInds.front())));
+											}
+											NodeWasVisited.insert(SphereElemGPInds[ti][cj]);
+										}
+										else {
+											// both ci and cj have been added already, so split the edge gps as we did before.
+											if (ciCloser) {
+												// ci get's low half of edge gps
+												for (int i = 0; i < NumEdgeGPs / 2 + 1; ++i) {
+													if (i == 0) {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], SphereElemGPInds[ti][ci])));
+													}
+													else {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
+													}
+												}
+												// cj get's upper half of edge gps
+												for (int i = 0; i < NumEdgeGPs / 2; ++i) {
+													if (i == 0) {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], SphereElemGPInds[ti][cj])));
+													}
+													else {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i - 2])));
+													}
+												}
+											}
+											else {
+												// cj get's low half of edge gps
+												for (int i = 0; i < NumEdgeGPs / 2 + 1; ++i) {
+													if (i == 0) {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], SphereElemGPInds[ti][cj])));
+													}
+													else {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[i], EdgeGPInds[i - 1])));
+													}
+												}
+												// ci get's upper half of edge gps
+												for (int i = 0; i < NumEdgeGPs / 2; ++i) {
+													if (i == 0) {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], SphereElemGPInds[ti][ci])));
+													}
+													else {
+														GPIndQueue.push(std::make_pair(ti, std::make_pair(EdgeGPInds[NumEdgeGPs - i - 1], EdgeGPInds[NumEdgeGPs - i - 2])));
 													}
 												}
 											}
 										}
 									}
-									else {
-										// No edge GPs between node GPs, so only need to look for the case where
-										// one node GP was added and the other wasn't, and the unadded GP will
-										// point to the added as its parent.
-										// Don't care about the cases where neither or both GPs are already added.
-										if (!NodeWasVisited.count(SphereElemGPInds[ti][ci]) && NodeWasVisited.count(SphereElemGPInds[ti][cj])) {
-											// Add ci to queue pointing to cj
-											GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], SphereElemGPInds[ti][cj])));
-											NodeWasVisited.insert(SphereElemGPInds[ti][ci]);
-										}
-										else if (NodeWasVisited.count(SphereElemGPInds[ti][ci]) && !NodeWasVisited.count(SphereElemGPInds[ti][cj])) {
-											// Add cj to queue pointing to ci
-											GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], SphereElemGPInds[ti][ci])));
-											NodeWasVisited.insert(SphereElemGPInds[ti][cj]);
-										}
+								}
+								else {
+									// No edge GPs between node GPs, so only need to look for the case where
+									// one node GP was added and the other wasn't, and the unadded GP will
+									// point to the added as its parent.
+									// Don't care about the cases where neither or both GPs are already added.
+									if (!NodeWasVisited.count(SphereElemGPInds[ti][ci]) && NodeWasVisited.count(SphereElemGPInds[ti][cj])) {
+										// Add ci to queue pointing to cj
+										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][ci], SphereElemGPInds[ti][cj])));
+										NodeWasVisited.insert(SphereElemGPInds[ti][ci]);
+									}
+									else if (NodeWasVisited.count(SphereElemGPInds[ti][ci]) && !NodeWasVisited.count(SphereElemGPInds[ti][cj])) {
+										// Add cj to queue pointing to ci
+										GPIndQueue.push(std::make_pair(ti, std::make_pair(SphereElemGPInds[ti][cj], SphereElemGPInds[ti][ci])));
+										NodeWasVisited.insert(SphereElemGPInds[ti][cj]);
 									}
 								}
 							}
-						}// else case 3; continue
-					}
-
-					
+						}
+					}// else case 3; continue
 				}
 
-				/*
-				 *	The GP queue is now full of <GradPath*, GradPath*> pairs, where
-				 *	pair.first will have it's points aligned with those of pair.second,
-				 *	in the optimal order such that the placement of nodes along
-				 *	bond-path GPs are applied to all other GPs.
-				 *	Rather than having misalignment occur at bond and ring type nodes,
-				 *	it will now occur at the maximum "distance" (in terms of mesh edge steps)
-				 *	from bond path nodes.
-				 *	
-				 *	At this point we simply move through the GP queue, aligning paths as we go,
-				 *	and the ordering is such that the source (pair.second) path is guaranteed
-				 *	to have had its points already aligned with its "parent" GP.
-				 */
-				vector<vector<int> > GPConstraintInds(GradPaths.size());
-				while (!GPIndQueue.empty()){
-					auto GPInds = GPIndQueue.front();
-					GPIndQueue.pop();
+					
+			}
+
+			/*
+				*	The GP queue is now full of <GradPath*, GradPath*> pairs, where
+				*	pair.first will have it's points aligned with those of pair.second,
+				*	in the optimal order such that the placement of nodes along
+				*	bond-path GPs are applied to all other GPs.
+				*	Rather than having misalignment occur at bond and ring type nodes,
+				*	it will now occur at the maximum "distance" (in terms of mesh edge steps)
+				*	from bond path nodes.
+				*	
+				*	At this point we simply move through the GP queue, aligning paths as we go,
+				*	and the ordering is such that the source (pair.second) path is guaranteed
+				*	to have had its points already aligned with its "parent" GP.
+				*/
+			vector<vector<int> > GPConstraintInds(GradPaths.size());
+			while (!GPIndQueue.empty()){
+				auto GPInds = GPIndQueue.front();
+				GPIndQueue.pop();
 
 // 					auto sourceGP = GradPaths[GPInds.second.second];
 // 					std::stringstream ss;
 // 					ss << "GB " << GPInds.first << ": alignment source gp " << GPInds.second.second << " --> " << GPInds.second.first;
 // 					sourceGP.SaveAsOrderedZone(ss.str().c_str(), Green_C);
 
-					if (GPConstraintInds[GPInds.second.second].empty()) {
-						GPConstraintInds[GPInds.second.second] = GradPaths[GPInds.second.second].GetCPCoincidentPoints(&CPs);
-					}
-					GPConstraintInds[GPInds.second.first] = GPConstraintInds[GPInds.second.second];
+				if (GPConstraintInds[GPInds.second.second].empty()) {
+					GPConstraintInds[GPInds.second.second] = GradPaths[GPInds.second.second].GetCPCoincidentPoints(&CPs);
+				}
+				GPConstraintInds[GPInds.second.first] = GPConstraintInds[GPInds.second.second];
 
 // 					vector<vec3> constraintPoints;
 // 					for (int i : GPConstraintInds[GPInds.second.second]){
@@ -4540,14 +4961,15 @@ void NewMainFunction() {
 // 					ss << "GB " << GPInds.first << ": target gp before " << GPInds.second.first << " <-- " << GPInds.second.second;
 // 					GradPaths[GPInds.second.first].SaveAsOrderedZone(ss.str().c_str(), Cyan_C);
 
-					GradPaths[GPInds.second.first].AlignToOtherPath(GradPaths[GPInds.second.second], GPConstraintInds[GPInds.second.second]);
-					GradPaths[GPInds.second.first].ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+				vector<int> ProtectedPointInds = GradPaths[GPInds.second.first].GetCPCoincidentPoints(&CPs);
+				GradPaths[GPInds.second.first].AlignToOtherPath(GradPaths[GPInds.second.second], GPConstraintInds[GPInds.second.second], ProtectedPointInds);
+				GradPaths[GPInds.second.first].ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
 
 // 					ss.str("");
 // 					ss << "GB " << GPInds.first << ": target gp after " << GPInds.second.first << " <-- " << GPInds.second.second;
 // 					GradPaths[GPInds.second.first].SaveAsOrderedZone(ss.str().c_str(), Blue_C);
-				}
 			}
+#endif
 
 			/*
 			 * We now have all the gradient paths completed in a single vector,
@@ -4558,13 +4980,6 @@ void NewMainFunction() {
 
 // 			if (SaveGPs)
 				GPPtrList.resize(NumElems);
-
-			if (SaveGBs) {
-				GradientBundles.resize(NumElems);
-				if (RadialSphereApprx) {
-					InnerGradientBundles.resize(NumElems);
-				}
-			}
 
 
 			GPNotMonotomicallyDecreasing = vector<bool>(GradPaths.size(), false);
@@ -4581,7 +4996,7 @@ void NewMainFunction() {
 			NumToDo = ElemTodo.size();
 			NumCompleted = 0;
 // 			for (int ti : ElemTodo) {
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
 			for (int tii = 0; tii < NumToDo; ++tii){
 				int ti = ElemTodo[tii];
 #else
@@ -4799,7 +5214,7 @@ void NewMainFunction() {
 							vec3 BondCPPos;
 							for (int ni : SphereElems[ti]) {
 								if (NodeTypes[ni] >= NETypeB) {
-									BondCPPos = IntBondPathSegments[ni].XYZAt(0);
+									BondCPPos = IntBondPathSegments[ni].RhoAt(0) > IntBondPathSegments[ni].RhoAt(-1) ? IntBondPathSegments[ni].XYZAt(0) : IntBondPathSegments[ni].XYZAt(-1);
 								}
 
 							}
@@ -4811,8 +5226,6 @@ void NewMainFunction() {
 
 					}
 
-					if (SaveGBs || GBIsDivergent[ti])
-						GradientBundles[ti].MakeFromGPs(GPPtrs, true, true);
 
 					if (RadialSphereApprx) {
 						/* 
@@ -4826,10 +5239,6 @@ void NewMainFunction() {
 						}
 
 						NewIntegrateUsingIsosurfaces2(InnerGPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, SphereIntVals[ti], nullptr, &AddOnID);
-
-						if (SaveGBs){
-							InnerGradientBundles[ti].MakeFromGPs(InnerGPPtrs, true, true);
-						}
 					}
 				}
 			}
@@ -5434,10 +5843,12 @@ void NewMainFunction() {
 			for (int ti : ElemTodo) {
 				{
 #else
-			for (int ti = 0; ti < GradientBundles.size(); ++ti) {
-				if (StatusUpdate(ti, GradientBundles.size() * (2 ? RadialSphereApprx : 1), TmpString, AddOnID, Time1)) {
+			for (int ti = 0; ti < GPPtrList.size(); ++ti) {
+				if (StatusUpdate(ti, GPPtrList.size() * (2 ? RadialSphereApprx : 1), TmpString, AddOnID, Time1)) {
 #endif
-					GradientBundles[ti].SaveAsTriFEZone(CPString + ": Gradient Bundle " + to_string(ti + 1) + " " + NETypeStrs[ElemTypes[ti]] + "-Type (Zone " + to_string(TecUtilDataSetGetNumZones() + 1) + ")", vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Double), vector<ValueLocation_e>(GradientBundles[ti].GetXYZListPtr()->size(), ValueLocation_Nodal), XYZVarNums, RhoVarNum);
+					FESurface_c GradientBundle;
+					GradientBundle.MakeFromGPs(GPPtrList[ti], true, true);
+					GradientBundle.SaveAsTriFEZone(CPString + ": Gradient Bundle " + to_string(ti + 1) + " " + NETypeStrs[ElemTypes[ti]] + "-Type (Zone " + to_string(TecUtilDataSetGetNumZones() + 1) + ")", vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Double), vector<ValueLocation_e>(GradientBundle.GetXYZListPtr()->size(), ValueLocation_Nodal), XYZVarNums, RhoVarNum);
 					
 					ColorIndex_t GBColor = -1;
 					for (auto g : GPPtrList[ti]) {
@@ -5450,27 +5861,27 @@ void NewMainFunction() {
 						GBColor = ColorIndex_t((++ColorIter % NumColors) + 1);
 					}
 
-					if (GradientBundles[ti].IsMade() && GradientBundles[ti].GetZoneNum() > 0) {
-						TecUtilZoneSetActive(Set(GradientBundles[ti].GetZoneNum()).getRef(), AssignOp_MinusEquals);
+					if (GradientBundle.IsMade() && GradientBundle.GetZoneNum() > 0) {
+						TecUtilZoneSetActive(Set(GradientBundle.GetZoneNum()).getRef(), AssignOp_MinusEquals);
 
-						TecUtilZoneSetShade(SV_SHOW, Set(GradientBundles[ti].GetZoneNum()).getRef(), 0.0, TRUE);
-						TecUtilZoneSetShade(SV_COLOR, Set(GradientBundles[ti].GetZoneNum()).getRef(), 0.0, GBColor);
+						TecUtilZoneSetShade(SV_SHOW, Set(GradientBundle.GetZoneNum()).getRef(), 0.0, TRUE);
+						TecUtilZoneSetShade(SV_COLOR, Set(GradientBundle.GetZoneNum()).getRef(), 0.0, GBColor);
 
-						AuxDataZoneSetItem(GradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.SourceZoneNum, to_string(SphereZoneNum));
-						AuxDataZoneSetItem(GradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.SphereCPName, CPString);
-						AuxDataZoneSetItem(GradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB);
-						AuxDataZoneSetItem(GradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.ElemNum, to_string(ti + 1));
-						AuxDataZoneSetItem(GradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.SourceNucleusName, NucleusName);
+						AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.SourceZoneNum, to_string(SphereZoneNum));
+						AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.SphereCPName, CPString);
+						AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB);
+						AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.ElemNum, to_string(ti + 1));
+						AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.SourceNucleusName, NucleusName);
 
 						for (int i = 0; i < 3 && IsOk; ++i)
-							AuxDataZoneSetItem(GradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.NodeNums[i], to_string(SphereElems[ti][i] + 1));
+							AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.NodeNums[i], to_string(SphereElems[ti][i] + 1));
 
 
 						// Save integration results to gradient bundle
 						for (int vi = 0; vi < NewVarNums.size(); ++vi) {
-							FieldData_pa FDPtr = TecUtilDataValueGetWritableNativeRef(GradientBundles[ti].GetZoneNum(), NewVarNums[vi]);
+							FieldData_pa FDPtr = TecUtilDataValueGetWritableNativeRef(GradientBundle.GetZoneNum(), NewVarNums[vi]);
 							if (VALID_REF(FDPtr)) {
-								vector<double> tmpDblVec(GradientBundles[ti].GetXYZListPtr()->size(), IntVals[ti][vi]);
+								vector<double> tmpDblVec(GradientBundle.GetXYZListPtr()->size(), IntVals[ti][vi]);
 								TecUtilDataValueArraySetByRef(FDPtr, 1, tmpDblVec.size(), tmpDblVec.data());
 							}
 							else {
@@ -5482,12 +5893,12 @@ void NewMainFunction() {
 // 								TecUtilDialogErrMsg(string(to_string(IntVals[ti-5][vi]) + " " + to_string(TecUtilDataValueGetByZoneVar(GradientBundles[ti-5].GetZoneNum(), NewVarNums[vi], 1))).c_str());
 // 							}
 
-// 							for (int i = 0; i < GradientBundles[ti].GetXYZListPtr()->size(); ++i){
-// 								TecUtilDataValueSetByZoneVar(GradientBundles[ti].GetZoneNum(), NewVarNums[vi], i + 1, IntVals[ti][vi]);
+// 							for (int i = 0; i < GradientBundle.GetXYZListPtr()->size(); ++i){
+// 								TecUtilDataValueSetByZoneVar(GradientBundle.GetZoneNum(), NewVarNums[vi], i + 1, IntVals[ti][vi]);
 // 							}
 
 // 							FieldDataPointer_c tmpPtr;
-// 							tmpPtr.GetWritePtr(GradientBundles[ti].GetZoneNum(), NewVarNums[vi]);
+// 							tmpPtr.GetWritePtr(GradientBundle.GetZoneNum(), NewVarNums[vi]);
 // 							for (int i = 0; i < tmpPtr.Size(); ++i){
 // 								tmpPtr.Write(i, IntVals[ti][vi]);
 // 							}
@@ -5517,8 +5928,18 @@ void NewMainFunction() {
 							if (gp.IsMade()) {
 								gp.SaveAsOrderedZone(CPString + ": GP " + CPName + ": Element " + to_string(ti + 1) + "." + to_string(i + 1) + " with GB");
 								if (gp.GetZoneNum() > 0) {
+									auto GPColor = ColorIndex_t((i % NumColors) + 1);
 									TecUtilZoneSetActive(Set(gp.GetZoneNum()).getRef(), AssignOp_MinusEquals);
+#ifdef SUPERDEBUG
+									TecUtilZoneSetMesh(SV_COLOR, Set(gp.GetZoneNum()).getRef(), 0.0, GPColor);
+									TecUtilZoneSetMesh(SV_SHOW, Set(gp.GetZoneNum()).getRef(), 0.0, TRUE);
+									TecUtilZoneSetScatter(SV_COLOR, Set(gp.GetZoneNum()).getRef(), 0.0, GPColor);
+									TecUtilZoneSetScatter(SV_FRAMESIZE, Set(gp.GetZoneNum()).getRef(), 0.4, 0);
+									TecUtilZoneSetScatter(SV_FILLMODE, Set(gp.GetZoneNum()).getRef(), 0.0, FillMode_UseLineColor);
+									TecUtilZoneSetScatterSymbolShape(SV_GEOMSHAPE, Set(gp.GetZoneNum()).getRef(), GeomShape_Circle);
+#else
 									TecUtilZoneSetMesh(SV_COLOR, Set(gp.GetZoneNum()).getRef(), 0.0, GBColor);
+#endif
 									AuxDataZoneSetItem(gp.GetZoneNum(), CSMAuxData.GBA.SourceZoneNum, to_string(SphereZoneNum));
 									AuxDataZoneSetItem(gp.GetZoneNum(), CSMAuxData.GBA.SphereCPName, CPString);
 									AuxDataZoneSetItem(gp.GetZoneNum(), CSMAuxData.GBA.SphereCPNum, to_string(CPNum));
@@ -5542,7 +5963,7 @@ void NewMainFunction() {
 #ifdef SUPERDEBUG
 			for (int ti : ElemTodo)
 #else
-			for (int ti = 0; ti < GradientBundles.size(); ++ti)
+			for (int ti = 0; ti < GPPtrList.size(); ++ti)
 #endif
 				for (int ni : SphereElemGPInds[ti]) {
 					NumToSave++;
@@ -5585,16 +6006,22 @@ void NewMainFunction() {
 			}
 		}
 
-		if (RadialSphereApprx) {
+		if (RadialSphereApprx && false) {
 			if (SaveGBs) {
 #ifdef SUPERDEBUG
 				for (int ti : ElemTodo) {
 					{
 #else
-				for (int ti = 0; ti < InnerGradientBundles.size(); ++ti) {
-					if (StatusUpdate(ti + GradientBundles.size(), GradientBundles.size() * (2 ? RadialSphereApprx : 1), TmpString, AddOnID, Time1)) {
+				for (int ti = 0; ti < GPPtrList.size(); ++ti) {
+					if (StatusUpdate(ti + GPPtrList.size(), GPPtrList.size() * (2 ? RadialSphereApprx : 1), TmpString, AddOnID, Time1)) {
 #endif
-						InnerGradientBundles[ti].SaveAsTriFEZone(CPString + ": Sphere Gradient Bundle " + to_string(ti + 1) + " " + NETypeStrs[ElemTypes[ti]] + "-Type (Zone " + to_string(TecUtilDataSetGetNumZones() + 1) + ")", vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Double), vector<ValueLocation_e>(InnerGradientBundles[ti].GetXYZListPtr()->size(), ValueLocation_Nodal), XYZVarNums, RhoVarNum);
+						vector<const GradPath_c *> InnerGPPtrs(3);
+						for (int tj = 0; tj < 3; ++tj) {
+							InnerGPPtrs[tj] = &InnerGradPaths[SphereElems[ti][tj]];
+						}
+						FESurface_c GradientBundle;
+						GradientBundle.MakeFromGPs(InnerGPPtrs, true, true);
+						GradientBundle.SaveAsTriFEZone(CPString + ": Sphere Gradient Bundle " + to_string(ti + 1) + " " + NETypeStrs[ElemTypes[ti]] + "-Type (Zone " + to_string(TecUtilDataSetGetNumZones() + 1) + ")", vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Double), vector<ValueLocation_e>(GradientBundle.GetXYZListPtr()->size(), ValueLocation_Nodal), XYZVarNums, RhoVarNum);
 
 						ColorIndex_t GBColor = -1;
 						for (auto g : GPPtrList[ti]) {
@@ -5607,27 +6034,27 @@ void NewMainFunction() {
 							GBColor = ColorIndex_t((++ColorIter % NumColors) + 1);
 						}
 
-						if (InnerGradientBundles[ti].IsMade() && InnerGradientBundles[ti].GetZoneNum() > 0) {
-							TecUtilZoneSetActive(Set(InnerGradientBundles[ti].GetZoneNum()).getRef(), AssignOp_MinusEquals);
+						if (GradientBundle.IsMade() && GradientBundle.GetZoneNum() > 0) {
+							TecUtilZoneSetActive(Set(GradientBundle.GetZoneNum()).getRef(), AssignOp_MinusEquals);
 
-							TecUtilZoneSetShade(SV_SHOW, Set(InnerGradientBundles[ti].GetZoneNum()).getRef(), 0.0, TRUE);
-							TecUtilZoneSetShade(SV_COLOR, Set(InnerGradientBundles[ti].GetZoneNum()).getRef(), 0.0, GBColor);
+							TecUtilZoneSetShade(SV_SHOW, Set(GradientBundle.GetZoneNum()).getRef(), 0.0, TRUE);
+							TecUtilZoneSetShade(SV_COLOR, Set(GradientBundle.GetZoneNum()).getRef(), 0.0, GBColor);
 
-							AuxDataZoneSetItem(InnerGradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.SourceZoneNum, to_string(SphereZoneNum));
-							AuxDataZoneSetItem(InnerGradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.SphereCPName, CPString);
-							AuxDataZoneSetItem(InnerGradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB);
-							AuxDataZoneSetItem(InnerGradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.ElemNum, to_string(ti + 1));
-							AuxDataZoneSetItem(InnerGradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.SourceNucleusName, NucleusName);
+							AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.SourceZoneNum, to_string(SphereZoneNum));
+							AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.SphereCPName, CPString);
+							AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB);
+							AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.ElemNum, to_string(ti + 1));
+							AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.SourceNucleusName, NucleusName);
 
 							for (int i = 0; i < 3 && IsOk; ++i)
-								AuxDataZoneSetItem(InnerGradientBundles[ti].GetZoneNum(), CSMAuxData.GBA.NodeNums[i], to_string(SphereElems[ti][i] + 1));
+								AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.NodeNums[i], to_string(SphereElems[ti][i] + 1));
 
 
 							// Save integration results to gradient bundle
 							for (int vi = 0; vi < NewVarNums.size(); ++vi) {
-								FieldData_pa FDPtr = TecUtilDataValueGetWritableNativeRef(InnerGradientBundles[ti].GetZoneNum(), NewVarNums[vi]);
+								FieldData_pa FDPtr = TecUtilDataValueGetWritableNativeRef(GradientBundle.GetZoneNum(), NewVarNums[vi]);
 								if (VALID_REF(FDPtr)) {
-									vector<double> tmpDblVec(InnerGradientBundles[ti].GetXYZListPtr()->size(), IntVals[ti][vi]);
+									vector<double> tmpDblVec(GradientBundle.GetXYZListPtr()->size(), IntVals[ti][vi]);
 									TecUtilDataValueArraySetByRef(FDPtr, 1, tmpDblVec.size(), tmpDblVec.data());
 								}
 								else {
@@ -5639,12 +6066,12 @@ void NewMainFunction() {
 								// 								TecUtilDialogErrMsg(string(to_string(IntVals[ti-5][vi]) + " " + to_string(TecUtilDataValueGetByZoneVar(GradientBundles[ti-5].GetZoneNum(), NewVarNums[vi], 1))).c_str());
 								// 							}
 
-								// 							for (int i = 0; i < GradientBundles[ti].GetXYZListPtr()->size(); ++i){
-								// 								TecUtilDataValueSetByZoneVar(GradientBundles[ti].GetZoneNum(), NewVarNums[vi], i + 1, IntVals[ti][vi]);
+								// 							for (int i = 0; i < GradientBundle.GetXYZListPtr()->size(); ++i){
+								// 								TecUtilDataValueSetByZoneVar(GradientBundle.GetZoneNum(), NewVarNums[vi], i + 1, IntVals[ti][vi]);
 								// 							}
 
 								// 							FieldDataPointer_c tmpPtr;
-								// 							tmpPtr.GetWritePtr(GradientBundles[ti].GetZoneNum(), NewVarNums[vi]);
+								// 							tmpPtr.GetWritePtr(GradientBundle.GetZoneNum(), NewVarNums[vi]);
 								// 							for (int i = 0; i < tmpPtr.Size(); ++i){
 								// 								tmpPtr.Write(i, IntVals[ti][vi]);
 								// 							}
@@ -5699,7 +6126,7 @@ void NewMainFunction() {
 	#ifdef SUPERDEBUG
 				for (int ti : ElemTodo)
 	#else
-				for (int ti = 0; ti < GradientBundles.size(); ++ti)
+				for (int ti = 0; ti < GPPtrList.size(); ++ti)
 	#endif
 					for (int ni : SphereElemGPInds[ti]) {
 						NumToSave++;
@@ -8465,7 +8892,7 @@ void GetSphereBasinIntegrations(FESurface_c const & Sphere,
 	 *	smoothing) because they're less altered.
 	 *	Limit to MaxNumSmoothing rounds of smoothing.
 	 */
-	int MaxNumSmoothing = 5;
+	int MaxNumSmoothing = 1;
 	int NumConvergedIter = 1;
 	vector<int> NumMinMax(2,-1), OldNumMinMax(2,INT_MAX);
 	MinMaxIndices.resize(2);

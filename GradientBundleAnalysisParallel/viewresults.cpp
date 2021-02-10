@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <map>
 #include <set>
+#include <queue>
 #include <ctime>
 
 #include <armadillo>
@@ -22,6 +23,7 @@
 #include "Set.h"
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_DATA_TYPES.h"
+#include "CSM_FE_VOLUME.h"
 #include "CSM_GUI.h"
 #include "VIEWRESULTS.h"
 
@@ -835,6 +837,68 @@ void ToggleFEVolumesProbeInstallCB(){
 	TecUtilArgListDealloc(&ProbeArgs);
 }
 
+void MakeTriangularSphereElement(int ZoneNum, int NodeNum = -1, int ElemNum = -1){ // node and element base 0
+	REQUIRE(ZoneNum > 0 && ZoneNum <= TecUtilDataSetGetNumZones());
+	REQUIRE(NodeNum < 0 || ElemNum < 0);
+	REQUIRE(AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone));
+
+	FESurface_c Sphere = FESurface_c(ZoneNum,  { 1,2,3 });
+	auto XYZPtr = Sphere.GetXYZListPtr();
+	auto ElemPtr = Sphere.GetElemListPtr();
+
+	vector<int> ElemNums;
+	if (ElemNum >= 0) {
+		REQUIRE(ElemNum < ElemPtr->size());
+		ElemNums.push_back(ElemNum);
+	}
+	else{
+		REQUIRE(NodeNum < XYZPtr->size());
+		for (int ei = 0; ei < ElemPtr->size(); ++ei){
+			for (auto c : ElemPtr->at(ei)){
+				if (c == NodeNum){
+					ElemNums.push_back(ei);
+					break;
+				}
+			}
+		}
+	}
+
+	// get info for new zone(s)
+	string CPString = AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.SphereCPName), 
+		NucleusName = AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.SourceNucleusName);
+	vec3 SphereOrigin = vec(SplitStringDbl(AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.SphereOrigin)));
+
+	vector<vector<int> > Elems = { {0,1,2} };
+	for (auto ei : ElemNums){
+		vector<vec3> Nodes;
+		for (auto ni : ElemPtr->at(ei)){
+			Nodes.emplace_back(SphereOrigin + (XYZPtr->at(ni) - SphereOrigin) * 1.001);
+		}
+		FESurface_c GradientBundle(Nodes, Elems);
+
+		GradientBundle.SaveAsTriFEZone({ 1,2,3 }, CPString + ": Gradient Bundle " + to_string(ei + 1));
+
+		if (GradientBundle.IsMade() && GradientBundle.GetZoneNum() > 0) {
+			TecUtilZoneSetActive(Set(GradientBundle.GetZoneNum()).getRef(), AssignOp_PlusEquals);
+
+			TecUtilZoneSetShade(SV_SHOW, Set(GradientBundle.GetZoneNum()).getRef(), 0.0, TRUE);
+			TecUtilZoneSetShade(SV_COLOR, Set(GradientBundle.GetZoneNum()).getRef(), 0.0, Cyan_C);
+
+			AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.SourceZoneNum, to_string(ZoneNum));
+			AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.SphereCPName, CPString);
+			AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB);
+			AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.ElemNum, to_string(ei + 1));
+			AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.SourceNucleusName, NucleusName);
+
+			for (int i = 0; i < 3; ++i)
+				AuxDataZoneSetItem(GradientBundle.GetZoneNum(), CSMAuxData.GBA.NodeNums[i], to_string(ElemPtr->at(ei)[i] + 1));
+		}
+		else {
+			TecUtilDialogErrMsg(string("Failed to save GB " + to_string(ei + 1)).c_str());
+		}
+	}
+}
+
 void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 	Boolean_t isNearestPoint,
 	ArbParam_t ClientData)
@@ -888,12 +952,16 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 							}
 						}
 					}
+
+					// No zone found, so make one.
+					MakeTriangularSphereElement(ProbedZoneNum, NodeNum - 1);
 				}
 				else{
 					/*
 					*	User selected an element, so activate its FE volume.
 					*/
 					LgIndex_t ElemNum = TecUtilProbeFieldGetCell();
+					bool IsFound = false;
 					for (int CurZoneNum = 1; CurZoneNum < NumZones; ++CurZoneNum){
 						if (TecUtilZoneGetType(CurZoneNum) == ZoneType_FETriangle){
 							if (AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
@@ -901,9 +969,15 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 								&& AuxDataZoneItemMatches(CurZoneNum, CSMAuxData.GBA.ElemNum, to_string(ElemNum)))
 							{
 								TecUtilZoneSetActive(Set(CurZoneNum).getRef(), AssignOp_PlusEquals);
+								IsFound = true;
 								break;
 							}
 						}
+					}
+
+					if (!IsFound){
+						// No zone found, so make one.
+						MakeTriangularSphereElement(ProbedZoneNum, -1, ElemNum - 1);
 					}
 				}
 			}
@@ -1050,14 +1124,6 @@ void SelectGBsInRegion(int const SphereZoneNum,
 	}
 
 	/*
-	 *	Get midpoints of the interior element and boundary elements
-	 */
-	vec3 InteriorMidPt = GetElemMidPoint(SphereZoneNum, InteriorElemNum);
-	vector<vec3> BoundaryMidPts(ActiveElemNums.size());
-	for (int i = 0; i < ActiveElemNums.size(); ++i)
-		BoundaryMidPts[i] = GetElemMidPoint(SphereZoneNum, ActiveElemNums[i]);
-
-	/*
 	 *	Now for each element on the sphere:
 	 *	1. find its minimum distance to any of the boundary nodes
 	 *	2. find its distance to the interior node
@@ -1068,48 +1134,134 @@ void SelectGBsInRegion(int const SphereZoneNum,
 	 *		less than zero (i.e. they're pointing more than 180 degrees away
 	 *		from each other) then consider the element to be interior to the 
 	 *		region.
+	 *	
+	 *	Actually this method is terrible.
+	 *	
+	 *	Instead, start a breadth first search from the interior element.
+	 *	When an element that has neighboring elements that are on the boundary,
+	 *	only add its neighbors to the search queue if their distance to the 
+	 *	interior element is less than the average distance of neighboring boundary
+	 *	nodes to the interior element.
 	 */
-	vector<double> BoundaryDistSqrList(BoundaryMidPts.size());
-	vector<int> ElemsToActivate;
-	ElemsToActivate.reserve(NumElems);
 
-	for (int e = 1; e <= NumElems; ++e){
-		if (e != InteriorElemNum && std::find(ActiveElemNums.begin(), ActiveElemNums.end(), e) == ActiveElemNums.end()){
-			/*
-			 *	Get distance (squared) to all boundary elements
-			 */
-			vec3 ElemMidPt = GetElemMidPoint(SphereZoneNum, e);
-			for (int i = 0; i < BoundaryMidPts.size(); ++i)
-				BoundaryDistSqrList[i] = DistSqr(ElemMidPt, BoundaryMidPts[i]);
-
-			/*
-			 *	Find minimum distance (squared) to boundary nodes
-			 */
-			double MinBoundaryDistSqr = DBL_MAX;
-			int MinBoundaryElemNum = 0;
-			for (int i = 0; i < BoundaryDistSqrList.size(); ++i){
-				if (BoundaryDistSqrList[i] < MinBoundaryDistSqr){
-					MinBoundaryDistSqr = BoundaryDistSqrList[i];
-					MinBoundaryElemNum = i;
-				}
-			}
-
-			/*
-			 *	Get vector from element to minimum distance boundary element
-			 *	and to interior element.
-			 *	Also get distance (squared) to interior element.
-			 */
-			vec3 BoundaryVec = BoundaryMidPts[MinBoundaryElemNum] - ElemMidPt,
-				RefVec = InteriorMidPt - ElemMidPt;
-			double RefDistSqr = DistSqr(ElemMidPt, InteriorMidPt);
-
-			if (RefDistSqr < MinBoundaryDistSqr || dot(RefVec, BoundaryVec) < 0)
-				ElemsToActivate.push_back(e);
-		}	
+	FESurface_c Sphere(SphereZoneNum, { 1,2,3 });
+	vec3 SphereOrigin = vec(SplitStringDbl(AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereOrigin)));
+	Sphere.GenerateElemConnectivity();
+	Sphere.GenerateElemMidpoints();
+	auto ElemMidPoints = Sphere.GetElemMidpointsPtr();
+	auto ElemConnectivity = Sphere.GetElemConnectivityListPtr();
+	std::map<int, double> BoundaryElemNumToDistMap; // 0-based
+	std::set<int> VisitedElems;
+	for (auto i : ActiveElemNums){
+// 		BoundaryElemNumToDistMap[i - 1] = Distance(ElemMidPoints->at(i - 1), ElemMidPoints->at(InteriorElemNum - 1));
+		BoundaryElemNumToDistMap[i - 1] = VectorAngle(ElemMidPoints->at(i - 1) - SphereOrigin, ElemMidPoints->at(InteriorElemNum - 1) - SphereOrigin);
+		VisitedElems.insert(i - 1);
 	}
 
-	ElemsToActivate.push_back(InteriorElemNum);
-	ElemsToActivate.insert(ElemsToActivate.end(), ActiveElemNums.begin(), ActiveElemNums.end());
+	std::queue<int> BFSQueue;
+	BFSQueue.push(InteriorElemNum - 1);
+	BFSQueue.push(-1);
+	VisitedElems.insert(InteriorElemNum - 1);
+	auto InteriorElems = VisitedElems;
+	vector<double> NeighborBoundaryInteriorDists;
+	NeighborBoundaryInteriorDists.reserve(20);
+
+	while (!BFSQueue.empty()){
+		auto ei = BFSQueue.front();
+		BFSQueue.pop();
+
+		if (ei < 0){
+			BFSQueue.push(-1);
+			if (BFSQueue.size() == 1){
+				break;
+			}
+			continue;
+		}
+
+		for (auto ej : ElemConnectivity->at(ei)){
+			if (!VisitedElems.count(ej)){ 
+				VisitedElems.insert(ej);
+				NeighborBoundaryInteriorDists.clear();
+				for (auto ek : ElemConnectivity->at(ej)){
+					if (ej != ek && BoundaryElemNumToDistMap.count(ek)){
+						NeighborBoundaryInteriorDists.push_back(BoundaryElemNumToDistMap[ek]);
+					}
+				}
+				if (NeighborBoundaryInteriorDists.size() > 0){
+					// if (Distance(ElemMidPoints->at(ej), ElemMidPoints->at(InteriorElemNum - 1)) <= max(vec(NeighborBoundaryInteriorDists))) {
+					if (VectorAngle(ElemMidPoints->at(ej) - SphereOrigin, ElemMidPoints->at(InteriorElemNum - 1) - SphereOrigin) <= max(vec(NeighborBoundaryInteriorDists))) {
+						BFSQueue.push(ej);
+						InteriorElems.insert(ej);
+					}
+				}
+				else{
+					BFSQueue.push(ej);
+					InteriorElems.insert(ej);
+				}
+			}
+		}
+	}
+
+
+	
+
+
+// 
+// 	/*
+// 	 *	Get midpoints of the interior element and boundary elements
+// 	 */
+// 
+// 	vec3 InteriorMidPt = GetElemMidPoint(SphereZoneNum, InteriorElemNum);
+// 	vector<vec3> BoundaryMidPts(ActiveElemNums.size());
+// 	for (int i = 0; i < ActiveElemNums.size(); ++i)
+// 		BoundaryMidPts[i] = GetElemMidPoint(SphereZoneNum, ActiveElemNums[i]);
+// 
+// 	vector<double> BoundaryDistSqrList(BoundaryMidPts.size());
+// 	vector<int> ElemsToActivate;
+// 	ElemsToActivate.reserve(NumElems);
+// 
+// 	for (int e = 1; e <= NumElems; ++e){
+// 		if (e != InteriorElemNum && std::find(ActiveElemNums.begin(), ActiveElemNums.end(), e) == ActiveElemNums.end()){
+// 			/*
+// 			 *	Get distance (squared) to all boundary elements
+// 			 */
+// 			vec3 ElemMidPt = GetElemMidPoint(SphereZoneNum, e);
+// 			for (int i = 0; i < BoundaryMidPts.size(); ++i)
+// 				BoundaryDistSqrList[i] = DistSqr(ElemMidPt, BoundaryMidPts[i]);
+// 
+// 			/*
+// 			 *	Find minimum distance (squared) to boundary nodes
+// 			 */
+// 			double MinBoundaryDistSqr = DBL_MAX;
+// 			int MinBoundaryElemNum = 0;
+// 			for (int i = 0; i < BoundaryDistSqrList.size(); ++i){
+// 				if (BoundaryDistSqrList[i] < MinBoundaryDistSqr){
+// 					MinBoundaryDistSqr = BoundaryDistSqrList[i];
+// 					MinBoundaryElemNum = i;
+// 				}
+// 			}
+// 
+// 			/*
+// 			 *	Get vector from element to minimum distance boundary element
+// 			 *	and to interior element.
+// 			 *	Also get distance (squared) to interior element.
+// 			 */
+// 			vec3 BoundaryVec = BoundaryMidPts[MinBoundaryElemNum] - ElemMidPt,
+// 				RefVec = InteriorMidPt - ElemMidPt;
+// 			double RefDistSqr = DistSqr(ElemMidPt, InteriorMidPt);
+// 
+// 			if (RefDistSqr < MinBoundaryDistSqr || dot(RefVec, BoundaryVec) < 0)
+// 				ElemsToActivate.push_back(e);
+// 		}	
+// 	}
+// 
+// 	ElemsToActivate.push_back(InteriorElemNum);
+// 	ElemsToActivate.insert(ElemsToActivate.end(), ActiveElemNums.begin(), ActiveElemNums.end());
+
+	vector<int> ElemsToActivate;
+	for (auto ei : InteriorElems){
+		ElemsToActivate.push_back(ei + 1);
+	}
 
 	/*
 	 *	Now get set of zones to activate
@@ -1120,6 +1272,7 @@ void SelectGBsInRegion(int const SphereZoneNum,
 	Set ZoneSet;
 
 	for (auto const & e : ElemsToActivate){
+		bool isFound = false;
 		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z){
 			if (TecUtilZoneIsFiniteElement(z)
 				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)
@@ -1127,8 +1280,17 @@ void SelectGBsInRegion(int const SphereZoneNum,
 				&& AuxDataZoneItemMatches(z, CSMAuxData.GBA.ElemNum, to_string(e)))
 			{
 				ZonesToActivate.push_back(z);
+				isFound = true;
 				ZoneSet += z;
+				break;
 			}
+		}
+
+		if (!isFound) {
+			// Make new element zones
+			MakeTriangularSphereElement(SphereZoneNum, -1, e - 1);
+			ZonesToActivate.push_back(TecUtilDataSetGetNumZones());
+			ZoneSet += TecUtilDataSetGetNumZones();
 		}
 	}
 
@@ -1168,6 +1330,16 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
 	TecGUIDialogLaunch(Dialog1Manager);
 }
 
+/*
+ *	Export gradient bundle integration data for a variety of gradient bundles for every atom in the system for which GBA has been run:
+ *	* Individual differential gradient bundles
+ *		* if they or their representative elements are active, a separate CSV file with only active dGBs
+ *		* a CSV with all dGBs
+ *		* a CSV with dGBs for each condensed maximum/minimum basin
+ *		* a CSV with dGBs for each special gradient bundle (ie. for a "bond" one or more bond wedges present and contributing to the bond)
+ *		
+ *	* Integration totals for for each condensed maximum/minimum basin for each sphere
+ */
 void ExportGBAData(){
 	if ((TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0 && TecGUIToggleGet(TGLExGBs_TOG_T3_1)) || TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
 		char* FolderNameCStr;
@@ -1266,22 +1438,26 @@ void ExportGBAData(){
 
 
 										if (IncludeAllGBs) {
-											OutFile << "\nZone Name,Zone number,GB number";
+											OutFile << "\nGB number";
 											for (string const & i : IntVarNames)
 												OutFile << "," << i;
 											OutFile << '\n';
 											for (int i = 0; i < Ptrs[0].Size(); ++i) {
 												if (ElemActive[i]) {
-													int GBZoneNum = ZoneNum + i + 1;
-													if (GBZoneNum >= 1 && GBZoneNum <= NumZones) {
-														char* GBZoneName;
-														TecUtilZoneGetName(ZoneNum + i + 1, &GBZoneName);
-														OutFile << GBZoneName << "," << ZoneNum + i + 1 << "," << i + 1;
-														TecUtilStringDealloc(&GBZoneName);
-														for (auto const & j : Ptrs)
-															OutFile << std::setprecision(16) << std::scientific << "," << j[i];
-														OutFile << "\n";
-													}
+// 													int GBZoneNum = ZoneNum + i + 1;
+// 													if (GBZoneNum >= 1 && GBZoneNum <= NumZones) {
+// 														char* GBZoneName;
+// 														TecUtilZoneGetName(ZoneNum + i + 1, &GBZoneName);
+// 														OutFile << GBZoneName << "," << ZoneNum + i + 1 << "," << i + 1;
+// 														TecUtilStringDealloc(&GBZoneName);
+// 														for (auto const & j : Ptrs)
+// 															OutFile << std::setprecision(16) << std::scientific << "," << j[i];
+// 														OutFile << "\n";
+// 													}
+													OutFile << i + 1;
+													for (auto const & j : Ptrs)
+														OutFile << std::setprecision(16) << std::scientific << "," << j[i];
+													OutFile << "\n";
 												}
 											}
 										}

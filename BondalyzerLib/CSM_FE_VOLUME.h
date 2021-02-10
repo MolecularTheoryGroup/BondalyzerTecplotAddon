@@ -112,6 +112,7 @@ public:
 	vector<vector<LgIndex_t> > const * GetNodeConnectivityListPtr() const { return &m_NodeConnectivityList; }
 	vector<vector<LgIndex_t> > const * GetElemConnectivityListPtr() const { return &m_ElemConnectivityList; }
 	vector<vector<int> > const * GetElemListPtr() const { return &m_ElemList; }
+	vector<vec3> const * GetElemMidpointsPtr() const { return &m_ElemMidPoints; }
 	vector<vec3> const * GetXYZListPtr() const { return &m_XYZList; }
 
 // 	Boolean_t MakeGradientBundle(vector<GradPath_c*> GPs);

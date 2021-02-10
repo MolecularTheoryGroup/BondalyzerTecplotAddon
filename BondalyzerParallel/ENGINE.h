@@ -197,3 +197,6 @@ Boolean_t CPNumbersMapBetweenZones(int AllCPsZoneNum,
 
 void TestFunction();
 
+void SymmetryMirrorGetUserInfo();
+
+int VolumeZoneMirrorPlane(int ZoneNum, int PlaneNum, vec3 Origin, VolExtentIndexWeights_s VolInfo, vector<int> XYZVarNums = { 1,2,3 });

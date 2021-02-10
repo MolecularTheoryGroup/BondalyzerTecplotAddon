@@ -31,7 +31,19 @@ int ElementCoreElectronCount(int AtomicNumber) {
 }
 
 double dot2(const vec & v) 
-{ return dot(v, v); }
+{
+	return dot(v, v);
+}
+
+std::pair<double, double> MinMax(vector<double> const & Vals) {
+	std::pair<double, double> out = std::make_pair(DBL_MAX, DBL_MIN);
+	for (auto const & v : Vals){
+		out.first = MIN(out.first, v);
+		out.second = MAX(out.second, v);
+	}
+
+	return out;
+}
 
 vec const LogSpace(double const & low, double const & high, int n){
 	return exp(linspace(log(low), log(high), n));

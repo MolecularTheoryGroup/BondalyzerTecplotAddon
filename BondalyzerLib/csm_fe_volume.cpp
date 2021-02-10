@@ -1466,7 +1466,7 @@ void FESurface_c::GenerateElemMidpoints(){
 		for (auto const & e : m_ElemList) {
 			if (e.size() > 1) {
 				m_ElemMidPoints.push_back(m_XYZList[e[0]]);
-				for (int i = 1; i < e.size(); ++i) m_ElemMidPoints.back() += e[i];
+				for (int i = 1; i < e.size(); ++i) m_ElemMidPoints.back() += m_XYZList[e[i]];
 				m_ElemMidPoints.back() /= e.size();
 			}
 		}

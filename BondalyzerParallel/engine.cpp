@@ -1085,6 +1085,7 @@ void DeleteCPsReturnUserInfo(bool const GuiSuccess,
 	if (!GuiSuccess) return;
 
 	TecUtilLockStart(AddOnID);
+	CSMGuiLock();
 
 	int fNum = 0;
 
@@ -1144,7 +1145,6 @@ void DeleteCPsReturnUserInfo(bool const GuiSuccess,
 	Set_pa ZoneNumsSet = TecUtilSetAlloc(TRUE);
 	vector<int> NewZoneNums, OldZoneNums;
 
-
 	if (DeleteFromOtherCPZones){
 		bool ZoneRun = false;
 		for (int z = 0; z < OtherCPZoneNums.size(); ++z){
@@ -1193,33 +1193,43 @@ void DeleteCPsReturnUserInfo(bool const GuiSuccess,
 
 	for (int i : NewZoneNums){
 		SetCPZone(i);
-
-		if (DeleteFromOtherCPZones && AuxDataZoneItemMatches(i, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneTypeCPsAll)){
-			Set_pa TmpSet = TecUtilSetAlloc(FALSE);
-			TecUtilSetAddMember(TmpSet, i, FALSE);
-			TecUtilZoneSetActive(TmpSet, AssignOp_MinusEquals);
-			TecUtilSetDealloc(&TmpSet);
-		}
-
 	}
 
 
 	TecUtilSetClear(ZoneNumsSet);
 	TecUtilSetAddMember(ZoneNumsSet, ZoneNum, TRUE);
-	for (int z : OtherCPZoneNums) TecUtilSetAddMember(ZoneNumsSet, z, TRUE);
+	for (int z : OtherCPZoneNums) {
+		TecUtilSetAddMember(ZoneNumsSet, z, TRUE);
+	}
 
 	TecUtilDataSetDeleteZone(ZoneNumsSet);
 
+
+	int MinZoneNumOld = TecUtilDataSetGetNumZones();
+	for (int z : OldZoneNums) {
+		MinZoneNumOld = MIN(MinZoneNumOld, z);
+	}
+	int MinZoneNumNew = TecUtilDataSetGetNumZones();
+	for (int z : NewZoneNums) {
+		MinZoneNumNew = MIN(MinZoneNumNew, z - TecUtilSetGetMemberCount(ZoneNumsSet));
+	}
+	SetZoneNum(MinZoneNumNew, MinZoneNumOld);
+
 	TecUtilSetDealloc(&ZoneNumsSet);
+	CSMGuiUnlock();
 	TecUtilLockFinish(AddOnID);
 }
 
 void DeleteCPsGetUserInfo(){
+	string OtherCPZoneSearchString = CSMZoneName.CriticalPoints;
+	for (auto s : CSMZoneName.CPType){
+		OtherCPZoneSearchString += "," + s;
+	}
 	vector<GuiField_c> Fields = {
 		GuiField_c(Gui_ZonePointSelectMulti, "Critical point(s)", CSMZoneName.CriticalPoints),
 		GuiField_c(Gui_VarSelect, "CP type", CSMVarName.CritPointType),
-		GuiField_c(Gui_Toggle, "Also delete from other CP zone(s)", "0"),
-		GuiField_c(Gui_ZoneSelectMulti, "Other CP zone(s)", CSMZoneName.CriticalPoints)
+		GuiField_c(Gui_Toggle, "Also delete from other CP zone(s)", "1"),
+		GuiField_c(Gui_ZoneSelectMulti, "Other CP zone(s)", OtherCPZoneSearchString)
 	};
 
 	CSMGui("Delete critical point(s)", Fields, DeleteCPsReturnUserInfo, AddOnID);
@@ -9707,36 +9717,55 @@ void TestFunction() {
 // 	
 
 	// Testing triangle badness
-vec3 p1 = { 1,1,1 },
-p2 = { 1,1,2 },
-p3 = { 2,1,1 };
+// vec3 p1 = { 1,1,1 },
+// p2 = { 1,1,2 },
+// p3 = { 2,1,1 };
+// 
+// double badness = TriBadness(p1, p2, p3);
+// 
+// p1 = { 1,1,1 };
+// p2 = { 1,1,2 };
+// p3 = { 1.05,1,1 };
+// 
+// badness = TriBadness(p1, p2, p3);
+// 
+// p1 = { 0,0,0 };
+// p2 = { 1,0,0 };
+// p3 = { 0.5,0.1,0 };
+// 
+// double dist = PointLineDist(p3, p1, p2);
+// 
+// p3[1] += 0.2;
+// 
+// dist = PointLineDist(p3, p1, p2);
+// 
+// tpcsm::Vec3 x0(0, 0, 0), x1(1, 0, 0), x2(0.5, 0.1, 0);
+// dist = PointLineDist(x2, x0, x1);
+// 
+// x2.y() += .2;
+// 
+// dist = PointLineDist(x2, x0, x1);
+// 
+// vec3 p = ProjectPointToLine(p3, p1, p2);
 
-double badness = TriBadness(p1, p2, p3);
+// testing symmetry mirroring of ijk-ordered rectilinear volumes
 
-p1 = { 1,1,1 };
-p2 = { 1,1,2 };
-p3 = { 1.05,1,1 };
+int ZoneNum = 1;
+string OriginStr = "0,0,0";
+vec3 Origin = vec(SplitStringDbl(OriginStr));
+vector<int> XYZVarNums = { 1,2,3 };
 
-badness = TriBadness(p1, p2, p3);
+Set DeleteZones(ZoneNum);
 
-p1 = { 0,0,0 };
-p2 = { 1,0,0 };
-p3 = { 0.5,0.1,0 };
-
-double dist = PointLineDist(p3, p1, p2);
-
-p3[1] += 0.2;
-
-dist = PointLineDist(p3, p1, p2);
-
-tpcsm::Vec3 x0(0, 0, 0), x1(1, 0, 0), x2(0.5, 0.1, 0);
-dist = PointLineDist(x2, x0, x1);
-
-x2.y() += .2;
-
-dist = PointLineDist(x2, x0, x1);
-
-vec3 p = ProjectPointToLine(p3, p1, p2);
+VolExtentIndexWeights_s VolInfo;
+GetVolInfo(ZoneNum, XYZVarNums, FALSE, VolInfo);
+ZoneNum = VolumeZoneMirrorPlane(ZoneNum, 0, Origin, VolInfo, XYZVarNums);
+DeleteZones += ZoneNum;
+GetVolInfo(ZoneNum, XYZVarNums, FALSE, VolInfo);
+VolumeZoneMirrorPlane(ZoneNum++, 1, Origin, VolInfo, XYZVarNums);
+DeleteZones += ZoneNum;
+GetVolInfo(ZoneNum, { 1,2,3 }, FALSE, VolInfo);
+VolumeZoneMirrorPlane(ZoneNum, 2, Origin, VolInfo, XYZVarNums);
 
 return;
 }
@@ -9864,3 +9893,222 @@ void GradientPathToolGetUserInfo(){
 
 	CSMGui("Gradient path tool", Fields, GradientPathToolReturnUserInfo, AddOnID);
 }
+
+/*
+ *	Duplicates an IJK-ordered volume zone representing a
+ *	rectilinear volume by mirroring it across its `PlaneNum`th basis vector
+ *	with respect to `Origin`.
+ *	Returns zone number of newly created zone.
+ *	
+ *	The input zone is assumed to be such that the origin lies at, or offset from,
+ *	the point at I=J=K=1. This means if `PlaneNum` is 0, then new points are added
+ *	for I less than 1 going in the negative direction, (0, -1, -2, -3) ect., and 
+ *	the new values at I=J=K=1 will be the value at I=Mx, J=K=1.
+ */
+int VolumeZoneMirrorPlane(int ZoneNum, int PlaneNum, vec3 Origin, VolExtentIndexWeights_s VolInfo, vector<int> XYZVarNums)
+{
+	REQUIRE(ZoneNum > 0 && ZoneNum <= TecUtilDataSetGetNumZones());
+	REQUIRE(PlaneNum >= 0 && PlaneNum <= 2);
+	REQUIRE(XYZVarNums.size() == 3);
+	for (auto XYZVarNum : XYZVarNums){
+		REQUIRE(XYZVarNum > 0 && XYZVarNum <= TecUtilDataSetGetNumVars());
+	}
+	
+	auto OriginFraction = VolInfo.XYZ_to_Fractional(Origin);
+
+	auto NewIJK = VolInfo.MaxIJK, IJK = VolInfo.MaxIJK;
+	vector<int> Offset = { 0,0,0 };
+	NewIJK[PlaneNum] *= 2;
+	if (abs(OriginFraction[PlaneNum]) < 1e-8){
+		NewIJK[PlaneNum] -= 1;
+		Offset[PlaneNum]++;
+	}
+
+	char *ZoneNameCStr;
+	TecUtilZoneGetName(ZoneNum, &ZoneNameCStr);
+	string ZoneName = ZoneNameCStr;
+	TecUtilStringDealloc(&ZoneNameCStr);
+	ZoneName += " " + to_string(PlaneNum) + "-mirrored";
+
+	vector<FieldDataType_e> VarTypes;
+	VarTypes.reserve(TecUtilDataSetGetNumVars());
+	vector<FieldDataPointer_c> ReadPtrs(TecUtilDataSetGetNumVars()), WritePtrs(TecUtilDataSetGetNumVars());
+
+	TecUtilDataLoadBegin();
+
+	for (int v = 1; v <= TecUtilDataSetGetNumVars(); ++v){
+		ReadPtrs[v - 1].GetReadPtr(ZoneNum, v);
+		VarTypes.push_back(ReadPtrs[v - 1].FDType());
+	}
+
+	int NewZoneNum = -1;
+	if (TecUtilDataSetAddZone(ZoneName.c_str(), NewIJK[0], NewIJK[1], NewIJK[2], ZoneType_Ordered, VarTypes.data())){
+		NewZoneNum = TecUtilDataSetGetNumZones();
+	}
+	else{
+		TecUtilDialogErrMsg("Failed to create new zone for symmetry mirroring!");
+		return -1;
+	}
+
+	for (int v = 1; v <= TecUtilDataSetGetNumVars(); ++v) {
+		WritePtrs[v - 1].GetWritePtr(NewZoneNum, v);
+	}
+
+	FieldVecPointer_c XYZPtr(vector<FieldDataPointer_c>({ ReadPtrs[XYZVarNums[0] - 1], ReadPtrs[XYZVarNums[1] - 1], ReadPtrs[XYZVarNums[2] - 1] })),
+		NewXYZPtr(vector<FieldDataPointer_c>({ WritePtrs[XYZVarNums[0] - 1], WritePtrs[XYZVarNums[1] - 1], WritePtrs[XYZVarNums[2] - 1] }));
+
+#ifndef _DEBUG
+#pragma omp parallel for
+#endif
+	for (int i = 1; i <= IJK[0]; ++i){
+		for (int j = 1; j <= IJK[1]; ++j){
+			for (int k = 1; k <= IJK[2]; ++k){
+				int ReadIndex = IndexFromIJK(i, j, k, IJK[0], IJK[1], IJK[2], FALSE) - 1;
+				vec3 PtFrac = VolInfo.XYZ_to_Fractional(XYZPtr[ReadIndex]);
+				vec3 PtNewFrac = PtFrac;
+				PtNewFrac[PlaneNum] = OriginFraction[PlaneNum] - (PtFrac - OriginFraction)[PlaneNum];
+				vec3 PtNew = VolInfo.Fractional_to_XYZ(PtNewFrac);
+				
+				vector<int> PtOldIJK = { i,j,k }, 
+					PtNewIJK = PtOldIJK;
+
+				if (Offset[PlaneNum] && PtOldIJK[PlaneNum] == 1){
+					// a point on the symmetry plane, so just write it to its new position
+					PtOldIJK[PlaneNum] = IJK[PlaneNum];
+					int PtOldIndex = IndexFromIJK(PtOldIJK[0], PtOldIJK[1], PtOldIJK[2], NewIJK[0], NewIJK[1], NewIJK[2], FALSE) - 1;
+					for (int vi = 0; vi < ReadPtrs.size(); ++vi) {
+						WritePtrs[vi].Write(PtOldIndex, ReadPtrs[vi][ReadIndex]);
+					}
+				}
+				else {
+					PtNewIJK[PlaneNum] = IJK[PlaneNum] + 1 - PtOldIJK[PlaneNum];// -Offset[PlaneNum];
+					PtOldIJK[PlaneNum] += IJK[PlaneNum] - Offset[PlaneNum];
+					int PtOldIndex = IndexFromIJK(PtOldIJK[0], PtOldIJK[1], PtOldIJK[2], NewIJK[0], NewIJK[1], NewIJK[2], FALSE) - 1,
+						PtNewIndex = IndexFromIJK(PtNewIJK[0], PtNewIJK[1], PtNewIJK[2], NewIJK[0], NewIJK[1], NewIJK[2], FALSE) - 1;
+					// First copy the original point to its old and new positions
+					for (int vi = 0; vi < ReadPtrs.size(); ++vi) {
+						WritePtrs[vi].Write(PtOldIndex, ReadPtrs[vi][ReadIndex]);
+						WritePtrs[vi].Write(PtNewIndex, ReadPtrs[vi][ReadIndex]);
+					}
+					// Then write the new XYZ values
+					NewXYZPtr.Write(PtNewIndex, PtNew);
+				}
+			}
+		}
+	}
+
+// 	for (int i = 1 + Offset[0]; i <= IJK[0]; ++i) {
+// 		for (int j = 1 + Offset[1]; j <= IJK[1]; ++j) {
+// 			for (int k = 1 + Offset[2]; k <= IJK[2]; ++k) {
+// 				int ReadIndex = IndexFromIJK(i, j, k, IJK[0], IJK[1], IJK[2], FALSE) - 1;
+// 				vec3 PtFrac = VolInfo.XYZ_to_Fractional(XYZPtr[ReadIndex]);
+// 				vec3 PtNewFrac = PtFrac;
+// 				PtNewFrac[PlaneNum] = OriginFraction[PlaneNum] - (PtFrac - OriginFraction)[PlaneNum];
+// 				vec3 PtNew = VolInfo.Fractional_to_XYZ(PtNewFrac);
+// 
+// 				vector<int> PtOldIJK = { i,j,k },
+// 					PtNewIJK = PtOldIJK;
+// 				PtNewIJK[PlaneNum] = IJK[PlaneNum] + 1 - PtOldIJK[PlaneNum] - Offset[PlaneNum];
+// 				PtOldIJK[PlaneNum] += IJK[PlaneNum] - Offset[PlaneNum];
+// 				int PtOldIndex = IndexFromIJK(PtOldIJK[0], PtOldIJK[1], PtOldIJK[2], NewIJK[0], NewIJK[1], NewIJK[2], FALSE) - 1,
+// 					PtNewIndex = IndexFromIJK(PtNewIJK[0], PtNewIJK[1], PtNewIJK[2], NewIJK[0], NewIJK[1], NewIJK[2], FALSE) - 1;
+// 				// First copy the original point to its old and new positions
+// 				for (int vi = 0; vi < ReadPtrs.size(); ++vi) {
+// 					WritePtrs[vi].Write(PtOldIndex, ReadPtrs[vi][ReadIndex]);
+// 					WritePtrs[vi].Write(PtNewIndex, ReadPtrs[vi][ReadIndex]);
+// 				}
+// 				// Then write the new XYZ values
+// 				NewXYZPtr.Write(PtNewIndex, PtNew);
+// 			}
+// 		}
+// 	}
+
+	TecUtilDataLoadEnd();
+
+	return NewZoneNum;
+}
+
+void SymmetryMirrorReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+
+	int fNum = 0;
+
+	int VolZoneNum = Fields[fNum++].GetReturnInt();
+	vector<bool> MirrorXYZ(3);
+	vector<int> XYZVarNums(3);
+	for (int i = 0; i < 3; ++i){
+		MirrorXYZ[i] = Fields[fNum++].GetReturnBool();
+		XYZVarNums[i] = Fields[fNum++].GetReturnInt();
+	}
+// 	int XVarNum = Fields[fNum++].GetReturnInt();
+	string OriginStr = Fields[fNum++].GetReturnString();
+	auto OriginVec = SplitStringDbl(OriginStr);
+	if (OriginVec.size() != 3){
+		TecUtilDialogErrMsg("Provide the symmetry origin as three comma-delimited numbers e.g. \'0.5,-0.5,1.5\'");
+		SymmetryMirrorGetUserInfo();
+		return;
+	}
+	vec3 Origin = vec(OriginVec);
+// 	vector<int> XYZVarNums = { 1,2,3 };
+// 	for (int i = 0; i < 3; ++i){
+// 		XYZVarNums[i] = XVarNum + i;
+// 	}
+
+	int ZoneNum = VolZoneNum;
+
+	Set DeleteZones;
+
+	TecUtilLockStart(AddOnID);
+	CSMGuiLock();
+
+	VolExtentIndexWeights_s VolInfo;
+	for (int i = 0; i < 3; ++i) {
+		if (MirrorXYZ[i]) {
+			GetVolInfo(ZoneNum, XYZVarNums, FALSE, VolInfo);
+			DeleteZones += ZoneNum;
+			ZoneNum = VolumeZoneMirrorPlane(ZoneNum, i, Origin, VolInfo, XYZVarNums);
+		}
+	}
+// 	GetVolInfo(ZoneNum, XYZVarNums, FALSE, VolInfo);
+// 	ZoneNum = VolumeZoneMirrorPlane(ZoneNum, 1, Origin, VolInfo, XYZVarNums);
+// 	DeleteZones += ZoneNum;
+// 	GetVolInfo(ZoneNum, { 1,2,3 }, FALSE, VolInfo);
+// 	ZoneNum = VolumeZoneMirrorPlane(ZoneNum, 2, Origin, VolInfo, XYZVarNums);
+
+	TecUtilZoneSetActive(Set(ZoneNum).getRef(), AssignOp_PlusEquals);
+
+	char *ZoneNameCStr;
+	TecUtilZoneGetName(VolZoneNum, &ZoneNameCStr);
+	TecUtilZoneRename(ZoneNum, ZoneNameCStr);
+	TecUtilStringDealloc(&ZoneNameCStr);
+
+	if (!DeleteZones.isEmpty()) {
+		TecUtilDataSetDeleteZone(DeleteZones.getRef());
+	}
+
+	SetZoneNum();
+
+	CSMGuiUnlock();
+	TecUtilLockFinish(AddOnID);
+
+	return;
+}
+
+void SymmetryMirrorGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelect, "Zone to mirror", CSMZoneName.FullVolume),
+		GuiField_c(Gui_Toggle, "Mirror in \"X\" direction", "1"),
+		GuiField_c(Gui_VarSelect, "X variable", "X"),
+		GuiField_c(Gui_Toggle, "Mirror in \"Y\" direction", "1"),
+		GuiField_c(Gui_VarSelect, "Y variable", "Y"),
+		GuiField_c(Gui_Toggle, "Mirror in \"Z\" direction", "1"),
+		GuiField_c(Gui_VarSelect, "Z variable", "Z"),
+		GuiField_c(Gui_String, "Symmetry origin", "0,0,0")
+	};
+
+	CSMGui("Symmetry mirror volume zone", Fields, SymmetryMirrorReturnUserInfo, AddOnID);
+}
+

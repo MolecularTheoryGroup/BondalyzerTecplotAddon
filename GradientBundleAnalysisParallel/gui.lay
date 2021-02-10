@@ -1656,7 +1656,7 @@ $!ATTACHTEXT
   ANCHORPOS
     {
     X = 70.87004297530632
-    Y = 73.40052498227711
+    Y = 70.60445276011222
     }
   TEXTSHAPE
     {
@@ -1674,7 +1674,7 @@ $!ATTACHTEXT
   ANCHORPOS
     {
     X = 70.90688657284781
-    Y = 79.85789694679021
+    Y = 77.06182472462534
     }
   TEXTSHAPE
     {
@@ -1819,8 +1819,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 69.78026940083716
-    Y = 26.64934138981628
+    X = 69.78026940083714
+    Y = 26.64934138981634
     }
   TEXTSHAPE
     {
@@ -1831,7 +1831,7 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=TGLExGBs Type=Toggle'
-  TEXT = '<math>7</math>   Include individual GBs'
+  TEXT = '<math>7</math>   Include ALL individual GBs'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -1922,7 +1922,7 @@ $!ATTACHTEXT
   ANCHORPOS
     {
     X = 70.7527284309357
-    Y = 86.37848188943363
+    Y = 83.40050994788528
     }
   TEXTSHAPE
     {
@@ -1935,7 +1935,7 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=BTNFndBas Type=PushButton'
-  TEXT = 'Find Gradient Bundles'
+  TEXT = 'Find Special \nGradient Bundles'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -2054,6 +2054,23 @@ $!ATTACHTEXT
     }
   MACROFUNCTIONCOMMAND = 'VarName=LBLRadLab Type=Label'
   TEXT = 'Label'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 70.08041831124258
+    Y = 22.59849222278298
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL29 Type=Label'
+  TEXT = 'Uncheck to only include active.'
 $!ATTACHGEOM 
   GEOMTYPE = RECTANGLE
   POSITIONCOORDSYS = FRAME
