@@ -26,6 +26,7 @@
 #include "CSM_FE_VOLUME.h"
 #include "CSM_GUI.h"
 #include "VIEWRESULTS.h"
+#include "CSM_GBAGUI.h"
 
 using namespace arma;
 using namespace tecplot::toolbox;
@@ -415,14 +416,16 @@ void GBAResultViewerSelectCondensedGBs() {
 
 		// 		TecUtilDataLoadEnd();
 	}
-	else if (TecGUIListGetItemCount(MLSelGB_MLST_T3_1) == 0) {
+	else{// if (TecGUIListGetItemCount(MLSelGB_MLST_T3_1) == 0) {
 		// 		TecUtilDataLoadBegin();
 
 		EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 
 		for (EntIndex_t ZoneNum = 1; ZoneNum <= NumZones && IsOk; ++ZoneNum) {
 			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasinWedge)
-				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasinWedge))
+				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasinWedge)
+				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin)
+				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin))
 			{
 				DeactivateSet += ZoneNum;
 			}
@@ -785,7 +788,13 @@ void GBAResultViewerActivateAllGB(){
 		else{
 			TecUtilZoneSetActive(ActivateSet, AssignOp_PlusEquals);
 			int NumGBAtoms = TecGUIListGetItemCount(MLSelGB_MLST_T3_1);
-			if (NumGBAtoms > 0) {
+			LgIndex_t *selected, numselected;
+			TecGUIListGetSelectedItems(MLSelGB_MLST_T3_1, &selected, &numselected);
+			if (numselected == TecGUIListGetItemCount(MLSelGB_MLST_T3_1)){
+				ListDeselect(MLSelGB_MLST_T3_1);
+				GBAResultViewerSelectCondensedGBs();
+			}
+			else if (NumGBAtoms > 0) {
 				vector<int> SelNums(NumGBAtoms);
 				for (int i = 1; i <= NumGBAtoms; ++i)
 					SelNums[i - 1] = i;
@@ -1343,14 +1352,14 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
 void ExportGBAData(){
 	if ((TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0 && TecGUIToggleGet(TGLExGBs_TOG_T3_1)) || TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
 		char* FolderNameCStr;
+		vector<int> IntVarNums;
+		vector<string> IntVarNames;
 		if (TecUtilDialogGetFolderName("Select folder to save files", &FolderNameCStr)) {
 			string FolderName = FolderNameCStr;
 			TecUtilStringDealloc(&FolderNameCStr);
 			if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
 				if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
 					Boolean_t IncludeAllGBs = !TecGUIToggleGet(TGLExGBs_TOG_T3_1);
-					vector<int> IntVarNums;
-					vector<string> IntVarNames;
 					vector<string> IntCheckStrs = { "I: ", "IN: ", "INS: ", " Integration" };
 					for (int VarNum = 1; VarNum <= TecUtilDataSetGetNumVars(); ++VarNum) {
 						char *VarName, *CheckStr;
@@ -1424,7 +1433,7 @@ void ExportGBAData(){
 
 										vector<FieldDataPointer_c> Ptrs(IntVarNums.size());
 										for (int i = 0; i < IntVarNums.size(); ++i)
-											Ptrs[i].GetReadPtr(ZoneNum, IntVarNums[i]);
+											Ptrs[i].InitializeReadPtr(ZoneNum, IntVarNums[i]);
 
 										for (int i = 0; i < Ptrs.size(); ++i) {
 											OutFile << IntVarNames[i] << "," << i + 1 << ",";
@@ -1785,7 +1794,7 @@ bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin){
 
 		// Just use nuclear CP closest to sphere node midpoint, since changes to zones can break the commented code below.
 		FieldVecPointer_c SphereXYZ;
-		SphereXYZ.GetReadPtr(SphereZoneNum, XYZVarNums);
+		SphereXYZ.InitializeReadPtr(SphereZoneNum, XYZVarNums);
 		vec3 SphereMaxXYZ = vec3() * DBL_MIN,
 			SphereMinXYZ = vec3() * DBL_MAX;
 		vec3 SphereMidPoint = { 0,0,0 };
@@ -1804,7 +1813,7 @@ bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin){
 		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
 			if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.CPSubTypes[0])) {
 				FieldVecPointer_c CPsXYZ;
-				CPsXYZ.GetReadPtr(z, XYZVarNums);
+				CPsXYZ.InitializeReadPtr(z, XYZVarNums);
 				for (int i = 0; i < CPsXYZ.Size(); ++i) {
 					double TmpDistSqr = DistSqr(CPsXYZ[i], SphereMidPoint);
 					if (TmpDistSqr < MinDistSqr) {
@@ -1875,7 +1884,7 @@ void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t Ab
 			for (auto zi : ZoneNums) {
 				FieldVecPointer_c XYZPtr;
 				TecUtilDataLoadBegin();
-				XYZPtr.GetWritePtr(zi, XYZVarNums);
+				XYZPtr.InitializeWritePtr(zi, XYZVarNums);
 				int NumNodes = XYZPtr.Size();
 
 #pragma omp parallel for
@@ -1887,7 +1896,7 @@ void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t Ab
 
 			FieldVecPointer_c XYZPtr;
 			TecUtilDataLoadBegin();
-			XYZPtr.GetWritePtr(z, XYZVarNums);
+			XYZPtr.InitializeWritePtr(z, XYZVarNums);
 			int NumNodes = XYZPtr.Size();
 
 #pragma omp parallel for

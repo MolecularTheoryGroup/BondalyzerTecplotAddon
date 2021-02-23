@@ -111,7 +111,7 @@ string GetNucleusNameForCP(vec3 const & CPPt, vector<int> const XYZVarNums = { 1
 	for (int z = 1; z <= NumZones; ++z) {
 		if (AuxDataZoneItemMatches(z, CSMAuxData.DL.ZoneType, CSMAuxData.DL.ZoneTypeNuclearPositions)) {
 			FieldVecPointer_c XYZPtr;
-			if (XYZPtr.GetReadPtr(z, XYZVarNums)) {
+			if (XYZPtr.InitializeReadPtr(z, XYZVarNums)) {
 				for (int i = 0; i < XYZPtr.Size(); ++i) {
 					TmpDist = DistSqr(XYZPtr[i], CPPt);
 					if (TmpDist < MinDist) {
@@ -4987,7 +4987,7 @@ void NewMainFunction() {
 			TmpString = ProgressStr2.str() + "Integrating";
 
 			for (int i = 0; i < IntVarPtrs.size(); ++i) {
-				IsOk = IntVarPtrs[i].GetReadPtr(VolZoneNum, IntVarNumList[i]);
+				IsOk = IntVarPtrs[i].InitializeReadPtr(VolZoneNum, IntVarNumList[i]);
 			}
 
 			Time1 = high_resolution_clock::now();
@@ -5272,7 +5272,7 @@ void NewMainFunction() {
 
 			if (RadialSphereApprx) {
 				Sphere = FESurface_c(SphereNodes, SphereElems);
-				vec SphereTriangleAreas(Sphere.TriSphereElemAreas());
+				vec SphereTriangleAreas(Sphere.TriSphereElemSolidAngles());
 				double TotalArea = sum(SphereTriangleAreas);
 				vec SphereTriangleAreaFactors = SphereTriangleAreas / TotalArea;
 				SphereTotalIntVals = vector<double>(SphereIntVals[0].size(), 0.0);
@@ -5393,18 +5393,18 @@ void NewMainFunction() {
 // 				IntVarNameList.emplace_back("Volume Te Per Valence Electron");
 			IntVarNameList.emplace_back("Volume Condensed Charge");
 		}
-		IntVarNameList.emplace_back("P over N");
-		IntVarNameList.emplace_back("P/(N alpha)"); // shannon condensed entropy
-		IntVarNameList.emplace_back("S[P]"); // shannon condensed entropy
-// 		IntVarNameList.emplace_back("S[N alpha P]"); // shannon condensed entropy
-// 		IntVarNameList.emplace_back("S[N P]"); // shannon condensed entropy
-// 		IntVarNameList.emplace_back("S[alpha P]"); // shannon condensed entropy
-// 		IntVarNameList.emplace_back("S[P / (N alpha)]"); // shannon condensed entropy
-// 		IntVarNameList.emplace_back("S[P / N]"); // shannon condensed entropy
-		IntVarNameList.emplace_back("S[P / alpha]"); // shannon condensed entropy
-		IntVarNameList.emplace_back("S[alpha]"); // shannon condensed entropy
-		IntVarNameList.emplace_back("S[P] / S[alpha]"); // shannon condensed entropy over max entropy
-		IntVarNameList.emplace_back("S[alpha] - S[P]"); // shannon condensed entropy over max entropy
+// 		IntVarNameList.emplace_back("P over N");
+// 		IntVarNameList.emplace_back("P/(N alpha)"); // shannon condensed entropy
+// 		IntVarNameList.emplace_back("S[P]"); // shannon condensed entropy
+// // 		IntVarNameList.emplace_back("S[N alpha P]"); // shannon condensed entropy
+// // 		IntVarNameList.emplace_back("S[N P]"); // shannon condensed entropy
+// // 		IntVarNameList.emplace_back("S[alpha P]"); // shannon condensed entropy
+// // 		IntVarNameList.emplace_back("S[P / (N alpha)]"); // shannon condensed entropy
+// // 		IntVarNameList.emplace_back("S[P / N]"); // shannon condensed entropy
+// 		IntVarNameList.emplace_back("S[P / alpha]"); // shannon condensed entropy
+// 		IntVarNameList.emplace_back("S[alpha]"); // shannon condensed entropy
+// 		IntVarNameList.emplace_back("S[P] / S[alpha]"); // shannon condensed entropy over max entropy
+// 		IntVarNameList.emplace_back("S[alpha] - S[P]"); // shannon condensed entropy over max entropy
 
 		/*
 		 *	Now collect and save integration values
@@ -5632,7 +5632,7 @@ void NewMainFunction() {
 // 		Sphere.DoIntegrationNew(IntResolution - 1, TRUE);
 		
 
-		vec SphereTriangleAreas(Sphere.TriSphereElemAreas());
+		vec SphereTriangleAreas(Sphere.TriSphereElemSolidAngles());
 		double TotalArea = sum(SphereTriangleAreas);
 		vec SphereTriangleAreaFactors = SphereTriangleAreas / TotalArea;
 
@@ -5689,30 +5689,30 @@ void NewMainFunction() {
 				IntVals[i].push_back((TotalDensity * IntVals[i][VolumeFractionNumInVarList]) - IntVals[i][DensityVarNumInIntList]); // Volume condensed charge
 			}
 		}
-		double OneOverTotalDensity = 1.0 / TotalDensity;
-		for (int i = 0; i < NumElems; ++i) {
-			double val, prob = IntVals[i][DensityVarNumInIntList] * OneOverTotalDensity;
-			IntVals[i].push_back(prob); // P over N
-			val = prob / SphereTriangleAreaFactors[i]; // P/(N alpha)
-			IntVals[i].push_back(val);
-			IntVals[i].push_back(-prob * log(prob)); // S[P] shannon condensed entropy
-// 			double val = prob * SphereTriangleAreaFactors[i] * (double)NumElems; // S[N alpha P]
-// 			IntVals[i].push_back(-val * log(val)); 
-// 			val = prob * (double)NumElems; // S[N P]
-// 			IntVals[i].push_back(-val * log(val)); 
-// 			val = prob * SphereTriangleAreaFactors[i]; // S[alpha P]
-// 			IntVals[i].push_back(-val * log(val)); 
-// 			val = prob / (SphereTriangleAreaFactors[i] * (double)NumElems); // S[P / (N alpha)]
-// 			IntVals[i].push_back(-val * log(val)); 
-// 			val = prob / (double)NumElems; // S[P / N]
-// 			IntVals[i].push_back(-val * log(val)); 
-			val = prob / SphereTriangleAreaFactors[i]; // S[P / alpha]
-			IntVals[i].push_back(-val * log(val));
-			val = SphereTriangleAreaFactors[i]; // S[alpha]
-			IntVals[i].push_back(-val * log(val));
-			IntVals[i].push_back((-prob * log(prob)) / (-val * log(val)));
-			IntVals[i].push_back((-val * log(val)) - (-prob * log(prob)));
-		}
+// 		double OneOverTotalDensity = 1.0 / TotalDensity;
+// 		for (int i = 0; i < NumElems; ++i) {
+// 			double val, prob = IntVals[i][DensityVarNumInIntList] * OneOverTotalDensity;
+// 			IntVals[i].push_back(prob); // P over N
+// 			val = prob / SphereTriangleAreaFactors[i]; // P/(N alpha)
+// 			IntVals[i].push_back(val);
+// 			IntVals[i].push_back(-prob * log(prob)); // S[P] shannon condensed entropy
+// // 			double val = prob * SphereTriangleAreaFactors[i] * (double)NumElems; // S[N alpha P]
+// // 			IntVals[i].push_back(-val * log(val)); 
+// // 			val = prob * (double)NumElems; // S[N P]
+// // 			IntVals[i].push_back(-val * log(val)); 
+// // 			val = prob * SphereTriangleAreaFactors[i]; // S[alpha P]
+// // 			IntVals[i].push_back(-val * log(val)); 
+// // 			val = prob / (SphereTriangleAreaFactors[i] * (double)NumElems); // S[P / (N alpha)]
+// // 			IntVals[i].push_back(-val * log(val)); 
+// // 			val = prob / (double)NumElems; // S[P / N]
+// // 			IntVals[i].push_back(-val * log(val)); 
+// 			val = prob / SphereTriangleAreaFactors[i]; // S[P / alpha]
+// 			IntVals[i].push_back(-val * log(val));
+// 			val = SphereTriangleAreaFactors[i]; // S[alpha]
+// 			IntVals[i].push_back(-val * log(val));
+// 			IntVals[i].push_back((-prob * log(prob)) / (-val * log(val)));
+// 			IntVals[i].push_back((-val * log(val)) - (-prob * log(prob)));
+// 		}
 
 		/*
 		 *	Get the normalized and normalized+scaled values
@@ -5816,7 +5816,7 @@ void NewMainFunction() {
 
 		vector<FieldDataPointer_c> Ptrs(IntVals[0].size());
 		for (int j = 0; j < Ptrs.size(); ++j) {
-			Ptrs[j].GetWritePtr(SphereZoneNum, NewVarNums[j]);
+			Ptrs[j].InitializeWritePtr(SphereZoneNum, NewVarNums[j]);
 		}
 
 		// Write cell-centered integration values to sphere and FE zones
@@ -5898,7 +5898,7 @@ void NewMainFunction() {
 // 							}
 
 // 							FieldDataPointer_c tmpPtr;
-// 							tmpPtr.GetWritePtr(GradientBundle.GetZoneNum(), NewVarNums[vi]);
+// 							tmpPtr.InitializeWritePtr(GradientBundle.GetZoneNum(), NewVarNums[vi]);
 // 							for (int i = 0; i < tmpPtr.Size(); ++i){
 // 								tmpPtr.Write(i, IntVals[ti][vi]);
 // 							}
@@ -6071,7 +6071,7 @@ void NewMainFunction() {
 								// 							}
 
 								// 							FieldDataPointer_c tmpPtr;
-								// 							tmpPtr.GetWritePtr(GradientBundle.GetZoneNum(), NewVarNums[vi]);
+								// 							tmpPtr.InitializeWritePtr(GradientBundle.GetZoneNum(), NewVarNums[vi]);
 								// 							for (int i = 0; i < tmpPtr.Size(); ++i){
 								// 								tmpPtr.Write(i, IntVals[ti][vi]);
 								// 							}
@@ -6266,14 +6266,14 @@ void GenerateCondensedVariables(int SphereZoneNum, int CondensedRhoVarNum) {
 	}
 
 
-	vec SphereTriangleAreas(Sphere.TriSphereElemAreas());
+	vec SphereTriangleAreas(Sphere.TriSphereElemSolidAngles());
 	double TotalArea = sum(SphereTriangleAreas);
 	vec SphereTriangleAreaFactors = SphereTriangleAreas / TotalArea;
 
 	FieldDataPointer_c CondensedRhoReadPtr;
 	
 	TecUtilDataLoadBegin();
-	CondensedRhoReadPtr.GetReadPtr(SphereZoneNum, CondensedRhoVarNum);
+	CondensedRhoReadPtr.InitializeReadPtr(SphereZoneNum, CondensedRhoVarNum);
 
 
 	TecUtilDataLoadEnd();
@@ -6446,7 +6446,7 @@ void GenerateCondensedVariables(int SphereZoneNum, int CondensedRhoVarNum) {
 // 
 // 		IntVarPtrs.resize(IntVarNumList.size());
 // 		for (int i = 0; i < IntVarPtrs.size(); ++i){
-// 			IsOk = IntVarPtrs[i].GetReadPtr(VolZoneNum, IntVarNumList[i]);
+// 			IsOk = IntVarPtrs[i].InitializeReadPtr(VolZoneNum, IntVarNumList[i]);
 // 		}
 // 	}
 // 	
@@ -7320,10 +7320,10 @@ void GenerateCondensedVariables(int SphereZoneNum, int CondensedRhoVarNum) {
 // 
 // 		for (int i = 0; i < 4 && IsOk; ++i){
 // 			if (i == 0){
-// 				IsOk = RhoRawPtr.GetReadPtr(VolZoneNum, CutoffVarNum);
+// 				IsOk = RhoRawPtr.InitializeReadPtr(VolZoneNum, CutoffVarNum);
 // 			}
 // 			else{
-// 				IsOk = GradRawPtrs[i - 1].GetReadPtr(VolZoneNum, GradXYZVarNums[i - 1]);
+// 				IsOk = GradRawPtrs[i - 1].InitializeReadPtr(VolZoneNum, GradXYZVarNums[i - 1]);
 // 			}
 // 		}
 // 
@@ -8411,7 +8411,7 @@ void GenerateCondensedVariables(int SphereZoneNum, int CondensedRhoVarNum) {
 // 
 // 			vector<FieldDataPointer_c> Ptrs(SphereElemIntVals[0].size());
 // 			for (int j = 0; j < Ptrs.size(); ++j) {
-// 				Ptrs[j].GetWritePtr(Sphere.GetZoneNum(), NewVarNums[j]);
+// 				Ptrs[j].InitializeWritePtr(Sphere.GetZoneNum(), NewVarNums[j]);
 // 			}
 // 
 // 			// Write cell-centered integration values to sphere and FE zones
@@ -8731,9 +8731,9 @@ void GradPathTest(){
 	FieldDataPointer_c RhoPtr;
 
 	for (int i = 0; i < 3; ++i){
-		GradPtrs[i].GetReadPtr(VolZoneNum, GradVarNums[i]);
+		GradPtrs[i].InitializeReadPtr(VolZoneNum, GradVarNums[i]);
 	}
-	RhoPtr.GetReadPtr(VolZoneNum, RhoVarNum);
+	RhoPtr.InitializeReadPtr(VolZoneNum, RhoVarNum);
 
 	//Vec3_c StartPoint(-6.4627935942777901, 1.5801340272202937, -0.40415061637454408);
 	vec3 StartPoint;
@@ -8836,6 +8836,8 @@ void ElemWiseGradPath(int StartingElem,
 
 	return;
 }
+
+
 
 void GetSphereBasinIntegrations(FESurface_c const & Sphere,
 									vector<vector<double> > const & ElemIntVals,
@@ -9233,14 +9235,14 @@ void FindSphereBasins() {
 
 			for (int i = 0; i < 4 && IsOk; ++i) {
 				if (i == 0) {
-					IsOk = RhoRawPtr.GetReadPtr(VolZoneNum, CutoffVarNum);
+					IsOk = RhoRawPtr.InitializeReadPtr(VolZoneNum, CutoffVarNum);
 				}
 				else {
 					if (GradXYZVarNums[i] <= 0) {
 						GradRawPtrs.clear();
 						break;
 					}
-					IsOk = GradRawPtrs[i - 1].GetReadPtr(VolZoneNum, GradXYZVarNums[i - 1]);
+					IsOk = GradRawPtrs[i - 1].InitializeReadPtr(VolZoneNum, GradXYZVarNums[i - 1]);
 				}
 			}
 
@@ -9817,10 +9819,10 @@ void CreateCircularGBsProbeCB(Boolean_t WasSuccessful, Boolean_t IsNearestPoint,
 				// Write rho values to each node on the GB
 
 				FieldVecPointer_c SurfXYZPtr;
-				SurfXYZPtr.GetReadPtr(SurfZoneNum, ClientDataStruct.XYZVarNums);
+				SurfXYZPtr.InitializeReadPtr(SurfZoneNum, ClientDataStruct.XYZVarNums);
 
 				FieldDataPointer_c SurfRhoPtr;
-				SurfRhoPtr.GetWritePtr(SurfZoneNum, ClientDataStruct.RhoVarNum);
+				SurfRhoPtr.InitializeWritePtr(SurfZoneNum, ClientDataStruct.RhoVarNum);
 
 				int NumNodes = SurfXYZPtr.Size();
 				vector<VolExtentIndexWeights_s> ThVolInfo(omp_get_num_procs(), ClientDataStruct.VolInfo);

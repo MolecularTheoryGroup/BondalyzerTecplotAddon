@@ -877,6 +877,10 @@ void CSMLaunchGui(string const & Title,
 			f.SetID(TecGUIVertSeparatorAdd(CSMGuiDialogManager, X, Y, VertSpacing));
 			Y += VertSpacing * 2;
 		}
+		else if (t == Gui_Label) {
+			TecGUILabelAdd(CSMGuiDialogManager, X, Y + VertSpacing * 0.5, f.GetLabel().c_str());
+			Y += LineHeight + VertSpacing;
+		}
 		fNum++;
 	}
 

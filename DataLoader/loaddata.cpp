@@ -757,7 +757,7 @@ Boolean_t LoadVASPData(){
 			StatusLaunch("Loading data into dataset...", AddOnID, TRUE);
 
 			for (EntIndex_t VarNum = 0; VarNum < NumVars; ++VarNum)
-				VarRawPtrs[VarNum].GetWritePtr(VolZoneNum, VarNum + 1);
+				VarRawPtrs[VarNum].InitializeWritePtr(VolZoneNum, VarNum + 1);
 
 			Boolean_t TaskQuit = FALSE;
 
@@ -2889,7 +2889,7 @@ void LoadBANDTape41Data(){
 
 	vector<FieldDataPointer_c> VarRawPtrs(NumVars);
 	for (EntIndex_t VarNum = 0; VarNum < NumVars; ++VarNum)
-		VarRawPtrs[VarNum].GetWritePtr(VolZoneNum, VarNum + 1);
+		VarRawPtrs[VarNum].InitializeWritePtr(VolZoneNum, VarNum + 1);
 
 	int TotalPoints = MaxK * NCellsZ / numCPU;
 
@@ -3534,7 +3534,7 @@ void MakeDensfScriptForZones(){
 		int ZoneNum = ZoneNumByName(ZoneNameList[SelZoneNum]);
 
 		for (int i = 0; i < 3 && IsOk; ++i){
-			IsOk = XYZPtrs[SelZoneNum][i].GetReadPtr(ZoneNum, XYZVarNums[i]);
+			IsOk = XYZPtrs[SelZoneNum][i].InitializeReadPtr(ZoneNum, XYZVarNums[i]);
 		}
 		int NumSigFigs = (XYZPtrs[SelZoneNum][0].FDType() == FieldDataType_Double ? 18 : 10);
 
@@ -4135,22 +4135,22 @@ Boolean_t LoadADFTape21(){
 
 		Tmp = ZoneNumByName(T21Prefix + "Geometry%cum nr of atoms");
 		if (Tmp > 0)
-			IsOk = CumAtomNumPtr.GetReadPtr(Tmp, ImportDataVarNum);
+			IsOk = CumAtomNumPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 		else IsOk = FALSE;
 
 		Tmp = ZoneNumByName(T21Prefix + "Geometry%xyz");
 		if (Tmp > 0)
-			IsOk = AtomXYZPtr.GetReadPtr(Tmp, ImportDataVarNum);
+			IsOk = AtomXYZPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 		else IsOk = FALSE;
 
 		Tmp = ZoneNumByName(T21Prefix + "Geometry%atomtype total charge");
 		if (Tmp > 0)
-			IsOk = AtomChgPtr.GetReadPtr(Tmp, ImportDataVarNum);
+			IsOk = AtomChgPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 		else IsOk = FALSE;
 
 		Tmp = ZoneNumByName(T21Prefix + "Geometry%atom order index");
 		if (Tmp > 0)
-			AtomOrderIndex.GetReadPtr(Tmp, ImportDataVarNum);
+			AtomOrderIndex.InitializeReadPtr(Tmp, ImportDataVarNum);
 		else IsOk = FALSE;
 
 		int NumAtoms;
@@ -4268,17 +4268,17 @@ Boolean_t LoadADFTape21(){
 
 		Tmp = ZoneNumByName(T21Prefix + "Geometry%guibondatoms");
 		if (Tmp > 0)
-			BondAtomNumPtr.GetReadPtr(Tmp, ImportDataVarNum);
+			BondAtomNumPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 		else IsOk = FALSE;
 
 		Tmp = ZoneNumByName(T21Prefix + "Geometry%guibondtypes");
 		if (Tmp > 0)
-			BondTypePtr.GetReadPtr(Tmp, ImportDataVarNum);
+			BondTypePtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 		else IsOk = FALSE;
 
 		Tmp = ZoneNumByName(T21Prefix + "Geometry%xyz InputOrder");
 		if (Tmp > 0)
-			AtomXYZInputOrderPtr.GetReadPtr(Tmp, ImportDataVarNum);
+			AtomXYZInputOrderPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 		else IsOk = FALSE;
 
 		/*
@@ -4294,7 +4294,7 @@ Boolean_t LoadADFTape21(){
 		TecUtilZoneSetScatter(SV_SHOW, GUIBondMidpointZoneSet, 0.0, TRUE);
 		TecUtilZoneSetActive(GUIBondMidpointZoneSet, AssignOp_MinusEquals);
 		FieldVecPointer_c GUIBondMidpointZoneXYZPtr;
-		GUIBondMidpointZoneXYZPtr.GetWritePtr(ZoneNum, { 1,2,3 });
+		GUIBondMidpointZoneXYZPtr.InitializeWritePtr(ZoneNum, { 1,2,3 });
 
 		for (int BNum = 0; BNum < NumBonds; ++BNum){
 			string BondStr = "GUI bond " + to_string(BNum + 1) + ": ";
@@ -4340,7 +4340,7 @@ Boolean_t LoadADFTape21(){
 
 			vec3 stepVec = (StartEndXYZ[1] - StartEndXYZ[0]) / double(NumPtsPerBond - 1);
 			FieldVecPointer_c xyzVecPtr;
-			xyzVecPtr.GetWritePtr(ZoneNum, { 1,2,3 });
+			xyzVecPtr.InitializeWritePtr(ZoneNum, { 1,2,3 });
 			for (int i = 0; i < NumPtsPerBond; ++i){
 				xyzVecPtr.Write(i, StartEndXYZ[0] + stepVec * double(i));
 			}
@@ -4419,17 +4419,17 @@ Boolean_t LoadADFTape21(){
 			if (NumCPs > 0){
 				Tmp = ZoneNumByName(T21Prefix + "Properties%CP coordinates");
 				if (IsOk && Tmp > 0)
-					CPCoordPtr.GetReadPtr(Tmp, ImportDataVarNum);
+					CPCoordPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 				else IsOk = FALSE;
 
 				Tmp = ZoneNumByName(T21Prefix + "Properties%CP code number for (Rank,Signatu");
 				if (IsOk && Tmp > 0)
-					CPRankPtr.GetReadPtr(Tmp, ImportDataVarNum);
+					CPRankPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 				else IsOk = FALSE;
 
 				Tmp = ZoneNumByName(T21Prefix + "Properties%CP density at");
 				if (IsOk && Tmp > 0)
-					CPChgPtr.GetReadPtr(Tmp, ImportDataVarNum);
+					CPChgPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 				else IsOk = FALSE;
 			}
 
@@ -4514,12 +4514,12 @@ Boolean_t LoadADFTape21(){
 			if (NumBPs > 0){
 				Tmp = ZoneNumByName(T21Prefix + "Properties%BP step number");
 				if (Tmp > 0)
-					BPNumStepsPtr.GetReadPtr(Tmp, ImportDataVarNum);
+					BPNumStepsPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 				else IsOk = FALSE;
 
 				Tmp = ZoneNumByName(T21Prefix + "Properties%BPs and their properties");
 				if (Tmp > 0)
-					BPPropPtr.GetReadPtr(Tmp, ImportDataVarNum);
+					BPPropPtr.InitializeReadPtr(Tmp, ImportDataVarNum);
 				else IsOk = FALSE;
 			}
 
@@ -5138,7 +5138,7 @@ void LoadGaussianCubeFiles()
 					VarNum = i + 1;
 
 				if (IsOk)
-					IsOk = Ptrs[i].GetWritePtr(VolZoneNum, VarNum);
+					IsOk = Ptrs[i].InitializeWritePtr(VolZoneNum, VarNum);
 			}
 
 			
@@ -5634,16 +5634,16 @@ void LoadFLAPWCHARGEFiles() {
 			VarNums.push_back(i + 1);
 
 // 		if (IsOk)
-// 			IsOk = Ptrs[i].GetWritePtr(VolZoneNum, VarNum);
+// 			IsOk = Ptrs[i].InitializeWritePtr(VolZoneNum, VarNum);
 	}
 
 	TecUtilDataLoadBegin(); // keep tecplot from deallocating pointers
 
 	FieldVecPointer_c XYZPtr;
-	XYZPtr.GetWritePtr(VolZoneNum, vector<int>(VarNums.begin(), VarNums.end() - 1));
+	XYZPtr.InitializeWritePtr(VolZoneNum, vector<int>(VarNums.begin(), VarNums.end() - 1));
 
 // 	FieldDataPointer_c ValPtr;
-// 	ValPtr.GetWritePtr(VolZoneNum, VarNums.back());
+// 	ValPtr.InitializeWritePtr(VolZoneNum, VarNums.back());
 			
 	/*
 		*	Now just need to parse through the char array and populate the necessary variables
@@ -6234,7 +6234,7 @@ void LoadTurboMoleCubeFiles()
 				VarNum = 4;
 
 			if (IsOk)
-				IsOk = VarPtr.GetWritePtr(VolZoneNum, VarNum);
+				IsOk = VarPtr.InitializeWritePtr(VolZoneNum, VarNum);
 
 
 			/*
@@ -6250,7 +6250,7 @@ void LoadTurboMoleCubeFiles()
 
 			FieldVecPointer_c XYZPtr;
 			if (FirstFile){
-				XYZPtr.GetWritePtr(1, { 1, 2, 3 });
+				XYZPtr.InitializeWritePtr(1, { 1, 2, 3 });
 			}
 
 			double Val;
@@ -6522,7 +6522,7 @@ Boolean_t LoadBinaryPLTFileData(){
 				float ZYXVal[3], DelZYX[3];
 				TecUtilDataLoadBegin();
 				for (int i = 0; i < 3 && LoadSuccess; ++i){
-					LoadSuccess = ZYXPtrs[i].GetWritePtr(1, 3 - i);
+					LoadSuccess = ZYXPtrs[i].InitializeWritePtr(1, 3 - i);
 					DelZYX[i] = (MinMaxZYX[i * 2 + 1] - MinMaxZYX[i * 2]) / (static_cast<float>(IntData[2 + i] - 1));
 				}
 				ZYXVal[0] = MinMaxZYX[0]; // set z value

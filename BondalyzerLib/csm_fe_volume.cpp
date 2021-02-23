@@ -1514,10 +1514,10 @@ Boolean_t FESurface_c::Setup(int InZoneNum,
 		m_IntVarPtrs.resize(m_NumIntVars);
 
 		for (int i = 0; i < 3 && m_FEVolumeMade; ++i)
-			m_FEVolumeMade = m_XYZPtrs[i].GetReadPtr(InZoneNum, InXYZVarNums[i]);
+			m_FEVolumeMade = m_XYZPtrs[i].InitializeReadPtr(InZoneNum, InXYZVarNums[i]);
 
 		for (int i = 0; i < m_NumIntVars && m_FEVolumeMade; ++i)
-			m_FEVolumeMade = m_IntVarPtrs[i].GetReadPtr(VolZoneNum, m_IntVarNums[i]);
+			m_FEVolumeMade = m_IntVarPtrs[i].InitializeReadPtr(VolZoneNum, m_IntVarNums[i]);
 	}
 
 
@@ -1582,7 +1582,7 @@ Boolean_t FESurface_c::Setup(int const InZoneNum,
 
 			m_XYZPtrs.resize(3);
 			for (int i = 0; i < 3; ++i)
-				m_XYZPtrs[i].GetReadPtr(m_ZoneNum, InXYZVarNums[i]);
+				m_XYZPtrs[i].InitializeReadPtr(m_ZoneNum, InXYZVarNums[i]);
 
 			for (int j = 0; j < IJK[1]; ++j){
 				for (int i = 0; i < IJK[0]; ++i){
@@ -2717,14 +2717,14 @@ int FESurface_c::TriangleIntersect(vec3 const & T_P0,
 		return 0;
 }
 
-vector<double> FESurface_c::TriSphereElemAreas() const
+vector<double> FESurface_c::TriSphereElemSolidAngles() const
 {
 	Boolean_t IsOk = TRUE;
 
-	vector<double> AreaFactors;
+	vector<double> SolidAngles;
 
 	if (IsOk) {
-		AreaFactors.resize(m_NumElems);
+		SolidAngles.resize(m_NumElems);
 		double TotalArea = 0.0;
 		/*
 		*	Get total surface area of sphere, storing element areas
@@ -2758,18 +2758,18 @@ vector<double> FESurface_c::TriSphereElemAreas() const
 // 				+ T[1][1] * (T[2][0] - T[0][0])
 // 				+ T[2][1] * (T[0][0] - T[1][0]);
 
-// 			AreaFactors[ElemNum] = 0.5 * sqrt(A * A + B * B + C * C);
-			AreaFactors[ElemNum] = TriArea(m_XYZList[m_ElemList[ElemNum][0]], m_XYZList[m_ElemList[ElemNum][1]], m_XYZList[m_ElemList[ElemNum][2]]);
-			TotalArea += AreaFactors[ElemNum];
+// 			SolidAngles[ElemNum] = 0.5 * sqrt(A * A + B * B + C * C);
+			SolidAngles[ElemNum] = TriArea(m_XYZList[m_ElemList[ElemNum][0]], m_XYZList[m_ElemList[ElemNum][1]], m_XYZList[m_ElemList[ElemNum][2]]);
+			TotalArea += SolidAngles[ElemNum];
 		}
 
 #pragma omp parallel for
 		for (int ElemNum = 0; ElemNum < m_NumElems; ++ElemNum) {
-			AreaFactors[ElemNum] /= TotalArea;
+			SolidAngles[ElemNum] /= TotalArea;
 		}
 	}
 
-	return AreaFactors;
+	return SolidAngles;
 }
 
 

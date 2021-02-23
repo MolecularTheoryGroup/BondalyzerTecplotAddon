@@ -26,6 +26,17 @@ using namespace arma;
 
 std::map<string, int> NuclearNameToCPNum;
 
+void ListDeselect(LgIndex_t ListID){
+	vector<string> StrList;
+	for (int i = 1; i <= TecGUIListGetItemCount(ListID); ++i){
+		StrList.push_back(TecGUIListGetString(ListID, i));
+	}
+	TecGUIListDeleteAllItems(ListID);
+	for (auto const & s : StrList){
+		TecGUIListAppendItem(ListID, s.c_str());
+	}
+}
+
 vector<string> ListGetSelectedStrings(LgIndex_t ListID){
 	LgIndex_t * SelItemNums;
 	LgIndex_t NumSelItems;

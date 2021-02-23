@@ -593,7 +593,7 @@ vec3 GetDelXYZ_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum){
 	TecUtilZoneGetIJK(ZoneNum, &IJK[0], &IJK[1], &IJK[2]);
 
 	FieldVecPointer_c XYZ;
-	XYZ.GetReadPtr(ZoneNum, XYZVarNums);
+	XYZ.InitializeReadPtr(ZoneNum, XYZVarNums);
 	DelXYZ[0] = Distance(XYZ[IndexFromIJK(2, 1, 1, IJK[0], IJK[1])-1], XYZ[IndexFromIJK(1, 1, 1, IJK[0], IJK[1])-1]);
 	DelXYZ[1] = Distance(XYZ[IndexFromIJK(1, 2, 1, IJK[0], IJK[1])-1], XYZ[IndexFromIJK(1, 1, 1, IJK[0], IJK[1])-1]);
 	DelXYZ[2] = Distance(XYZ[IndexFromIJK(1, 1, 2, IJK[0], IJK[1])-1], XYZ[IndexFromIJK(1, 1, 1, IJK[0], IJK[1])-1]);
@@ -647,7 +647,7 @@ void ZoneXYZVarGetBasisVectors_Ordered3DZone(vector<int> const & XYZVarNums, int
 
 	TecUtilDataLoadBegin();
 
-	if (XYZPtr.GetReadPtr(ZoneNum, XYZVarNums)){
+	if (XYZPtr.InitializeReadPtr(ZoneNum, XYZVarNums)){
 		LowXYZ = XYZPtr[0];
 
 		for (int dir = 0; dir < 3; ++dir){
@@ -697,7 +697,7 @@ void ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneN
 	TecUtilZoneGetIJK(ZoneNum, &IJK[0], &IJK[1], &IJK[2]);
 
 	FieldVecPointer_c XYZ;
-	XYZ.GetReadPtr(ZoneNum, XYZVarNums);
+	XYZ.InitializeReadPtr(ZoneNum, XYZVarNums);
 	MinXYZ = XYZ[IndexFromIJK(1, 1, 1, IJK[0], IJK[1])-1];
 	MaxXYZ = XYZ[IndexFromIJK(IJK[0], IJK[1], IJK[2], IJK[0], IJK[1])-1];
 

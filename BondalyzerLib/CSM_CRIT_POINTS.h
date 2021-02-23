@@ -155,7 +155,7 @@ public:
 
 	Boolean_t FindMinCPDist(vector<CPType_e> const & CPTypes);
 	void RemoveSpuriousCPs(double const & CheckDist = SpuriousCPCheckDistance);
-	void GenerateCPGraph();
+	void GenerateCPGraph(vector<string> const & AuxDataSubTypeList = CSMAuxData.CC.OneSkeletonGPSubTypes);
 	
 	vector<int> SaveAsOrderedZone(vector<int> const & XYZVarNum, int RhoVarNum = -1, Boolean_t SaveCPTypeZones = FALSE, int VolZoneNum = -1);
 

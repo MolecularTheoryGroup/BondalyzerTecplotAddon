@@ -89,15 +89,15 @@ CritPoints_c::CritPoints_c(int CPZoneNum,
 
 	TecUtilDataLoadBegin();
 
-	if (RhoVarNum >= 0 && !RhoPtr.GetReadPtr(CPZoneNum, RhoVarNum)){
+	if (RhoVarNum >= 0 && !RhoPtr.InitializeReadPtr(CPZoneNum, RhoVarNum)){
 		TecUtilDialogErrMsg("Failed to get CP rho pointer");
 		return;
 	}
-	if (!CPTypePtr.GetReadPtr(CPZoneNum, CPTypeVarNum)){
+	if (!CPTypePtr.InitializeReadPtr(CPZoneNum, CPTypeVarNum)){
 		TecUtilDialogErrMsg("Failed to get CP CPType pointer");
 		return;
 	}
-	for (int i = 0; i < 3; ++i) if (!XYZPtrs[i].GetReadPtr(CPZoneNum, XYZVarNums[i])){
+	for (int i = 0; i < 3; ++i) if (!XYZPtrs[i].InitializeReadPtr(CPZoneNum, XYZVarNums[i])){
 		TecUtilDialogErrMsg("Failed to get CP XYZ pointer");
 		return;
 	}
@@ -243,7 +243,7 @@ bool CritPoints_c::HasEdge(Edge const & e, int * zoneNum) const {
 	if (e.first < 0 || e.second < 0)
 		 return false;
 
-	searchDepthLimit = MAX(0, searchDepthLimit);
+// 	searchDepthLimit = MAX(0, searchDepthLimit);
  
  	int searchDepth = 1;
  	std::queue<int> q;
@@ -255,7 +255,7 @@ bool CritPoints_c::HasEdge(Edge const & e, int * zoneNum) const {
  	while (!q.empty()){
  		if (q.front() == -1){
  			// new level reached, so increment level and put new marker in queue
- 			if (++searchDepth > searchDepthLimit)
+ 			if (++searchDepth > searchDepthLimit && searchDepthLimit >= 0)
  				break;
  			q.push(-1);
  		}
@@ -284,7 +284,7 @@ bool CritPoints_c::HasEdge(Edge const & e, int searchDepthLimit, vector<int> * P
 	if (e.first < 0 || e.second < 0)
 		return false;
 
-	searchDepthLimit = MAX(0, searchDepthLimit);
+// 	searchDepthLimit = MAX(0, searchDepthLimit);
 
 	int searchDepth = 1;
 	std::queue<vector<int>> q;
@@ -297,7 +297,7 @@ bool CritPoints_c::HasEdge(Edge const & e, int searchDepthLimit, vector<int> * P
 	while (!q.empty()) {
 		if (q.front() == DepthMarker) {
 			// new level reached, so increment level and put new marker in queue
-			if (++searchDepth > searchDepthLimit)
+			if (++searchDepth > searchDepthLimit && searchDepthLimit >= 0)
 				break;
 			q.push(DepthMarker);
 		}
@@ -591,7 +591,7 @@ void CritPoints_c::RemoveSpuriousCPs(double const & CheckDist){
 
 }
 
-void CritPoints_c::GenerateCPGraph(){
+void CritPoints_c::GenerateCPGraph(vector<string> const & AuxDataSubTypeList){
 	if (m_ZoneNum <= 0)
 		return;
 
@@ -604,21 +604,26 @@ void CritPoints_c::GenerateCPGraph(){
 		if (AuxDataZoneItemMatches(z, CSMAuxData.GBA.SourceZoneNum, to_string(CheckCPZoneNum))
 			&& AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneType, CSMAuxData.CC.ZoneTypeGP))
 		{
-			if (AuxDataZoneHasItem(z, CSMAuxData.CC.GPMiddleCPNum)) {
-// 				int midCPNum = stoi(AuxDataZoneGetItem(z, CSMAuxData.CC.GPMiddleCPNum));
-// 				for (int i = 0; i < 2; ++i)
-// 					m_CPEdgeToZoneNumMap[MakeEdge(stoi(AuxDataZoneGetItem(z, CSMAuxData.CC.GPEndNumStrs[i])), midCPNum)] = z;
-// 					ignoring bond path and ring lines; better to have their segments (halves) instead.
-			}
-			else {
-				// Convert CP numbers from base 1 to 0 (i.e. subtract 1), but not the zone number because that's only ever for 
-				// requesting zone info from Tecplot, which uses the base 1.
-				int e1 = stoi(AuxDataZoneGetItem(z, CSMAuxData.CC.GPEndNumStrs[0])) - 1,
-					e2 = stoi(AuxDataZoneGetItem(z, CSMAuxData.CC.GPEndNumStrs[1])) - 1;
-				if (e1 >= 0 && e2 >= 0) {
-					m_CPEdgeToZoneNumMap[MakeEdge(e1, e2)] = z;
-					m_CPAdjacencyList[e1].insert(e2);
-					m_CPAdjacencyList[e2].insert(e1);
+			string SubType;
+			if (AuxDataZoneGetItem(z, CSMAuxData.CC.ZoneSubType, SubType)) {
+				if (std::find(AuxDataSubTypeList.cbegin(), AuxDataSubTypeList.cend(), SubType) != AuxDataSubTypeList.cend()) {
+					if (AuxDataZoneHasItem(z, CSMAuxData.CC.GPMiddleCPNum)) {
+						// 				int midCPNum = stoi(AuxDataZoneGetItem(z, CSMAuxData.CC.GPMiddleCPNum));
+						// 				for (int i = 0; i < 2; ++i)
+						// 					m_CPEdgeToZoneNumMap[MakeEdge(stoi(AuxDataZoneGetItem(z, CSMAuxData.CC.GPEndNumStrs[i])), midCPNum)] = z;
+						// 					ignoring bond path and ring lines; better to have their segments (halves) instead.
+					}
+					else {
+						// Convert CP numbers from base 1 to 0 (i.e. subtract 1), but not the zone number because that's only ever for 
+						// requesting zone info from Tecplot, which uses the base 1.
+						int e1 = stoi(AuxDataZoneGetItem(z, CSMAuxData.CC.GPEndNumStrs[0])) - 1,
+							e2 = stoi(AuxDataZoneGetItem(z, CSMAuxData.CC.GPEndNumStrs[1])) - 1;
+						if (e1 >= 0 && e2 >= 0) {
+							m_CPEdgeToZoneNumMap[MakeEdge(e1, e2)] = z;
+							m_CPAdjacencyList[e1].insert(e2);
+							m_CPAdjacencyList[e2].insert(e1);
+						}
+					}
 				}
 			}
 		}
@@ -728,15 +733,15 @@ vector<int> CritPoints_c::SaveAsOrderedZone(vector<int> const & XYZVarNum, int R
 
 	TecUtilDataLoadBegin();
 
-	for (int i = 0; i < 3; ++i) if (!XYZPtrs[i].GetWritePtr(NewZoneNums.back(), XYZVarNum[i])){
+	for (int i = 0; i < 3; ++i) if (!XYZPtrs[i].InitializeWritePtr(NewZoneNums.back(), XYZVarNum[i])){
 		TecUtilDialogErrMsg("Failed to get XYZ pointers for CP zone");
 		return{ -1 };
 	}
-	if (RhoVarNum > 0 && !RhoPtr.GetWritePtr(NewZoneNums.back(), RhoVarNum)){
+	if (RhoVarNum > 0 && !RhoPtr.InitializeWritePtr(NewZoneNums.back(), RhoVarNum)){
 		TecUtilDialogErrMsg("Failed to get rho pointer for CP zone");
 		return{ -1 };
 	}
-	if (!CPTypePtr.GetWritePtr(NewZoneNums.back(), CPTypeVarNum)){
+	if (!CPTypePtr.InitializeWritePtr(NewZoneNums.back(), CPTypeVarNum)){
 		TecUtilDialogErrMsg("Failed to get rho pointer for CP zone");
 		return{ -1 };
 	}
@@ -785,17 +790,17 @@ vector<int> CritPoints_c::SaveAsOrderedZone(vector<int> const & XYZVarNum, int R
 				TecUtilDataLoadBegin();
 
 				for (auto & i : XYZPtrs) i.Close();
-				for (int i = 0; i < 3; ++i) if (!XYZPtrs[i].GetWritePtr(NewZoneNums.back(), XYZVarNum[i])){
+				for (int i = 0; i < 3; ++i) if (!XYZPtrs[i].InitializeWritePtr(NewZoneNums.back(), XYZVarNum[i])){
 					TecUtilDialogErrMsg("Failed to get xyz pointers for CP  type zone");
 					return{ -1 };
 				}
 				RhoPtr.Close();
-				if (RhoVarNum > 0 && !RhoPtr.GetWritePtr(NewZoneNums.back(), RhoVarNum)){
+				if (RhoVarNum > 0 && !RhoPtr.InitializeWritePtr(NewZoneNums.back(), RhoVarNum)){
 					TecUtilDialogErrMsg("Failed to get rho pointer for CP type zone");
 					return{ -1 };
 				}
 				FieldDataPointer_c CPTypeZonePtr;
-				if (!CPTypeZonePtr.GetWritePtr(NewZoneNums.back(), CPTypeVarNum)){
+				if (!CPTypeZonePtr.InitializeWritePtr(NewZoneNums.back(), CPTypeVarNum)){
 					TecUtilDialogErrMsg("Failed to get cp type pointer for CP type zone");
 					return{ -1 };
 				}

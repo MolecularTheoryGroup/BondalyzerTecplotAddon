@@ -4,6 +4,7 @@
 #include <set>
 
 #include "CSM_DATA_TYPES.h"
+#include "CSM_CRIT_POINTS.h"
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_VOL_EXTENT_INDEX_WEIGHTS.h"
 
@@ -128,6 +129,7 @@ public:
 
 
 	void RemoveKinks(double const & AngleCutoff = GB_DefaultKinkCheckAngle);
+
 
 	vector<int> GradPathBase_c::GetCPCoincidentPoints(CritPoints_c const * CPs, std::set<CPType_e> const & CPTypes = {}, double tol = 1e-8) const;
 

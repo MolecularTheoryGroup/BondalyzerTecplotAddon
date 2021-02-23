@@ -38,7 +38,7 @@ double const GBADefaultEdgeGPSpacing = 0.5;
 
 extern std::map<string, int> NuclearNameToCPNum;
 
-
+void ListDeselect(LgIndex_t ListID);
 vector<string> ListGetSelectedStrings(LgIndex_t  ListID);
 vector<int> ListGetSelectedItemNums(LgIndex_t ListID);
 void ListPopulateWithVarNames(LgIndex_t ListID, int StartVarNum = 1);

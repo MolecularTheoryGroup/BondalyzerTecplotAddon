@@ -448,7 +448,7 @@ Boolean_t PerformIntegration(vector<string> const & AtomNameList,
 				if (VolumeList[i].IntResultsReady()){
 					for (int j = 0; j < NewVarNums.size(); ++j){
 						Ptrs[i].push_back(FieldDataPointer_c());
-						Ptrs[i][j].GetWritePtr(VolumeList[i].GetZoneNum(), NewVarNums[j]);
+						Ptrs[i][j].InitializeWritePtr(VolumeList[i].GetZoneNum(), NewVarNums[j]);
 					}
 				}
 			}

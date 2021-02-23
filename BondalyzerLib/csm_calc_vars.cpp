@@ -113,7 +113,7 @@ void CalcGradGradMagForDataset(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 	TecUtilDataLoadBegin();
 
 	FieldDataPointer_c RhoRawPtr;
-	RhoRawPtr.GetReadPtr(ZoneNum, RhoVarNum);
+	RhoRawPtr.InitializeReadPtr(ZoneNum, RhoVarNum);
 
 	EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 	vector<FieldDataType_e> DataType;
@@ -140,7 +140,7 @@ void CalcGradGradMagForDataset(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 				TecUtilArgListDealloc(&Args);
 			}
 
-			GradXYZMagRawPtr[i].GetWritePtr(ZoneNum, GradXYZMagVarNum[i]);
+			GradXYZMagRawPtr[i].InitializeWritePtr(ZoneNum, GradXYZMagVarNum[i]);
 		}
 
 		if (!CalcGradForRegularVar(MaxIJK, DelXYZ, IsPeriodic, RhoRawPtr, GradXYZMagRawPtr, "gradient vector", AddOnID)){
@@ -178,10 +178,10 @@ void CalcGradGradMagForDataset(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 			}
 
 			if (i < 3){
-				GradXYZMagRawPtr[i].GetReadPtr(ZoneNum, GradXYZMagVarNum[i]);
+				GradXYZMagRawPtr[i].InitializeReadPtr(ZoneNum, GradXYZMagVarNum[i]);
 			}
 			else{
-				GradXYZMagRawPtr[i].GetWritePtr(ZoneNum, GradXYZMagVarNum[i]);
+				GradXYZMagRawPtr[i].InitializeWritePtr(ZoneNum, GradXYZMagVarNum[i]);
 			}
 		}
 
@@ -980,10 +980,10 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 
 	TecUtilDataLoadBegin();
 
-	RhoPtr.GetReadPtr(VolZoneNum, RhoVarNum);
+	RhoPtr.InitializeReadPtr(VolZoneNum, RhoVarNum);
 
 	for (int i = 0; i < 3 && IsOk; ++i){
-		IsOk = GradPtrs[i].GetReadPtr(VolZoneNum, GradVarNums[i]);
+		IsOk = GradPtrs[i].InitializeReadPtr(VolZoneNum, GradVarNums[i]);
 	}
 
 	if (HasHess){
@@ -1034,7 +1034,7 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 		}
 		TecUtilArgListDealloc(&Args);
 
-		HessPtrs[i].GetWritePtr(VolZoneNum, NewVarNum);
+		HessPtrs[i].InitializeWritePtr(VolZoneNum, NewVarNum);
 	}
 
 	string const TmpStr = "Calculating Hessian of rho";
@@ -1409,16 +1409,16 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 
 	TecUtilDataLoadBegin();
 
-	RhoPtr.GetReadPtr(VolZoneNum, RhoVarNum);
+	RhoPtr.InitializeReadPtr(VolZoneNum, RhoVarNum);
 
 	for (int i = 0; i < 3 && IsOk; ++i){
-		IsOk = GradPtrs[i].GetReadPtr(VolZoneNum, GradVarNums[i]);
+		IsOk = GradPtrs[i].InitializeReadPtr(VolZoneNum, GradVarNums[i]);
 	}
 
 	if (HasHess){
 		HessPtrs.resize(6);
 		for (int i = 0; i < 6 && IsOk; ++i)
-			IsOk = HessPtrs[i].GetReadPtr(VolZoneNum, HessVarNums[i]);
+			IsOk = HessPtrs[i].InitializeReadPtr(VolZoneNum, HessVarNums[i]);
 	}
 
 	vector<MultiRootParams_s> TmpParams(numCPU);
@@ -1480,7 +1480,7 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 		}
 		TecUtilArgListDealloc(&Args);
 
-		VarPtrs[i].GetWritePtr(VolZoneNum, NewVarNum);
+		VarPtrs[i].InitializeWritePtr(VolZoneNum, NewVarNum);
 	}
 
 	string const TmpStr = "Calculating Eigen system";
@@ -1610,16 +1610,16 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 
 	TecUtilDataLoadBegin();
 
-	RhoPtr.GetReadPtr(VolZoneNum, RhoVarNum);
+	RhoPtr.InitializeReadPtr(VolZoneNum, RhoVarNum);
 
 	for (int i = 0; i < 3 && IsOk; ++i){
-		IsOk = GradPtrs[i].GetReadPtr(VolZoneNum, GradVarNums[i]);
+		IsOk = GradPtrs[i].InitializeReadPtr(VolZoneNum, GradVarNums[i]);
 	}
 
 	if (HasHess){
 		HessPtrs.resize(6);
 		for (int i = 0; i < 6 && IsOk; ++i)
-			IsOk = HessPtrs[i].GetReadPtr(VolZoneNum, HessVarNums[i]);
+			IsOk = HessPtrs[i].InitializeReadPtr(VolZoneNum, HessVarNums[i]);
 	}
 
 	vector<MultiRootParams_s> TmpParams(numCPU);
@@ -1672,7 +1672,7 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 		}
 		TecUtilArgListDealloc(&Args);
 
-		VarPtrs[i].GetWritePtr(VolZoneNum, NewVarNum);
+		VarPtrs[i].InitializeWritePtr(VolZoneNum, NewVarNum);
 	}
 
 	string const TmpStr = "Calculating dot products of Hessian eigenvectors with gradient of rho";
@@ -1940,16 +1940,16 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, AddOn_pa const & AddOnID, double 
 
 	TecUtilDataLoadBegin();
 
-	RhoPtr.GetReadPtr(VolZoneNum, RhoVarNum);
+	RhoPtr.InitializeReadPtr(VolZoneNum, RhoVarNum);
 
 	for (int i = 0; i < 3 && IsOk; ++i){
-		IsOk = GradPtrs[i].GetReadPtr(VolZoneNum, GradVarNums[i]);
+		IsOk = GradPtrs[i].InitializeReadPtr(VolZoneNum, GradVarNums[i]);
 	}
 
 	if (HasHess){
 		HessPtrs.resize(6);
 		for (int i = 0; i < 6 && IsOk; ++i)
-			IsOk = HessPtrs[i].GetReadPtr(VolZoneNum, HessVarNums[i]);
+			IsOk = HessPtrs[i].InitializeReadPtr(VolZoneNum, HessVarNums[i]);
 	}
 
 	vector<MultiRootParams_s> TmpParams(numCPU);
@@ -1998,7 +1998,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, AddOn_pa const & AddOnID, double 
 		TecUtilArgListDealloc(&Args);
 
 		FieldDataPointer_c VarPtr;
-		VarPtr.GetWritePtr(VolZoneNum, NewVarNum);
+		VarPtr.InitializeWritePtr(VolZoneNum, NewVarNum);
 
 		string const TmpStr = "Calculate Eberly 1-ridge function";
 		StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
@@ -2061,7 +2061,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, AddOn_pa const & AddOnID, double 
 		TecUtilArgListDealloc(&Args);
 
 		FieldDataPointer_c VarPtr;
-		VarPtr.GetWritePtr(VolZoneNum, NewVarNum);
+		VarPtr.InitializeWritePtr(VolZoneNum, NewVarNum);
 
 		string const TmpStr = "Calculate Eberly 2-ridge function";
 		StatusLaunch(TmpStr.c_str(), AddOnID, TRUE);
@@ -2159,7 +2159,7 @@ void MapAllVarsToAllZones(AddOn_pa const & AddOnID)
 		for (auto Beg = XYZVarNums.cbegin(), End = XYZVarNums.cend(); Beg != End && VarIsValid; Beg++)
 			VarIsValid = (i != *Beg);
 		if (VarIsValid)
-			VolReadPtrs[i - 1].GetReadPtr(VolZoneNum, i);
+			VolReadPtrs[i - 1].InitializeReadPtr(VolZoneNum, i);
 	}
 
 	for (auto & ChkPtr : VolReadPtrs){
@@ -2184,9 +2184,9 @@ void MapAllVarsToAllZones(AddOn_pa const & AddOnID)
 			IsOk = StatusUpdate(ZoneNum-1, NumZones, StatusStr, AddOnID);
 			if (IsOk){
 				// 				for (int i = 0; i < 3 && IsOk; ++i)
-				// 					IsOk = XYZReadPtrs[i].GetReadPtr(ZoneNum, XYZVarNums[i]);
+				// 					IsOk = XYZReadPtrs[i].InitializeReadPtr(ZoneNum, XYZVarNums[i]);
 				for (int i = 1; i <= NumVars && IsOk; ++i)
-					IsOk = ZoneWritePtrs[i - 1].GetWritePtr(ZoneNum, i);
+					IsOk = ZoneWritePtrs[i - 1].InitializeWritePtr(ZoneNum, i);
 
 				TecUtilZoneGetIJK(ZoneNum, &ZoneMaxIJK[0], &ZoneMaxIJK[1], &ZoneMaxIJK[2]);
 
@@ -2836,7 +2836,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						Opt.HasGrad = FALSE;
 						for (int i = 0; i < 3 && !Opt.HasGrad; ++i){
 							FieldDataPointer_c TmpPtr;
-							if (TmpPtr.GetReadPtr(ZoneNum, Opt.GradVarNums[i])){
+							if (TmpPtr.InitializeReadPtr(ZoneNum, Opt.GradVarNums[i])){
 								int jMax = TmpPtr.Size();
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
@@ -2851,7 +2851,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 					if (HasGradMag){
 						HasGradMag = FALSE;
 						FieldDataPointer_c TmpPtr;
-						if (TmpPtr.GetReadPtr(ZoneNum, GradMagVarNum)){
+						if (TmpPtr.InitializeReadPtr(ZoneNum, GradMagVarNum)){
 							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
@@ -2868,7 +2868,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						Opt.HasHess = FALSE;
 						for (int i = 0; i < 6 && !Opt.HasHess; ++i){
 							FieldDataPointer_c TmpPtr;
-							if (TmpPtr.GetReadPtr(ZoneNum, Opt.HessVarNums[i])){
+							if (TmpPtr.InitializeReadPtr(ZoneNum, Opt.HessVarNums[i])){
 								int jMax = TmpPtr.Size();
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
@@ -2884,7 +2884,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						HasEigSys = FALSE;
 						for (int i = 0; i < 12 && !HasEigSys; ++i){
 							FieldDataPointer_c TmpPtr;
-							if (TmpPtr.GetReadPtr(ZoneNum, EigSysVarNums[i])){
+							if (TmpPtr.InitializeReadPtr(ZoneNum, EigSysVarNums[i])){
 								int jMax = TmpPtr.Size();
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
@@ -2899,7 +2899,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 					if (HasLap){
 						HasLap = FALSE;
 						FieldDataPointer_c TmpPtr;
-						if (TmpPtr.GetReadPtr(ZoneNum, LapVarNum)){
+						if (TmpPtr.InitializeReadPtr(ZoneNum, LapVarNum)){
 							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
@@ -2913,7 +2913,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 					if (HasGaussCurvature){
 						HasGaussCurvature = FALSE;
 						FieldDataPointer_c TmpPtr;
-						if (TmpPtr.GetReadPtr(ZoneNum, GaussCurvatureVarNum)){
+						if (TmpPtr.InitializeReadPtr(ZoneNum, GaussCurvatureVarNum)){
 							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
@@ -2928,7 +2928,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 						HasEigVecDotGrad = FALSE;
 						for (int i = 0; i < 3 && !HasEigVecDotGrad; ++i){
 							FieldDataPointer_c TmpPtr;
-							if (TmpPtr.GetReadPtr(ZoneNum, EigVecDotGradVarNums[i])){
+							if (TmpPtr.InitializeReadPtr(ZoneNum, EigVecDotGradVarNums[i])){
 								int jMax = TmpPtr.Size();
 #pragma omp parallel for
 								for (int j = 0; j < jMax; ++j){
@@ -2943,7 +2943,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 					if (HasEberlyFunc[0]){
 						HasEberlyFunc[0] = FALSE;
 						FieldDataPointer_c TmpPtr;
-						if (TmpPtr.GetReadPtr(ZoneNum, EberlyFuncVarNums[0])){
+						if (TmpPtr.InitializeReadPtr(ZoneNum, EberlyFuncVarNums[0])){
 							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
@@ -2957,7 +2957,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 					if (HasEberlyFunc[1]){
 						HasEberlyFunc[1] = FALSE;
 						FieldDataPointer_c TmpPtr;
-						if (TmpPtr.GetReadPtr(ZoneNum, EberlyFuncVarNums[1])){
+						if (TmpPtr.InitializeReadPtr(ZoneNum, EberlyFuncVarNums[1])){
 							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
@@ -2971,7 +2971,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 					if (HasEigenRank){
 						HasEigenRank = FALSE;
 						FieldDataPointer_c TmpPtr;
-						if (TmpPtr.GetReadPtr(ZoneNum, EigenRankVarNum)){
+						if (TmpPtr.InitializeReadPtr(ZoneNum, EigenRankVarNum)){
 							int jMax = TmpPtr.Size();
 #pragma omp parallel for
 							for (int j = 0; j < jMax; ++j){
@@ -3038,35 +3038,35 @@ void CalcVars(CalcVarsOptions_s & Opt)
 				*/
 				// 				if (*CalcVar > CalcEigVecDotGrad && HasEigVecDotGrad){
 				// 					for (int i = 0; i < 3 && IsOk; ++i)
-				// 						IsOk = EigVecDotGradPtrs[i].GetReadPtr(ZoneNum, EigVecDotGradVarNums[i]);
+				// 						IsOk = EigVecDotGradPtrs[i].InitializeReadPtr(ZoneNum, EigVecDotGradVarNums[i]);
 				// 				}
 				// 				else 
 				if (*CalcVar > CalcEigenSystem && HasEigSys){
 					for (int i = 0; i < 12 && IsOk; ++i)
-						IsOk = EigSysPtrs[i].GetReadPtr(ZoneNum, EigSysVarNums[i]);
+						IsOk = EigSysPtrs[i].InitializeReadPtr(ZoneNum, EigSysVarNums[i]);
 				}
 				else if (*CalcVar > CalcHessian && Opt.HasHess){
 					for (int i = 0; i < 6 && IsOk; ++i)
-						IsOk = HessPtrs[i].GetReadPtr(ZoneNum, Opt.HessVarNums[i]);
+						IsOk = HessPtrs[i].InitializeReadPtr(ZoneNum, Opt.HessVarNums[i]);
 				}
 				else if (*CalcVar > CalcGradientVectors && Opt.HasGrad){
 					for (int i = 0; i < 3 && IsOk; ++i)
-						IsOk = GradPtrs[i].GetReadPtr(ZoneNum, Opt.GradVarNums[i]);
+						IsOk = GradPtrs[i].InitializeReadPtr(ZoneNum, Opt.GradVarNums[i]);
 				}
 				else if (IsOk && *CalcVar > CalcInvalidVar)
-					IsOk = RhoPtr.GetReadPtr(ZoneNum, Opt.RhoVarNum);
+					IsOk = RhoPtr.InitializeReadPtr(ZoneNum, Opt.RhoVarNum);
 
 				if (*CalcVar > CalcEigenVectorsDotGradient){
 					if (IsOk)
-						IsOk = RhoPtr.GetReadPtr(ZoneNum, Opt.RhoVarNum);
+						IsOk = RhoPtr.InitializeReadPtr(ZoneNum, Opt.RhoVarNum);
 				}
 
 				if (*CalcVar >= CalcEigenVectorsDotGradient){
 					if (Opt.HasGrad)
 					for (int i = 0; i < 3 && IsOk; ++i)
-						IsOk = GradPtrs[i].GetReadPtr(ZoneNum, Opt.GradVarNums[i]);
+						IsOk = GradPtrs[i].InitializeReadPtr(ZoneNum, Opt.GradVarNums[i]);
 					else if (IsOk)
-						IsOk = RhoPtr.GetReadPtr(ZoneNum, Opt.RhoVarNum);
+						IsOk = RhoPtr.InitializeReadPtr(ZoneNum, Opt.RhoVarNum);
 				}
 
 				/*
@@ -3076,43 +3076,43 @@ void CalcVars(CalcVarsOptions_s & Opt)
 					switch (*CalcVar){
 						case CalcGradientVectors:
 							for (int i = 0; i < 3 && IsOk; ++i)
-								IsOk = GradPtrs[i].GetWritePtr(ZoneNum, Opt.GradVarNums[i]);
+								IsOk = GradPtrs[i].InitializeWritePtr(ZoneNum, Opt.GradVarNums[i]);
 							break;
 						case CalcGradientMagnitude:
 							if (IsOk)
-								IsOk = GradMagPtr.GetWritePtr(ZoneNum, GradMagVarNum);
+								IsOk = GradMagPtr.InitializeWritePtr(ZoneNum, GradMagVarNum);
 							break;
 						case CalcHessian:
 							for (int i = 0; i < 6 && IsOk; ++i)
-								IsOk = HessPtrs[i].GetWritePtr(ZoneNum, Opt.HessVarNums[i]);
+								IsOk = HessPtrs[i].InitializeWritePtr(ZoneNum, Opt.HessVarNums[i]);
 							break;
 						case CalcEigenSystem:
 							for (int i = 0; i < 12 && IsOk; ++i)
-								IsOk = EigSysPtrs[i].GetWritePtr(ZoneNum, EigSysVarNums[i]);
+								IsOk = EigSysPtrs[i].InitializeWritePtr(ZoneNum, EigSysVarNums[i]);
 							break;
 						case CalcLaplacian:
 							if (IsOk)
-								IsOk = LapPtr.GetWritePtr(ZoneNum, LapVarNum);
+								IsOk = LapPtr.InitializeWritePtr(ZoneNum, LapVarNum);
 							break;
 						case CalcGaussianCurvature:
 							if (IsOk)
-								IsOk = GaussCurvaturePtr.GetWritePtr(ZoneNum, GaussCurvatureVarNum);
+								IsOk = GaussCurvaturePtr.InitializeWritePtr(ZoneNum, GaussCurvatureVarNum);
 							break;
 						case CalcEigenVectorsDotGradient:
 							for (int i = 0; i < 3 && IsOk; ++i)
-								IsOk = EigVecDotGradPtrs[i].GetWritePtr(ZoneNum, EigVecDotGradVarNums[i]);
+								IsOk = EigVecDotGradPtrs[i].InitializeWritePtr(ZoneNum, EigVecDotGradVarNums[i]);
 							break;
 						case CalcEberly1Ridge:
 							if (IsOk)
-								IsOk = EberlyFuncPtrs[0].GetWritePtr(ZoneNum, EberlyFuncVarNums[0]);
+								IsOk = EberlyFuncPtrs[0].InitializeWritePtr(ZoneNum, EberlyFuncVarNums[0]);
 							break;
 						case CalcEberly2Ridge:
 							if (IsOk)
-								IsOk = EberlyFuncPtrs[1].GetWritePtr(ZoneNum, EberlyFuncVarNums[1]);
+								IsOk = EberlyFuncPtrs[1].InitializeWritePtr(ZoneNum, EberlyFuncVarNums[1]);
 							break;
 						case CalcEigenRank:
 							if (IsOk)
-								IsOk = EigenRankPtr.GetWritePtr(ZoneNum, EigenRankVarNum);
+								IsOk = EigenRankPtr.InitializeWritePtr(ZoneNum, EigenRankVarNum);
 							break;
 						default:
 							TecUtilDialogErrMsg("Invalid variable used");
@@ -3600,7 +3600,7 @@ void GaussianBlur(Boolean_t IsPeriodic,
 	double const & Sigma)
 {
 	FieldDataPointer_c Var;
-	Var.GetReadPtr(ZoneNum, VarNum);
+	Var.InitializeReadPtr(ZoneNum, VarNum);
 	if (!Var.IsReady()) return;
 
 	int rSig = std::ceil(Sigma * 2.57);
@@ -3619,7 +3619,7 @@ void GaussianBlur(Boolean_t IsPeriodic,
 	if (!TecUtilDataSetAddVar(NewVarName.c_str(), FD.data())) return;
 
 	FieldDataPointer_c NewVar;
-	NewVar.GetWritePtr(ZoneNum, TecUtilDataSetGetNumVars());
+	NewVar.InitializeWritePtr(ZoneNum, TecUtilDataSetGetNumVars());
 	if (!NewVar.IsReady()) return;
 
 	vector<int> IJK = NewVar.MaxIJK();

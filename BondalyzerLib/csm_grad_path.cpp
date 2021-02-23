@@ -148,7 +148,7 @@ GradPathBase_c::GradPathBase_c(EntIndex_t ZoneNum,
 
 	vector<FieldDataPointer_c> RawPtrs(4);
 	for (int i = 0; i < XYZRhoVarNums.size(); ++i){
-		RawPtrs[i].GetReadPtr(ZoneNum, XYZRhoVarNums[i]);
+		RawPtrs[i].InitializeReadPtr(ZoneNum, XYZRhoVarNums[i]);
 	}
 
 	m_XYZList.resize(MaxIJK[0]);

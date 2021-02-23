@@ -18,8 +18,8 @@ public:
 	double operator[](unsigned int i) const;
 	double At(vec3 & Pt, VolExtentIndexWeights_s & VolInfo) const;
 	Boolean_t Write(unsigned int i, double const & Val) const;
-	Boolean_t GetReadPtr(int ZoneNum, int VarNum);
-	Boolean_t GetWritePtr(int ZoneNum, int VarNum);
+	Boolean_t InitializeReadPtr(int ZoneNum, int VarNum);
+	Boolean_t InitializeWritePtr(int ZoneNum, int VarNum);
 	void Close();
 
 	Boolean_t IsReady() const { return m_IsReady; }
@@ -71,8 +71,8 @@ public:
 	FieldVecPointer_c & operator=(FieldVecPointer_c const & rhs);
 	vec3 operator[](unsigned int i) const;
 	Boolean_t Write(unsigned int i, vec3 const & Vec) const;
-	Boolean_t GetReadPtr(int ZoneNum, vector<int> const & VarNums);
-	Boolean_t GetWritePtr(int ZoneNum, vector<int> const & VarNums);
+	Boolean_t InitializeReadPtr(int ZoneNum, vector<int> const & VarNums);
+	Boolean_t InitializeWritePtr(int ZoneNum, vector<int> const & VarNums);
 	void Close();
 
 	Boolean_t IsReady() const { return Ptrs[0].IsReady(); }

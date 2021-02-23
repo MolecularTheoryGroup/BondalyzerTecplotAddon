@@ -73,8 +73,9 @@ public:
 	vector<double> GetIntResults() const;
 	int GetZoneNum() const { return m_ZoneNum; }
 	vector<vector<double> > GetTriSphereIntValsByElem(vector<double> * SphereTriangleAreas = nullptr) const { return TriSphereIntValsByElem(SphereTriangleAreas); }
-	vector<double> TriSphereElemAreas() const;
-
+	vector<double> TriSphereElemSolidAngles() const;
+	int GetNumElems() const {return m_ElemList.size(); }
+	int GetNumNodes() const {return m_XYZList.size(); }
 
 	vector<vec3> GetSphereIntersectionPath(vec3 const & SphereCenter, double const & SphereRadius);
 	bool ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, int & ProjectedElemIndex, bool & ProjectionIsInterior, int MaxBFSDepth = DefaultProjectPointToSurfaceMaxBFSDepth, bool StartWithBFS = true) const;

@@ -24,6 +24,7 @@
 #include "CSM_DATA_TYPES.h"
 #include "CSM_CRIT_POINTS.h"
 #include "CSM_GUI.h"
+#include "ENGINE.h"
 #include "GBAENGINE.h"
 #include "INTEGRATE.h"
 #include "VIEWRESULTS.h"
@@ -260,7 +261,7 @@ static void TGLSmoothAll_TOG_T3_1_CB(const LgIndex_t *I)
 
 void SmoothGBAIntResults()
 {
-	int NumSmoothingPasses = 1;
+	int NumSmoothingPasses = 5;
 	double SmoothingCoefficient = 0.5;
 
 	LgIndex_t *SelectedNums;
@@ -1296,7 +1297,10 @@ static void BTNExport_BTN_T3_1_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE("Export to CSV Button Pushed\n");
-	ExportGBAData();
+// 	ExportGBADataGetUserInfo();
+// 	ExportGBAData();
+// 	
+	TecUtilDialogMessageBox("Please use the export tool located in the MTG_Utilities menu.", MessageBoxType_Information);
 	TecUtilLockFinish(AddOnID);
 }
 

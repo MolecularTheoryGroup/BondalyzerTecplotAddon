@@ -7,7 +7,7 @@
 #include <iterator>
 #include <iomanip>
 
-#include "CSM_CRIT_POINTS.h"
+// #include "CSM_CRIT_POINTS.h"
 #include "CSM_DATA_TYPES.h"
 
 
@@ -167,7 +167,9 @@ struct CSMAuxData_s{
 			GPEndNumStrs,
 			GPEndTypes,
 			ZFSCornerCPNumStrs,
-			ZFSCornerCPTypes;
+			ZFSCornerCPTypes,
+			MolecularGraphGPSubTypes,
+			OneSkeletonGPSubTypes;
 
 		CC_s(){
 			NumCPs = {
@@ -194,6 +196,15 @@ struct CSMAuxData_s{
 			GPEndTypes = {
 				Prefix + "BegCrtPtType",
 				Prefix + "EndCrtPtType"
+			};
+			MolecularGraphGPSubTypes = { ZoneSubTypeBondPathSegment };
+			OneSkeletonGPSubTypes = {
+				ZoneSubTypeBondPathSegment,
+				ZoneSubTypeBondCagePath,
+				ZoneSubTypeRingLineSegment,
+				ZoneSubTypeCageNuclearPath,
+				ZoneSubTypeRingNuclearPath,
+				ZoneSubTypeRingBondPath
 			};
 			// for zero-flux surface zone
 			for (int i = 0; i < 3; ++i){

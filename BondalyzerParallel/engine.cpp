@@ -24,6 +24,7 @@
 #include <list>
 #include <deque>
 #include <queue>
+#include <io.h>
 
 #include <omp.h>
 
@@ -385,7 +386,7 @@ void GetClosedIsoSurfaceFromPoints(){
 
 	vector<FieldDataPointer_c> IsoReadPtrs(TecUtilDataSetGetNumVars());
 	for (int i = 0; i < IsoReadPtrs.size(); ++i){
-		if (!IsoReadPtrs[i].GetReadPtr(IsoZoneNum, i + 1)){
+		if (!IsoReadPtrs[i].InitializeReadPtr(IsoZoneNum, i + 1)){
 			TecUtilDialogErrMsg("Failed to get isosurface read pointer. Quitting.");
 			return;
 		}
@@ -488,7 +489,7 @@ void GetClosedIsoSurfaceFromNodes(){
 
 	vector<FieldDataPointer_c> IsoReadPtrs(TecUtilDataSetGetNumVars());
 	for (int i = 0; i < IsoReadPtrs.size(); ++i){
-		if (!IsoReadPtrs[i].GetReadPtr(IsoZoneNum, i + 1)){
+		if (!IsoReadPtrs[i].InitializeReadPtr(IsoZoneNum, i + 1)){
 			TecUtilDialogErrMsg("Failed to get isosurface read pointer. Quitting.");
 			return;
 		}
@@ -535,7 +536,7 @@ void GetAllClosedIsoSurfaces(){
 
 	vector<FieldDataPointer_c> IsoReadPtrs(TecUtilDataSetGetNumVars());
 	for (int i = 0; i < IsoReadPtrs.size(); ++i){
-		if (!IsoReadPtrs[i].GetReadPtr(IsoZoneNum, i + 1)){
+		if (!IsoReadPtrs[i].InitializeReadPtr(IsoZoneNum, i + 1)){
 			TecUtilDialogErrMsg("Failed to get isosurface read pointer. Quitting.");
 			return;
 		}
@@ -557,7 +558,7 @@ void GetClosedIsoSurfaceProbeCallback(Boolean_t WasSuccessful, Boolean_t IsNeare
 			TecUtilDataLoadBegin();
 			vector<FieldDataPointer_c> IsoReadPtrs(TecUtilDataSetGetNumVars());
 			for (int i = 0; i < IsoReadPtrs.size(); ++i) {
-				if (!IsoReadPtrs[i].GetReadPtr(ZoneNum, i + 1)) {
+				if (!IsoReadPtrs[i].InitializeReadPtr(ZoneNum, i + 1)) {
 					TecUtilDialogErrMsg("Failed to get isosurface read pointer. Quitting.");
 					return;
 				}
@@ -574,7 +575,7 @@ void GetClosedIsoSurfaceProbeCallback(Boolean_t WasSuccessful, Boolean_t IsNeare
 				for (int i = 0; i < 3; ++i)
 					ProbePoint[i] = TecUtilProbeFieldGetValue(XYZVarNums[i]);
 				FieldVecPointer_c XYZPtr;
-				XYZPtr.GetReadPtr(ZoneNum, XYZVarNums);
+				XYZPtr.InitializeReadPtr(ZoneNum, XYZVarNums);
 				double MinDistSqr = DBL_MAX;
 				int MinDistNode = -1;
 				for (int i = 0; i < IsoReadPtrs[0].Size(); ++i){
@@ -734,7 +735,7 @@ void GetClosedIsoSurface(int IsoZoneNum, vector<FieldDataPointer_c> const & IsoR
 		int NewZoneNum = TecUtilDataSetGetNumZones();
 
 		for (int i = 0; i < IsoReadPtrs.size(); ++i){
-			if (!IsoWritePtrs[i].GetWritePtr(NewZoneNum, i + 1)){
+			if (!IsoWritePtrs[i].InitializeWritePtr(NewZoneNum, i + 1)){
 				TecUtilDialogErrMsg("Failed to get write pointer(s) for new iso zone. Quitting.");
 				return;
 			}
@@ -1051,7 +1052,7 @@ int const DeletePointsFromIOrderedZone(int ZoneNum, vector<int> const & DelPoint
 	vector<FieldDataType_e> FDTypes(NumVars);
 
 	for (int v = 0; v < NumVars; ++v){
-		VarReadPtrs[v].GetReadPtr(ZoneNum, v + 1);
+		VarReadPtrs[v].InitializeReadPtr(ZoneNum, v + 1);
 		FDTypes[v] = VarReadPtrs[v].FDType();
 	}
 
@@ -1062,7 +1063,7 @@ int const DeletePointsFromIOrderedZone(int ZoneNum, vector<int> const & DelPoint
 	if (IJK[0] - DelPointNums.size() > 0 && TecUtilDataSetAddZone(ZoneName, IJK[0] - DelPointNums.size(), IJK[1], IJK[2], ZoneType_Ordered, FDTypes.data())){
 		NewZoneNum = TecUtilDataSetGetNumZones();
 		for (int v = 0; v < NumVars; ++v){
-			VarWritePtrs[v].GetWritePtr(NewZoneNum, v + 1);
+			VarWritePtrs[v].InitializeWritePtr(NewZoneNum, v + 1);
 		}
 		int NewPtNum = 0;
 		for (int OldPtNum = 0; OldPtNum < IJK[0]; ++OldPtNum){
@@ -3182,7 +3183,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 	TecUtilDataLoadBegin();
 
-	if (RCSFuncVarNum > 0 && !RCSFuncPtr.GetReadPtr(VolZoneNum, RCSFuncVarNum)) {
+	if (RCSFuncVarNum > 0 && !RCSFuncPtr.InitializeReadPtr(VolZoneNum, RCSFuncVarNum)) {
 		TecUtilDialogErrMsg("Failed to get read pointers");
 		return FALSE;
 	}
@@ -5398,7 +5399,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 
 	TecUtilDataLoadBegin();
 
-	if (RCSFuncVarNum > 0 && !RCSFuncPtr.GetReadPtr(VolZoneNum, RCSFuncVarNum)){
+	if (RCSFuncVarNum > 0 && !RCSFuncPtr.InitializeReadPtr(VolZoneNum, RCSFuncVarNum)){
 		TecUtilDialogErrMsg("Failed to get read pointers");
 		return FALSE;
 	}
@@ -6686,7 +6687,7 @@ void ConnectCPsReturnUserInfo(bool const GuiSuccess,
 			string ZoneName = "Line " + MakeStringFromCPNums({ CPNums[i]-1, CPNums[j]-1 }, CPs, StartEndCPTypeAndOffset);
 			Boolean_t IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), NumPts, 1, 1, ZoneType_Ordered, nullptr);
 			FieldVecPointer_c XYZPtr;
-			IsOk = IsOk && XYZPtr.GetWritePtr(TecUtilDataSetGetNumZones(), XYZVarNums);
+			IsOk = IsOk && XYZPtr.InitializeWritePtr(TecUtilDataSetGetNumZones(), XYZVarNums);
 			if (IsOk){
 				for (int n = 0; n < NumPts; ++n) XYZPtr.Write(n, a + s * double(n));
 			}
@@ -6779,19 +6780,19 @@ void DrawEigenvectotArrorsReturnUserInfo(bool const GuiSuccess,
 
 	for (int z : SelectedZones){
 		RhoPtrs.push_back(FieldDataPointer_c());
-		if (!RhoPtrs.back().GetReadPtr(z, RhoVarNum)){
+		if (!RhoPtrs.back().InitializeReadPtr(z, RhoVarNum)){
 			TecUtilDialogErrMsg("Failed to get rho data pointer");
 			return;
 		}
 		XYZPtrs.push_back(FieldVecPointer_c());
-		if (!XYZPtrs.back().GetReadPtr(z, XYZVarNums)){
+		if (!XYZPtrs.back().InitializeReadPtr(z, XYZVarNums)){
 			TecUtilDialogErrMsg("Failed to get XYZ data pointer");
 			return;
 		}
 		EigValPtrs.push_back(vector<FieldDataPointer_c>());
 		for (int v : EigValVarNums){
 			EigValPtrs.back().push_back(FieldDataPointer_c());
-			if (!EigValPtrs.back().back().GetReadPtr(z, v)){
+			if (!EigValPtrs.back().back().InitializeReadPtr(z, v)){
 				TecUtilDialogErrMsg("Failed to get eigenvalue data pointer");
 				return;
 			}
@@ -6799,7 +6800,7 @@ void DrawEigenvectotArrorsReturnUserInfo(bool const GuiSuccess,
 		EigVecPtrs.push_back(vector<FieldVecPointer_c>());
 		for (vector<int> const & e : EigVecVarNums) {
 			EigVecPtrs.back().push_back(FieldVecPointer_c());
-			if (!EigVecPtrs.back().back().GetReadPtr(z, e)){
+			if (!EigVecPtrs.back().back().InitializeReadPtr(z, e)){
 				TecUtilDialogErrMsg("Failed to get eigenvector data pointer");
 				return;
 			}
@@ -7260,7 +7261,7 @@ Boolean_t CPNumbersMapBetweenZones(int AllCPsZoneNum,
 
 	FieldVecPointer_c SelXYZ, AllXYZ;
 
-	VERIFY(SelXYZ.GetReadPtr(SelectedCPZoneNum, XYZVarNums) && AllXYZ.GetReadPtr(AllCPsZoneNum, XYZVarNums));
+	VERIFY(SelXYZ.InitializeReadPtr(SelectedCPZoneNum, XYZVarNums) && AllXYZ.InitializeReadPtr(AllCPsZoneNum, XYZVarNums));
 
 	for (int i : SelectedCPNums) REQUIRE(i <= SelXYZ.Size()); // i are base-1 indices
 
@@ -7472,7 +7473,7 @@ void MakeSurfaceFromPathZonesReturnUserInfo(bool const GuiSuccess,
 					IndList.push_back(vector<int>(IJK[0]));
 
 					FieldVecPointer_c XYZVarPtr;
-					if (XYZVarPtr.GetReadPtr(z, XYZVarNums)) {
+					if (XYZVarPtr.InitializeReadPtr(z, XYZVarNums)) {
 						for (int i = 0; i < IJK[0]; ++i) {
 							P.push_back(XYZVarPtr[i]);
 							IndList.back()[i] = Ind++;
@@ -7508,14 +7509,14 @@ void MakeSurfaceFromPathZonesReturnUserInfo(bool const GuiSuccess,
 
 					if (GetVolInfo(VolZoneNum, XYZVarNums, FALSE, VolInfo)) {
 						TecUtilDataLoadBegin();
-						RhoPtr.GetReadPtr(VolZoneNum, RhoVarNum);
+						RhoPtr.InitializeReadPtr(VolZoneNum, RhoVarNum);
 						// Write rho values to each node on the GB
 
 						FieldVecPointer_c SurfXYZPtr;
-						SurfXYZPtr.GetReadPtr(SurfZoneNum, XYZVarNums);
+						SurfXYZPtr.InitializeReadPtr(SurfZoneNum, XYZVarNums);
 
 						FieldDataPointer_c SurfRhoPtr;
-						SurfRhoPtr.GetWritePtr(SurfZoneNum, RhoVarNum);
+						SurfRhoPtr.InitializeWritePtr(SurfZoneNum, RhoVarNum);
 
 						int NumNodes = SurfXYZPtr.Size();
 						vector<VolExtentIndexWeights_s> ThVolInfo(omp_get_num_procs(), VolInfo);
@@ -7600,7 +7601,7 @@ void MakeSurfaceFromPathZonesReturnUserInfo(bool const GuiSuccess,
 				IndList.push_back(vector<int>(IJK[0]));
 
 				FieldVecPointer_c XYZVarPtr;
-				if (XYZVarPtr.GetReadPtr(z, XYZVarNums)) {
+				if (XYZVarPtr.InitializeReadPtr(z, XYZVarNums)) {
 					for (int i = 0; i < IJK[0]; ++i) {
 						P.push_back(XYZVarPtr[i]);
 						IndList.back()[i] = Ind++;
@@ -7636,14 +7637,14 @@ void MakeSurfaceFromPathZonesReturnUserInfo(bool const GuiSuccess,
 
 				if (GetVolInfo(VolZoneNum, XYZVarNums, FALSE, VolInfo)) {
 					TecUtilDataLoadBegin();
-					RhoPtr.GetReadPtr(VolZoneNum, RhoVarNum);
+					RhoPtr.InitializeReadPtr(VolZoneNum, RhoVarNum);
 					// Write rho values to each node on the GB
 
 					FieldVecPointer_c SurfXYZPtr;
-					SurfXYZPtr.GetReadPtr(SurfZoneNum, XYZVarNums);
+					SurfXYZPtr.InitializeReadPtr(SurfZoneNum, XYZVarNums);
 
 					FieldDataPointer_c SurfRhoPtr;
-					SurfRhoPtr.GetWritePtr(SurfZoneNum, RhoVarNum);
+					SurfRhoPtr.InitializeWritePtr(SurfZoneNum, RhoVarNum);
 
 					int NumNodes = SurfXYZPtr.Size();
 					vector<VolExtentIndexWeights_s> ThVolInfo(omp_get_num_procs(), VolInfo);
@@ -7767,7 +7768,7 @@ void MakeSliceFromPointSelectionReturnUserInfo(bool const GuiSuccess,
 
 	TecUtilDataLoadBegin();
 
-	XYZPtr.GetReadPtr(CPZoneNum, XYZVarNums);
+	XYZPtr.InitializeReadPtr(CPZoneNum, XYZVarNums);
 
 	vec3 Pt = zeros<vec>(3);
 	string ZoneName = "Slc: ";
@@ -7851,10 +7852,10 @@ void MakeSliceFromPointSelectionGetUserInfo(){
 // // 
 // // 	int VarNum = 4;
 // // 
-// // 	RhoPtr.GetReadPtr(1, VarNum++);
+// // 	RhoPtr.InitializeReadPtr(1, VarNum++);
 // // 
-// // 	for (int i = 0; i < 3; ++i) GradPtrs[i].GetReadPtr(1, VarNum++);
-// // 	for (int i = 0; i < 6; ++i) HessPtrs[i].GetReadPtr(1, VarNum++);
+// // 	for (int i = 0; i < 3; ++i) GradPtrs[i].InitializeReadPtr(1, VarNum++);
+// // 	for (int i = 0; i < 6; ++i) HessPtrs[i].InitializeReadPtr(1, VarNum++);
 // // 
 // // 	double RhoCutoff = 1e-3;
 // // 	GradPath_c GP(StartPoint, StreamDir_Forward, 200, GPType_Classic, GPTerminate_AtRhoValue, nullptr, nullptr, nullptr, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
@@ -7879,7 +7880,7 @@ void MakeSliceFromPointSelectionGetUserInfo(){
 // // 
 // // 	TecUtilDataLoadBegin();
 // // 
-// // 	XYZPtr.GetWritePtr(ZoneNum, { 1, 2, 3 });
+// // 	XYZPtr.InitializeWritePtr(ZoneNum, { 1, 2, 3 });
 // // 
 // // 	for (int i = 0; i < 4; ++i){
 // // 		TecUtilDataNodeSetByZone(ZoneNum, 1, i + 1, Elems[i]);
@@ -7923,7 +7924,7 @@ void MakeSliceFromPointSelectionGetUserInfo(){
 // // 	VolExtentIndexWeights_s VolInfo;
 // // 	GetVolInfo(1, { 1, 2, 3 }, FALSE, VolInfo);
 // // 	vector<FieldDataPointer_c> VarPtrs(1);
-// // 	VarPtrs[0].GetReadPtr(1, 4);
+// // 	VarPtrs[0].InitializeReadPtr(1, 4);
 // // 	vector<double> IntVals;
 // // 	IntegrateUsingIsosurfaces(GPPtrs, 3, VolInfo, VarPtrs, IntVals);
 // // 
@@ -9473,7 +9474,7 @@ void TestGSLPartialDifferentiation(){
 	GetVolInfo(VolZoneNum, XYZVarNums, FALSE, VolInfo);
 
 	FieldDataPointer_c RhoPtr;
-	RhoPtr.GetReadPtr(VolZoneNum, RhoVarVum);
+	RhoPtr.InitializeReadPtr(VolZoneNum, RhoVarVum);
 
 	vec3 grad = GradAtPoint(Pt, RhoPtr, VolInfo);
 
@@ -9484,7 +9485,7 @@ void TestGSLPartialDifferentiation(){
 	int GradXVarNum = 5;
 	vector<FieldDataPointer_c> GradPtrs(3);
 	for (int i = 0; i < 3; ++i)
-		GradPtrs[i].GetReadPtr(1, GradXVarNum + i);
+		GradPtrs[i].InitializeReadPtr(1, GradXVarNum + i);
 	mat33 hess2 = HessAtPoint(Pt, GradPtrs, VolInfo);
 
 	mat33 hessdiff = hess2 - hess;
@@ -9511,7 +9512,7 @@ void TestGradPathPointFromRhoValue(){
 	GetVolInfo(1, { 1,2,3 }, FALSE, VolInfo);
 
 	FieldDataPointer_c RhoPtr;
-	RhoPtr.GetReadPtr(1, 4);
+	RhoPtr.InitializeReadPtr(1, 4);
 
 	GP.SetGPTermType(GPTerminate_AtPoint);
 	GP.SetGPType(GPType_Classic);
@@ -9592,7 +9593,7 @@ void TestFunction() {
 // 						if (VarName.find("I: ") != string::npos
 // 							|| VarName.find("INS: ") != string::npos) {
 // 							TecUtilDataLoadBegin();
-// 							Ptr.GetWritePtr(z, v);
+// 							Ptr.InitializeWritePtr(z, v);
 // 							vec Vals(NumElems);
 // 							for (int i = 0; i < NumElems; ++i)
 // 								Vals[i] = Ptr[i];
@@ -9684,7 +9685,7 @@ void TestFunction() {
 // 	GetVolInfo(TecUtilDataSetGetNumZones(), { 1,2,3 }, FALSE, VolInfo);
 // 
 // 	FieldDataPointer_c RhoPtr;
-// 	RhoPtr.GetReadPtr(TecUtilDataSetGetNumZones(), 4);
+// 	RhoPtr.InitializeReadPtr(TecUtilDataSetGetNumZones(), 4);
 // 
 // 	CritPoints_c CPs(2, { 1,2,3 }, 5, 4);
 // 
@@ -9840,12 +9841,12 @@ void GradientPathToolReturnUserInfo(bool const GuiSuccess,
 	GPToolData.Dir = StreamDir;
 	GetVolInfo(VolZoneNum, { 1, 2, 3 }, FALSE, GPToolData.VolInfo);
 
-	Boolean_t IsOk = GPToolData.RhoPtr.GetReadPtr(VolZoneNum, RhoVarNum);
+	Boolean_t IsOk = GPToolData.RhoPtr.InitializeReadPtr(VolZoneNum, RhoVarNum);
 
 	if (IsOk && Fields[fNum++].GetReturnBool()){
 		GPToolData.GradPtrs.resize(3);
 		for (int i = 0; i < 3; ++i){
-			if (!GPToolData.GradPtrs[i].GetReadPtr(VolZoneNum, Fields[fNum].GetReturnInt() + i)){
+			if (!GPToolData.GradPtrs[i].InitializeReadPtr(VolZoneNum, Fields[fNum].GetReturnInt() + i)){
 				GPToolData.GradPtrs.clear();
 				break;
 			}
@@ -9856,7 +9857,7 @@ void GradientPathToolReturnUserInfo(bool const GuiSuccess,
 	if (IsOk && Fields[fNum++].GetReturnBool()){
 		GPToolData.HessPtrs.resize(6);
 		for (int i = 0; i < 6; ++i){
-			if (!GPToolData.HessPtrs[i].GetReadPtr(VolZoneNum, Fields[fNum].GetReturnInt() + i)){
+			if (!GPToolData.HessPtrs[i].InitializeReadPtr(VolZoneNum, Fields[fNum].GetReturnInt() + i)){
 				GPToolData.HessPtrs.clear();
 				break;
 			}
@@ -9937,7 +9938,7 @@ int VolumeZoneMirrorPlane(int ZoneNum, int PlaneNum, vec3 Origin, VolExtentIndex
 	TecUtilDataLoadBegin();
 
 	for (int v = 1; v <= TecUtilDataSetGetNumVars(); ++v){
-		ReadPtrs[v - 1].GetReadPtr(ZoneNum, v);
+		ReadPtrs[v - 1].InitializeReadPtr(ZoneNum, v);
 		VarTypes.push_back(ReadPtrs[v - 1].FDType());
 	}
 
@@ -9951,7 +9952,7 @@ int VolumeZoneMirrorPlane(int ZoneNum, int PlaneNum, vec3 Origin, VolExtentIndex
 	}
 
 	for (int v = 1; v <= TecUtilDataSetGetNumVars(); ++v) {
-		WritePtrs[v - 1].GetWritePtr(NewZoneNum, v);
+		WritePtrs[v - 1].InitializeWritePtr(NewZoneNum, v);
 	}
 
 	FieldVecPointer_c XYZPtr(vector<FieldDataPointer_c>({ ReadPtrs[XYZVarNums[0] - 1], ReadPtrs[XYZVarNums[1] - 1], ReadPtrs[XYZVarNums[2] - 1] })),
@@ -10112,3 +10113,834 @@ void SymmetryMirrorGetUserInfo() {
 	CSMGui("Symmetry mirror volume zone", Fields, SymmetryMirrorReturnUserInfo, AddOnID);
 }
 
+/*
+ * 		vector<string> VarNameList = {
+			"P over N",
+			"P/(N alpha)",
+			"S[P]",
+			"S[P / alpha]",
+			"S[alpha]",
+			"S[P] / S[alpha]",
+			"S[alpha] - S[P]"
+	};
+ */
+
+vector<vec> CalculateShannonEntropiesFromDensitySolidAngleValues(vec & DensityVec, vec & SolidAngleVec){
+	REQUIRE(DensityVec.size() == SolidAngleVec.size() && DensityVec.size() > 0);
+	vector<vec> Out;
+
+	DensityVec = normalise(DensityVec);
+	SolidAngleVec = normalise(SolidAngleVec);
+
+	vec val, 
+		prob = DensityVec;
+
+	// Add values to output vector according to order of VarNameList above
+	Out.push_back(prob); // P over N
+	val = prob / SolidAngleVec; // P/(N alpha)
+	Out.push_back(val);
+	Out.emplace_back(-prob * log(prob)); // S[P] shannon condensed entropy
+	val = prob / SolidAngleVec; // S[P / alpha]
+	Out.emplace_back(-val * log(val));
+	val = SolidAngleVec; // S[alpha]
+	Out.emplace_back(-val * log(val));
+	Out.emplace_back((-prob * log(prob)) / (-val * log(val)));
+	Out.emplace_back((-prob * log(prob)) - (-val * log(val)));
+
+	return Out;
+}
+
+vector<vector<double> > CalculateNormalizedAndScaledVectors(vec const & InVals, vec const & InWeights) {
+	vector<vector<double> > OutVals = { arma::conv_to<vector<double> >::from(InVals) };
+
+	vec NormalisedValues = InVals / InWeights;
+	double NormSum = sum(NormalisedValues);
+	vec ScaledValues = NormalisedValues;
+	if (NormSum != 0.0){
+		ScaledValues *= (sum(InVals) / NormSum);
+	}
+
+	return { arma::conv_to<vector<double> >::from(InVals), arma::conv_to<vector<double> >::from(NormalisedValues), arma::conv_to<vector<double> >::from(ScaledValues) };
+}
+
+vector<string> CalculateShannonEntropyVarNameList = {
+		"Normalized condensed density | Pr = P/N",
+		"Further normalized by solid angle | Pr/alpha",
+		"Shannon entropy of Pr | S[Pr]",
+		"Shannon entropy of normalized Pr | S[Pr/alpha]",
+		"Maximum (radial) Shannon entropy | S[alpha]",
+		"Ratio | S[P] / S[alpha]",
+		"Shannon entropy of interaction | S[P] - S[alpha]"
+};
+
+enum CalculateShannonEntropiesRegionTypes_e{
+	Region_AtomicBasin = 0,
+	Region_AllAtomicBasins,
+	Region_MoleculesMG,
+	Region_MoleculesOS,
+	Region_SpecialGradientBundles,
+	Region_CondensedBasins,
+	Region_ActiveDGBs,
+	Region_NumRegions
+};
+
+void CalculateAndSaveShannonEntropiesForSphereNameElements(
+	string const & VarNamePrefix,
+	vector<std::pair<string, vector<int> > > & SphereNameAndElements, // empty vector<int> means use all elements
+	vector<bool> const & DoVar, // list of ints of indices of VarNameList (if new vars are added, need to update here, VarNameList, and in the other Function)
+	std::map<string, FESurface_c> & SpheresByName,
+	std::map<string, FieldDataPointer_c> & SphereNameToVarPtr,
+	std::map<string, vec> & SphereNameToElemSolidAngles)
+{
+	// prepare new variables if necessary (double type for sphere zones and bit for others)
+// 	vector<string> CalculateShannonEntropyVarNameList = {
+// 		": P over N",
+// 		": P/(N alpha)",
+// 		": S[P]",
+// 		": S[P / alpha]",
+// 		": S[alpha]",
+// 		": S[P] / S[alpha]",
+// 		": S[P] - S[alpha]"
+// 	};
+
+	vector<FieldDataType_e> FDTypes(TecUtilDataSetGetNumZones(), FieldDataType_Bit);
+	vector<ValueLocation_e> ValueLocations(TecUtilDataSetGetNumZones(), ValueLocation_Nodal);
+	for (int zi = 1; zi < TecUtilDataSetGetNumZones(); ++zi){
+		if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)){
+			FDTypes[zi - 1] = FieldDataType_Double;
+			ValueLocations[zi - 1] = ValueLocation_CellCentered;
+		}
+	}
+
+	vector<int> VarNums(CalculateShannonEntropyVarNameList.size() * 3, -1);
+	vector<string> VarPrefixes = { "I","N","S" };
+	for (int vi = 0; vi < CalculateShannonEntropyVarNameList.size(); ++vi){
+		if (DoVar[vi]) {
+			for (int vj = 0; vj < 3; ++vj) {
+				string VarName = "";
+				for (int vk = 0; vk <= vj; ++vk){
+					VarName += VarPrefixes[vk];
+				}
+				VarName += ": " + VarNamePrefix + CalculateShannonEntropyVarNameList[vi];
+				VarNums[(vi * 3) + vj] = VarNumByName(VarName);
+				if (VarNums[(vi * 3) + vj] <= 0) {
+					ArgList Args;
+					Args.appendString(SV_NAME, VarName);
+					Args.appendArray(SV_VARDATATYPE, FDTypes.data());
+					Args.appendArray(SV_VALUELOCATION, ValueLocations.data());
+
+					if (TecUtilDataSetAddVarX(Args.getRef())) {
+						VarNums[(vi * 3) + vj] = TecUtilDataSetGetNumVars();
+					}
+					else {
+						TecUtilDialogErrMsg(("Failed to make new variable: " + VarNamePrefix + CalculateShannonEntropyVarNameList[vi]).c_str());
+						return;
+					}
+				}
+			}
+		}
+	}
+
+	// Prepare values and calculate output values
+	vector<double> DensityVals, SolidAngleVals;
+	for (auto & s : SphereNameAndElements) {
+		auto VarPtr = SphereNameToVarPtr[s.first];
+		auto SolidAngleVec = SphereNameToElemSolidAngles[s.first];
+		if (s.second.empty()){
+			s.second.resize(VarPtr.Size());
+			for (int ei = 0; ei < VarPtr.Size(); ++ei) {
+				s.second[ei] = ei;
+			}
+		}
+
+		vector<double> tmpVals(s.second.size());
+		for (int ei = 0; ei < s.second.size(); ++ei) {
+			tmpVals[ei] = VarPtr[s.second[ei]];
+		}
+		DensityVals.insert(DensityVals.end(), tmpVals.begin(), tmpVals.end());
+
+		for (int ei = 0; ei < s.second.size(); ++ei) {
+			tmpVals[ei] = SolidAngleVec[s.second[ei]];
+		}
+
+		SolidAngleVals.insert(SolidAngleVals.end(), tmpVals.begin(), tmpVals.end());
+	}
+
+	// Now calculate the actual shannon entropy values for the specified spheres and elements
+
+
+	vector<vec> EntropyValues = CalculateShannonEntropiesFromDensitySolidAngleValues(vec(DensityVals), vec(SolidAngleVals));
+	vector<vector<double> > EntropyValuesFull;
+	for (auto v : EntropyValues){
+		auto NewVals = CalculateNormalizedAndScaledVectors(v, vec(SolidAngleVals));
+		for (auto w : NewVals){
+			EntropyValuesFull.push_back(w);
+		}
+	}
+
+	// Then another loop over the spheres to write the new values
+	int ei = 0;
+	for (auto & s : SphereNameAndElements){
+		vector<FieldDataPointer_c> VarPtrs(EntropyValuesFull.size());
+		for (int vi = 0; vi < VarPtrs.size(); ++vi){
+			if (VarNums[vi] > 0) {
+				VarPtrs[vi].InitializeWritePtr(SpheresByName[s.first].GetZoneNum(), VarNums[vi]);
+			}
+		}
+
+		for (int ej = 0; ej < s.second.size(); ++ej){
+			for (int vi = 0; vi < VarPtrs.size(); ++vi) {
+				if (VarNums[vi] > 0) {
+					VarPtrs[vi].Write(s.second[ej], EntropyValuesFull[vi][ei]);
+				}
+			}
+			ei++;
+		}
+	}
+}
+
+void CollectGradientBundlesByRegionType(int PVarNum, 
+	int CPZoneNum, 
+	vector<int> XYZVarNums, 
+	int CPTypeVarNum,
+	std::map<string, FESurface_c> & SpheresByName,
+	std::map<string, FieldDataPointer_c> & SphereNameToVarPtr,
+	std::map<string, vec> & SphereNameToElemSolidAngles,
+	std::map<string, std::set<string> > & MoleculeMGNamesToSphereNames,
+	std::map<string, std::set<string> > & MoleculeOSNamesToSphereNames,
+	std::map<string, vector<int> > & CondensedBasinNameToSphereElems,
+	std::map<string, string> & CondensedBasinNameToSphereName,
+	std::map<string, std::set<string> > & SpecialGradientBundleNameToCondensedBasinNames)
+{
+	REQUIRE(PVarNum > 0 && PVarNum <= TecUtilDataSetGetNumVars());
+	REQUIRE(CPZoneNum > 0 && CPZoneNum <= TecUtilDataSetGetNumZones());
+
+	CritPoints_c CPs(CPZoneNum, XYZVarNums, CPTypeVarNum);
+	CritPoints_c CPsOneSkeleton = CPs;
+
+	CPs.GenerateCPGraph(CSMAuxData.CC.MolecularGraphGPSubTypes);
+	CPsOneSkeleton.GenerateCPGraph(CSMAuxData.CC.OneSkeletonGPSubTypes);
+
+	//1. Get pointers to condensed density for all spheres
+	// 
+	// 
+// 	std::map<string, FESurface_c> SpheresByName;
+// 	std::map<string, FieldDataPointer_c> SphereNameToVarPtr;
+// 	std::map<string, vec> SphereNameToElemSolidAngles;
+// 
+// 
+// 	TecUtilDataLoadBegin();
+
+	for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
+		if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)) {
+			// sphere zone
+			string SphereName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName);
+			FieldDataPointer_c VarPtr;
+			VarPtr.InitializeReadPtr(zi, PVarNum);
+			SphereNameToVarPtr[SphereName] = VarPtr;
+
+			FESurface_c Sphere(zi, XYZVarNums);
+			auto ElemAreas = Sphere.TriSphereElemSolidAngles();
+			SphereNameToElemSolidAngles[SphereName] = ElemAreas;
+			SpheresByName[SphereName] = Sphere;
+		}
+	}
+
+	// Get "molecules" by searching for edges in the CP graph between the spheres present.
+	// Because this is using map and set, duplicates are automatically ignored.
+// 	std::map<string, std::set<string> > MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames;
+	for (auto & si : SpheresByName) {
+		std::set<string> MoleculeNameMG, MoleculeNameOS;
+		int CPi = stoi(AuxDataZoneGetItem(si.second.GetZoneNum(), CSMAuxData.GBA.SphereCPNum))-1;
+		for (auto & sj : SpheresByName) {
+			int CPj = stoi(AuxDataZoneGetItem(sj.second.GetZoneNum(), CSMAuxData.GBA.SphereCPNum))-1;
+			if (CPi != CPj) {
+				if (CPs.HasEdge(CPi, CPj, -1)) {
+					MoleculeNameMG.insert(si.first);
+					MoleculeNameOS.insert(si.first);
+					MoleculeNameMG.insert(sj.first);
+					MoleculeNameOS.insert(sj.first);
+				}
+				else if (CPsOneSkeleton.HasEdge(CPi, CPj, -1)) {
+					MoleculeNameOS.insert(si.first);
+					MoleculeNameOS.insert(sj.first);
+				}
+			}
+		}
+		if (!MoleculeNameMG.empty()) {
+			string MoleculeName = StringJoin(vector<string>(MoleculeNameMG.begin(), MoleculeNameMG.end()), " -- ");
+			MoleculeMGNamesToSphereNames[MoleculeName] = MoleculeNameMG;
+		}
+		if (!MoleculeNameOS.empty()) {
+			string MoleculeName = StringJoin(vector<string>(MoleculeNameOS.begin(), MoleculeNameOS.end()), " -- ");
+			MoleculeOSNamesToSphereNames[MoleculeName] = MoleculeNameOS;
+		}
+	}
+
+	//2. Get max/min basin information
+	//	1. keep map for max/min basins <CondensedBasinInfo, BasinElementsVals>
+	//	2. another map for special gradient bundles <CondensedBasinName, BasinElements> that will include the elements of all max/min basins that contribute to them
+	//	3. another map for molecular ensembles defined in two ways
+// 			1. by the molecular graph(i.e.bond paths)
+// 			2. by the 1 - skeleton(i.e.by any special gradient paths)
+
+// 	std::map<string, vector<int> > CondensedBasinNameToSphereElems;
+// 	std::map<string, string> CondensedBasinNameToSphereName;
+// 	std::map<string, std::set<string> > SpecialGradientBundleNameToCondensedBasinNames;
+	for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
+		if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin) || AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin)) {
+			// condensed basin
+			string CondensedBasinName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinInfo);
+			string SphereName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName);
+			auto ElemList = SplitStringInt(AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinSphereElements)); // 0-based
+			CondensedBasinNameToSphereName[CondensedBasinName] = SphereName;
+			CondensedBasinNameToSphereElems[CondensedBasinName] = ElemList;
+
+			// Add to special gradient bundle if present
+			if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.CondensedBasinIsSpecialGradientBundle, "true")) {
+				string SpecialGradientBundleName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinName);
+				SpecialGradientBundleNameToCondensedBasinNames[SpecialGradientBundleName].insert(CondensedBasinName);
+			}
+		}
+	}
+}
+
+/*
+ *	Calculate Shannon entropies for every max/min condensed basin, every special gradient bundle
+ *	(unions of max/min basins), and for entire molecules (either the whole system or molecules as
+ *	defined by the molecular graph).
+ */
+void CalculateShannonEntropies(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTypeVarNum,
+	vector<bool> const & DoRegion, vector<bool> const & DoVar) {
+
+	std::map<string, FESurface_c> SpheresByName;
+	std::map<string, FieldDataPointer_c> SphereNameToVarPtr;
+	std::map<string, vec> SphereNameToElemSolidAngles;
+	std::map<string, std::set<string> > MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames;
+	std::map<string, vector<int> > CondensedBasinNameToSphereElems;
+	std::map<string, string> CondensedBasinNameToSphereName;
+	std::map<string, std::set<string> > SpecialGradientBundleNameToCondensedBasinNames;
+
+
+	TecUtilDataLoadBegin();
+
+	CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames);
+
+	// if requested, get an additional region for all active DGB zones
+	std::map < string, std::set<int> > SphereNameToActiveDGBElemNumSet;
+	std::map < string, vector<int> > SphereNameToActiveDGBElemNums;
+	if (DoRegion[Region_ActiveDGBs]) {
+		for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
+			if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)) {
+				SphereNameToActiveDGBElemNumSet[AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName)].insert(stoi(AuxDataZoneGetItem(zi, CSMAuxData.GBA.ElemNum)) - 1);
+			}
+		}
+		for (auto const & s : SphereNameToActiveDGBElemNumSet) {
+			SphereNameToActiveDGBElemNums[s.first] = vector<int>(s.second.cbegin(), s.second.cend());
+		}
+	}
+
+	//3. For each max/min basin
+	//	1. compute the Shannon entropy for the basin
+	//	2. save it in a “Condensed Basin Shannon Entropy” variable
+	//4. For each special gradient path
+	//	1. compute the Shannon entropy for the gradient bundle
+	//	2. save it to a new variable named for the gradient bundle (e.g. “bond 1”)
+	//		1. only spheres/basins contributing to the special gradient bundle need have double precision, the rest can have boolean to save space.
+	//5. Compute the molecular ensemble Shannon entropy
+	//	1. using all spheres (molecular boundaries be damned)
+	//	2. save it to a common variable for all spheres
+
+	vector<std::pair<string, vector<int> > > SphereNameAndElements;
+
+	// First for atomic basins and the entire system
+	if (DoRegion[Region_AtomicBasin] || DoRegion[Region_AllAtomicBasins]) {
+		string VarNamePrefix = "Atomic basin: ";
+		for (auto & s : SpheresByName) {
+			SphereNameAndElements.push_back(std::make_pair(s.first, vector<int>()));
+
+			// The individual sphere
+			if (DoRegion[Region_AtomicBasin]) {
+				CalculateAndSaveShannonEntropiesForSphereNameElements(VarNamePrefix, vector<std::pair<string, vector<int> > >({ std::make_pair(s.first, vector<int>()) }), DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+			}
+		}
+
+		// Then the whole system, if more than one atom
+		if (DoRegion[Region_AllAtomicBasins]) {
+			if (SphereNameAndElements.size() > 1) {
+				VarNamePrefix = "All atomic basins: ";
+				CalculateAndSaveShannonEntropiesForSphereNameElements(VarNamePrefix, SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+			}
+		}
+	}
+	if (DoRegion[Region_MoleculesMG]) {
+		for (auto & m : MoleculeMGNamesToSphereNames) {
+			SphereNameAndElements.clear();
+			for (auto & s : m.second) {
+				SphereNameAndElements.push_back(std::make_pair(s, vector<int>()));
+			}
+			CalculateAndSaveShannonEntropiesForSphereNameElements("Molecule (mol. graph): ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+		}
+	}
+
+	if (DoRegion[Region_MoleculesOS]) {
+		for (auto & m : MoleculeOSNamesToSphereNames) {
+			SphereNameAndElements.clear();
+			for (auto & s : m.second) {
+				SphereNameAndElements.push_back(std::make_pair(s, vector<int>()));
+			}
+			CalculateAndSaveShannonEntropiesForSphereNameElements("Molecule (1-skeleton): ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+		}
+	}
+
+	if (DoRegion[Region_ActiveDGBs] && !SphereNameToActiveDGBElemNums.empty()) {
+		string OutPath = "";
+		SphereNameAndElements.clear();
+		for (auto & s : SphereNameToActiveDGBElemNums) {
+			SphereNameAndElements.push_back(std::make_pair(s.first, s.second));
+		}
+		CalculateAndSaveShannonEntropiesForSphereNameElements("Active dGBs: ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+	}
+
+	if (DoRegion[Region_SpecialGradientBundles]) {
+		// Then special gradient bundles
+		for (auto & sgb : SpecialGradientBundleNameToCondensedBasinNames) {
+			SphereNameAndElements.clear();
+			for (auto & cb : sgb.second) {
+				SphereNameAndElements.push_back(std::make_pair(CondensedBasinNameToSphereName[cb], CondensedBasinNameToSphereElems[cb]));
+			}
+			CalculateAndSaveShannonEntropiesForSphereNameElements(sgb.first + ": ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+		}
+	}
+
+	if (DoRegion[Region_CondensedBasins]) {
+		// Then all condensed basins
+		for (auto & cb : CondensedBasinNameToSphereName) {
+			CalculateAndSaveShannonEntropiesForSphereNameElements(cb.first + ": ", vector<std::pair<string, vector<int> > >({ std::make_pair(cb.second, CondensedBasinNameToSphereElems[cb.first]) }), DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+		}
+	}
+
+
+	TecUtilDataLoadEnd();
+}
+
+
+void CalculateShannonEntropyReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+
+	int fNum = 0;
+
+	int PVarNum = Fields[fNum++].GetReturnInt();
+	int CPZoneNum = Fields[fNum++].GetReturnInt();
+	int CPTypeVarNum = Fields[fNum++].GetReturnInt();
+	int XVarNum = Fields[fNum++].GetReturnInt();
+
+	vector<int> XYZVarNums(3);
+	for (int i = 0; i < 3; ++i){
+		XYZVarNums[i] = XVarNum + i;
+	}
+
+	vector<bool> DoVar(CalculateShannonEntropyVarNameList.size()), DoRegion(Region_NumRegions);
+	fNum += 2;
+	for (int i = 0; i < DoVar.size(); ++i){
+		DoVar[i] = Fields[fNum++].GetReturnBool();
+	}
+	fNum += 2;
+	for (int i = 0; i < DoRegion.size(); ++i){
+		DoRegion[i] = Fields[fNum++].GetReturnBool();
+	}
+	
+
+	TecUtilLockStart(AddOnID);
+	TecUtilPleaseWait("Calculating Shannon entropy of condensed density... Please wait.", TRUE);
+	CSMGuiLock();
+
+	CalculateShannonEntropies(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, DoRegion, DoVar);
+
+	CSMGuiUnlock();
+	TecUtilPleaseWait("Calculating Shannon entropy of condensed density... Please wait.", FALSE);
+	TecUtilDialogMessageBox("Finished", MessageBox_Information);
+
+	TecUtilLockFinish(AddOnID);
+
+	return;
+}
+
+void CalculateShannonEntropyGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_VarSelect, "Condensed charge density (input function)", "I: " + CSMVarName.Dens),
+		GuiField_c(Gui_ZoneSelect, "Critical points zone", CSMZoneName.CriticalPoints),
+		GuiField_c(Gui_VarSelect, "Critical point type variable", CSMVarName.CritPointType),
+		GuiField_c(Gui_VarSelect, "X variable", "X"),
+		GuiField_c(Gui_Label, " "),
+		GuiField_c(Gui_Label, "Calculate the following variables:")
+	};
+
+	for (auto v : CalculateShannonEntropyVarNameList){
+		Fields.emplace_back(Gui_Toggle, v, "0");
+	}
+	Fields.back().SetSearchString("1"); // check only the last box
+
+	Fields.emplace_back(Gui_Label, " ");
+	Fields.emplace_back(Gui_Label, "For the following regions:");
+	vector<std::pair<string, string> > RegionTypeList = {
+		std::make_pair("every atomic basin (atomic chart)", "1"),
+		std::make_pair("the system molecular ensemble (all atomic basins together)", "1"),
+		std::make_pair("every molecular ensemble (by molecular graph)", "1"),
+		std::make_pair("every molecular ensemble (by 1-skeleton)", "1"),
+		std::make_pair("every special gradient bundle (bonds etc.)", "0"),
+		std::make_pair("every max/min condensed basin", "0"),
+		std::make_pair("active dGB or sphere element zones", "1")
+	};
+	for (auto r : RegionTypeList) {
+		Fields.emplace_back(Gui_Toggle, r.first, r.second);
+	}
+
+	CSMGui("Calculate Shannon entropy of condensed density", Fields, CalculateShannonEntropyReturnUserInfo, AddOnID);
+}
+
+void ExportGBADataForRegions(
+	string const & FileName,
+	string const & RegionName,
+	string const & OutDir,
+	string & OutPath,
+	vector<std::pair<string, vector<int> > > & SphereNameAndElements, // empty vector<int> means use all elements
+	vector<string> const & IntVarNames,
+	vector<int> const & IntVarNums,
+	bool IncludeAllGBs,
+	std::map<string, FESurface_c> & SpheresByName,
+	std::map<string, FieldDataPointer_c> & SphereNameToVarPtr,
+	std::map<string, vec> & SphereNameToElemSolidAngles,
+	string const & AllGBOutPathSuffix = "")
+{
+	// update elements for whole spheres
+	for (auto & s : SphereNameAndElements){
+		if (s.second.empty()) {
+			s.second.resize(SphereNameToVarPtr[s.first].Size());
+			for (int ei = 0; ei < s.second.size(); ++ei) {
+				s.second[ei] = ei;
+			}
+		}
+	}
+
+	// Get data
+	std::map<string, vector<vec> > SphereNameToAllVals;
+	std::map<string, vector<double> > SphereNameToValTotals;
+	vector<double> VarTotals(IntVarNums.size(), 0.0);
+	for (auto s : SphereNameAndElements){
+		int SphereZoneNum = SphereNameToVarPtr[s.first].ZoneNum();
+		for (int vi = 0; vi < IntVarNums.size(); ++vi) {
+			int v = IntVarNums[vi];
+			FieldDataPointer_c Ptr;
+			Ptr.InitializeReadPtr(SphereZoneNum, v);
+
+			vec Vals(s.second.size());
+			for (int ei = 0; ei < s.second.size(); ++ei){
+				Vals[ei] = Ptr[s.second[ei]];
+			}
+			SphereNameToAllVals[s.first].push_back(Vals);
+			double total = sum(Vals);
+			VarTotals[vi] += total;
+			SphereNameToValTotals[s.first].push_back(total);
+		}
+	}
+
+	// open output file
+	bool AppendToFile = (OutPath != "");
+	if (!AppendToFile){
+		OutPath = OutDir + "/" + StringRemoveSubString(FileName,":") + ".csv";
+	}
+	ofstream OutFile(OutPath.c_str(), AppendToFile ? std::ios::app : std::ios::trunc);
+	ofstream OutFileGBs;
+	if (IncludeAllGBs){
+		OutFileGBs = ofstream((OutDir + "/" + StringRemoveSubString(FileName + AllGBOutPathSuffix,":") + "_dGBs.csv").c_str(), AppendToFile ? std::ios::app : std::ios::trunc);
+	}
+	if (OutFile.is_open()){
+		// write headers (region name, sphere name (or full), var names)
+		if (!AppendToFile) {
+			OutFile << "Region name,Atom name";
+			for (auto const & vn : IntVarNames) {
+				OutFile << "," << vn;
+			}
+			OutFile << endl;
+		}
+		if (SphereNameToValTotals.size() > 1) {
+			// write the full values
+			OutFile << RegionName << ",full";
+			for (auto const & total : VarTotals) {
+				OutFile << "," << std::setprecision(16) << total;
+			}
+			OutFile << endl;
+		}
+		// then values for each sphere
+		for (auto const & s : SphereNameToValTotals){
+			OutFile << RegionName << "," << s.first;
+			for (auto const & val : s.second){
+				OutFile << "," << std::setprecision(16) << val;
+			}
+			OutFile << endl;
+		}
+
+		OutFile.close();
+
+		if (IncludeAllGBs && OutFileGBs.is_open()) {
+			// Now the individual dGBs
+// 			if (!AppendToFile) {
+				// write headers (sphere name, element number, var names)
+				OutFileGBs << "Region name,Atom name,dGB index (starts at 0)";
+				for (auto const & vn : IntVarNames) {
+					OutFileGBs << "," << vn;
+				}
+				OutFileGBs << endl;
+// 			}
+
+			// values for each dGB of each sphere
+			for (auto const & s : SphereNameAndElements) {
+				auto *SphereElemVals = &SphereNameToAllVals[s.first];
+				for (int ei = 0; ei < s.second.size(); ++ei) {
+					OutFileGBs << RegionName << "," << s.first << "," << s.second[ei];
+					for (int vi = 0; vi < IntVarNums.size(); ++vi){
+						OutFileGBs << "," << std::setprecision(16) << SphereElemVals->at(vi)[ei];
+					}
+					OutFileGBs << endl;
+				}
+			}
+
+			OutFileGBs.close();
+		}
+	}
+}
+
+/*
+ *	Export GBA integration data for a number of regions.
+ */
+void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTypeVarNum,
+	vector<bool> const & DoRegion, bool IncludeAllDGBs) {
+
+	std::map<string, FESurface_c> SpheresByName;
+	std::map<string, FieldDataPointer_c> SphereNameToVarPtr;
+	std::map<string, vec> SphereNameToElemSolidAngles;
+	std::map<string, std::set<string> > MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames;
+	std::map<string, vector<int> > CondensedBasinNameToSphereElems;
+	std::map<string, string> CondensedBasinNameToSphereName;
+	std::map<string, std::set<string> > SpecialGradientBundleNameToCondensedBasinNames;
+
+
+	TecUtilDataLoadBegin();
+
+	// first get the export directory
+	char* FolderNameCStr;
+	if (TecUtilDialogGetFolderName("Select folder to save files", &FolderNameCStr)) {
+
+		CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames);
+
+
+		// if requested, get an additional region for all active DGB zones
+		std::map < string, std::set<int> > SphereNameToActiveDGBElemNumSet;
+		std::map < string, vector<int> > SphereNameToActiveDGBElemNums;
+		if (DoRegion[Region_ActiveDGBs]){
+			for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi){
+				if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)){
+					SphereNameToActiveDGBElemNumSet[AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName)].insert(stoi(AuxDataZoneGetItem(zi, CSMAuxData.GBA.ElemNum)) - 1);
+				}
+			}
+			for (auto const & s : SphereNameToActiveDGBElemNumSet) {
+				SphereNameToActiveDGBElemNums[s.first] = vector<int>(s.second.cbegin(), s.second.cend());
+			}
+		}
+
+		vector<int> IntVarNums;
+		vector<string> IntVarNames;
+		vector<string> IntCheckStrs = { "I: ", "IN: ", "INS: ", " Integration" };
+		for (int VarNum = 1; VarNum <= TecUtilDataSetGetNumVars(); ++VarNum) {
+			char *VarName, *CheckStr;
+			if (TecUtilVarGetName(VarNum, &VarName)) {
+				for (string const & Str : IntCheckStrs) {
+					CheckStr = std::strstr(VarName, Str.c_str());
+					if (CheckStr != nullptr) {
+						string TmpStr = VarName;
+						std::replace(TmpStr.begin(), TmpStr.end(), ',', '.');
+						IntVarNames.push_back(TmpStr);
+						IntVarNums.push_back(VarNum);
+						break;
+					}
+					// 								break; // Only want the "I:" integration values
+				}
+				TecUtilStringDealloc(&VarName);
+			}
+		}
+
+		// export files for each region
+
+
+		string OutDir = FolderNameCStr;
+		TecUtilStringDealloc(&FolderNameCStr);
+
+		char *DataSetNameCStr;
+		int junkint;
+		TecUtilDataSetGetInfo(&DataSetNameCStr, &junkint, &junkint);
+		string DataSetName = DataSetNameCStr;
+		TecUtilStringDealloc(&DataSetNameCStr);
+
+
+		vector<std::pair<string, vector<int> > > SphereNameAndElements;
+
+		// First for atomic basins and the entire system
+		if (DoRegion[Region_AtomicBasin] || DoRegion[Region_AllAtomicBasins]) {
+			string OutPath = "";
+			for (auto & s : SpheresByName) {
+				SphereNameAndElements.push_back(std::make_pair(s.first, vector<int>()));
+
+				// The individual sphere
+				if (DoRegion[Region_AtomicBasin]) {
+					ExportGBADataForRegions(DataSetName + " Atomic basins", s.first, OutDir, OutPath, vector<std::pair<string, vector<int> > >({ std::make_pair(s.first, vector<int>()) }), IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + s.first);
+// 					CalculateAndSaveShannonEntropiesForSphereNameElements(VarNamePrefix, vector<std::pair<string, vector<int> > >({ std::make_pair(s.first, vector<int>()) }), DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+				}
+			}
+
+			// Then the whole system, if more than one atom
+			if (DoRegion[Region_AllAtomicBasins]) {
+				if (SphereNameAndElements.size() > 1) {
+					OutPath = "";
+					ExportGBADataForRegions(DataSetName + " All atomic basins", "All atomic basins", OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+// 					CalculateAndSaveShannonEntropiesForSphereNameElements(VarNamePrefix, SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+				}
+			}
+		}
+		if (DoRegion[Region_MoleculesMG]) {
+			string OutPath = "";
+			for (auto & m : MoleculeMGNamesToSphereNames) {
+				SphereNameAndElements.clear();
+				for (auto & s : m.second) {
+					SphereNameAndElements.push_back(std::make_pair(s, vector<int>()));
+				}
+				ExportGBADataForRegions(DataSetName + " Molecules (mol. graph) ", m.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + m.first);
+// 				CalculateAndSaveShannonEntropiesForSphereNameElements(m.first + ": ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+			}
+		}
+
+		if (DoRegion[Region_MoleculesOS]) {
+			string OutPath = "";
+			for (auto & m : MoleculeOSNamesToSphereNames) {
+				SphereNameAndElements.clear();
+				for (auto & s : m.second) {
+					SphereNameAndElements.push_back(std::make_pair(s, vector<int>()));
+				}
+				ExportGBADataForRegions(DataSetName + " Molecules (1-skeleton) ", m.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + m.first);
+// 				CalculateAndSaveShannonEntropiesForSphereNameElements(m.first + ": ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+			}
+		}
+
+		if (DoRegion[Region_SpecialGradientBundles]) {
+			// Then special gradient bundles
+			string OutPath = "";
+			for (auto & sgb : SpecialGradientBundleNameToCondensedBasinNames) {
+				SphereNameAndElements.clear();
+				for (auto & cb : sgb.second) {
+					SphereNameAndElements.push_back(std::make_pair(CondensedBasinNameToSphereName[cb], CondensedBasinNameToSphereElems[cb]));
+				}
+				ExportGBADataForRegions(DataSetName + " Special gradient bundles", sgb.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + sgb.first);
+// 				CalculateAndSaveShannonEntropiesForSphereNameElements(sgb.first + ": ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+			}
+		}
+
+		if (DoRegion[Region_CondensedBasins]) {
+			// Then all condensed basins
+			string OutPath = "";
+			for (auto & cb : CondensedBasinNameToSphereName) {
+				ExportGBADataForRegions(DataSetName + " Condensed basins", cb.first, OutDir, OutPath, vector<std::pair<string, vector<int> > >({ std::make_pair(cb.second, CondensedBasinNameToSphereElems[cb.first]) }), IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + cb.first);
+// 				CalculateAndSaveShannonEntropiesForSphereNameElements(cb.first + ": ", vector<std::pair<string, vector<int> > >({ std::make_pair(cb.second, CondensedBasinNameToSphereElems[cb.first]) }), DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+			}
+		}
+
+		if (DoRegion[Region_ActiveDGBs] && !SphereNameToActiveDGBElemNums.empty()) {
+			string OutPath = "";
+			SphereNameAndElements.clear();
+			for (auto & s : SphereNameToActiveDGBElemNums) {
+				SphereNameAndElements.push_back(std::make_pair(s.first, s.second));
+			}
+			ExportGBADataForRegions(DataSetName + " Active dGBs", "active dGB", OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+		}
+	}
+
+
+	TecUtilDataLoadEnd();
+}
+
+void ExportGBADataReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+
+	int fNum = 0;
+
+	int PVarNum = Fields[fNum++].GetReturnInt();
+	int CPZoneNum = Fields[fNum++].GetReturnInt();
+	int CPTypeVarNum = Fields[fNum++].GetReturnInt();
+	int XVarNum = Fields[fNum++].GetReturnInt();
+
+	vector<int> XYZVarNums(3);
+	for (int i = 0; i < 3; ++i) {
+		XYZVarNums[i] = XVarNum + i;
+	}
+	fNum++;
+
+	bool IncludeAllDGBs = Fields[fNum++].GetReturnBool();
+
+	fNum += 2;
+	vector<bool> DoRegion(Region_NumRegions);
+	for (int i = 0; i < DoRegion.size(); ++i) {
+		DoRegion[i] = Fields[fNum++].GetReturnBool();
+	}
+
+	bool IncludeActiveDGBs = Fields[fNum++].GetReturnBool();
+
+
+	TecUtilLockStart(AddOnID);
+	TecUtilPleaseWait("Exporting... Please wait.", TRUE);
+	CSMGuiLock();
+
+	ExportGBAData(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, DoRegion, IncludeAllDGBs);
+
+	CSMGuiUnlock();
+	TecUtilPleaseWait("Exporting... Please wait.", FALSE);
+	TecUtilDialogMessageBox("Finished", MessageBox_Information);
+
+	TecUtilLockFinish(AddOnID);
+
+	return;
+}
+
+void ExportGBADataGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_VarSelect, "Condensed charge density (input function)", "I: " + CSMVarName.Dens),
+		GuiField_c(Gui_ZoneSelect, "Critical points zone", CSMZoneName.CriticalPoints),
+		GuiField_c(Gui_VarSelect, "Critical point type variable", CSMVarName.CritPointType),
+		GuiField_c(Gui_VarSelect, "X variable", "X"),
+		GuiField_c(Gui_Label, " "),
+		GuiField_c(Gui_Toggle, "Export individual dGB integration values", "0"),
+		GuiField_c(Gui_Label, " "),
+		GuiField_c(Gui_Label, "Export data for the following types of regions:")
+	};
+
+	vector<std::pair<string, string> > RegionTypeList = {
+		std::make_pair("every atomic basin (atomic chart)", "1"),
+		std::make_pair("the system molecular ensemble (all atomic basins together)", "1"),
+		std::make_pair("every molecular ensemble (by molecular graph)", "1"),
+		std::make_pair("every molecular ensemble (by 1-skeleton)", "1"),
+		std::make_pair("every special gradient bundle (bonds etc.)", "1"),
+		std::make_pair("every max/min condensed basin", "1"),
+		std::make_pair("active dGB or sphere element zones", "1")
+	};
+	for (auto r : RegionTypeList) {
+		Fields.emplace_back(Gui_Toggle, r.first, r.second);
+	}
+	Fields.emplace_back(Gui_Label, " ");
+	Fields.emplace_back(Gui_Label, "(be sure to create a new folder)");
+
+	CSMGui("Export gradient bundle integration data", Fields, ExportGBADataReturnUserInfo, AddOnID);
+}

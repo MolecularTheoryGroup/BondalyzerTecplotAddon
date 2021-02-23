@@ -197,6 +197,34 @@ static void STDCALL GradientPathToolCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL CalculateShannonEntropyCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		CalculateShannonEntropyGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL ExportGBADataCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		ExportGBADataGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL SymmetryMirrorCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -733,14 +761,26 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 	int MenuNum = 1;
 
 	TecUtilMenuAddOption("MTG_Utilities",
+		string("Export gradient bundle integration data").c_str(),
+		'\0',
+		ExportGBADataCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Calculate variables").c_str(),
 		'\0',
 		CalcVarsMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
+		string("Calculate Shannon entropy of condensed density").c_str(),
+		'\0',
+		CalculateShannonEntropyCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
 		string("Gradient path tool").c_str(),
 		'\0',
 		GradientPathToolCallback);
+
+	
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		string("Symmetry mirror volume zone").c_str(),

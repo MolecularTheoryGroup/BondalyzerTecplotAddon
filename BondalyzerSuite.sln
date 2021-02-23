@@ -28,6 +28,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GradientBundleAnalysis", "GradientBundleAnalysis\GradientBundleAnalysis.vcxproj", "{5E02A581-AC85-436B-9FFA-B50A01E07CED}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GradientBundleAnalysisParallel", "GradientBundleAnalysisParallel\GradientBundleAnalysisParallel.vcxproj", "{93DD91CE-5A16-413F-BBF0-2778661C6C8D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{1FEDF976-8D81-493F-90C4-0A87660F5B16} = {1FEDF976-8D81-493F-90C4-0A87660F5B16}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Bondalyzer", "Bondalyzer\Bondalyzer.vcxproj", "{A69D547A-43AC-40AB-A054-B1A4A48FD6F6}"
 EndProject

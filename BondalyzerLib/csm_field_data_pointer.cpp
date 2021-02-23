@@ -164,7 +164,7 @@ Boolean_t FieldDataPointer_c::Write(unsigned int i, double const & Val) const{
 
 	return TRUE;
 }
-Boolean_t FieldDataPointer_c::GetReadPtr(int ZoneNum, int VarNum){
+Boolean_t FieldDataPointer_c::InitializeReadPtr(int ZoneNum, int VarNum){
 	m_IsReady = (
 		ZoneNum >= 1 && ZoneNum <= TecUtilDataSetGetNumZones()
 		&& VarNum >= 1 && VarNum <= TecUtilDataSetGetNumVars()
@@ -224,7 +224,7 @@ Boolean_t FieldDataPointer_c::GetReadPtr(int ZoneNum, int VarNum){
 
 	return m_IsReady;
 }
-Boolean_t FieldDataPointer_c::GetWritePtr(int ZoneNum, int VarNum){
+Boolean_t FieldDataPointer_c::InitializeWritePtr(int ZoneNum, int VarNum){
 	m_IsReady = (
 		ZoneNum >= 1 && ZoneNum <= TecUtilDataSetGetNumZones()
 		&& VarNum >= 1 && VarNum <= TecUtilDataSetGetNumVars()
@@ -335,11 +335,11 @@ Boolean_t FieldVecPointer_c::Write(unsigned int i, vec3 const & Vec) const{
 
 	return TRUE;
 }
-Boolean_t FieldVecPointer_c::GetReadPtr(int ZoneNum, vector<int> const & VarNums){
+Boolean_t FieldVecPointer_c::InitializeReadPtr(int ZoneNum, vector<int> const & VarNums){
 	Boolean_t IsOk = TRUE;
 
 	for (int i = 0; i < 3 && IsOk; ++i){
-		IsOk = (Ptrs[i].GetReadPtr(ZoneNum, VarNums[i]) 
+		IsOk = (Ptrs[i].InitializeReadPtr(ZoneNum, VarNums[i]) 
 			&& (
 			Ptrs[i].FDType() == FieldDataType_Double
 						|| Ptrs[i].FDType() == FieldDataType_Float)
@@ -352,11 +352,11 @@ Boolean_t FieldVecPointer_c::GetReadPtr(int ZoneNum, vector<int> const & VarNums
 
 	return IsOk;
 }
-Boolean_t FieldVecPointer_c::GetWritePtr(int ZoneNum, vector<int> const & VarNums){
+Boolean_t FieldVecPointer_c::InitializeWritePtr(int ZoneNum, vector<int> const & VarNums){
 	Boolean_t IsOk = TRUE;
 	
 	for (int i = 0; i < 3 && IsOk; ++i){
-		IsOk = (Ptrs[i].GetWritePtr(ZoneNum, VarNums[i]) 
+		IsOk = (Ptrs[i].InitializeWritePtr(ZoneNum, VarNums[i]) 
 			&& (
 			Ptrs[i].FDType() == FieldDataType_Double
 						|| Ptrs[i].FDType() == FieldDataType_Float)
@@ -400,15 +400,15 @@ Boolean_t const GetReadPtrsForZone(int ZoneNum,
 	HessPtrs.resize(HessVarNums.size());
 
 
-	if (!RhoPtr.GetReadPtr(ZoneNum, RhoVarNum)) {
+	if (!RhoPtr.InitializeReadPtr(ZoneNum, RhoVarNum)) {
 		TecUtilDialogErrMsg(string("Failed to get rho read pointer (zone " + to_string(ZoneNum) + ", var " + to_string(RhoVarNum) + ")").c_str());
 		IsOk = FALSE;
 	}
-	for (int i = 0; i < GradVarNums.size() && IsOk; ++i) if (!GradPtrs[i].GetReadPtr(ZoneNum, GradVarNums[i])) {
+	for (int i = 0; i < GradVarNums.size() && IsOk; ++i) if (!GradPtrs[i].InitializeReadPtr(ZoneNum, GradVarNums[i])) {
 		TecUtilDialogErrMsg(string("Failed to get gradient read pointer (zone " + to_string(ZoneNum) + ", var " + to_string(GradVarNums[i]) + ")").c_str());
 		IsOk = FALSE;
 	}
-	for (int i = 0; i < HessVarNums.size() && IsOk; ++i) if (!HessPtrs[i].GetReadPtr(ZoneNum, HessVarNums[i])) {
+	for (int i = 0; i < HessVarNums.size() && IsOk; ++i) if (!HessPtrs[i].InitializeReadPtr(ZoneNum, HessVarNums[i])) {
 		TecUtilDialogErrMsg(string("Failed to get hessian read pointer (zone " + to_string(ZoneNum) + ", var " + to_string(HessVarNums[i]) + ")").c_str());
 		IsOk = FALSE;
 	}
