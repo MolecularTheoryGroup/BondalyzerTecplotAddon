@@ -82,6 +82,7 @@ struct CSMAuxData_s{
 			ZoneTypeDGB = "DifferentialGradientBundle",
 			ZoneTypeGradPath = "GradPath",
 			ZoneTypeIBEdgeZone = "IBEdgeZone",
+			ZoneTypeTopoCageWedge = "TopologicalCageWedge",
 			ZoneTypeCondensedRepulsiveBasin = "CondensedRepulsiveBasin",
 			ZoneTypeCondensedAttractiveBasin = "CondensedAttractiveBasin",
 			ZoneTypeCondensedRepulsiveBasinWedge = "CondensedRepulsiveWedge",

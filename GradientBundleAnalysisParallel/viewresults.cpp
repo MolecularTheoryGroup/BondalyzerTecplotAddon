@@ -1866,7 +1866,8 @@ void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t Ab
 			vector<int> ZoneNums;
 			for (int zi = z + 1; zi <= TecUtilDataSetGetNumZones(); ++zi){
 				if ((AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin)
-					|| AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin))
+					|| AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin)
+					|| AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeTopoCageWedge))
 					&& AuxDataZoneItemMatches(zi, CSMAuxData.GBA.SourceNucleusName, SphereName))
 				{
 					ZoneNums.push_back(zi);

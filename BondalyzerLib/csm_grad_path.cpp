@@ -1088,7 +1088,7 @@ GradPath_c ConcatenateResample(vector<GradPath_c> GPList, int NumPoints, vector<
 
 	for (int gpi = 0; gpi < GPList.size(); ++gpi) {
 		if (GPNumPointsList[gpi] < 0) {
-			NumPointsList[gpi] = LenghtList[gpi] / TotalLength * double(NewNumPoints);
+			NumPointsList[gpi] = LenghtList[gpi] / TotalLength * double(NumPoints);
 		}
 		else{
 			NumPointsList[gpi] = GPNumPointsList[gpi];
@@ -1116,8 +1116,23 @@ GradPath_c ConcatenateResample(vector<GradPath_c> GPList, int NumPoints, vector<
 
 	GradPath_c GP;
 
+
 	while (TotNumPoints != NumPoints) {
 		auto GPListCopy = GPList;
+
+		for (auto const & i : NumPointsList){
+			if (i < 3){
+				for (int gpi = 0; gpi < GPList.size(); ++gpi) {
+					if (GPNumPointsList[gpi] < 0) {
+						NumPointsList[gpi] = MAX(5, LenghtList[gpi] / TotalLength * double(NumPoints));
+					}
+					else {
+						NumPointsList[gpi] = GPNumPointsList[gpi];
+					}
+				}
+				break;
+			}
+		}
 
 		GP = GPListCopy[0];
 		GP.Resample(NumPointsList[0], Method);
@@ -1476,7 +1491,8 @@ vec3 GradPathBase_c::operator[](int i) const{
 /*
  *	Provide a rho value and get the point on the gradient path that
  *	has that value.
- *	I'm lazy, so this is all done using std::set
+ *	I'm lazy, so this is all done using std::set. (actually set removes duplicate elements, which shouldn't be there, but it could break when that's the case.)
+ *	Using a binary search using vector instead.
  */
 bool GradPathBase_c::GetPointAtRhoValue(double const & RhoValue, vec3 & OutVec, int & Ind, double & Weight) const {
 	REQUIRE(IsMade());
@@ -1500,47 +1516,85 @@ bool GradPathBase_c::GetPointAtRhoValue(double const & RhoValue, vec3 & OutVec, 
 		return false;
 	}
 
-	// Get set of rho values in ascending order
-	std::set<double> RhoSet;
-	if (RhoIsAscending) RhoSet = std::set<double>(m_RhoList.cbegin(), m_RhoList.cend());
-	else RhoSet = std::set<double>(m_RhoList.crbegin(), m_RhoList.crend());
 
 	// Get iterator to lower bound of RhoSet for RhoValue.
 	// That is, the value in RhoSet that is closest to but less than RhoValue
-	auto lBound = RhoSet.lower_bound(RhoValue);
+// 	auto lBound = RhoSet.lower_bound(RhoValue);
+	vector<double>::const_iterator it;
+	if (RhoIsAscending){
+		it = std::lower_bound(m_RhoList.begin(), m_RhoList.end(), RhoValue);
+	}
+	else{
+		it = std::lower_bound(m_RhoList.begin(), m_RhoList.end(), RhoValue, [](double const & a, double const & val) { return a > val; });
+	}
+	if (it == m_RhoList.end()) {
+		return false;
+	}
+	else {
+		Ind = std::distance(m_RhoList.begin(), it) - 1;
 
-	bool IsFound = (lBound != RhoSet.end());
-
-	Ind = -1;
-	if (lBound != RhoSet.end()) {
-		// Get index of lower bound in sorted rho list
-		Ind = std::distance(RhoSet.begin(), lBound) - 1;
-
-		if (!RhoIsAscending)
-			Ind = m_RhoList.size() - 2 - Ind;
+// 		if (!RhoIsAscending)
+// 			Ind = m_RhoList.size() - 2 - Ind;
 
 		int ind2 = Ind + 1;
 
-		if (ind2 >= GetCount()){
+		if (ind2 >= GetCount()) {
 			ind2 = GetCount() - 1;
 			Ind = ind2 - 1;
 		}
 
-		Weight = (RhoValue - m_RhoList[Ind]) / (m_RhoList[ind2] - m_RhoList[Ind]);
-
-
-// 		if (!RhoIsAscending)
-// 			ind2 = Ind - 1;
-
-		if (ind2 < 0){
-			ind2 = 0;
-			Ind = 1;
+		if (*it == RhoValue || abs(m_RhoList[ind2] - m_RhoList[Ind]) < 1e-16){
+			Weight = 0.0;
+			OutVec = m_XYZList[Ind];
 		}
+		else {
 
-		OutVec = m_XYZList[Ind] + (m_XYZList[ind2] - m_XYZList[Ind]) * Weight;
+			Weight = (RhoValue - m_RhoList[Ind]) / (m_RhoList[ind2] - m_RhoList[Ind]);
+
+
+			// 		if (!RhoIsAscending)
+			// 			ind2 = Ind - 1;
+
+			if (ind2 < 0) {
+				ind2 = 0;
+				Ind = 1;
+			}
+
+			OutVec = m_XYZList[Ind] + (m_XYZList[ind2] - m_XYZList[Ind]) * Weight;
+		}
+		return true;
 	}
 
-	return IsFound;
+// 	
+// 
+// 	Ind = -1;
+// 	if (lBound != RhoSet.end()) {
+// 		// Get index of lower bound in sorted rho list
+// 		Ind = std::distance(RhoSet.begin(), lBound) - 1;
+// 
+// 		if (!RhoIsAscending)
+// 			Ind = m_RhoList.size() - 2 - Ind;
+// 
+// 		int ind2 = Ind + 1;
+// 
+// 		if (ind2 >= GetCount()){
+// 			ind2 = GetCount() - 1;
+// 			Ind = ind2 - 1;
+// 		}
+// 
+// 		Weight = (RhoValue - m_RhoList[Ind]) / (m_RhoList[ind2] - m_RhoList[Ind]);
+// 
+// 
+// // 		if (!RhoIsAscending)
+// // 			ind2 = Ind - 1;
+// 
+// 		if (ind2 < 0){
+// 			ind2 = 0;
+// 			Ind = 1;
+// 		}
+// 
+// 		OutVec = m_XYZList[Ind] + (m_XYZList[ind2] - m_XYZList[Ind]) * Weight;
+// 	}
 }
 
 bool GradPathBase_c::GetDeviationMidpointRhoBasedFromOtherGP(GradPathBase_c const & GP, double const & CheckAngle, vec3 & OutPt, int & Ind1, int & Ind2, vec3 & Pt2) const{
@@ -2338,6 +2392,11 @@ GradPath_c::GradPath_c(vector<GradPath_c const *> const & GPs,
 	m_StartEndCPNum[0] = -1;
 
  	this->Seed(false);
+
+	if (this->GetCount() <= 2){
+		this->m_GradPathMade = FALSE;
+		return;
+	}
 
 // 	this->ProjectPathToSurface();
 	this->RemoveKinks();

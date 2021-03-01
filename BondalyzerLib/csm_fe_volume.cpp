@@ -1473,9 +1473,9 @@ void FESurface_c::GenerateElemMidpoints(){
 	}
 }
 
-void FESurface_c::GenerateElemConnectivity() {
+void FESurface_c::GenerateElemConnectivity(int numSharedNodes) {
 	if (m_ElemMidPoints.size() != m_ElemList.size()) {
-		GetTriElementConnectivityList(&m_ElemList, m_ElemConnectivityList, 1);
+		GetTriElementConnectivityList(&m_ElemList, m_ElemConnectivityList, numSharedNodes);
 	}
 }
 

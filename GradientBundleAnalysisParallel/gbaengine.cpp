@@ -209,6 +209,46 @@ void NewMainFunction() {
 
 	int GroupNum = 0;
 
+	LgIndex_t * CPNums = nullptr;
+	LgIndex_t NumSelectedCPs = 1;
+	TecGUIListGetSelectedItems(MLSelCPs_MLST_T1_1, &CPNums, &NumSelectedCPs);
+
+	Set oldSphereZonesToDelete;
+	bool deleteOldSphereZones = false, deleteOldSphereZonesAsked = false;
+
+
+	/*
+ *	Delete any existing sphere for the current CP if so chosen by the user
+ */
+	for (int SelectCPNum = 0; SelectCPNum < NumSelectedCPs && IsOk; ++SelectCPNum)
+	{
+		int CPType = -3;
+		string CPString, CPName;
+		int junkZoneNum;
+		LgIndex_t CPNum = -1;
+		bool IsCP;
+		vector<int> NumCPs;
+		GetCoordsFromListItem(CPNums[SelectCPNum], MLSelCPs_MLST_T1_1, &CPString, &CPName, &CPNum, &junkZoneNum, &IsCP, &NumCPs);
+		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
+			if (AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, CPString) && (!deleteOldSphereZonesAsked || deleteOldSphereZones)) {
+				string tmpStr = "An existing sphere zone was found for " + CPString + ". Would you like to erase it (and all other conflicting sphere zones) before continuing?";
+				if (!deleteOldSphereZonesAsked) {
+					deleteOldSphereZones = TecUtilDialogMessageBox(tmpStr.c_str(), MessageBox_YesNo);
+					deleteOldSphereZonesAsked = true;
+				}
+				if (deleteOldSphereZones) {
+					oldSphereZonesToDelete += z;
+					for (int zi = z + 1; zi <= TecUtilDataSetGetNumZones(); zi++) {
+						if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.SphereCPName, CPString))
+							oldSphereZonesToDelete += zi;
+					}
+				}
+				break;
+			}
+		}
+	}
+
+
 	/*
 	 *	Get job parameters from dialog
 	 */
@@ -289,9 +329,7 @@ void NewMainFunction() {
 // 	MaxEdgeGPs = -1;
 #endif
 
-	LgIndex_t * CPNums = nullptr;
-	LgIndex_t NumSelectedCPs = 1;
-	TecGUIListGetSelectedItems(MLSelCPs_MLST_T1_1, &CPNums, &NumSelectedCPs);
+
 	/*
 	*	Set sphere radius and mesh refinement level
 	*/
@@ -424,40 +462,7 @@ void NewMainFunction() {
 
 	EntIndex_t CPNuclearZoneNum = ZoneNumByName(CSMZoneName.CPType[0]);
 
-	Set oldSphereZonesToDelete;
-	bool deleteOldSphereZones = false, deleteOldSphereZonesAsked = false;
-
-
-	/*
- *	Delete any existing sphere for the current CP if so chosen by the user
- */
-	for (int SelectCPNum = 0; SelectCPNum < NumSelectedCPs && IsOk; ++SelectCPNum)
-	{
-		int CPType = -3;
-		string CPString, CPName;
-		int junkZoneNum;
-		LgIndex_t CPNum = -1;
-		bool IsCP;
-		vector<int> NumCPs;
-		GetCoordsFromListItem(CPNums[SelectCPNum], MLSelCPs_MLST_T1_1, &CPString, &CPName, &CPNum, &junkZoneNum, &IsCP, &NumCPs);
-		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
-			if (AuxDataZoneItemMatches(z, CSMAuxData.GBA.SphereCPName, CPString) && (!deleteOldSphereZonesAsked || deleteOldSphereZones)) {
-				string tmpStr = "An existing sphere zone was found for " + CPString + ". Would you like to erase it (and all other conflicting sphere zones) before continuing?";
-				if (!deleteOldSphereZonesAsked) {
-					deleteOldSphereZones = TecUtilDialogMessageBox(tmpStr.c_str(), MessageBox_YesNo);
-					deleteOldSphereZonesAsked = true;
-				}
-				if (deleteOldSphereZones) {
-					oldSphereZonesToDelete += z;
-					for (int zi = z + 1; zi <= TecUtilDataSetGetNumZones(); zi++) {
-						if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.SphereCPName, CPString))
-							oldSphereZonesToDelete += zi;
-					}
-				}
-				break;
-			}
-		}
-	}
+	
 
 	vector<int> NumCPs;
 	for (int SelectCPNum = 0; SelectCPNum < NumSelectedCPs && IsOk; ++SelectCPNum)
@@ -2555,7 +2560,7 @@ void NewMainFunction() {
 
 #ifdef SUPERDEBUG
 // 			ElemTodo = { 196 }; // base 0 (tecplot is base 1)
-  			ElemTodo = { 3041 };
+  			ElemTodo = { 0 };
 //         			ElemTodo.clear();
 //  // 				for (int i = 0; i < NumElems; ++i) {
 // 			for (int i = 0; i < NumElems; ++i) {
@@ -4132,6 +4137,10 @@ void NewMainFunction() {
 										Pt1->second.SetTermPointRadius(0.05);
 // 										TecUtilDialogMessageBox(string("bond edge gp before surf path iter " + to_string(Iter)).c_str(), MessageBoxType_Information);
 										GradPath_c TmpGP({ &Pt1->second,&Pt2->second }, Midpt, StreamDir_Forward, { std::make_pair(0, MIN(TmpInd1 + 10, Pt1->second.GetCount() - 1)), std::make_pair(0, MIN(TmpInd2 + 10, Pt2->second.GetCount() - 1)) }, &BCP, &TmpTermDist);
+										if (!TmpGP.IsMade()) {
+											TecUtilDialogErrMsg("Failed to fill gradient bundle surface GPs along inter-atomic surface.");
+											break;
+										}
 // 										TmpGP.SaveAsOrderedZone("midpoint gp backward " + to_string(Iter));
 										GP.Clear();
 										GP.SetStartPoint(Midpt);
@@ -4496,6 +4505,7 @@ void NewMainFunction() {
 			}
 
 			NumGPs = GradPaths.size();
+			
 #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
 #endif
@@ -4506,25 +4516,27 @@ void NewMainFunction() {
 					if ((TermCPType == CPType_Cage || TermCPType == CPType_Invalid) && gi != TerminalCPIndToMaxLenGPIndMap[TermCPInd]) {
 						auto CPPts = GradPaths[gi].GetCPCoincidentPoints(&CPs, SaddleCPTypes);
 						auto RhoVals = TerminalCPIndToRhoValsMap[TermCPInd];
-						for (auto cpInd : CPPts) {
-							double cpVal = GradPaths[gi].RhoAt(cpInd);
-							int MinInd = -1;
-							double MinDiff = DBL_MAX;
-							for (int i = 0; i < RhoVals.size(); ++i) {
-								double tmpDiff = abs(log(RhoVals[i]) - log(cpVal));
-								if (tmpDiff < MinDiff) {
-									MinDiff = tmpDiff;
-									MinInd = i;
+						if (!RhoVals.empty()) {
+							for (auto cpInd : CPPts) {
+								double cpVal = GradPaths[gi].RhoAt(cpInd);
+								int MinInd = -1;
+								double MinDiff = DBL_MAX;
+								for (int i = 0; i < RhoVals.size(); ++i) {
+									double tmpDiff = abs(log(RhoVals[i]) - log(cpVal));
+									if (tmpDiff < MinDiff) {
+										MinDiff = tmpDiff;
+										MinInd = i;
+									}
 								}
+								RhoVals[MinInd] = cpVal;
 							}
-							RhoVals[MinInd] = cpVal;
-						}
 
-						// Resample twice to better converge at the right points.
-// 						for (int i = 0; i < 2; ++i) {
+							// Resample twice to better converge at the right points.
+	// 						for (int i = 0; i < 2; ++i) {
 							GradPaths[gi].ResampleByRhoVals(RhoVals, GradPaths[gi].GetCPCoincidentPoints(&CPs, SaddleCPTypes));
 							GradPaths[gi].ReinterpolateRhoValuesFromVolume(&ThVolInfo[omp_get_thread_num()]);
-// 						}
+							// 						}
+						}
 					}
 				}
 			}
@@ -6168,6 +6180,235 @@ void NewMainFunction() {
 					}
 				}
 			}
+		}
+
+		/*
+		 * Find and save topological cage wedges to zones
+		 */
+		{
+			std::map<int, std::set<int> > CageNumToElemNums;
+			auto Elems = Sphere.GetElemListPtr();
+			
+			vector<bool> ElemVisited(Elems->size(), false);
+			Sphere.GenerateElemConnectivity(2);
+			auto ElemConnectivity = Sphere.GetElemConnectivityListPtr();
+
+			int FarFieldCageIter = 0;
+
+			for (int ei = 0; ei < Elems->size(); ++ei) {
+				if (!ElemVisited[ei]){
+					ElemVisited[ei] = true;
+
+					std::set<int> CageWedgeElemNums;
+					CageWedgeElemNums.insert(ei);
+					std::queue<int> q;
+					q.push(ei);
+
+					while (!q.empty()){
+						// check neighbor edges to see if ring surface intersection
+						auto eq = q.front();
+						q.pop();
+						for (auto const & ej : ElemConnectivity->at(eq)){
+							if (!ElemVisited[ej]){
+								ElemVisited[ej] = true;
+								bool SharedEdgeFound = false;
+								for (int ci = 0; ci < 3 && !SharedEdgeFound; ++ci){
+									auto edge_i = MakeEdge(Elems->at(eq)[ci], Elems->at(eq)[(ci + 1) % 3]);
+									for (int cj = 0; cj < 3 && !SharedEdgeFound; ++cj){
+										auto edge_j = MakeEdge(Elems->at(ej)[cj], Elems->at(ej)[(cj + 1) % 3]);
+										if (edge_i == edge_j) {
+											SharedEdgeFound = true;
+											if (!EdgeIntSurfNums.count(edge_i)) {
+												// shared edge is not a ring surface intersection, so add neighbor
+												q.push(ej);
+												CageWedgeElemNums.insert(ej);
+											}
+											else{
+												ElemVisited[ej] = false;
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+
+					// check whether to keep set or not
+					if (CageWedgeElemNums.size() < Elems->size()){
+						// Fewer elements in cage wedge basin than in sphere, meaning there
+						// must be another region completely separated by ring surface intersections on the sphere
+						// Get cage CP number for wedge. by finding common cage CP to the ring surface intersections
+					
+						// get ring surface edges
+						std::set<Edge> RingSurfEdges;
+						for (auto const & ei : CageWedgeElemNums){
+							for (int ci = 0; ci < 3; ++ci){
+								auto edge = MakeEdge(Elems->at(ei)[ci], Elems->at(ei)[(ci + 1) % 3]);
+								if (EdgeIntSurfNums.count(edge)){
+									RingSurfEdges.insert(edge);
+								}
+							}
+						}
+
+						// get list of unique indices specifying ring-cage paths
+						std::set<std::pair<int, int> > RingCagePathInds;
+						for (auto const & e : RingSurfEdges){
+							int SurfNum = EdgeIntSurfNums[e];
+							RingCagePathInds.emplace(SurfNum, 0);
+							RingCagePathInds.emplace(SurfNum, 1);
+						}
+						auto RingCagePathIndsCopy = RingCagePathInds;
+
+						// Now loop over the RingSurfEdges and remove from RingCagePathInds any pair that isn't present in all RingSurfEdges
+						for (auto const & e : RingSurfEdges){
+							int SurfNum = EdgeIntSurfNums[e];
+							for (auto const & ri : RingCagePathInds){
+								if (RingCagePathIndsCopy.count(ri) && Distance(IntSurfRingCagePaths[SurfNum][0][-1], IntSurfRingCagePaths[ri.first][ri.second][-1]) > 0.05
+									&& Distance(IntSurfRingCagePaths[SurfNum][1][-1], IntSurfRingCagePaths[ri.first][ri.second][-1]) > 0.05){
+									RingCagePathIndsCopy.erase(ri);
+								}
+							}
+							if (RingCagePathIndsCopy.size() == 1){
+								break;
+							}
+						}
+
+						// Get the cage CP
+						if (!RingCagePathIndsCopy.empty()) {
+							auto RCPathInd = *RingCagePathIndsCopy.cbegin();
+							auto RingCagePath = &IntSurfRingCagePaths[RCPathInd.first][RCPathInd.second];
+							int TermCPNum = RingCagePath->GetStartEndCPNum(1);
+							if (TermCPNum < 0 || CageNumToElemNums.count(TermCPNum) || CPs.GetTypeFromTotOffset(TermCPNum) == CPType_CageFF) {
+								CageNumToElemNums[--FarFieldCageIter] = CageWedgeElemNums;
+							}
+							else {
+								CageNumToElemNums[TermCPNum] = CageWedgeElemNums;
+							}
+						}
+						else{
+							CageNumToElemNums[--FarFieldCageIter] = CageWedgeElemNums;
+						}
+					}
+				}
+			}
+
+// 			Now we have all topological cage wedge element sets; must be two or more
+			if (CageNumToElemNums.size() > 1) {
+// 				For each cage wedge set save as a zone like a condensed basin zone,
+// 					but don't need to actually compute integration totals as those will be included in data exports
+// 					Zone name will be(using python f - string notation) f"{sphere name}: Cage wedge {cage cp number}",
+// 						where cage cp number is the absolute cp number of the cage cp of present,
+// 						or if far field it could be a negative iterator starting at - 1, or maybe just add "FF" before a positive iterator.
+// 						Whatever feels best
+// 				
+// 				If there's exactly two "cages" but only one is local, as in cubane, then need to confirm that we got the association between wedges and cages correct with a distance comparison of the average wedge element position and the local cage CP
+				if (CageNumToElemNums.size() == 2) {
+					auto it = CageNumToElemNums.cbegin();
+					auto it2 = it;
+					it2++;
+					if ((it->first >= 0 && it2->first < 0) || (it->first < 0 && it2->first >= 0)) {
+						bool firstHasCP = (it->first >= 0);
+
+						Sphere.GenerateElemMidpoints();
+						auto ElemMidpoints = Sphere.GetElemMidpointsPtr();
+
+						vec3 avgXYZ1 = { 0,0,0 }, avgXYZ2 = { 0,0,0 };
+						it = CageNumToElemNums.cbegin();
+						for (auto const & ei : it->second) {
+							avgXYZ1 += ElemMidpoints->at(ei);
+						}
+						avgXYZ1 /= it->second.size();
+
+						vec3 cageCPXYZ;
+						if (it->first >= 0) {
+							cageCPXYZ = CPs.GetXYZ(it->first);
+						}
+
+						it++;
+						for (auto const & ei : it->second) {
+							avgXYZ2 += ElemMidpoints->at(ei);
+						}
+						avgXYZ2 /= it->second.size();
+
+						if (it->first >= 0) {
+							cageCPXYZ = CPs.GetXYZ(it->first);
+						}
+
+						if ((firstHasCP && DistSqr(avgXYZ1, cageCPXYZ) > DistSqr(avgXYZ2, cageCPXYZ))
+							|| (!firstHasCP && DistSqr(avgXYZ2, cageCPXYZ) > DistSqr(avgXYZ1, cageCPXYZ))){
+							auto tmpmap = CageNumToElemNums;
+							it = tmpmap.cbegin();
+							it2 = it;
+							it2++;
+
+							CageNumToElemNums[it->first] = it2->second;
+							CageNumToElemNums[it2->first] = it->second;
+						}
+					}
+				}
+						
+				int ColorInd = 0;
+				for (auto const & c : CageNumToElemNums) {
+					std::map<int, int> OldToNewNodeNum;
+					std::set<int> SphereNodeNums;
+					vector<vector<int> > NewElems;
+					for (auto const & ei : c.second){
+						NewElems.push_back(Elems->at(ei));
+					}
+
+					vector<vec3> NewNodes;
+					NewNodes.reserve(Sphere.GetNumNodes());
+					for (auto & ei : NewElems) {
+						for (auto & ni : ei){
+							if (!OldToNewNodeNum.count(ni)) {
+								OldToNewNodeNum[ni] = NewNodes.size();
+								SphereNodeNums.insert(ni);
+								NewNodes.push_back(CPPos + (SphereNodes[ni] - CPPos) * 1.01);
+							}
+							ni = OldToNewNodeNum[ni];
+						}
+					}
+ 					
+					FESurface_c NewSurf(NewNodes, NewElems);
+					string ZoneName = NucleusName +": ", CageName = "Cage ";
+					int CPOffset;
+					if (c.first >= 0) {
+						CPOffset = CPs.GetTypeNumOffsetFromTotOffset(c.first)[1];
+						CageName += to_string(CPOffset + 1);
+					}
+					else{
+						CageName += "FF " + to_string(-c.first);
+					}
+					ZoneName += CageName;
+					int ZoneNum = NewSurf.SaveAsTriFEZone(XYZVarNums, ZoneName);
+					// 					Save same aux data as condensed basins to be used when exporting
+					if (ZoneNum > 0) {
+						/*
+							*	Set Aux data
+							*/
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.SourceZoneNum, to_string(SphereZoneNum));
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.SphereCPName, CPString);
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.SourceNucleusName, NucleusName);
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeTopoCageWedge);
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinSphereElements, VectorToString(vector<int>(c.second.begin(), c.second.end()), ","));
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinSphereNodes, VectorToString(vector<int>(SphereNodeNums.begin(), SphereNodeNums.end()), ","));
+
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, CageName);
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinInfo, ZoneName);
+
+						Set TmpSet(ZoneNum);
+						TecUtilZoneSetMesh(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
+						TecUtilZoneSetMesh(SV_COLOR, TmpSet.getRef(), 0.0, ColorIndex_t((ColorInd++ % 7) + 1));
+						TecUtilZoneSetShade(SV_SHOW, TmpSet.getRef(), 0.0, TRUE);
+						TecUtilZoneSetShade(SV_COLOR, TmpSet.getRef(), 0.0, ColorIndex_t((ColorInd % 7) + 1));
+						TecUtilZoneSetContour(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
+						TecUtilZoneSetEdgeLayer(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
+
+
+					}
+				}
+			}
+
 		}
 
 		IntVarNameList = BaseIntVarNameList;
@@ -9607,7 +9848,6 @@ void FindSphereBasins() {
 			for (int i = 0; i < 2; ++i) {
 				for (int b = 0; b < MinMaxIndices[i].size(); ++b) {
 					if (SphereRadius > 0) {
-						// #pragma omp parallel for
 						for (int vi = 0; vi < BasinNodes[i][b].size(); ++vi) {
 							BasinNodes[i][b][vi] += normalise(BasinNodes[i][b][vi] - CPPos) * 0.001;
 						}

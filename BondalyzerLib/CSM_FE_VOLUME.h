@@ -109,7 +109,7 @@ public:
 	void GeneratePointElementDistanceCheckData();
 	void GenerateElemMidpoints();
 	void GetNodeConnectivityFromTecplot();
-	void GenerateElemConnectivity();
+	void GenerateElemConnectivity(int numSharedNodes = 1);
 	vector<vector<LgIndex_t> > const * GetNodeConnectivityListPtr() const { return &m_NodeConnectivityList; }
 	vector<vector<LgIndex_t> > const * GetElemConnectivityListPtr() const { return &m_ElemConnectivityList; }
 	vector<vector<int> > const * GetElemListPtr() const { return &m_ElemList; }

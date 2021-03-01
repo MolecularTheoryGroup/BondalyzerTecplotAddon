@@ -10178,6 +10178,7 @@ enum CalculateShannonEntropiesRegionTypes_e{
 	Region_AllAtomicBasins,
 	Region_MoleculesMG,
 	Region_MoleculesOS,
+	Region_TopologicalCages,
 	Region_SpecialGradientBundles,
 	Region_CondensedBasins,
 	Region_ActiveDGBs,
@@ -10310,7 +10311,9 @@ void CollectGradientBundlesByRegionType(int PVarNum,
 	std::map<string, std::set<string> > & MoleculeOSNamesToSphereNames,
 	std::map<string, vector<int> > & CondensedBasinNameToSphereElems,
 	std::map<string, string> & CondensedBasinNameToSphereName,
-	std::map<string, std::set<string> > & SpecialGradientBundleNameToCondensedBasinNames)
+	std::map<string, std::set<string> > & SpecialGradientBundleNameToCondensedBasinNames,
+	std::map<string, vector<int> > & SphereNameToActiveDGBElemNums,
+	std::map<string, std::map<string, vector<int> > > & TopoCageNameToSphereNameToElems)
 {
 	REQUIRE(PVarNum > 0 && PVarNum <= TecUtilDataSetGetNumVars());
 	REQUIRE(CPZoneNum > 0 && CPZoneNum <= TecUtilDataSetGetNumZones());
@@ -10403,6 +10406,29 @@ void CollectGradientBundlesByRegionType(int PVarNum,
 			}
 		}
 	}
+
+	// get topological cages
+	for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
+		if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeTopoCageWedge)) {
+			// condensed basin
+			string CageName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinName);
+			string SphereName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName);
+			auto ElemList = SplitStringInt(AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinSphereElements)); // 0-based
+			TopoCageNameToSphereNameToElems[CageName][SphereName] = ElemList;
+		}
+	}
+
+	// get  all active DGB zones
+	std::map < string, std::set<int> > SphereNameToActiveDGBElemNumSet;
+
+	for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
+		if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)) {
+			SphereNameToActiveDGBElemNumSet[AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName)].insert(stoi(AuxDataZoneGetItem(zi, CSMAuxData.GBA.ElemNum)) - 1);
+		}
+	}
+	for (auto const & s : SphereNameToActiveDGBElemNumSet) {
+		SphereNameToActiveDGBElemNums[s.first] = vector<int>(s.second.cbegin(), s.second.cend());
+	}
 }
 
 /*
@@ -10417,28 +10443,15 @@ void CalculateShannonEntropies(int PVarNum, int CPZoneNum, vector<int> XYZVarNum
 	std::map<string, FieldDataPointer_c> SphereNameToVarPtr;
 	std::map<string, vec> SphereNameToElemSolidAngles;
 	std::map<string, std::set<string> > MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames;
-	std::map<string, vector<int> > CondensedBasinNameToSphereElems;
+	std::map<string, vector<int> > CondensedBasinNameToSphereElems, SphereNameToActiveDGBElemNums;
+	std::map<string, std::map<string, vector<int> > > TopoCageNameToSphereNameToElems;
 	std::map<string, string> CondensedBasinNameToSphereName;
 	std::map<string, std::set<string> > SpecialGradientBundleNameToCondensedBasinNames;
 
 
 	TecUtilDataLoadBegin();
 
-	CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames);
-
-	// if requested, get an additional region for all active DGB zones
-	std::map < string, std::set<int> > SphereNameToActiveDGBElemNumSet;
-	std::map < string, vector<int> > SphereNameToActiveDGBElemNums;
-	if (DoRegion[Region_ActiveDGBs]) {
-		for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
-			if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)) {
-				SphereNameToActiveDGBElemNumSet[AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName)].insert(stoi(AuxDataZoneGetItem(zi, CSMAuxData.GBA.ElemNum)) - 1);
-			}
-		}
-		for (auto const & s : SphereNameToActiveDGBElemNumSet) {
-			SphereNameToActiveDGBElemNums[s.first] = vector<int>(s.second.cbegin(), s.second.cend());
-		}
-	}
+	CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames, SphereNameToActiveDGBElemNums, TopoCageNameToSphereNameToElems);
 
 	//3. For each max/min basin
 	//	1. compute the Shannon entropy for the basin
@@ -10500,6 +10513,18 @@ void CalculateShannonEntropies(int PVarNum, int CPZoneNum, vector<int> XYZVarNum
 			SphereNameAndElements.push_back(std::make_pair(s.first, s.second));
 		}
 		CalculateAndSaveShannonEntropiesForSphereNameElements("Active dGBs: ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+	}
+
+	if (DoRegion[Region_TopologicalCages]) {
+		// Then special gradient bundles
+		string OutPath = "";
+		for (auto & cage : TopoCageNameToSphereNameToElems) {
+			SphereNameAndElements.clear();
+			for (auto & cage_sphere : cage.second) {
+				SphereNameAndElements.push_back(cage_sphere);
+			}
+			CalculateAndSaveShannonEntropiesForSphereNameElements(cage.first + ": ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+		}
 	}
 
 	if (DoRegion[Region_SpecialGradientBundles]) {
@@ -10591,6 +10616,7 @@ void CalculateShannonEntropyGetUserInfo() {
 		std::make_pair("the system molecular ensemble (all atomic basins together)", "1"),
 		std::make_pair("every molecular ensemble (by molecular graph)", "1"),
 		std::make_pair("every molecular ensemble (by 1-skeleton)", "1"),
+		std::make_pair("every topological cage", "1"),
 		std::make_pair("every special gradient bundle (bonds etc.)", "0"),
 		std::make_pair("every max/min condensed basin", "0"),
 		std::make_pair("active dGB or sphere element zones", "1")
@@ -10724,7 +10750,8 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 	std::map<string, FieldDataPointer_c> SphereNameToVarPtr;
 	std::map<string, vec> SphereNameToElemSolidAngles;
 	std::map<string, std::set<string> > MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames;
-	std::map<string, vector<int> > CondensedBasinNameToSphereElems;
+	std::map<string, vector<int> > CondensedBasinNameToSphereElems, SphereNameToActiveDGBElemNums;
+	std::map<string, std::map<string, vector<int> > > TopoCageNameToSphereNameToElems;
 	std::map<string, string> CondensedBasinNameToSphereName;
 	std::map<string, std::set<string> > SpecialGradientBundleNameToCondensedBasinNames;
 
@@ -10735,22 +10762,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 	char* FolderNameCStr;
 	if (TecUtilDialogGetFolderName("Select folder to save files", &FolderNameCStr)) {
 
-		CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames);
-
-
-		// if requested, get an additional region for all active DGB zones
-		std::map < string, std::set<int> > SphereNameToActiveDGBElemNumSet;
-		std::map < string, vector<int> > SphereNameToActiveDGBElemNums;
-		if (DoRegion[Region_ActiveDGBs]){
-			for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi){
-				if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeDGB)){
-					SphereNameToActiveDGBElemNumSet[AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName)].insert(stoi(AuxDataZoneGetItem(zi, CSMAuxData.GBA.ElemNum)) - 1);
-				}
-			}
-			for (auto const & s : SphereNameToActiveDGBElemNumSet) {
-				SphereNameToActiveDGBElemNums[s.first] = vector<int>(s.second.cbegin(), s.second.cend());
-			}
-		}
+		CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames, SphereNameToActiveDGBElemNums, TopoCageNameToSphereNameToElems);
 
 		vector<int> IntVarNums;
 		vector<string> IntVarNames;
@@ -10834,6 +10846,18 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 			}
 		}
 
+		if (DoRegion[Region_TopologicalCages]) {
+			// Then special gradient bundles
+			string OutPath = "";
+			for (auto & cage : TopoCageNameToSphereNameToElems) {
+				SphereNameAndElements.clear();
+				for (auto & cage_sphere : cage.second) {
+					SphereNameAndElements.push_back(cage_sphere);
+				}
+				ExportGBADataForRegions(DataSetName + " Topological cages", cage.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + cage.first);
+			}
+		}
+
 		if (DoRegion[Region_SpecialGradientBundles]) {
 			// Then special gradient bundles
 			string OutPath = "";
@@ -10897,8 +10921,6 @@ void ExportGBADataReturnUserInfo(bool const GuiSuccess,
 		DoRegion[i] = Fields[fNum++].GetReturnBool();
 	}
 
-	bool IncludeActiveDGBs = Fields[fNum++].GetReturnBool();
-
 
 	TecUtilLockStart(AddOnID);
 	TecUtilPleaseWait("Exporting... Please wait.", TRUE);
@@ -10928,13 +10950,14 @@ void ExportGBADataGetUserInfo() {
 	};
 
 	vector<std::pair<string, string> > RegionTypeList = {
-		std::make_pair("every atomic basin (atomic chart)", "1"),
-		std::make_pair("the system molecular ensemble (all atomic basins together)", "1"),
-		std::make_pair("every molecular ensemble (by molecular graph)", "1"),
-		std::make_pair("every molecular ensemble (by 1-skeleton)", "1"),
-		std::make_pair("every special gradient bundle (bonds etc.)", "1"),
-		std::make_pair("every max/min condensed basin", "1"),
-		std::make_pair("active dGB or sphere element zones", "1")
+		std::make_pair("Atomic basin (atomic chart)", "1"),
+		std::make_pair("The system molecular ensemble (all atomic basins together)", "1"),
+		std::make_pair("Molecular ensemble (by molecular graph)", "1"),
+		std::make_pair("Molecular ensemble (by 1-skeleton)", "1"),
+		std::make_pair("Topological cages", "1"),
+		std::make_pair("Special gradient bundle (bonds etc.)", "1"),
+		std::make_pair("Max/min condensed basin", "1"),
+		std::make_pair("Active dGB or sphere element zones", "1")
 	};
 	for (auto r : RegionTypeList) {
 		Fields.emplace_back(Gui_Toggle, r.first, r.second);
