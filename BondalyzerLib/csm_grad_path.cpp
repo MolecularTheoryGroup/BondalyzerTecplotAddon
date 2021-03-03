@@ -2825,15 +2825,25 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 			MR.s = gsl_multiroot_fdfsolver_alloc(MR.T, 2);
 		}
 
+		double MaxStepSizeSqr = GP_MaxStepSize * GP_MaxStepSize;
+
 		while (IsOk && Status == GSL_SUCCESS && Step < GP_MaxNumPoints){
 
 
 			// 			Status = gsl_odeiv2_driver_apply(ODEDriver, &tInit, tInit + 1e-3, y);
 			Status = gsl_odeiv2_evolve_apply(e, c, s, &ODESys, &tInit, tFinal, &h, y);
 
-			h = MIN(h, GP_MaxStepSize);
+// 			h = MIN(h, GP_MaxStepSize);
 
 			if (Status == GSL_SUCCESS || Status == GSL_EDOM){
+				PtI = y;
+				if (DistSqr(PtI, PtIm1) > MaxStepSizeSqr){
+					PtI = PtIm1 + normalise(PtI - PtIm1) * GP_MaxStepSize;
+					for (int i = 0; i < 3; ++i){
+						y[i] = PtI[i];
+					}
+				}
+
 				if (m_Surface != nullptr && m_Surface->IsMade()) {
 					SurfProjectionIter++;
 					SurfProjectionFound = false;

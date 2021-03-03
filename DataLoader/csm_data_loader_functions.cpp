@@ -360,7 +360,7 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 	Boolean_t IsOk = (AtomGroupList.size() > 0 && XYZVarNames.size() == 3);
 
 	for (int GroupNum = 0; GroupNum < AtomGroupList.size() && IsOk; ++GroupNum){
-		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : nullptr);
+		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Positions[0].size(), 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : nullptr);
 
 		EntIndex_t ZoneNum;
 
@@ -380,7 +380,7 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 				for (int i = 0; i < 3; ++i){
 					vector<ImportType_t> ImportBuffer(AtomGroupList[GroupNum].Positions[i].begin(), AtomGroupList[GroupNum].Positions[i].end());
 					// 					TecUtilDataValueArraySetByRef(VarRef[i], 1, AtomGroupList[GroupNum].Count, AtomGroupList[GroupNum].Positions[i].data());
-					TecUtilDataValueArraySetByRef(VarRef[i], 1, AtomGroupList[GroupNum].Count, ImportBuffer.data());
+					TecUtilDataValueArraySetByRef(VarRef[i], 1, ImportBuffer.size(), ImportBuffer.data());
 				}
 			}
 

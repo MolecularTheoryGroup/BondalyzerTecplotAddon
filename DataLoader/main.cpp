@@ -280,11 +280,11 @@ static void STDCALL LoadGaussianCubeMenuCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
-static void STDCALL LoadFLAPWCHARGEMenuCallback(void)
+static void STDCALL LoadFLAPWMultiCHARGEMenuCallback(void)
 {
 	TecUtilLockStart(AddOnID);
 
-	LoadFLAPWCHARGEFiles();
+	LoadFLAPWMultiCHARGEFiles();
 
 	TecUtilLockFinish(AddOnID);
 }
@@ -411,9 +411,9 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		LoadBinaryPLTFileDataMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Load data",
-		"Load FLAPW CHARGE File(s)",
+		"Load FLAPW CHARGE as multiple files",
 		'\0',
-		LoadFLAPWCHARGEMenuCallback);
+		LoadFLAPWMultiCHARGEMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		"Refine ADF Tecplot Zone Data",
