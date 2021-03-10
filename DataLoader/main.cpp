@@ -289,6 +289,15 @@ static void STDCALL LoadFLAPWMultiCHARGEMenuCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL LoadFLAPWCHARGEMenuCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+
+	LoadFLAPWCHARGEFiles();
+
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL LoadTurboMoleCubeMenuCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -411,9 +420,14 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		LoadBinaryPLTFileDataMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Load data",
-		"Load FLAPW CHARGE as multiple files",
+		"Load FLAPW CHARGE as multiple grid slice files",
 		'\0',
 		LoadFLAPWMultiCHARGEMenuCallback);
+
+	TecUtilMenuAddOption("MTG_Load data",
+		"Load FLAPW CHARGE files",
+		'\0',
+		LoadFLAPWCHARGEMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		"Refine ADF Tecplot Zone Data",

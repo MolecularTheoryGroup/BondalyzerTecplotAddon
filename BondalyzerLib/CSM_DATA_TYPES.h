@@ -170,7 +170,7 @@ double const ParallepipedVolume(mat33 const & BV);
 
 bool const ParallelpidedPointIsInternal(mat33 const & LV, vec3 const & Origin, vec3 const & Pt);
 
-typedef double ImportType_t;
+typedef float ImportType_t;
 
 enum GPType_e
 {

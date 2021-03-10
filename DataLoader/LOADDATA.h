@@ -36,6 +36,7 @@ Boolean_t LoadVASPData();
 void LoadGaussianCubeFiles();
 
 void LoadFLAPWMultiCHARGEFiles();
+void LoadFLAPWCHARGEFiles();
 
 void LoadTurboMoleCubeFiles();
 Boolean_t LoadBinaryPLTFileData();

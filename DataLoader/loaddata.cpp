@@ -4089,7 +4089,7 @@ Boolean_t LoadADFTape21(){
 			TmpStr = TmpStr.substr(0, TmpStr.find_first_of(' '));
 			AtomGroupList[i].Name = TmpStr;
 			AtomGroupList[i].Count = CumAtomNumPtr[i + 1] - CumAtomNumPtr[i];
-			AtomGroupList[i].Charges = vector<double>(AtomGroupList[i].Count, AtomChgPtr[i]);
+			AtomGroupList[i].Charges = vector<ImportType_t>(AtomGroupList[i].Count, AtomChgPtr[i]);
 
 			for (int j = 0; j < AtomGroupList[i].Count; ++j){
 				vec3 Pos;
@@ -4397,7 +4397,7 @@ Boolean_t LoadADFTape21(){
 						}
 
 						double AvgChg = 0.0;
-						for (double & i : A.Charges) AvgChg += i;
+						for (ImportType_t & i : A.Charges) AvgChg += i;
 						AvgChg /= A.Count;
 
 						if (A.Name != CPTypeStrs[0])
@@ -5279,8 +5279,10 @@ void LoadGaussianCubeFiles()
 }
 
 
-bool GetFLAPWMultiCHARGEFileHeader(string const & fileName, string & fieldName, int & nx, int & ny, int & ns, double & lx, double & ly, string & firstVal) {
+bool GetFLAPWCHARGEFileHeader(string const & fileName, string & fieldName, int & nx, int & ny, int & ns, float & lx, float & ly, string & firstVal, int *numCharsHeader = nullptr, unsigned long long int *numCharsValBlock = nullptr, unsigned long long int *numCharsBlockTotal = nullptr, int *numPlanes = nullptr) {
 	bool IsOk = true;
+	bool computeBlockLength = (numCharsHeader != nullptr);
+	int headerNumChars = 0;
 
 	ifstream CHARGEFile(fileName);
 
@@ -5291,6 +5293,8 @@ bool GetFLAPWMultiCHARGEFileHeader(string const & fileName, string & fieldName, 
 	string H1, H2;
 	getline(CHARGEFile, H1);
 	getline(CHARGEFile, H2);
+
+	headerNumChars += H1.length() + H2.length();
 
 	stringstream ss;
 	ss << H1;
@@ -5331,6 +5335,39 @@ bool GetFLAPWMultiCHARGEFileHeader(string const & fileName, string & fieldName, 
 
 	while (!StringIsFloat(firstVal)){
 		CHARGEFile >> firstVal;
+	}
+
+	if (computeBlockLength){
+		// Determine number of planes using size of single block and total file size
+		int nVals = nx * ny; 	// total values for a plane
+		int nLinesPerBlock = nVals / 5;
+		int nLinesRem = nVals % 5;
+
+		// (12 chars * 5 vals) + (2 spaces * 5) + (1 newline) = 60 + 8 + 1 = 69
+		int nCharsPerBlock = 71 * nLinesPerBlock;
+
+		nCharsPerBlock += (12 * nLinesRem) + (2 * (nLinesRem)) + 1;
+
+		*numCharsValBlock = nCharsPerBlock;
+
+		headerNumChars += 1; // a newline is missed doing the two readlines
+
+		nCharsPerBlock += headerNumChars;
+
+		nCharsPerBlock += 1; // newline to next block
+
+		//	Get file size
+		CHARGEFile.seekg(0, CHARGEFile.end);
+		std::streamoff FileSize = CHARGEFile.tellg();
+		CHARGEFile.seekg(0, CHARGEFile.beg);
+
+		*numPlanes = FileSize / nCharsPerBlock;
+		if (FileSize % *numPlanes != 0){
+			TecUtilDialogErrMsg("Filesize not as expected. Contact support.");
+			return false;
+		}
+		*numCharsHeader = headerNumChars;
+		*numCharsBlockTotal = nCharsPerBlock;
 	}
 
 	if (!StringIsFloat(firstVal)){
@@ -5387,6 +5424,61 @@ bool GetFLAPWMultiCHARGEFileFieldData(string const & fileName, string const & fi
 	return true;
 }
 
+bool GetFLAPWCHARGEFileFieldData(ifstream & CHARGEFile, unsigned long long int pos, vector<char> & CharArray, vector<float> & data)
+{
+	bool IsOk = true;
+
+	if (!CHARGEFile.is_open()) {
+		return false;
+	}
+
+	// Position stream to specified position
+	CHARGEFile.seekg(pos);
+	if (!CHARGEFile.good()) {
+		bool isbad = CHARGEFile.bad();
+		bool isend = CHARGEFile.eof();
+		bool isfail = CHARGEFile.fail();
+		return false;
+	}
+	
+	// Find first numeral
+	int c = CHARGEFile.peek();
+	while (!std::isdigit(c)){
+		CHARGEFile.get();
+		c = CHARGEFile.peek();
+	}
+
+	CHARGEFile.read(CharArray.data(), CharArray.size());
+	if (!CHARGEFile.good()){
+		bool isbad = CHARGEFile.bad();
+		bool isend = CHARGEFile.eof();
+		bool isfail = CHARGEFile.fail();
+		return false;
+	}
+
+	/*
+	*	Run through the char vector CubeFileContents to find the first data value
+	*/
+
+	char* TmpCStr = strtok(CharArray.data(), " \n");
+// 	while (TmpCStr != nullptr && firstVal.compare(TmpCStr))
+// 		TmpCStr = strtok(nullptr, " \n");
+
+	// size of data tells us how many values are expected
+	int i = 0;
+	while (TmpCStr != nullptr && i < data.size()) {
+		data[i] = atof(TmpCStr);
+		TmpCStr = strtok(nullptr, " \n");
+		i++;
+	}
+
+	if (i < data.size()) {
+		return false;
+	}
+
+	return true;
+}
+
 // Trump is a super callous fragile racist sexist nazi POTUS
 
 
@@ -5434,11 +5526,11 @@ void LoadFLAPWMultiCHARGEFiles() {
 	 */
 
 	int nx, ny, nz, ns;
-	double lx, ly, dx, dy;
+	float lx, ly, dx, dy;
 	string fieldName;
 	vector<string> firstVal(FileNames.size());
 
-	bool filesValid = GetFLAPWMultiCHARGEFileHeader(FileNames.front(), fieldName, nx, ny, ns, lx, ly, firstVal[0]);
+	bool filesValid = GetFLAPWCHARGEFileHeader(FileNames.front(), fieldName, nx, ny, ns, lx, ly, firstVal[0]);
 
 	if (!filesValid) {
 		TecUtilDialogErrMsg(string("File 1 header invalid (\'" + FileNames[0] + "\')").c_str());
@@ -5447,9 +5539,9 @@ void LoadFLAPWMultiCHARGEFiles() {
 
 	for (int i = 1; i < FileNames.size() && filesValid; ++i){
 		int nx1, ny1, ns1;
-		double lx1, ly1;
+		float lx1, ly1;
 		string fieldName1;
-		filesValid = GetFLAPWMultiCHARGEFileHeader(FileNames[i], fieldName1, nx1, ny1, ns1, lx1, ly1, firstVal[i])
+		filesValid = GetFLAPWCHARGEFileHeader(FileNames[i], fieldName1, nx1, ny1, ns1, lx1, ly1, firstVal[i])
 			&& nx == nx1 && ny == ny1 && ns == ns1 
 			&& lx == lx1 && ly == ly1 && fieldName == fieldName1;
 		if (!filesValid){
@@ -5467,8 +5559,8 @@ void LoadFLAPWMultiCHARGEFiles() {
 
 	nz = FileNames.size();
 	int npts = nx * ny * nz;
-	dx = lx / double(nx - 1);
-	dy = ly / double(ny - 1);
+	dx = lx / float(nx - 1);
+	dy = ly / float(ny - 1);
 
 
 	vector<int> IJK = { nx,ny,nz };
@@ -5832,7 +5924,7 @@ void LoadFLAPWMultiCHARGEFiles() {
   0.553822E-01  0.563362E-01  0.573829E-01  0.585322E-01  0.598104E-01
   0.611943E-01  0.627353E-01  0.644193E-01  0.662755E-01  0.683283E-01
 */
-void LoadFLAPWCHARGEFile() {
+void LoadFLAPWCHARGEFiles() {
 	StringList_pa FileNameStrList = TecUtilStringListAlloc();
 	vector<string> FileNames;
 	Boolean_t IsOk = TecUtilDialogGetFileNames(SelectFileOption_AllowMultiFileRead, &FileNameStrList, "FLAPW CHARGE File(s)", nullptr, "*");
@@ -5856,31 +5948,24 @@ void LoadFLAPWCHARGEFile() {
 		 * First validata all files and verify they're all for the same system
 		 */
 
-	int nx, ny, nz, ns;
-	double lx, ly, dx, dy;
+	int nx, ny, nz, ns, headerNumChars;
+	unsigned long long int numBlockValChars, numBlockCharsTotal;
+	float lx, ly, dx, dy, dz;
 	string fieldName;
 	vector<string> firstVal(FileNames.size());
 
-	bool filesValid = GetFLAPWMultiCHARGEFileHeader(FileNames.front(), fieldName, nx, ny, ns, lx, ly, firstVal[0]);
+	bool filesValid = GetFLAPWCHARGEFileHeader(FileNames.front(), fieldName, nx, ny, ns, lx, ly, firstVal[0], &headerNumChars, &numBlockValChars, &numBlockCharsTotal, &nz);
 
+	std::map<string, string> PropNames;
+	PropNames["total density"] = "Electron Density";
+	PropNames["spin density"] = "Spin density";
+	PropNames["spin up"] = "Spin majority density";
+	PropNames["spin down"] = "Spin minority density";
+
+	fieldName = PropNames[fieldName];
+	
 	if (!filesValid) {
-		TecUtilDialogErrMsg(string("File 1 header invalid (\'" + FileNames[0] + "\')").c_str());
-		return;
-	}
-
-	for (int i = 1; i < FileNames.size() && filesValid; ++i) {
-		int nx1, ny1, ns1;
-		double lx1, ly1;
-		string fieldName1;
-		filesValid = GetFLAPWMultiCHARGEFileHeader(FileNames[i], fieldName1, nx1, ny1, ns1, lx1, ly1, firstVal[i])
-			&& nx == nx1 && ny == ny1 && ns == ns1
-			&& lx == lx1 && ly == ly1 && fieldName == fieldName1;
-		if (!filesValid) {
-			TecUtilDialogErrMsg(string("File " + to_string(i + 1) + " header invalid or mismatch to group (\'" + FileNames[i] + "\')").c_str());
-		}
-	}
-
-	if (!filesValid) {
+		TecUtilDialogErrMsg(string("File header invalid (\'" + FileNames[0] + "\')").c_str());
 		return;
 	}
 
@@ -5888,19 +5973,35 @@ void LoadFLAPWCHARGEFile() {
 	 * prepare dataset
 	 */
 
-	nz = FileNames.size();
 	int npts = nx * ny * nz;
-	dx = lx / double(nx - 1);
-	dy = ly / double(ny - 1);
+	dx = lx / float(nx - 1);
+	dy = ly / float(ny - 1);
+	dz = dx;
+
+	// Get Z spacing from user if different from the X spacing
+	while (true) {
+		string zinStr = to_string(dz);
+		char * zoutCStr;
+		TecUtilDialogGetSimpleText("Enter grid spacing between planes (default is the X spacing)", zinStr.c_str(), &zoutCStr);
+		if (StringIsFloat(zoutCStr)){
+			dz = atof(zoutCStr);
+			break;
+		}
+		else{
+			TecUtilDialogMessageBox("Please enter floating point value for interplane spacing", MessageBoxType_Warning);
+		}
+		TecUtilStringDealloc(&zoutCStr);
+	}
 
 
 	vector<int> IJK = { nx,ny,nz };
+
 
 	/*
 	*	Make dataset and volume zone if necessary
 	*/
 	StringList_pa VarNames = TecUtilStringListAlloc();
-	vector<string> VarNameStrs = { "X", "Y", "Z", CSMVarName.Dens };
+	vector<string> VarNameStrs = { "X", "Y", "Z", fieldName };
 
 	for (string const & i : VarNameStrs)
 		TecUtilStringListAppendString(VarNames, i.c_str());
@@ -5985,10 +6086,6 @@ void LoadFLAPWCHARGEFile() {
 		// 			IsOk = Ptrs[i].InitializeWritePtr(VolZoneNum, VarNum);
 	}
 
-	TecUtilDataLoadBegin(); // keep tecplot from deallocating pointers
-
-	FieldVecPointer_c XYZPtr;
-	XYZPtr.InitializeWritePtr(VolZoneNum, vector<int>(VarNums.begin(), VarNums.end() - 1));
 
 	// 	FieldDataPointer_c ValPtr;
 	// 	ValPtr.InitializeWritePtr(VolZoneNum, VarNums.back());
@@ -5999,17 +6096,52 @@ void LoadFLAPWCHARGEFile() {
 	int TotalPoints = IJK[0] * IJK[1] * IJK[2];
 	mat33 LatticeVector = zeros<mat>(3, 3);
 	LatticeVector.at(0, 0) = dx;
-	LatticeVector.at(1, 1) = dx;
-	LatticeVector.at(2, 2) = dx;
+	LatticeVector.at(1, 1) = dy;
+	LatticeVector.at(2, 2) = dz;
 	vec3 Origin = zeros<vec>(3);
 	string StatusStr = "Loading FLAPW data: " + DataSetName;
 	StatusLaunch(StatusStr, AddOnID, TRUE);
 
-	/*
-	 *	Loop over files again, reading in data from each.
-	 *	rho data can be read into tecplot as one big read,
-	 *	and we'll populate the xyz values as we go.
-	 */
+// //	Generate XYZ Values (didn't speed things up or decrease memory to do it this way)
+// 		{
+// 			vector<float> X(nx*ny*nz), Y(nx*ny*nz), Z(nx*ny*nz);
+// 			vector<float>* XYZ[] = { &X, &Y, &Z };
+// 			vec3 TmpIJK = zeros<vec>(3);
+// 			vec3 TmpXYZ;
+// 	#pragma omp parallel for private(TmpIJK, TmpXYZ)
+// 			for (int k = 0; k < IJK[2]; ++k) {
+// 				TmpIJK[2] = k;
+// 				TmpIJK[1] = 0;
+// 				for (int j = 0; j < IJK[1]; ++j) {
+// 					TmpIJK[0] = 0;
+// 					for (int i = 0; i < IJK[0]; ++i) {
+// 						int Index = IndexFromIJK(i + 1, j + 1, k + 1, IJK[0], IJK[1]) - 1;
+// 						TmpXYZ = Origin + LatticeVector * TmpIJK;
+// 						for (int dir = 0; dir < 3; ++dir) {
+// 							XYZ[dir]->at(Index) = TmpXYZ[dir];
+// 						}
+// 	
+// 						++TmpIJK[0];
+// 					}
+// 					++TmpIJK[1];
+// 				}
+// 			}
+// 	
+// 			// Save XYZ values
+// 			for (int dir = 0; dir < 3; ++dir) {
+// 				TecUtilDataLoadBegin(); // keep tecplot from deallocating pointers
+// 				FieldData_pa VarRef = TecUtilDataValueGetWritableNativeRef(VolZoneNum, VarNums[dir]);
+// 				if (VALID_REF(VarRef)) {
+// 					TecUtilDataValueArraySetByRef(VarRef, 1, XYZ[dir]->size(), XYZ[dir]->data());
+// 				}
+// 				TecUtilDataLoadEnd();
+// 			}
+// 		}
+
+	TecUtilDataLoadBegin(); // keep tecplot from deallocating pointers
+
+	FieldVecPointer_c XYZPtr;
+	XYZPtr.InitializeWritePtr(VolZoneNum, vector<int>(VarNums.begin(), VarNums.end() - 1));
 
 	vector<float> SliceData(nx*ny);
 
@@ -6017,16 +6149,23 @@ void LoadFLAPWCHARGEFile() {
 	FieldData_pa VarRef = TecUtilDataValueGetWritableNativeRef(VolZoneNum, VarNums.back());
 	if (VALID_REF(VarRef)) {
 		vec3 TmpIJK = zeros<vec>(3);
+		ifstream InFile(FileNames[0]);
+		high_resolution_clock::time_point Time1;
+		Time1 = high_resolution_clock::now();
+		vector<char> CharArray(numBlockValChars);
 		for (int k = 0; k < IJK[2] && IsOk; ++k) {
-			// 			IsOk = StatusUpdate(k, IJK[2], StatusStr, AddOnID);
-						// Get data from file
-			if (GetFLAPWMultiCHARGEFileFieldData(FileNames[k], firstVal[k], SliceData)) {
+			IsOk = StatusUpdate(k+1, IJK[2], StatusStr, AddOnID, Time1, false);
+			// Get data from file
+			unsigned long long int pos = k * numBlockCharsTotal + headerNumChars;
+			if (GetFLAPWCHARGEFileFieldData(InFile, pos, CharArray, SliceData)) {
 				TecUtilDataValueArraySetByRef(VarRef, IndexFromIJK(1, 1, k + 1, IJK[0], IJK[1]), SliceData.size(), SliceData.data());
+			}
+			else{
+				int tmpint = 1;
 			}
 
 			TmpIJK[1] = 0;
 			for (int j = 0; j < IJK[1] && IsOk; ++j) {
-				IsOk = StatusUpdate(j + IJK[1] * k, IJK[1] * IJK[2], StatusStr, AddOnID);
 				TmpIJK[0] = 0;
 				for (int i = 0; i < IJK[0]; ++i) {
 					int Index = IndexFromIJK(i + 1, j + 1, k + 1, IJK[0], IJK[1]) - 1;
@@ -6038,33 +6177,13 @@ void LoadFLAPWCHARGEFile() {
 			}
 			++TmpIJK[2];
 		}
+		InFile.close();
 	}
-
-	// write xyz values
-// 	StatusStr = "Loading FLAPW data (step 2 of 2): " + DataSetName;
-// 	vec3 TmpIJK = zeros<vec>(3);
-// 	for (int i = 0; i < IJK[0] && IsOk; ++i) {
-// 		IsOk = StatusUpdate(i, IJK[0], StatusStr, AddOnID);
-// 		TmpIJK[1] = 0;
-// 		for (int j = 0; j < IJK[1] && IsOk; ++j) {
-// 			TmpIJK[2] = 0;
-// 			for (int k = 0; k < IJK[2]; ++k) {
-// 				int Index = IndexFromIJK(i + 1, j + 1, k + 1, IJK[0], IJK[1]) - 1;
-// 				XYZPtr.Write(Index, Origin + LatticeVector * TmpIJK);
-// 				
-// 				++TmpIJK[2];
-// 			}
-// 			++TmpIJK[1];
-// 		}
-// 		++TmpIJK[0];
-// 	}
-
 
 
 	StatusDrop(AddOnID);
 
 	XYZPtr.Close();
-	// 	for (FieldDataPointer_c & i : Ptrs) i.Close();
 
 
 	if (!ReplaceDataSet) {

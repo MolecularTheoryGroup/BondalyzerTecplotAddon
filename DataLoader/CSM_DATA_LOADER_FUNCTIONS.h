@@ -96,8 +96,8 @@ struct AtomGroup_s{
 	string Name;
 	ColorIndex_t AtomColor;
 	int Count;
-	vector<double> Positions[3];
-	vector<double> Charges;
+	vector<ImportType_t> Positions[3];
+	vector<ImportType_t> Charges;
 
 	AtomGroup_s(){}
 	AtomGroup_s(string const & AtomTypeName);
