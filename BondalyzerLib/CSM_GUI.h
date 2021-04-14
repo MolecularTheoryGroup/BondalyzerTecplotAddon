@@ -28,7 +28,6 @@ enum GuiFieldType_e{ // comment describes gui field and specifies what should be
 	Gui_ZonePointSelectMulti,	// Multi-select list to select points in a zone:
 	//	Option menu is placed above multi-select box to specify zone
 	//	Val is zone name to load in option menu
-	//	** YOU CAN ONLY HAVE ONE IN A SINGLE DIALOG DUE TO LIMITATIONS OF THE LIST CALLBACK FUNCTION!!
 	
 	Gui_String,					// User-provided string
 

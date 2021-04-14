@@ -29,6 +29,10 @@ vector<GuiField_c> CSMPassthroughFields;
 AddOn_pa CSMGuiAddOnID;
 bool CSMGuiDialogUp = false;
 
+int CSMGuiMultiListMaxNumMultiListFields = 5;
+vector<int> CSMGuiMultiListIDs(5, BADDIALOGID); //remains hardcoded to 5 bacause you have to code extra copies of everything below (see copies of void callback function pointers below)
+vector<bool> CSMGuiMultiListIsPointSelects(5);
+
 int CSMGuiMultiListID = BADDIALOGID;
 bool CSMGuiMultiListIsPointSelect;
 int CSMGuiPointSelectZoneNum = -1;
@@ -664,6 +668,224 @@ static void VoidCallbackDoNothing(const int* iVal){
 	return;
 }
 
+/*
+ * In order to distinguish between the buttons of one gui field and another,
+ * make multiple (5) copies of void funtion pointers whose sole task is to set
+ * the global multilist id for the correct field.
+ * Need one such function for each of the 5 possible ids, for each function that
+ * uses the global multilist id.
+ * How to declare array of function pointers: https://docs.microsoft.com/en-us/troubleshoot/cpp/declare-pointers-to-functions
+ */
+void CSMGuiMultiListInvertSelectionButtonCallBack0(){
+	CSMGuiMultiListID = CSMGuiMultiListIDs[0];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[0];
+	CSMGuiMultiListInvertSelectionButtonCallBack();
+}
+void CSMGuiMultiListInvertSelectionButtonCallBack1() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[1];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[1];
+	CSMGuiMultiListInvertSelectionButtonCallBack();
+}
+void CSMGuiMultiListInvertSelectionButtonCallBack2() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[2];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[2];
+	CSMGuiMultiListInvertSelectionButtonCallBack();
+}
+void CSMGuiMultiListInvertSelectionButtonCallBack3() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[3];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[3];
+	CSMGuiMultiListInvertSelectionButtonCallBack();
+}
+void CSMGuiMultiListInvertSelectionButtonCallBack4() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[4];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[4];
+	CSMGuiMultiListInvertSelectionButtonCallBack();
+}
+void (*CSMGuiMultiListInvertSelectionButtonCallBacks[])() = { 
+	CSMGuiMultiListInvertSelectionButtonCallBack0,
+	CSMGuiMultiListInvertSelectionButtonCallBack1,
+	CSMGuiMultiListInvertSelectionButtonCallBack2,
+	CSMGuiMultiListInvertSelectionButtonCallBack3,
+	CSMGuiMultiListInvertSelectionButtonCallBack4
+};
+
+void CSMGuiMultiListSelectAllButtonCallBack0() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[0];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[0];
+	CSMGuiMultiListSelectAllButtonCallBack();
+}
+void CSMGuiMultiListSelectAllButtonCallBack1() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[1];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[1];
+	CSMGuiMultiListSelectAllButtonCallBack();
+}
+void CSMGuiMultiListSelectAllButtonCallBack2() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[2];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[2];
+	CSMGuiMultiListSelectAllButtonCallBack();
+}
+void CSMGuiMultiListSelectAllButtonCallBack3() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[3];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[3];
+	CSMGuiMultiListSelectAllButtonCallBack();
+}
+void CSMGuiMultiListSelectAllButtonCallBack4() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[4];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[4];
+	CSMGuiMultiListSelectAllButtonCallBack();
+}
+void(*CSMGuiMultiListSelectAllButtonCallBacks[])() = {
+	CSMGuiMultiListSelectAllButtonCallBack0,
+	CSMGuiMultiListSelectAllButtonCallBack1,
+	CSMGuiMultiListSelectAllButtonCallBack2,
+	CSMGuiMultiListSelectAllButtonCallBack3,
+	CSMGuiMultiListSelectAllButtonCallBack4
+};
+
+void CSMGuiPointSelectButtonCB0() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[0];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[0];
+	CSMGuiPointSelectButtonCB();
+}
+void CSMGuiPointSelectButtonCB1() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[1];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[1];
+	CSMGuiPointSelectButtonCB();
+}
+void CSMGuiPointSelectButtonCB2() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[2];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[2];
+	CSMGuiPointSelectButtonCB();
+}
+void CSMGuiPointSelectButtonCB3() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[3];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[3];
+	CSMGuiPointSelectButtonCB();
+}
+void CSMGuiPointSelectButtonCB4() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[4];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[4];
+	CSMGuiPointSelectButtonCB();
+}
+void(*CSMGuiPointSelectButtonCBs[])() = {
+	CSMGuiPointSelectButtonCB0,
+	CSMGuiPointSelectButtonCB1,
+	CSMGuiPointSelectButtonCB2,
+	CSMGuiPointSelectButtonCB3,
+	CSMGuiPointSelectButtonCB4
+};
+
+void CSMGuiPointSelectMultiListCallback0(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[0];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[0];
+	CSMGuiPointSelectMultiListCallback(Val);
+}
+void CSMGuiPointSelectMultiListCallback1(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[1];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[1];
+	CSMGuiPointSelectMultiListCallback(Val);
+}
+void CSMGuiPointSelectMultiListCallback2(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[2];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[2];
+	CSMGuiPointSelectMultiListCallback(Val);
+}
+void CSMGuiPointSelectMultiListCallback3(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[3];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[3];
+	CSMGuiPointSelectMultiListCallback(Val);
+}
+void CSMGuiPointSelectMultiListCallback4(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[4];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[4];
+	CSMGuiPointSelectMultiListCallback(Val);
+}
+void(*CSMGuiPointSelectMultiListCallbacks[])(const LgIndex_t* Val) = {
+	CSMGuiPointSelectMultiListCallback0,
+	CSMGuiPointSelectMultiListCallback1,
+	CSMGuiPointSelectMultiListCallback2,
+	CSMGuiPointSelectMultiListCallback3,
+	CSMGuiPointSelectMultiListCallback4
+};
+
+void CSMGuiPointSelectOptionCallback0(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[0];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[0];
+	CSMGuiPointSelectOptionCallback(Val);
+}
+void CSMGuiPointSelectOptionCallback1(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[1];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[1];
+	CSMGuiPointSelectOptionCallback(Val);
+}
+void CSMGuiPointSelectOptionCallback2(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[2];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[2];
+	CSMGuiPointSelectOptionCallback(Val);
+}
+void CSMGuiPointSelectOptionCallback3(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[3];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[3];
+	CSMGuiPointSelectOptionCallback(Val);
+}
+void CSMGuiPointSelectOptionCallback4(const LgIndex_t* Val) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[4];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[4];
+	CSMGuiPointSelectOptionCallback(Val);
+}
+void(*CSMGuiPointSelectOptionCallbacks[])(const LgIndex_t* Val) = {
+	CSMGuiPointSelectOptionCallback0,
+	CSMGuiPointSelectOptionCallback1,
+	CSMGuiPointSelectOptionCallback2,
+	CSMGuiPointSelectOptionCallback3,
+	CSMGuiPointSelectOptionCallback4
+};
+
+void STDCALL CSMGuiPointSelectProbeCB0(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[0];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[0];
+	CSMGuiPointSelectProbeCB(WasSuccessful, isNearestPoint, ClientData);
+}
+void STDCALL CSMGuiPointSelectProbeCB1(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[1];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[1];
+	CSMGuiPointSelectProbeCB(WasSuccessful, isNearestPoint, ClientData);
+}
+void STDCALL CSMGuiPointSelectProbeCB2(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[2];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[2];
+	CSMGuiPointSelectProbeCB(WasSuccessful, isNearestPoint, ClientData);
+}
+void STDCALL CSMGuiPointSelectProbeCB3(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[3];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[3];
+	CSMGuiPointSelectProbeCB(WasSuccessful, isNearestPoint, ClientData);
+}
+void STDCALL CSMGuiPointSelectProbeCB4(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData) {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[4];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[4];
+	CSMGuiPointSelectProbeCB(WasSuccessful, isNearestPoint, ClientData);
+}
+void(STDCALL *CSMGuiPointSelectProbeCBs[])(Boolean_t WasSuccessful,
+	Boolean_t isNearestPoint,
+	ArbParam_t ClientData) = {
+	CSMGuiPointSelectProbeCB0,
+	CSMGuiPointSelectProbeCB1,
+	CSMGuiPointSelectProbeCB2,
+	CSMGuiPointSelectProbeCB3,
+	CSMGuiPointSelectProbeCB4
+};
+
 
 void CSMLaunchGui(string const & Title, 
 	vector<GuiField_c> const & Fields)
@@ -772,6 +994,7 @@ void CSMLaunchGui(string const & Title,
 	CSMGuiDialogManager = TecGUIDialogCreateModeless(MAINDIALOGID, W, H, Title.c_str(), nullptr, DialogCloseButtonCB, nullptr);
 
 	int fNum = 0;
+	int ListIDInd = 0;
 
 	for (auto & f : CSMGuiFields){
 		GuiFieldType_e t = f.GetType();
@@ -804,38 +1027,42 @@ void CSMLaunchGui(string const & Title,
 				f.SetID(TecGUIToggleAdd(CSMGuiDialogManager, X, Y + VertSpacing * 0.5, w, LineHeight, f.GetLabel().c_str(), VoidCallbackDoNothing));
 			}
 			else if (t <= Gui_ZonePointSelectMulti){
+				if (ListIDInd >= CSMGuiMultiListMaxNumMultiListFields){
+					TecUtilDialogErrMsg("Too many multilist fields used in dialog. Max is 5");
+					continue;
+				}
 				vector<string> ListItems;
 				TecGUIIntCallback_pf fCB;
 				if (t == Gui_ZonePointSelectMulti){
 					TecUtilWorkAreaSuspend(TRUE);
 					TecUtilDrawGraphics(FALSE);
 					if (ZoneVarCommaListValid[0])
-						f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarCommaList[0].c_str(), CSMGuiPointSelectOptionCallback), 1);
+						f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, ZoneVarCommaList[0].c_str(), CSMGuiPointSelectOptionCallbacks[ListIDInd]), 1);
 					else{
-						f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, StringReplaceSubString(ZoneVarList[0][0], ",", ".").c_str(), CSMGuiPointSelectOptionCallback), 1);
+						f.SetID(TecGUIOptionMenuAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, StringReplaceSubString(ZoneVarList[0][0], ",", ".").c_str(), CSMGuiPointSelectOptionCallbacks[ListIDInd]), 1);
 						for (int i = 1; i < ZoneVarList[0].size(); ++i) 
 							TecGUIOptionMenuAppendItem(f.GetID(), StringReplaceSubString(ZoneVarList[0][i], ",", ".").c_str());
 					}
 					TecGUIOptionMenuSet(f.GetID(1), MAX(1, FieldZoneVarNums[fNum].back()));
-					fCB = CSMGuiPointSelectMultiListCallback;
-					CSMGuiMultiListIsPointSelect = true;
+					fCB = CSMGuiPointSelectMultiListCallbacks[ListIDInd];
+					CSMGuiMultiListIsPointSelects[ListIDInd] = true;
 					Y += LineHeight + VertSpacing;
 				}
 				else{
 					ListItems = ZoneVarList[int(t - Gui_ZoneSelectMulti)]; // This returns the zone list for ZoneSelectMulti and the var list for VarSelectMulti
-					CSMGuiMultiListIsPointSelect = false;
+					CSMGuiMultiListIsPointSelects[ListIDInd] = false;
 					fCB = IntCallbackDoNothing;
 				}
 				f.SetID(TecGUIListAdd(CSMGuiDialogManager, xTmp, Y, wTmp, MultiListNumLines * LineHeight, TRUE, fCB));
+				CSMGuiMultiListIDs[ListIDInd] = f.GetID();
 				Y += LineHeight;
 				if (t == Gui_ZonePointSelectMulti){
-					TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Select with mouse", CSMGuiPointSelectButtonCB);
-					CSMGuiMultiListID = f.GetID();
+					TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Select with mouse", CSMGuiPointSelectButtonCBs[ListIDInd]);
 					Y += LineHeight * 1.5;
 				}
-				TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Invert selection", CSMGuiMultiListInvertSelectionButtonCallBack);
+				TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Invert selection", CSMGuiMultiListInvertSelectionButtonCallBacks[ListIDInd]);
 				Y += LineHeight * 1.5;
-				TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Toggle all", CSMGuiMultiListSelectAllButtonCallBack);
+				TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Toggle all", CSMGuiMultiListSelectAllButtonCallBacks[ListIDInd]);
 				if (t == Gui_ZonePointSelectMulti){
 					int Val = MAX(1, FieldZoneVarNums[fNum].back());
 					CSMGuiPointSelectOptionCallback(&Val);
@@ -856,6 +1083,8 @@ void CSMLaunchGui(string const & Title,
 				Y += LineHeight * (MultiListNumLines - 2);
 				Y -= LineHeight * 1.5;
 				if (t == Gui_ZonePointSelectMulti) Y -= LineHeight * 1.5;
+
+				ListIDInd++;
 			}
 			else if (t <= Gui_String){
 				f.SetID(TecGUITextFieldAdd(CSMGuiDialogManager, xTmp, Y, wTmp, LineHeight, TextCallbackDoNothing));
