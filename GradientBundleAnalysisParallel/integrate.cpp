@@ -178,7 +178,7 @@ Boolean_t PerformIntegration(vector<string> const & AtomNameList,
 	vector<FieldDataType_e> ZoneDataTypes(NumZones, FieldDataType_Bit);
 	for (int i = 1; i <= NumZones; ++i){
 		if (AuxDataZoneHasItem(i, CSMAuxData.GBA.ZoneType)){
-			ZoneDataTypes[i - 1] = FieldDataType_Double;
+			ZoneDataTypes[i - 1] = FieldDataType_Float;
 		}
 	}
 	vector<ValueLocation_e> ZoneDataLocs(NumZones, ValueLocation_CellCentered);

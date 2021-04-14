@@ -81,7 +81,9 @@ Boolean_t FindCritPoints(int VolZoneNum,
 	Boolean_t IsPeriodic,
 	double const & CellSpacing,
 	int ConvergedIterations,
-	bool PrecalcVars = true);
+	bool PrecalcVars = true,
+	double AgitationFactor = -1.0,
+	int AgitationMaxNumIter = 1000);
 
 void DeleteCPsGetUserInfo();
 void ExtractCPsGetUserInfo();
@@ -198,8 +200,13 @@ Boolean_t CPNumbersMapBetweenZones(int AllCPsZoneNum,
 void TestFunction();
 
 void SymmetryMirrorGetUserInfo();
+void TranslationalCopyGetUserInfo();
 
 int VolumeZoneMirrorPlane(int ZoneNum, int PlaneNum, vec3 Origin, VolExtentIndexWeights_s VolInfo, vector<int> XYZVarNums = { 1,2,3 });
 
 void CalculateShannonEntropyGetUserInfo();
 void ExportGBADataGetUserInfo();
+
+void ImportNuclearCoordinatesFromXYZ();
+
+void MapVolumeZoneVarsToOtherZonesGetUserInfo();

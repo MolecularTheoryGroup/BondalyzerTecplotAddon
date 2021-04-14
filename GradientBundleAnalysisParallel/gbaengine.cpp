@@ -5429,7 +5429,7 @@ void NewMainFunction() {
 
 		for (int i = 1; i <= NumZones; ++i) {
 			if (AuxDataZoneHasItem(i, CSMAuxData.GBA.ZoneType)) {
-				ZoneDataTypes[i - 1] = FieldDataType_Double;
+				ZoneDataTypes[i - 1] = FieldDataType_Float;
 			}
 		}
 		vector<ValueLocation_e> ZoneDataLocs(NumZones, ValueLocation_CellCentered);
@@ -5526,7 +5526,7 @@ void NewMainFunction() {
 		AuxDataNames.emplace_back("Volume");
 
 		vector<ValueLocation_e> DataLocs(TecUtilDataSetGetNumVars(), ValueLocation_Nodal);
-		vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars(), FieldDataType_Double);
+		vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars(), FieldDataType_Float);
 		vector<string> IntVarPrefixes = { "I: ","IN: ","INS: " };
 		for (int i = 0; i < DataLocs.size(); ++i) {
 			char * cstr;
@@ -5860,7 +5860,7 @@ void NewMainFunction() {
 #endif
 					FESurface_c GradientBundle;
 					GradientBundle.MakeFromGPs(GPPtrList[ti], true, true);
-					GradientBundle.SaveAsTriFEZone(CPString + ": Gradient Bundle " + to_string(ti + 1) + " " + NETypeStrs[ElemTypes[ti]] + "-Type (Zone " + to_string(TecUtilDataSetGetNumZones() + 1) + ")", vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Double), vector<ValueLocation_e>(GradientBundle.GetXYZListPtr()->size(), ValueLocation_Nodal), XYZVarNums, RhoVarNum);
+					GradientBundle.SaveAsTriFEZone(CPString + ": Gradient Bundle " + to_string(ti + 1) + " " + NETypeStrs[ElemTypes[ti]] + "-Type (Zone " + to_string(TecUtilDataSetGetNumZones() + 1) + ")", vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Float), vector<ValueLocation_e>(GradientBundle.GetXYZListPtr()->size(), ValueLocation_Nodal), XYZVarNums, RhoVarNum);
 					
 					ColorIndex_t GBColor = -1;
 					for (auto g : GPPtrList[ti]) {
@@ -6033,7 +6033,7 @@ void NewMainFunction() {
 						}
 						FESurface_c GradientBundle;
 						GradientBundle.MakeFromGPs(InnerGPPtrs, true, true);
-						GradientBundle.SaveAsTriFEZone(CPString + ": Sphere Gradient Bundle " + to_string(ti + 1) + " " + NETypeStrs[ElemTypes[ti]] + "-Type (Zone " + to_string(TecUtilDataSetGetNumZones() + 1) + ")", vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Double), vector<ValueLocation_e>(GradientBundle.GetXYZListPtr()->size(), ValueLocation_Nodal), XYZVarNums, RhoVarNum);
+						GradientBundle.SaveAsTriFEZone(CPString + ": Sphere Gradient Bundle " + to_string(ti + 1) + " " + NETypeStrs[ElemTypes[ti]] + "-Type (Zone " + to_string(TecUtilDataSetGetNumZones() + 1) + ")", vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Float), vector<ValueLocation_e>(GradientBundle.GetXYZListPtr()->size(), ValueLocation_Nodal), XYZVarNums, RhoVarNum);
 
 						ColorIndex_t GBColor = -1;
 						for (auto g : GPPtrList[ti]) {
@@ -6474,7 +6474,7 @@ void GenerateCondensedVariables(int SphereZoneNum, int CondensedRhoVarNum) {
 	vector<FieldDataType_e> ZoneDataTypes(NumZones, FieldDataType_Bit);
 	for (int i = 1; i <= NumZones; ++i) {
 		if (AuxDataZoneHasItem(i, CSMAuxData.GBA.ZoneType)) {
-			ZoneDataTypes[i - 1] = FieldDataType_Double;
+			ZoneDataTypes[i - 1] = FieldDataType_Float;
 		}
 	}
 
@@ -10052,7 +10052,7 @@ void CreateCircularGBsProbeCB(Boolean_t WasSuccessful, Boolean_t IsNearestPoint,
 
 			FESurface_c Surf;
 			Surf.MakeFromGPs(GPPtrs, true, ClientDataStruct.CapSurf, true);
-			int SurfZoneNum = Surf.SaveAsTriFEZone("GB (" + SphereName + ", r=" + DoubleToString(ClientDataStruct.SeedRadius) + ")", vector<FieldDataType_e>(NumVars, FieldDataType_Double), vector<ValueLocation_e>(NumVars, ValueLocation_Nodal), ClientDataStruct.XYZVarNums);
+			int SurfZoneNum = Surf.SaveAsTriFEZone("GB (" + SphereName + ", r=" + DoubleToString(ClientDataStruct.SeedRadius) + ")", vector<FieldDataType_e>(NumVars, FieldDataType_Float), vector<ValueLocation_e>(NumVars, ValueLocation_Nodal), ClientDataStruct.XYZVarNums);
 
 			if (SurfZoneNum > 0) {
 
@@ -10122,7 +10122,7 @@ void CreateCircularGBsProbeCB(Boolean_t WasSuccessful, Boolean_t IsNearestPoint,
 
 
 				FESurface_c SeedDisc(SeedPts, DiscElems);
-				int DiscZoneNum = SeedDisc.SaveAsTriFEZone("GB Seed Disc (" + SphereName + ", r=" + DoubleToString(ClientDataStruct.SeedRadius) + ")", vector<FieldDataType_e>(NumVars, FieldDataType_Double), vector<ValueLocation_e>(NumVars, ValueLocation_Nodal), ClientDataStruct.XYZVarNums);
+				int DiscZoneNum = SeedDisc.SaveAsTriFEZone("GB Seed Disc (" + SphereName + ", r=" + DoubleToString(ClientDataStruct.SeedRadius) + ")", vector<FieldDataType_e>(NumVars, FieldDataType_Float), vector<ValueLocation_e>(NumVars, ValueLocation_Nodal), ClientDataStruct.XYZVarNums);
 				if (DiscZoneNum > 0){
 					// Write any GBA integrated values to ALL nodes on the GB seed disc
 					for (int v = 1; v <= NumVars; ++v) {

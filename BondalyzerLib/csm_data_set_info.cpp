@@ -768,7 +768,7 @@ void ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneN
 	*	Begin other functions
 	*/
 
-void StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale, Boolean_t ShowButton, Boolean_t RelaunchStatus){
+high_resolution_clock::time_point  StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale, Boolean_t ShowButton, Boolean_t RelaunchStatus){
 	TecUtilLockStart(AddOnID);
 // 	TecUtilDrawGraphics(TRUE);
 	TecUtilStatusSuspend(FALSE);
@@ -786,6 +786,8 @@ void StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t 
 	TecUtilStatusSuspend(TRUE);
 // 	TecUtilDrawGraphics(FALSE);
 	TecUtilLockFinish(AddOnID);
+
+	return high_resolution_clock::now();
 }
 
 void StatusDrop(AddOn_pa const & AddOnID){

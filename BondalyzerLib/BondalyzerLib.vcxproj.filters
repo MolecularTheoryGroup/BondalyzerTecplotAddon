@@ -48,6 +48,9 @@
     <ClCompile Include="csm_log.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="csm_data_loader_functions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -90,6 +93,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CSM_LOG.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CSM_DATA_LOADER_FUNCTIONS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

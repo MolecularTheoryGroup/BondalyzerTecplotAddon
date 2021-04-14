@@ -94,6 +94,9 @@ double FieldDataPointer_c::operator[](unsigned int i) const{
 			case FieldDataType_Bit:
 				Val = static_cast<double>(m_ReadBitPtr[i]);
 				break;
+			case FieldDataType_Reserved:
+				Val = static_cast<double>(m_ReadDblPtr[i]);
+				break;
 			default:
 				break;
 		}
@@ -117,6 +120,9 @@ double FieldDataPointer_c::operator[](unsigned int i) const{
 				break;
 			case FieldDataType_Bit:
 				Val = static_cast<double>(m_WriteBitPtr[i]);
+				break;
+			case FieldDataType_Reserved:
+				Val = static_cast<double>(m_WriteDblPtr[i]);
 				break;
 			default:
 				break;
@@ -157,6 +163,8 @@ Boolean_t FieldDataPointer_c::Write(unsigned int i, double const & Val) const{
 			break;
 		case FieldDataType_Bit:
 			m_WriteBitPtr[i] = static_cast<bool>(Val);
+		break; case FieldDataType_Reserved:
+			m_WriteDblPtr[i] = static_cast<double>(Val);
 			break;
 		default:
 			break;
@@ -285,9 +293,57 @@ Boolean_t FieldDataPointer_c::InitializeWritePtr(int ZoneNum, int VarNum){
 	return m_IsReady;
 }
 
+Boolean_t FieldDataPointer_c::InitializeWritePtrFromArmaCube(arma::cube & InCube)
+{
+	m_IsReady = (
+		InCube.n_rows > 3
+		&& InCube.n_cols > 3
+		&& InCube.n_slices > 3
+		);
+
+	if (m_IsReady){
+		m_IsReadPtr = FALSE;
+		m_Zone = 1;
+		m_Var = 1;
+		m_WriteDblPtr = reinterpret_cast<double_t*>(InCube.memptr());
+		m_ValueLocation = ValueLocation_Nodal;
+		m_ZoneType = ZoneType_Ordered;
+		m_FDType = FieldDataType_Reserved; // just cause they told me not to
+		m_Size = InCube.n_elem;
+	}
+
+	REQUIRE(m_IsReady);
+
+	return m_IsReady;
+}
+
+Boolean_t FieldDataPointer_c::InitializeReadPtrFromArmaCube(arma::cube const & InCube)
+{
+	m_IsReady = (
+		InCube.n_rows > 3
+		&& InCube.n_cols > 3
+		&& InCube.n_slices > 3
+		);
+
+	if (m_IsReady) {
+		m_IsReadPtr = TRUE;
+		m_Zone = 1;
+		m_Var = 1;
+		m_ReadDblPtr = reinterpret_cast<double_t const *>(InCube.memptr());
+		m_ValueLocation = ValueLocation_Nodal;
+		m_ZoneType = ZoneType_Ordered;
+		m_FDType = FieldDataType_Reserved; // just cause they told me not to
+		m_Size = InCube.n_elem;
+	}
+
+	REQUIRE(m_IsReady);
+
+	return m_IsReady;
+}
+
 void FieldDataPointer_c::Close(){
 	if (m_IsReady){
-		if (!m_IsReadPtr && m_Zone > 0 && m_Var > 0){
+		if (!m_IsReadPtr && m_Zone > 0 && m_Var > 0 && m_FDType != FieldDataType_Reserved){
 			ArgList Args;
 			Args.appendInt(SV_STATECHANGE, StateChange_VarsAltered);
 			Args.appendSet(SV_ZONELIST, Set(m_Zone));

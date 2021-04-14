@@ -2,6 +2,7 @@
 #include <string>
 #include <map>
 #include <queue>
+#include <random>
 
 #include "omp.h"
 
@@ -698,14 +699,14 @@ vector<int> CritPoints_c::SaveAsOrderedZone(vector<int> const & XYZVarNum, int R
 		*	no CP zones, so the data type for all current zones can be
 		*	bit for the CP type variable.
 		*/
-		vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Double);
+		vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Float);
 		if (!TecUtilDataSetAddVar(CSMVarName.CritPointType.c_str(), DataTypes.data())){
 			TecUtilDialogErrMsg("Failed to create CP type variable for CP zone");
 			return{ -1 };
 		}
 		CPTypeVarNum = TecUtilDataSetGetNumVars();
 	}
-	vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars(), FieldDataType_Double);
+	vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars(), FieldDataType_Float);
 // 	for (int i = 0; i < DataTypes.size(); ++i)
 // 		DataTypes[i] = TecUtilDataValueGetType(1, i + 1);
 // 	DataTypes[CPTypeVarNum - 1] = FieldDataType_Int16;
@@ -919,32 +920,32 @@ int F3D(gsl_vector const * pos, void * params, gsl_vector * GradValues){
 
 	vec3 Point(pos->data);
 
-	if (!SetIndexAndWeightsForPoint(Point, *RootParams->VolInfo))
-		return GSL_ESANITY;
+	if (RootParams->AgitationFactor < 0 || RootParams->VolInfo2 == nullptr || RootParams->RhoPtr2 == nullptr) {
+		if (!SetIndexAndWeightsForPoint(Point, *RootParams->VolInfo))
+			return GSL_ESANITY;
 
-	// 	for (int i = 0; i < 3; ++i)
-	// 		Point[i] = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams->VolInfo, RootParams->GradPtrs->at(i));
-	// 
-	// 	if (RootParams->HasHess)
-	// 		Point *= 0.1;
-
-	// 	if (RootParams->HasHess){
-	// 		for (int i = 0; i < 3; ++i)
-	// 			gsl_vector_set(GradValues, i, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams->VolInfo, RootParams->GradPtrs->at(i)));
-	// 	}
-	// 	else{
-
-	if (RootParams->HasGrad) for (int i = 0; i < 3; ++i){
-		gsl_vector_set(GradValues, i, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams->VolInfo, RootParams->GradPtrs->at(i)));
+		if (RootParams->HasGrad) for (int i = 0; i < 3; ++i) {
+			gsl_vector_set(GradValues, i, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams->VolInfo, RootParams->GradPtrs->at(i)));
+		}
+		else {
+			vec3 Grad;
+			CalcGradForPoint(Point, RootParams->VolInfo->PointSpacingV123, *RootParams->VolInfo, eye<mat>(3, 3), 0, RootParams->IsPeriodic, Grad, *RootParams->RhoPtr, GPType_Invalid, params);
+			for (int i = 0; i < 3; ++i) {
+				gsl_vector_set(GradValues, i, Grad[i]);
+			}
+		}
 	}
 	else{
+		// data agitation is being used, so use the alternative volinfo and rhoptr, and recalculate derivatives
+		if (!SetIndexAndWeightsForPoint(Point, *RootParams->VolInfo2))
+			return GSL_ESANITY;
+
 		vec3 Grad;
-		CalcGradForPoint(Point, RootParams->VolInfo->PointSpacingV123, *RootParams->VolInfo, eye<mat>(3, 3), 0, RootParams->IsPeriodic, Grad, *RootParams->RhoPtr, GPType_Invalid, params);
-		for (int i = 0; i < 3; ++i){
+		CalcGradForPoint(Point, RootParams->VolInfo2->PointSpacingV123, *RootParams->VolInfo2, eye<mat>(3, 3), 0, FALSE, Grad, *RootParams->RhoPtr2, GPType_Invalid, params);
+		for (int i = 0; i < 3; ++i) {
 			gsl_vector_set(GradValues, i, Grad[i]);
 		}
 	}
-	// 	}
 
 	return GSL_SUCCESS;
 }
@@ -959,57 +960,82 @@ int DF3D(gsl_vector const * pos, void * params, gsl_matrix * Jacobian){
 
 	vec3 Point(pos->data);
 
-	if (!SetIndexAndWeightsForPoint(Point, *RootParams->VolInfo))
-		return GSL_ESANITY;
+	if (RootParams->AgitationFactor < 0 || RootParams->VolInfo2 == nullptr || RootParams->RhoPtr2 == nullptr) {
+		if (!SetIndexAndWeightsForPoint(Point, *RootParams->VolInfo))
+			return GSL_ESANITY;
 
-	if (RootParams->HasHess){
-		/*
-		*	Analytical Hessian available, so use that.
-		*/
+		if (RootParams->HasHess) {
+			/*
+			*	Analytical Hessian available, so use that.
+			*/
 
-		int HessIndices[3][3] = {
-			{ 0, 1, 2 },
-			{ 1, 3, 4 },
-			{ 2, 4, 5 }
-		};
+			int HessIndices[3][3] = {
+				{ 0, 1, 2 },
+				{ 1, 3, 4 },
+				{ 2, 4, 5 }
+			};
 
-		for (int i = 0; i < 3; ++i){
-			for (int j = 0; j < 3; ++j){
-				if (j >= i)
-					gsl_matrix_set(Jacobian, i, j, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams->VolInfo, RootParams->HessPtrs->at(HessIndices[j][i])));
-				else
-					gsl_matrix_set(Jacobian, i, j, gsl_matrix_get(Jacobian, j, i));
+			for (int i = 0; i < 3; ++i) {
+				for (int j = 0; j < 3; ++j) {
+					if (j >= i)
+						gsl_matrix_set(Jacobian, i, j, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams->VolInfo, RootParams->HessPtrs->at(HessIndices[j][i])));
+					else
+						gsl_matrix_set(Jacobian, i, j, gsl_matrix_get(Jacobian, j, i));
+				}
 			}
 		}
+		else {
+			/*
+			*	No analytical Hessian, so need to find derivative numerically.
+			*	Need to do it manually, since the GSL solver doesn't know not to
+			*	go beyond the bounds of the system.
+			*/
+			mat33 Hess;
+			if (RootParams->HasGrad) {
+				CalcHessFor3DPoint(Point,
+					RootParams->VolInfo->PointSpacingV123,
+					*RootParams->VolInfo,
+					RootParams->IsPeriodic,
+					Hess,
+					*RootParams->GradPtrs,
+					GPType_Invalid,
+					params);
+			}
+			else {
+				CalcHessForPoint(Point,
+					RootParams->VolInfo->PointSpacingV123,
+					*RootParams->VolInfo,
+					eye<mat>(3, 3),
+					RootParams->IsPeriodic,
+					Hess,
+					*RootParams->RhoPtr,
+					GPType_Invalid,
+					params);
+			}
+
+			for (int i = 0; i < 3; ++i) for (int j = 0; j < 3; ++j) gsl_matrix_set(Jacobian, i, j, Hess.at(i, j));
+		}
 	}
-	else{
+	else {
+		// data agitation is being used, so use the alternative volinfo and rhoptr, and recalculate derivatives
+		if (!SetIndexAndWeightsForPoint(Point, *RootParams->VolInfo2))
+			return GSL_ESANITY;
+
 		/*
 		*	No analytical Hessian, so need to find derivative numerically.
 		*	Need to do it manually, since the GSL solver doesn't know not to
 		*	go beyond the bounds of the system.
 		*/
 		mat33 Hess;
-		if (RootParams->HasGrad){
-			CalcHessFor3DPoint(Point,
-				RootParams->VolInfo->PointSpacingV123,
-				*RootParams->VolInfo,
-				RootParams->IsPeriodic,
-				Hess,
-				*RootParams->GradPtrs,
-				GPType_Invalid,
-				params);
-		}
-		else{
-			CalcHessForPoint(Point,
-				RootParams->VolInfo->PointSpacingV123,
-				*RootParams->VolInfo,
-				eye<mat>(3, 3),
-				RootParams->IsPeriodic,
-				Hess,
-				*RootParams->RhoPtr,
-				GPType_Invalid,
-				params);
-		}
+		CalcHessForPoint(Point,
+			RootParams->VolInfo2->PointSpacingV123,
+			*RootParams->VolInfo2,
+			eye<mat>(3, 3),
+			RootParams->IsPeriodic,
+			Hess,
+			*RootParams->RhoPtr2,
+			GPType_Invalid,
+			params);
 
 		for (int i = 0; i < 3; ++i) for (int j = 0; j < 3; ++j) gsl_matrix_set(Jacobian, i, j, Hess.at(i, j));
 	}
@@ -1241,6 +1267,308 @@ Boolean_t CritPointInCell(
 }
 
 
+/*
+ *	Same as CritPointInCell but this version, when a cp is found, repeats
+ *	the search several times with agitated rho values from which derivatives
+ *	are recomputed.
+ */
+Boolean_t CritPointInCellDataAgitation(
+	vec3 const & CellMinXYZ,
+	vec3 const & CellMaxXYZ,
+	vec3 & Point,
+	vec3 & PrincDir,
+	double & RhoValue,
+	double const & RhoCutoff,
+	char & Type,
+	MultiRootParams_s & RootParams,
+	MultiRootObjects_s & MR,
+// 	mat33 CellLattice,
+// 	cube const & RhoGrid,
+// 	double CellSpacing,
+// 	vector<int> const & CellLowIJK,
+	int NumPadPoints,
+	double AgitationFactor,
+	int MaxDataAgitationIter)
+{
+	// 	TecUtilDialogMessageBox(string("CritPointInCell, rho ptr good " + to_string(RootParams.RhoPtr->IsReady())).c_str(), MessageBoxType_Information);
+
+	Boolean_t CPInCell = TRUE;
+
+	int DataAgitationIter = 0;
+	if (AgitationFactor <= 0.0){
+		MaxDataAgitationIter = 0;
+	}
+
+	VolExtentIndexWeights_s TmpVolInfo;
+	FieldDataPointer_c TmpRhoPtr;
+	RootParams.AgitationFactor = -1.0;
+
+	std::random_device rd;
+	std::default_random_engine eng(rd());
+	std::uniform_real_distribution<> distr(-1.0, 1.0);
+
+	vec3 OutPoint, OutPrincDir;
+	double OutRhoValue;
+	char OutType = 0;
+
+	while (CPInCell && DataAgitationIter <= MaxDataAgitationIter) {
+
+
+		if (DataAgitationIter == 1){
+			// First iteration with data agitation,
+			// Prepare temporary VolInfo and RhoPtr
+			// 
+			OutPoint = Point;
+			OutPrincDir = PrincDir;
+			OutRhoValue = RhoValue;
+			OutType = Type;
+
+			RootParams.AgitationFactor = AgitationFactor;
+
+			double CellSpacing = CellMaxXYZ[0] - CellMinXYZ[0];
+
+			mat33 CellLattice = zeros(3,3);
+			CellLattice(0, 0) = CellLattice(1, 1) = CellLattice(2, 2) = CellSpacing;
+			mat33 GridBasis = CellLattice * (1.0 + 2.0 * NumPadPoints);
+			vec3 StepVec = { double(NumPadPoints), double(NumPadPoints), double(NumPadPoints) };
+			vec3 SupercellMinXYZ = CellMinXYZ, 
+				SupercellMaxXYZ = CellMaxXYZ;
+			vec3 SupercellStepVec = CellLattice * StepVec;
+			SupercellMinXYZ -= SupercellStepVec;
+			SupercellMaxXYZ += SupercellStepVec;
+			InitializeVolInfo({ RootParams.RhoSupercell->n_rows, RootParams.RhoSupercell->n_cols, RootParams.RhoSupercell->n_slices },
+				SupercellMinXYZ, 
+				SupercellMaxXYZ, 
+				GridBasis, 
+				CellMaxXYZ - CellMinXYZ, 
+				TmpVolInfo);
+
+			TmpRhoPtr.InitializeReadPtrFromArmaCube(*RootParams.RhoSupercell);
+
+			RootParams.VolInfo2 = &TmpVolInfo;
+			RootParams.RhoPtr2 = &TmpRhoPtr;
+
+			// Populate Spare supercell
+			vec3 iXYZ, Pt;
+			for (int k = 0; k < RootParams.RhoSupercell->n_slices; ++k) {
+				for (int j = 0; j < RootParams.RhoSupercell->n_cols; ++j) {
+					for (int i = 0; i < RootParams.RhoSupercell->n_rows; ++i) {
+						iXYZ << i - NumPadPoints << j - NumPadPoints << k - NumPadPoints;
+						Pt = CellMinXYZ + CellLattice * iXYZ;
+						double rho = RootParams.RhoPtr->At(Pt, *RootParams.VolInfo);
+						RootParams.RhoSpareSupercell->at(i, j, k) = rho;
+					}
+				}
+			}
+		}
+
+		if (DataAgitationIter > 0){
+			// Copy supercell rho values, then agitate
+			double RhoDiffLowCutoff = 5e-7;
+			for (int k = 0; k < RootParams.RhoSupercell->n_slices; ++k) {
+				for (int j = 0; j < RootParams.RhoSupercell->n_cols; ++j) {
+					for (int i = 0; i < RootParams.RhoSupercell->n_rows; ++i) {
+						while (true) // for each value, check that it's not too close to neighboring values
+						{
+							double rho = RootParams.RhoSpareSupercell->at(i, j, k);
+							double logrho = log(rho);
+							double rand_dbl = distr(eng);
+							double agitated_rho = exp(logrho + rand_dbl * AgitationFactor * logrho);
+							RootParams.RhoSupercell->at(i, j, k) = agitated_rho;
+							bool dorepeat = false;
+							if (i > 0 || j > 0 || k > 0) {
+								// check all the immediate neighbors in the negative ijk directions
+								// (so only checking against points we've already done
+								// 
+								for (int k2 = 0; k2 < 2 && !dorepeat; ++k2) {
+									for (int j2 = 0; j2 < 2 && !dorepeat; ++j2) {
+										for (int i2 = 0; i2 < 2 && !dorepeat; ++i2) {
+											int i3 = MAX(i - i2, 0),
+												j3 = MAX(j - j2, 0),
+												k3 = MAX(k - k2, 0);
+											if (i3 != i || j3 != j || k3 != k) {
+												dorepeat = abs(RootParams.RhoSupercell->at(i3, j3, k3) - agitated_rho) < RhoDiffLowCutoff;
+											}
+										}
+									}
+								}
+							}
+							if (!dorepeat){
+								break;
+							}
+						}
+					}
+				}
+			}
+
+// 			RhoValue = RootParams.RhoPtr->At(vec3(CellMinXYZ), *RootParams.VolInfo);
+// 			double NewRho = RootParams.RhoSupercell->at(NumPadPoints, NumPadPoints, NumPadPoints);
+// 
+// 			RhoValue = RootParams.RhoPtr->At(vec3(CellMaxXYZ), *RootParams.VolInfo);
+// 			NewRho = RootParams.RhoSupercell->at(NumPadPoints+1, NumPadPoints+1, NumPadPoints+1);
+// 
+// 			Point = (CellMaxXYZ + CellMinXYZ) * 0.5;
+// 			RhoValue = RootParams.RhoPtr->At(Point, *RootParams.VolInfo);
+// 
+// 			Point = (CellMaxXYZ + CellMinXYZ) * 0.5;
+// 			NewRho = RootParams.RhoPtr2->At(Point, *RootParams.VolInfo2);
+// 
+// 			RhoValue = RootParams.RhoPtr->At(OutPoint, *RootParams.VolInfo);
+// 			SetIndexAndWeightsForPoint(OutPoint, *RootParams.VolInfo2);
+// 			RhoValue = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo2, *RootParams.RhoPtr2);
+		}
+
+		Type = 0;
+		int Status = GSL_SUCCESS;
+		int Iter = 0;
+
+		Point = (CellMaxXYZ + CellMinXYZ) * 0.5;
+		for (int i = 0; i < 3; ++i) gsl_vector_set(MR.pos, i, Point[i]);
+
+ 		vec3 CheckPt;
+ 		vec3 CellMinCheck = RootParams.VolInfo->BasisInverse * (CellMinXYZ - RootParams.VolInfo->MinXYZ),
+ 		 	CellMaxCheck = RootParams.VolInfo->BasisInverse * (CellMaxXYZ - RootParams.VolInfo->MinXYZ);
+
+			// 	TecUtilDialogMessageBox("start point set", MessageBoxType_Information);
+		if (DataAgitationIter == 0 || RootParams.VolInfo2 == nullptr || RootParams.RhoPtr2 == nullptr) {
+			CPInCell = SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo);
+			// 	TecUtilDialogMessageBox("initial point indexed", MessageBoxType_Information);
+			if (CPInCell) {
+				RhoValue = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, *RootParams.RhoPtr);
+				CPInCell = (RhoValue >= RhoCutoff);
+			}
+		}
+		else{
+			CPInCell = SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo2);
+			// 	TecUtilDialogMessageBox("initial point indexed", MessageBoxType_Information);
+			if (CPInCell) {
+				RhoValue = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo2, *RootParams.RhoPtr2);
+				CPInCell = (RhoValue >= RhoCutoff);
+			}
+		}
+
+		// 	TecUtilDialogMessageBox("initial point checked", MessageBoxType_Information);
+
+		if (CPInCell) {
+			gsl_multiroot_fdfsolver_set(MR.s, &MR.Func, MR.pos);
+
+
+			// 		TecUtilDialogMessageBox("solver set", MessageBoxType_Information);
+			CPInCell = TRUE;
+			do
+			{
+				++Iter;
+
+				// 			string str = "iteration " + to_string(Iter);
+				// 			TecUtilDialogMessageBox(str.c_str(), MessageBoxType_Information);
+
+				Status = gsl_multiroot_fdfsolver_iterate(MR.s);
+
+				if (Status != GSL_CONTINUE && Status != GSL_SUCCESS)
+					break;
+
+				Point = MR.s->x->data;
+
+				//Status = gsl_multiroot_test_residual(MR.s->f, 1e-12);
+				Status = gsl_multiroot_test_delta(MR.s->dx, MR.s->x, 1e-14, 1e-14);
+
+
+				if (Iter > CheckPosIter || Iter >= MaxCPIter) {
+					CheckPt = RootParams.VolInfo->BasisInverse * (Point - RootParams.VolInfo->MinXYZ);
+					CPInCell = sum(CheckPt >= CellMinCheck) == 3 && sum(CheckPt < CellMaxCheck) == 3;
+// 					CPInCell = RootParams.VolInfo->PointIsInterior(Point);
+				}
+
+			} while (CPInCell && Status == GSL_CONTINUE && Iter < MaxCPIter);
+
+			if (CPInCell) {
+				Point = MR.s->x->data;
+				CheckPt = RootParams.VolInfo->BasisInverse * (Point - RootParams.VolInfo->MinXYZ);
+				CPInCell = sum(CheckPt >= CellMinCheck) == 3 && sum(CheckPt < CellMaxCheck) == 3;
+// 				CPInCell = RootParams.VolInfo->PointIsInterior(Point);
+			}
+
+			if (DataAgitationIter == 0 || RootParams.VolInfo2 == nullptr || RootParams.RhoPtr2 == nullptr) {
+				if (CPInCell) {
+					RhoValue = 0.0;
+					CPInCell = SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo);
+					RhoValue = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, *RootParams.RhoPtr);
+				}
+
+				if (CPInCell && RhoValue >= RhoCutoff) {
+					vec3 EigVals;
+					mat33 EigVecs;
+
+					CalcEigenSystemForPoint(Point,
+						EigVals,
+						EigVecs,
+						RootParams);
+
+					for (int i = 0; i < 3; ++i) {
+						if (EigVals[i] > 0)
+							Type++;
+						else
+							Type--;
+					}
+					if (OutType != 0 && Type != OutType) {
+						CPInCell = FALSE;
+					}
+					else {
+						if (Type == CPType_Nuclear || Type == CPType_Ring)
+							PrincDir = EigVecs.row(0).t();
+						else
+							PrincDir = EigVecs.row(2).t();
+					}
+				}
+			}
+			else{
+				if (CPInCell) {
+					RhoValue = 0.0;
+					CPInCell = SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo2);
+					RhoValue = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo2, *RootParams.RhoPtr2);
+				}
+
+				if (CPInCell && RhoValue >= RhoCutoff) {
+					vec3 EigVals;
+					mat33 EigVecs;
+
+					CalcEigenSystemForPoint(Point,
+						EigVals,
+						EigVecs,
+						RootParams);
+
+					for (int i = 0; i < 3; ++i) {
+						if (EigVals[i] > 0)
+							Type++;
+						else
+							Type--;
+					}
+					if (OutType != 0 && Type != OutType) {
+						CPInCell = FALSE;
+					}
+					else {
+						if (Type == CPType_Nuclear || Type == CPType_Ring)
+							PrincDir = EigVecs.row(0).t();
+						else
+							PrincDir = EigVecs.row(2).t();
+					}
+				}
+			}
+		}
+		DataAgitationIter++;
+	}
+
+	if (DataAgitationIter > 1) {
+		RootParams.VolInfo2 = nullptr;
+		RootParams.RhoPtr2 = nullptr;
+		Point = OutPoint;
+		PrincDir = OutPrincDir;
+		RhoValue = OutRhoValue;
+	}
+	return CPInCell;
+}
+
+
 
 /*
 *	Function for searching a subzone (ordered IJK)
@@ -1344,7 +1672,9 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 	Boolean_t IsPeriodic,
 	FieldDataPointer_c & RhoPtr,
 	vector<FieldDataPointer_c> & GradXYZPtrs,
-	vector<FieldDataPointer_c> & HessPtrs)
+	vector<FieldDataPointer_c> & HessPtrs,
+	double AgitationFactor,
+	int AgitationMaxNumIter)
 {
 	Boolean_t IsOk = ((GradXYZPtrs.size() == 3 || GradXYZPtrs.empty())
 		&& (HessPtrs.empty() || HessPtrs.size() == 6));
@@ -1361,6 +1691,12 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 	// 	BV[2] << 0 << 0 << 1;
 
 	vector<MultiRootParams_s> RootParams(NumThreads);
+	int DataAgitationNumPadPoints = (AgitationFactor > 0.0 && AgitationMaxNumIter > 0) ? 3 : 0;
+	int RhoSupercellDim = 2 + (2 * DataAgitationNumPadPoints);
+// 	double AgitationFactor = 0.00005;
+// 	int AgitationMaxNumIter = 1000;
+	vector<cube> RhoSupercells(NumThreads, cube(RhoSupercellDim, RhoSupercellDim, RhoSupercellDim));
+	auto RhoSpareSupercells = RhoSupercells;
 	mat33 I = eye<mat>(3, 3);
 	for (int r = 0; r < NumThreads; ++r){
 		RootParams[r].CalcType = GPType_Classic;
@@ -1371,6 +1707,9 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 		RootParams[r].HessPtrs = &HessPtrs;
 
 		RootParams[r].BasisVectors = &I;
+
+		RootParams[r].RhoSupercell = &RhoSupercells[r];
+		RootParams[r].RhoSpareSupercell = &RhoSpareSupercells[r];
 
 		RootParams[r].HasGrad = GradXYZPtrs.size() == 3;
 		RootParams[r].HasHess = HessPtrs.size() == 6;
@@ -1405,8 +1744,19 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 	vector<int> StartPt(3, 0), EndPt = NumPtsXYZ;
 
 	if (!VolInfo.IsPeriodic){
-		for (auto & i : StartPt) i += 1;
-		for (auto & i : EndPt) i -= 1;
+		for (auto & i : StartPt) i += DataAgitationNumPadPoints + 1;
+		for (auto & i : EndPt) i -= DataAgitationNumPadPoints + 2;
+	}
+
+
+	for (int i = 0; i < 3 && IsOk; ++i){
+// 		NumPtsXYZ[i] = EndPt[i] - StartPt[i] + 1;
+		IsOk = (NumPtsXYZ[i] > 14);
+	}
+
+	if (!IsOk){
+		TecUtilDialogErrMsg("Volume zone has insufficient points in the I, J, and/or K directions");
+		return IsOk;
 	}
 
 	int NumThreadPts = NumPtsXYZ[2];
@@ -1418,7 +1768,7 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 	StatusLaunch((StatusStr + " (Loading data...)").c_str(), VolInfo.AddOnID, TRUE);
 
 	mat33 LatticeVector = VolInfo.BasisNormalized * CellSpacing;
-	mat33 LatticeInverse = VolInfo.BasisNormalized * CellSpacing;
+// 	mat33 LatticeInverse = VolInfo.BasisNormalized * CellSpacing;
 
 	cube RhoVals(NumPtsXYZ[0], NumPtsXYZ[1], NumPtsXYZ[2]);
 #ifndef _DEBUG
@@ -1587,7 +1937,16 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 				/*
 				*	Rigorous check using Newton-Raphson method
 				*/
-				if (!IsMaxMin && CritPointInCell(CellMinXYZ[ThreadNum],
+// 				if (!IsMaxMin && CritPointInCell(CellMinXYZ[ThreadNum],
+// 					CellMaxXYZ[ThreadNum],
+// 					TmpPoint[ThreadNum],
+// 					PrincDir[ThreadNum],
+// 					TmpRho[ThreadNum],
+// 					RhoCutoff,
+// 					TmpType[ThreadNum],
+// 					RootParams[ThreadNum],
+// 					MR[ThreadNum]))
+				if (!IsMaxMin && CritPointInCellDataAgitation(CellMinXYZ[ThreadNum],
 					CellMaxXYZ[ThreadNum],
 					TmpPoint[ThreadNum],
 					PrincDir[ThreadNum],
@@ -1595,7 +1954,14 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 					RhoCutoff,
 					TmpType[ThreadNum],
 					RootParams[ThreadNum],
-					MR[ThreadNum]))
+					MR[ThreadNum],
+// 					LatticeVector,
+// 					RhoVals,
+// 					CellSpacing,
+// 					{xi, yi, zi},
+					DataAgitationNumPadPoints,
+					AgitationFactor,
+					AgitationMaxNumIter))
 				{
  					ThreadCPs[ThreadNum].AddPoint(TmpRho[ThreadNum], TmpPoint[ThreadNum], PrincDir[ThreadNum], TmpType[ThreadNum]);
 				}

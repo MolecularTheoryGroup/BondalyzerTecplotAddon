@@ -26,7 +26,7 @@ using std::string;
 using std::vector;
 using std::to_string;
 
-double const DefaultRhoCutoff = 1e-3;
+double const DefaultRhoCutoff = 1e-5;
 
 string const T21Prefix = "T21.";
 
@@ -484,7 +484,7 @@ vector<vec3> ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, i
 void ZoneXYZVarGetMinMax_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum, vec3 & MinXYZ, vec3 & MaxXYZ);
 void ZoneXYZVarGetBasisVectors_Ordered3DZone(vector<int> const & XYZVarNums, int ZoneNum, mat33 & BasisVectors, vec3 & BVExtent);
 
-void StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale = TRUE, Boolean_t ShowButton = TRUE, Boolean_t RelaunchStatus = FALSE);
+high_resolution_clock::time_point StatusLaunch(string const & StatusStr, AddOn_pa const & AddOnID, Boolean_t ShowScale = TRUE, Boolean_t ShowButton = TRUE, Boolean_t RelaunchStatus = FALSE);
 void StatusDrop(AddOn_pa const & AddOnID);
 Boolean_t StatusUpdate(unsigned int CurrentNum, 
 	unsigned int TotalNum, 

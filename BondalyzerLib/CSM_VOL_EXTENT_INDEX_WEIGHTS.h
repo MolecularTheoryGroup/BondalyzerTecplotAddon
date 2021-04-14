@@ -65,6 +65,13 @@ Boolean_t GetVolInfo(int VolZoneNum,
 	Boolean_t IsPeriodic,
 	VolExtentIndexWeights_s & VolInfo);
 
+Boolean_t InitializeVolInfo(vector<unsigned long long> const & MaxIJK,
+	vec3 const & MinXYZ,
+	vec3 const & MaxXYZ,
+	mat33 const & BasisVectors,
+	vec3 const & PointSpacingV123,
+	VolExtentIndexWeights_s & VolInfo);
+
 Boolean_t SetIndexAndWeightsForPoint(vec3 Point, VolExtentIndexWeights_s & SysInfo);
 vector<int> GetIJKForPoint(vec3 & Point, VolExtentIndexWeights_s & VolZoneInfo);
 void GetCellCornerIndices(int CornerNum, int & i, int & j, int & k);

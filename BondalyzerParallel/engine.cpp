@@ -53,6 +53,7 @@
 #include <gsl/gsl_deriv.h>
 
 #include "CSM_DATA_TYPES.h"
+#include "CSM_DATA_LOADER_FUNCTIONS.h"
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_CRIT_POINTS.h"
 #include "CSM_CALC_VARS.h"
@@ -832,7 +833,15 @@ void BondalyzerReturnUserInfo(bool const GuiSuccess,
 	if (CurrentCalcType == BondalyzerCalcType_CriticalPoints){
 		double CellSpacing = Fields[fNum++].GetReturnDouble();
 		int ConvergedIterations = Fields[fNum++].GetReturnInt();
-		FindCritPoints(VolZoneNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, CellSpacing, ConvergedIterations, PrecalcVars);
+		bool DoDataAgitation = Fields[fNum++].GetReturnBool();
+		double AgitationFactor = Fields[fNum++].GetReturnDouble();
+		AgitationFactor = CLAMP(AgitationFactor, 0.0, 0.5);
+		int AgitationNumIter = Fields[fNum++].GetReturnInt();
+		AgitationNumIter = MAX(AgitationNumIter, 0);
+		if (!DoDataAgitation){
+			AgitationNumIter = 0;
+		}
+		FindCritPoints(VolZoneNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, CellSpacing, ConvergedIterations, PrecalcVars, AgitationFactor, AgitationNumIter);
 	}
 	else if (CurrentCalcType >= BondalyzerCalcType_BondPaths && CurrentCalcType < BondalyzerCalcType_GBA){
 
@@ -902,6 +911,14 @@ void BondalyzerReturnUserInfo(bool const GuiSuccess,
 		int CPTypeVarNum = Fields[fNum++].GetReturnInt();
 		double CellSpacing = Fields[fNum++].GetReturnDouble();
 		int ConvergedIterations = Fields[fNum++].GetReturnInt();
+		bool DoDataAgitation = Fields[fNum++].GetReturnBool();
+		double AgitationFactor = Fields[fNum++].GetReturnDouble();
+		AgitationFactor = CLAMP(AgitationFactor, 0.0, 0.5);
+		int AgitationNumIter = Fields[fNum++].GetReturnInt();
+		AgitationNumIter = MAX(AgitationNumIter, 0);
+		if (!DoDataAgitation) {
+			AgitationNumIter = 0;
+		}
 		int RidgeFuncVarNum = 0;
 		if (Fields[fNum++].GetReturnBool())
 			RidgeFuncVarNum = Fields[fNum++].GetReturnInt();
@@ -916,7 +933,7 @@ void BondalyzerReturnUserInfo(bool const GuiSuccess,
 
 		int NumZones = TecUtilDataSetGetNumZones();
 
-		if (!UseCPZones && FindCritPoints(VolZoneNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, CellSpacing, ConvergedIterations)){
+		if (!UseCPZones && FindCritPoints(VolZoneNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, CellSpacing, ConvergedIterations, true, AgitationFactor, AgitationNumIter)){
 			CPZoneNums.clear();
 			for (int i = NumZones + 1; i <= TecUtilDataSetGetNumZones(); ++i) CPZoneNums.push_back(i);
 			CPTypeVarNum = VarNumByName(CSMVarName.CritPointType);
@@ -980,7 +997,11 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, vector<GuiField_c> con
 
 	if (CalcType == BondalyzerCalcType_CriticalPoints){
 		Fields.push_back(GuiField_c(Gui_Double, "CP search grid spacing", to_string(DefaultCellSpacing)));
-		Fields.push_back(GuiField_c(Gui_Int, "Search converged iterations", to_string(0)));
+		Fields.push_back(GuiField_c(Gui_Int, "Search converged iterations", to_string(1)));
+		Fields.push_back(GuiField_c(Gui_Toggle, "Try to resolve spurious CPs using data agitation", "0"));
+		Fields.push_back(GuiField_c(Gui_Double, "Spurious CPs: Data agitation factor (fraction of rho value):", to_string(0.0001)));
+		Fields.push_back(GuiField_c(Gui_Int, "Spurious CPs: Number agitation cycles:", to_string(1000)));
+
 	}
 	else if (CalcType >= BondalyzerCalcType_BondPaths && CalcType < BondalyzerCalcType_GBA){
 		if (CalcType >= BondalyzerCalcType_InteratomicSurfaces){
@@ -1007,7 +1028,7 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, vector<GuiField_c> con
 
 		Fields.push_back(GuiField_c(Gui_ZonePointSelectMulti, "Source critical point(s)", SearchString));
 		Fields.push_back(GuiField_c(Gui_Double, "GP rho cutoff", to_string(DefaultRhoCutoff)));
-		Fields.push_back(GuiField_c(Gui_Int, "GP Number of points", "800"));
+		Fields.push_back(GuiField_c(Gui_Int, "GP Number of points", "300"));
 	}
 	else if (CalcType == BondalyzerCalcType_Batch){
 		int TogNum = Fields.size();
@@ -1018,10 +1039,13 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, vector<GuiField_c> con
 		Fields.push_back(GuiField_c(Gui_VarSelect, "CP type variable", CSMVarName.CritPointType));
 		Fields.push_back(GuiField_c(Gui_Double, "CP search grid spacing", to_string(DefaultCellSpacing)));
 		Fields.push_back(GuiField_c(Gui_Int, "Search converged iterations", to_string(0)));
+		Fields.push_back(GuiField_c(Gui_Toggle, "Try to resolve spurious CPs using data agitation", "0"));
+		Fields.push_back(GuiField_c(Gui_Double, "Spurious CPs: Data agitation factor (fraction of rho value):", to_string(0.0001)));
+		Fields.push_back(GuiField_c(Gui_Int, "Spurious CPs: Number agitation cycles:", to_string(1000)));
 		Fields.push_back(GuiField_c(Gui_ToggleEnable, "1-RCS function present", to_string(Fields.size() + 1)));
 		Fields.push_back(GuiField_c(Gui_VarSelect, "1-ridge function variable", CSMVarName.EberlyFunc[0]));
 		Fields.push_back(GuiField_c(Gui_Double, "GP rho cutoff", to_string(DefaultRhoCutoff)));
-		Fields.push_back(GuiField_c(Gui_Int, "GP Number of points", "800"));
+		Fields.push_back(GuiField_c(Gui_Int, "GP Number of points", "300"));
 		Fields.push_back(GuiField_c(Gui_Label, "Calculation steps"));
 		for (int i = (int)BondalyzerCalcType_BondPaths; i <= (int)BondalyzerCalcType_RingSurfaces; ++i) Fields.push_back(GuiField_c(Gui_Toggle, BondalyzerStepGUITitles[i], "1"));
 	}
@@ -1415,7 +1439,9 @@ Boolean_t FindCritPoints(int VolZoneNum,
 								Boolean_t IsPeriodic,
 								double const & CellSpacing,
 								int ConvergedIterations,
-								bool PrecalcVars)
+								bool PrecalcVars,
+	double AgitationFactor,
+	int AgitationMaxNumIter)
 {
 	TecUtilLockStart(AddOnID);
 
@@ -1506,7 +1532,7 @@ Boolean_t FindCritPoints(int VolZoneNum,
 	do 
 	{
 		CritPoints_c TmpCPs;
-		UserQuit = !FindCPs(TmpCPs, VolInfo, Spacing, RhoCutoff, IsPeriodic, RhoPtr, GradPtrs, HessPtrs);
+		UserQuit = !FindCPs(TmpCPs, VolInfo, Spacing, RhoCutoff, IsPeriodic, RhoPtr, GradPtrs, HessPtrs, AgitationFactor, AgitationMaxNumIter);
 		if (UserQuit)
 			break;
 
@@ -1737,6 +1763,8 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 
 	int NumGPs = GPs.size();
 
+	vector<VolExtentIndexWeights_s> Th_VolInfo(omp_get_num_procs(), VolInfo);
+
 #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
 #endif
@@ -1744,6 +1772,7 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 		GPs[iGP].Seed(false);
 		GPs[iGP].PointPrepend(AllCPs.GetXYZ(GPs[iGP].GetStartEndCPNum()[0]), AllCPs.GetRho(GPs[iGP].GetStartEndCPNum()[0]));
 		GPs[iGP].Resample(NumGPPts);
+		GPs[iGP].MakeRhoValuesMonotomic(&Th_VolInfo[omp_get_thread_num()], &RhoPtr);
 		if (GPDir == StreamDir_Reverse) GPs[iGP].Reverse();
 	}
 
@@ -3102,6 +3131,167 @@ double MidPtStdDevScalar(std::deque<vec3> const & MidPtDeque) {
 };
 
 
+GradPath_c MinLengthGPFromGPTripletWithCommonTerminus(vector<GradPath_c> LeftMidRightGPs, int MaxNumIter, double MinGPLengthTolerence){
+	bool IsOk = LeftMidRightGPs.size() == 3 && (MaxNumIter > 0 || MinGPLengthTolerence > 0);
+	bool MinFound = false;
+	if (IsOk) {
+		for (auto gp : LeftMidRightGPs){
+			IsOk = IsOk && gp.IsMade() && gp.GetStartEndCPNum(1) >= 0;
+		}
+		for (int i = 0; i < 2 && IsOk; ++i) {
+			IsOk = (LeftMidRightGPs[i].GetStartEndCPNum(1) == LeftMidRightGPs[i + 1].GetStartEndCPNum(1));
+		}
+		MinFound = IsOk && LeftMidRightGPs[0].GetLength() > LeftMidRightGPs[1].GetLength() && LeftMidRightGPs[1].GetLength() < LeftMidRightGPs[2].GetLength();
+	}
+
+	if (!MinFound ){
+		return GradPath_c();
+	}
+
+	FESurface_c Surf;
+	vector<GradPath_c const *> GPPtrs;
+	for (auto const & gp : LeftMidRightGPs) {
+		GPPtrs.push_back(&gp);
+	}
+	Surf.MakeFromGPs(GPPtrs);
+	Surf.GeneratePointElementDistanceCheckData();
+
+	GradPath_c *OutGP;
+	GradPath_c BaseGP = LeftMidRightGPs[1];
+	BaseGP.Clear();
+	BaseGP.SetSurfPtr(&Surf);
+	BaseGP.SetDir(StreamDir_Both);
+	BaseGP.SetTerminalCPTypeNums({ CPTypeNum_Nuclear, CPTypeNum_Bond, CPTypeNum_Ring, CPTypeNum_Cage });
+
+	std::list<GradPath_c> GPList(LeftMidRightGPs.begin(), LeftMidRightGPs.end());
+
+	auto Left = GPList.begin();
+	auto Center = Left;
+	Center++;
+	auto Right = Center;
+	Right++;
+
+	int Iter = 0;
+	double OldLength = DBL_MAX, NewLength = 0, LengthAbsDiff = abs(OldLength - NewLength);
+	bool IsConverged = false;
+
+	while (IsOk && MinFound && (MaxNumIter > 0 && Iter < MaxNumIter) && !IsConverged){
+		Iter++;
+		MinFound = false;
+		while (!MinFound && Right != GPList.end()){
+			MinFound = Left->GetLength() > Center->GetLength() && Center->GetLength() < Right->GetLength();
+			if (!MinFound){
+				Left++; 
+				Center++; 
+				Right++;
+			}
+		}
+		
+
+		if (MinFound){
+			// Seed two paths between Left and Center and between Center and Right, then position the iterators so that the paths checked on the next loop are Left--Left-Center--Right.
+			OutGP = &*Center;
+			NewLength = Center->GetLength();
+			LengthAbsDiff = abs(OldLength - NewLength);
+			IsConverged = (MinGPLengthTolerence > 0 && LengthAbsDiff < MinGPLengthTolerence);
+
+			if (!IsConverged) {
+				vector<std::pair<GradPath_c*, GradPath_c*> > GPPairs;
+				GPPairs.emplace_back(&*Center, &*Right);
+				GPPairs.emplace_back(&*Left, &*Center);
+				bool FirstPass = true;
+				for (auto GPPair : GPPairs) {
+					GradPath_c TmpGP = BaseGP;
+					vec3 SeedPt, Pt2;
+					int Ind1, Ind2;
+					double SepDist;
+					IsOk = GPPair.first->GetMaxSeparationMidpointFromOtherGP(*GPPair.second, SeedPt, Ind1, Ind2, Pt2, SepDist);
+					if (IsOk) {
+						TmpGP.SetStartPoint(SeedPt);
+						TmpGP.Seed();
+						IsOk = TmpGP.IsMade() && TmpGP.GetStartEndCPNum() == GPPair.first->GetStartEndCPNum();
+					}
+					if (IsOk) {
+						if (FirstPass) {
+							GPList.insert(Right, TmpGP);
+							FirstPass = false;
+						}
+						else {
+							GPList.insert(Center, TmpGP);
+						}
+					}
+
+					if (!IsOk) {
+						break;
+					}
+				}
+				if (IsOk) {
+					Center = Left;
+					Center++;
+					Right = Center;
+					Right++;
+
+					// Center now points to the new path, and Right to the old Center
+					OldLength = NewLength;
+				}
+			}
+		}
+	}
+	/*
+	if (IsOk && LeftMidRightGPs.front()->GetMaxSeparationMidpointFromOtherGP(*LeftMidRightGPs.back(), GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist)
+			&& ((!Path1->IsSGP && !Path2->IsSGP && MaxDist > CheckDist)
+				|| MaxDist > CheckDist * 0.8))
+	{
+		// 				GradPath_c TmpGP({ &Path1->GP,&Path2->GP }, GPMidPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MIN(Path1Ind + NeighborGPSurfaceIndOffset, Path1->GP.GetCount() - 1)), std::make_pair(0, MIN(Path2Ind + NeighborGPSurfaceIndOffset, Path2->GP.GetCount() - 1)) }, &CPPosition);
+		GradPath_c TmpGP({ &Path1->GP,&Path2->GP }, GPMidPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), std::make_pair(0, MAX(Path2->GP.GetIndAtLength(Path2->GP.GetLength(Path2Ind) + Path2->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path2Ind + NeighborGPSurfaceIndOffset)) }, &CPPosition);
+
+		GPWithInfo GP;
+		GP.CPType = Path1->CPType;
+		GP.CPNum = Path1->CPNum;
+		GP.Identifier = (Path1->Identifier + Path2->Identifier) * 0.5;
+		// 				GP.GP = GradPath_c({ &Path1->GP, &Path2->GP }, 0.5, Path1->GP.RhoAt(0), 1);
+		GP.GP = Path1->GP;
+		GP.GP.Clear();
+		GP.GP.SetStartPoint(TmpGP[0]);
+		GP.GP.SetDir(GPDir);
+		GP.GP.SetSurfPtr(nullptr);
+		GP.GP.SetTerminalCPTypeNum(GPTerminalCPTypeNum);
+		GP.GP.SetGPTermType(GPTerminate_AtRhoValue);
+		GP.GP.Seed(false);
+
+		int tmpInd = 0;
+		while ((CPType == CPType_Ring && GP.GP.RhoAt(tmpInd) < TmpGP.RhoAt(0)) || (CPType == CPType_Bond && GP.GP.RhoAt(tmpInd) > TmpGP.RhoAt(0)))
+			tmpInd++;
+		if (tmpInd > 0)
+			GP.GP = GP.GP.SubGP(tmpInd, -1);
+
+		GP.GP += TmpGP;
+		GP.GP.Resample(NumGPPts + 5);
+		GP.GP.RemoveKinks();
+		GP.GP.Resample(NumGPPts);
+		GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+
+		if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition))
+			// Need to reverse GP
+			GP.GP.Reverse();
+		// 				if (CPType == CPType_Ring && GP.GP.RhoAt(0) > GP.GP.RhoAt(-1)) {
+		// 					// Need to reverse GP
+		// 					GP.GP.Reverse();
+		// 				}
+		// 				
+#ifdef DEBUG_PRINTPATHS
+		SubPassNum++;
+		DebugPathStringBase = "Path1 id:" + to_string(Path1->Identifier) + ", CP:" + to_string(Path1->CPNum) + "\nPath2 id:" + to_string(Path2->Identifier) + ", CP:" + to_string(Path2->CPNum) + "\nFiller path";
+		DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase, false, PassNum, SubPassNum, 1);
+#endif
+
+		GPList.insert(Path2, GP);
+		Path2--;
+	}
+	}*/
+
+	return *OutGP;
+}
 
 
 /*
@@ -3423,18 +3613,26 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 	auto GPIncrement = [](std::list<GPWithInfo>::iterator & GP, std::list<GPWithInfo> & GPList)
 	{
-		GP++;
 		if (GP == GPList.end()){
 			GP = GPList.begin();
+// 			GP++;
+		}
+		else {
 			GP++;
+			if (GP == GPList.end()) {
+				GP = GPList.begin();
+				// 			GP++;
+			}
 		}
 	};
 	auto GPDecrement = [](std::list<GPWithInfo>::iterator & GP, std::list<GPWithInfo> & GPList)
 	{
-		GP--;
 		if (GP == GPList.begin()) {
 			GP = GPList.end();
-			GP----;
+			GP--;// --;
+		}
+		else {
+			GP--;
 		}
 	};
 
@@ -4655,8 +4853,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 			TecUtilRedrawAll(TRUE);
 			TecUtilDialogMessageBox("Filling sparse regions", MessageBoxType_Information);
 		}
-
-		while (DoContinue && Path2 != GPList.end()) {
+		while (DoContinue && Path1 != GPList.end()) {
 			DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum], AddOnID, Time1);
 			if ((
 				(Path1->CPNum == Path2->CPNum)
@@ -4716,7 +4913,9 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 			}
 			else {
 				Path1++;
-				Path2++;
+				// 				Path2++;
+// 				GPIncrement(Path1, GPList);
+				GPIncrement(Path2, GPList);
 			}
 		}
 
@@ -4766,7 +4965,12 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 			CheckCPNum = Path1->CPNum;
 			Path2 = Path1;
 			int CurrentCPCount = 0;
+			int iter = 0;
 			while (DoContinue && Path1 != EndPath){
+				if (iter == 0){
+					GPIncrement(EndPath, GPList);
+				}
+				iter++;
 				DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum], AddOnID, Time1);
 				if (Path1->CPNum == CheckCPNum) {
 					CurrentCPCount++;
@@ -4922,12 +5126,12 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				UsedCPNums.insert(Path2->CPNum);
 
 				// Start bypass of finding actual minimum length GP
-				Path2->IsSGP = true;
-				SGPVector.push_back(*Path2);
-				GPIncrement(Path3, GPList);
-				GPIncrement(Path2, GPList);
-				Path1++;
-				continue;
+// 				Path2->IsSGP = true;
+// 				SGPVector.push_back(*Path2);
+// 				GPIncrement(Path3, GPList);
+// 				GPIncrement(Path2, GPList);
+// 				Path1++;
+// 				continue;
 				// end bypass
 
  				GPWithInfo GP = *Path2;
@@ -4965,190 +5169,203 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(Path2->GP, XYZVarNums, RhoVarNum, DebugPathStringBase, false, PassNum, SubPassNum, 1);
 #endif 
 
+				// Begin implementation of simple binary search instead of GSL 1d minimizer
+				GradPath_c MinLengthGP = MinLengthGPFromGPTripletWithCommonTerminus({ Path1->GP, Path2->GP, Path3->GP }, 5, -1);
+				if (MinLengthGP.IsMade()){
+					// We were already close to the minimum length GP, so just replace Path2 with the min length GP
+// 					MinLengthGP.Resample(NumGPPts);
+					Path2->GP = MinLengthGP;
+					Path2->IsSGP = true;
+					SGPVector.push_back(*Path2);
+
+#ifdef DEBUG_PRINTPATHS
+					DebugPathStringBase = "Path1 id:" + to_string(Path1->Identifier) + ", CP:" + to_string(Path1->CPNum) + ", Length:" + to_string(Path1->GP.GetLength()) + "\nPath2 id:" + to_string(Path2->Identifier) + ", CP:" + to_string(Path2->CPNum) + ", Length:" + to_string(Path2->GP.GetLength()) + "\nPath3 id:" + to_string(Path3->Identifier) + ", CP:" + to_string(Path3->CPNum) + ", Length:" + to_string(Path3->GP.GetLength()) + "\n Minimum length path";
+					DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(Path2->GP, XYZVarNums, RhoVarNum, DebugPathStringBase, false, PassNum, SubPassNum, 1);
+#endif 
+				}
+				// End implementation
+
 				// Minimum length Path2 found. Now move Path1 backwards and Path3 forwards
 				// to get wider bounds for the minimizer.
-				int NumBufferGPs = 5;
-				int LeftNumBufferGPs = 0,
-					RightNumBufferGPs = 0;
-				double TmpLength = MinLength;
-				for (int i = 0; i < NumBufferGPs && Path1->CPNum == Path2->CPNum && Path1->SaddleCPNum < 0; ++i) {
-					double CheckDist = Path1->GP.GetLength();
-					if (CheckDist > TmpLength) {
-						TmpLength = CheckDist;
-						GPDecrement(Path1, GPList);
-						LeftNumBufferGPs++;
-					}
-					else
-						break;
-				}
-				TmpLength = MinLength;
-				for (int i = 0; i < NumBufferGPs && Path3->CPNum == Path2->CPNum && Path3->SaddleCPNum < 0; ++i) {
-					double CheckLength = Path3->GP.GetLength();
-					if (CheckLength > TmpLength) {
-						TmpLength = CheckLength;
-						GPIncrement(Path3, GPList);
-						RightNumBufferGPs++;
-					}
-					else
-						break;
-				}
-				if (LeftNumBufferGPs != RightNumBufferGPs){
-					int Diff = abs(LeftNumBufferGPs - RightNumBufferGPs);
-					if (LeftNumBufferGPs > RightNumBufferGPs){
-						for (int i = 0; i < Diff; ++i) {
-							GPIncrement(Path1, GPList);
-						}
-					}
-					else{
-						for (int i = 0; i < Diff; ++i) {
-							GPDecrement(Path3, GPList);
-						}
-					}
-				}
-				vector<GradPathBase_c const *> GPPtrs;
-				auto Path4 = Path1;
-				while (Path4 != Path3) {
-					GPIncrement(Path4, GPList);
-					GPPtrs.push_back(&(Path4++)->GP);
-				}
-				GPPtrs.push_back(&Path4->GP);
-
-#ifdef DEBUG_PRINTPATHS
-				for (auto GPPtr : GPPtrs) {
-					DebugPathStringBase = "CP:" + to_string(Path2->CPNum) + "\nPath2 id:" + to_string(Path2->Identifier) + "\nbuffer paths for minimum length saddle-max path search";
-					DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(*GPPtr, XYZVarNums, RhoVarNum, DebugPathStringBase, false, PassNum, SubPassNum, 2);
-				}
-#endif
-					
-// 					vec3 midPt, Pt2;
-				double bMin;// , MaxDist;
-				vector<int> IndList;
-
-				double MaxDist = Path2->GP.GetMaxSeparationFromNeighboringGPs(vector<GradPathBase_c const *>({ &Path1->GP, &Path3->GP }), IndList, Path2Ind);
-				int Path1Ind = IndList.front(), 
-					Path3Ind = IndList.back();
-
-//  					Path1->GP.GetMaxSeparationMidpointFromOtherGP(Path3->GP, midPt, Path1Ind, Path3Ind, Pt2, MaxDist);
- 
-  				FESurface_c TmpSurf;
-//  					vector<GradPath_c> SubGPs = { Path1->GP.SubGP(0,MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), Path3->GP.SubGP(0, MAX(Path3->GP.GetIndAtLength(Path3->GP.GetLength(Path3Ind) + Path3->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path3Ind + NeighborGPSurfaceIndOffset)) };
-// 				TmpSurf.MakeFromGPs(vector<GradPath_c const *>({ &Path1->GP, &Path3->GP }), false, false, false);
-				TmpSurf.MakeFromGPs(GPPtrs);
- 				TmpSurf.GeneratePointElementDistanceCheckData();
- 				GP.GP.SetSurfPtr(&TmpSurf);
- 				GP.GP.SetTermPoint(CPPosition);
- 				GP.GP.SetTermPointRadius(1e-4);
- 
- 				vec3 Pt1 = Path1->GP[Path1Ind],
-					Pt3 = Path3->GP[Path3Ind];
- 				std::pair<vec3 const *, vec3 const *> StartPoints(&Pt1, &Pt3);
-
-				// If Path1 (or Path3) contain a saddle point, then we can't use it for the 
-				// length minimization because the GPs might deviate the wrong way off the 
-				// saddle CP.
-				// In that case, we need to adjust StartPoints in order to make sure that 
-				// the saddle path isn't used and that the StartPoints still correspond
-				// to GPs of greater length than that of Path2.
-				MinFuncParams_GPLengthBetweenPoints Params;
-				Params.GP = &GP.GP;
-				Params.StartPoints = &StartPoints;
-				vec3 AB = Pt3 - Pt1;
-				bMin = 1.0 - (dot(Path2->GP[Path2Ind] - Pt1, AB) / dot(AB, AB));
-// 				double CheckLength = MinFunc_GPLength_BetweenPoints(0.5, reinterpret_cast<void*>(&Params));
-// 				double MinMaxWeights[] = { 0.0, 1.0 };
-// // 				double EndLengths[] = { 
-// // 					Path1->SaddleCPNum < 0 ? Path1->GP.GetLength() : -1, 
-// // 					Path3->SaddleCPNum < 0 ? Path3->GP.GetLength() : -1 };
-// 				double EndLengths[] = {
-// 					Path1->SaddleCPNum < 0 ? MinFunc_GPLength_BetweenPoints(MinMaxWeights[1], reinterpret_cast<void*>(&Params)) : -1,
-// 					Path3->SaddleCPNum < 0 ? MinFunc_GPLength_BetweenPoints(MinMaxWeights[0], reinterpret_cast<void*>(&Params)) : -1 };
-// 				while (EndLengths[0] < CheckLength || EndLengths[1] < CheckLength)
-// 				{
-// 					for (int i = 0; i < 2; ++i) {
-// 						if (EndLengths[i] < CheckLength) {
-// 							auto TmpPath = Path1;
-// 							double StaticWeight = 0.0, Mid, DynamicWeight = 0.5;
-// 							if (i == 1) {
-// 								TmpPath = Path3;
-// 								StaticWeight = 1.0;
-// 							}
-// 							// Start a binary search to find a point 
-// 							double TmpLength = 0.0;
-// 							do
-// 							{
-// 								Mid = (StaticWeight + DynamicWeight) * 0.5;
-// 								TmpLength = MinFunc_GPLength_BetweenPoints(Mid, reinterpret_cast<void*>(&Params));
-// 
-// 								DynamicWeight = Mid;
-// 							} while (TmpLength < CheckLength);
-// 							MinMaxWeights[i] = DynamicWeight;
-// 							EndLengths[i] = TmpLength;
+// 				int NumBufferGPs = 5;
+// 				int LeftNumBufferGPs = 0,
+// 					RightNumBufferGPs = 0;
+// 				double TmpLength = MinLength;
+// 				for (int i = 0; i < NumBufferGPs && Path1->CPNum == Path2->CPNum && Path1->SaddleCPNum < 0; ++i) {
+// 					double CheckDist = Path1->GP.GetLength();
+// 					if (CheckDist > TmpLength) {
+// 						TmpLength = CheckDist;
+// 						GPDecrement(Path1, GPList);
+// 						LeftNumBufferGPs++;
+// 					}
+// 					else
+// 						break;
+// 				}
+// 				TmpLength = MinLength;
+// 				for (int i = 0; i < NumBufferGPs && Path3->CPNum == Path2->CPNum && Path3->SaddleCPNum < 0; ++i) {
+// 					double CheckLength = Path3->GP.GetLength();
+// 					if (CheckLength > TmpLength) {
+// 						TmpLength = CheckLength;
+// 						GPIncrement(Path3, GPList);
+// 						RightNumBufferGPs++;
+// 					}
+// 					else
+// 						break;
+// 				}
+// 				if (LeftNumBufferGPs != RightNumBufferGPs){
+// 					int Diff = abs(LeftNumBufferGPs - RightNumBufferGPs);
+// 					if (LeftNumBufferGPs > RightNumBufferGPs){
+// 						for (int i = 0; i < Diff; ++i) {
+// 							GPIncrement(Path1, GPList);
 // 						}
 // 					}
-// 					vec3 *PtPtrs[] = { &Pt1, &Pt3 };
-// 					for (int i = 0; i < 2; ++i)
-// 						*PtPtrs[i] = Path1->GP[Path1Ind] * (1.0 - MinMaxWeights[i]) + Path3->GP[Path3Ind] * MinMaxWeights[i];
-// 
-// 					CheckLength = MinFunc_GPLength_BetweenPoints(0.5, reinterpret_cast<void*>(&Params));
+// 					else{
+// 						for (int i = 0; i < Diff; ++i) {
+// 							GPDecrement(Path3, GPList);
+// 						}
+// 					}
 // 				}
-
-// 					MinFuncParams_GPLengthBetweenPoints Params;
-// 					Params.GP = &GP.GP;
-// 					Params.StartPoints = &StartPoints;
+// 				vector<GradPathBase_c const *> GPPtrs;
+// 				auto Path4 = Path1;
+// 				while (Path4 != Path3) {
+// 					GPIncrement(Path4, GPList);
+// 					GPPtrs.push_back(&(Path4++)->GP);
+// 				}
+// 				GPPtrs.push_back(&Path4->GP);
 // 
-// 					MinFunc_GPLength_BetweenPoints(0.0, reinterpret_cast<void *>(&Params));
-// 					Params.GP->SaveAsOrderedZone("new path 1", Blue_C);
+// #ifdef DEBUG_PRINTPATHS
+// 				for (auto GPPtr : GPPtrs) {
+// 					DebugPathStringBase = "CP:" + to_string(Path2->CPNum) + "\nPath2 id:" + to_string(Path2->Identifier) + "\nbuffer paths for minimum length saddle-max path search";
+// 					DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(*GPPtr, XYZVarNums, RhoVarNum, DebugPathStringBase, false, PassNum, SubPassNum, 2);
+// 				}
+// #endif
+// 					
+// // 					vec3 midPt, Pt2;
+// 				double bMin;// , MaxDist;
+// 				vector<int> IndList;
 // 
-// 					MinFunc_GPLength_BetweenPoints(1.0, reinterpret_cast<void *>(&Params));
-// 					Params.GP->SaveAsOrderedZone("new path 1", Blue_C);
+// 				double MaxDist = Path2->GP.GetMaxSeparationFromNeighboringGPs(vector<GradPathBase_c const *>({ &Path1->GP, &Path3->GP }), IndList, Path2Ind);
+// 				int Path1Ind = IndList.front(), 
+// 					Path3Ind = IndList.back();
 // 
-// 					MinFunc_GPLength_BetweenPoints(0.5, reinterpret_cast<void *>(&Params));
-// 					Params.GP->SaveAsOrderedZone("new path mid", Blue_C);
-
-   				if (MinLengthGPBetweenPoints(GP.GP, StartPoints, bMin)) {
-   					// 						GP.GP += GradPath_c({ &Path1->GP, &Path3->GP }, bMin, Path1->GP.RhoAt(Path1Ind), -1);
-//       					GP.GP.Clear();
-      				vec3 SeedPt = Pt1 * bMin + Pt3 * (1.0 - bMin);
-//       					GP.GP.SetStartPoint(SeedPt);
-//       					GP.GP.Seed(false);
-//       				GradPath_c TmpGP({ &Path1->GP,&Path3->GP }, SeedPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), std::make_pair(0, MAX(Path3->GP.GetIndAtLength(Path3->GP.GetLength(Path3Ind) + Path3->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path3Ind + NeighborGPSurfaceIndOffset)) }, &CPPosition);
-					GradPath_c TmpGP = GP.GP;
-					TmpGP.Clear();
-					TmpGP.SetDir(CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward);
-					TmpGP.SetTermPoint(CPPosition);
-					TmpGP.SetStartPoint(SeedPt);
-					TmpGP.Seed(false);
-					if (sum(TmpGP[-1] == CPPosition) != 3) {
-						TmpGP.PointAppend(CPPosition, CPRho);
-						TmpGP.SetStartEndCPNum(CurrentCPNum, 1);
-					}
-
-      				GP.GP += TmpGP;
-					GP.GP.RemoveKinks();
-   					GP.Identifier = Path1->Identifier * bMin + Path3->Identifier * (1.0 - bMin);
-					GP.GP.Resample(NumGPPts);
-					GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
-
-					if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition))
-						// Need to reverse GP
-						GP.GP.Reverse();
-#ifdef DEBUG_PRINTPATHS
-					DebugPathStringBase = "Path1 id:" + to_string(Path1->Identifier) + ", CP:" + to_string(Path1->CPNum) + "\nPath2 id:" + to_string(Path2->Identifier) + ", CP:" + to_string(Path2->CPNum) + "\nMinimum length saddle-max path";
-					DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase, false, PassNum, SubPassNum, 3);
-#endif
-
-					*Path2 = GP;
-					SGPVector.push_back(GP);
-
-					Path2 = MinPath;
-					Path1 = MinPath;
-					GPDecrement(Path1, GPList);
-					Path3 = MinPath;
-					GPIncrement(Path3, GPList);
-   				}
-   				else {
-   					TecUtilDialogErrMsg("Failed to get minimum length saddle-min/max GP");
-   				}
+// //  					Path1->GP.GetMaxSeparationMidpointFromOtherGP(Path3->GP, midPt, Path1Ind, Path3Ind, Pt2, MaxDist);
+//  
+//   				FESurface_c TmpSurf;
+// //  					vector<GradPath_c> SubGPs = { Path1->GP.SubGP(0,MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), Path3->GP.SubGP(0, MAX(Path3->GP.GetIndAtLength(Path3->GP.GetLength(Path3Ind) + Path3->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path3Ind + NeighborGPSurfaceIndOffset)) };
+// // 				TmpSurf.MakeFromGPs(vector<GradPath_c const *>({ &Path1->GP, &Path3->GP }), false, false, false);
+// 				TmpSurf.MakeFromGPs(GPPtrs);
+//  				TmpSurf.GeneratePointElementDistanceCheckData();
+//  				GP.GP.SetSurfPtr(&TmpSurf);
+//  				GP.GP.SetTermPoint(CPPosition);
+//  				GP.GP.SetTermPointRadius(1e-4);
+//  
+//  				vec3 Pt1 = Path1->GP[Path1Ind],
+// 					Pt3 = Path3->GP[Path3Ind];
+//  				std::pair<vec3 const *, vec3 const *> StartPoints(&Pt1, &Pt3);
+// 
+// 				// If Path1 (or Path3) contain a saddle point, then we can't use it for the 
+// 				// length minimization because the GPs might deviate the wrong way off the 
+// 				// saddle CP.
+// 				// In that case, we need to adjust StartPoints in order to make sure that 
+// 				// the saddle path isn't used and that the StartPoints still correspond
+// 				// to GPs of greater length than that of Path2.
+// 				MinFuncParams_GPLengthBetweenPoints Params;
+// 				Params.GP = &GP.GP;
+// 				Params.StartPoints = &StartPoints;
+// 				vec3 AB = Pt3 - Pt1;
+// 				bMin = 1.0 - (dot(Path2->GP[Path2Ind] - Pt1, AB) / dot(AB, AB));
+// // 				double CheckLength = MinFunc_GPLength_BetweenPoints(0.5, reinterpret_cast<void*>(&Params));
+// // 				double MinMaxWeights[] = { 0.0, 1.0 };
+// // // 				double EndLengths[] = { 
+// // // 					Path1->SaddleCPNum < 0 ? Path1->GP.GetLength() : -1, 
+// // // 					Path3->SaddleCPNum < 0 ? Path3->GP.GetLength() : -1 };
+// // 				double EndLengths[] = {
+// // 					Path1->SaddleCPNum < 0 ? MinFunc_GPLength_BetweenPoints(MinMaxWeights[1], reinterpret_cast<void*>(&Params)) : -1,
+// // 					Path3->SaddleCPNum < 0 ? MinFunc_GPLength_BetweenPoints(MinMaxWeights[0], reinterpret_cast<void*>(&Params)) : -1 };
+// // 				while (EndLengths[0] < CheckLength || EndLengths[1] < CheckLength)
+// // 				{
+// // 					for (int i = 0; i < 2; ++i) {
+// // 						if (EndLengths[i] < CheckLength) {
+// // 							auto TmpPath = Path1;
+// // 							double StaticWeight = 0.0, Mid, DynamicWeight = 0.5;
+// // 							if (i == 1) {
+// // 								TmpPath = Path3;
+// // 								StaticWeight = 1.0;
+// // 							}
+// // 							// Start a binary search to find a point 
+// // 							double TmpLength = 0.0;
+// // 							do
+// // 							{
+// // 								Mid = (StaticWeight + DynamicWeight) * 0.5;
+// // 								TmpLength = MinFunc_GPLength_BetweenPoints(Mid, reinterpret_cast<void*>(&Params));
+// // 
+// // 								DynamicWeight = Mid;
+// // 							} while (TmpLength < CheckLength);
+// // 							MinMaxWeights[i] = DynamicWeight;
+// // 							EndLengths[i] = TmpLength;
+// // 						}
+// // 					}
+// // 					vec3 *PtPtrs[] = { &Pt1, &Pt3 };
+// // 					for (int i = 0; i < 2; ++i)
+// // 						*PtPtrs[i] = Path1->GP[Path1Ind] * (1.0 - MinMaxWeights[i]) + Path3->GP[Path3Ind] * MinMaxWeights[i];
+// // 
+// // 					CheckLength = MinFunc_GPLength_BetweenPoints(0.5, reinterpret_cast<void*>(&Params));
+// // 				}
+// 
+// // 					MinFuncParams_GPLengthBetweenPoints Params;
+// // 					Params.GP = &GP.GP;
+// // 					Params.StartPoints = &StartPoints;
+// // 
+// // 					MinFunc_GPLength_BetweenPoints(0.0, reinterpret_cast<void *>(&Params));
+// // 					Params.GP->SaveAsOrderedZone("new path 1", Blue_C);
+// // 
+// // 					MinFunc_GPLength_BetweenPoints(1.0, reinterpret_cast<void *>(&Params));
+// // 					Params.GP->SaveAsOrderedZone("new path 1", Blue_C);
+// // 
+// // 					MinFunc_GPLength_BetweenPoints(0.5, reinterpret_cast<void *>(&Params));
+// // 					Params.GP->SaveAsOrderedZone("new path mid", Blue_C);
+// 
+//    				if (MinLengthGPBetweenPoints(GP.GP, StartPoints, bMin)) {
+//    					// 						GP.GP += GradPath_c({ &Path1->GP, &Path3->GP }, bMin, Path1->GP.RhoAt(Path1Ind), -1);
+// //       					GP.GP.Clear();
+//       				vec3 SeedPt = Pt1 * bMin + Pt3 * (1.0 - bMin);
+// //       					GP.GP.SetStartPoint(SeedPt);
+// //       					GP.GP.Seed(false);
+// //       				GradPath_c TmpGP({ &Path1->GP,&Path3->GP }, SeedPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), std::make_pair(0, MAX(Path3->GP.GetIndAtLength(Path3->GP.GetLength(Path3Ind) + Path3->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path3Ind + NeighborGPSurfaceIndOffset)) }, &CPPosition);
+// 					GradPath_c TmpGP = GP.GP;
+// 					TmpGP.Clear();
+// 					TmpGP.SetDir(CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward);
+// 					TmpGP.SetTermPoint(CPPosition);
+// 					TmpGP.SetStartPoint(SeedPt);
+// 					TmpGP.Seed(false);
+// 					if (sum(TmpGP[-1] == CPPosition) != 3) {
+// 						TmpGP.PointAppend(CPPosition, CPRho);
+// 						TmpGP.SetStartEndCPNum(CurrentCPNum, 1);
+// 					}
+// 
+//       				GP.GP += TmpGP;
+// 					GP.GP.RemoveKinks();
+//    					GP.Identifier = Path1->Identifier * bMin + Path3->Identifier * (1.0 - bMin);
+// 					GP.GP.Resample(NumGPPts);
+// 					GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+// 
+// 					if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition))
+// 						// Need to reverse GP
+// 						GP.GP.Reverse();
+// #ifdef DEBUG_PRINTPATHS
+// 					DebugPathStringBase = "Path1 id:" + to_string(Path1->Identifier) + ", CP:" + to_string(Path1->CPNum) + "\nPath2 id:" + to_string(Path2->Identifier) + ", CP:" + to_string(Path2->CPNum) + "\nMinimum length saddle-max path";
+// 					DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase, false, PassNum, SubPassNum, 3);
+// #endif
+// 
+// 					*Path2 = GP;
+// 					SGPVector.push_back(GP);
+// 
+// 					Path2 = MinPath;
+// 					Path1 = MinPath;
+// 					GPDecrement(Path1, GPList);
+// 					Path3 = MinPath;
+// 					GPIncrement(Path3, GPList);
+//    				}
 			}
 			// Increment the iterators, 
 			GPIncrement(Path3, GPList);
@@ -6904,7 +7121,7 @@ bool const ExtractRadiusContourLinesToIOrderedPoints(vector<int> & ZoneNums,
 	if (TempVarNum <= 0){
 		// Need to make new temp variable
 		vector<FieldDataType_e> FDTypes(NumZones, FieldDataType_Bit);
-		for (int z : ZoneNums) FDTypes[z - 1] = FieldDataType_Double;
+		for (int z : ZoneNums) FDTypes[z - 1] = FieldDataType_Float;
 		Args.clear();
 		Args.appendString(SV_NAME, TempVarName);
 		Args.appendArray(SV_VARDATATYPE, FDTypes.data());
@@ -6927,7 +7144,7 @@ bool const ExtractRadiusContourLinesToIOrderedPoints(vector<int> & ZoneNums,
 		1, 0, 1,
 		1, 0, 1,
 		1, 0, 1,
-		FieldDataType_Double);
+		FieldDataType_Float);
 
 
 	// Then loop through the zones, for each extracting a contour at the specified radius to a FELineSeg zone.
@@ -9920,7 +10137,7 @@ int VolumeZoneMirrorPlane(int ZoneNum, int PlaneNum, vec3 Origin, VolExtentIndex
 	auto NewIJK = VolInfo.MaxIJK, IJK = VolInfo.MaxIJK;
 	vector<int> Offset = { 0,0,0 };
 	NewIJK[PlaneNum] *= 2;
-	if (abs(OriginFraction[PlaneNum]) < 1e-8){
+	if (abs(OriginFraction[PlaneNum]) < 1e-5){
 		NewIJK[PlaneNum] -= 1;
 		Offset[PlaneNum]++;
 	}
@@ -9989,7 +10206,9 @@ int VolumeZoneMirrorPlane(int ZoneNum, int PlaneNum, vec3 Origin, VolExtentIndex
 					// First copy the original point to its old and new positions
 					for (int vi = 0; vi < ReadPtrs.size(); ++vi) {
 						WritePtrs[vi].Write(PtOldIndex, ReadPtrs[vi][ReadIndex]);
-						WritePtrs[vi].Write(PtNewIndex, ReadPtrs[vi][ReadIndex]);
+						if (ReadPtrs[vi].VarNum() != XYZVarNums[0] && ReadPtrs[vi].VarNum() != XYZVarNums[1] && ReadPtrs[vi].VarNum() != XYZVarNums[2]) {
+							WritePtrs[vi].Write(PtNewIndex, ReadPtrs[vi][ReadIndex]);
+						}
 					}
 					// Then write the new XYZ values
 					NewXYZPtr.Write(PtNewIndex, PtNew);
@@ -10113,6 +10332,307 @@ void SymmetryMirrorGetUserInfo() {
 	CSMGui("Symmetry mirror volume zone", Fields, SymmetryMirrorReturnUserInfo, AddOnID);
 }
 
+
+void TranslationalCopyReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+	// Get system info and user input
+
+	int fNum = 0;
+
+	int VolZoneNum = Fields[fNum++].GetReturnInt();
+	vector<int> MirrorXYZ(3);
+	vector<int> XYZVarNums(3);
+	XYZVarNums[0] = Fields[fNum++].GetReturnInt();
+	XYZVarNums[1] = XYZVarNums[0] + 1;
+	XYZVarNums[2] = XYZVarNums[0] + 2;
+	fNum += 2;
+	for (int i = 0; i < 3; ++i) {
+		MirrorXYZ[i] = Fields[fNum++].GetReturnInt();
+		MirrorXYZ[i] = MAX(abs(MirrorXYZ[i]), 1);
+	}
+
+	if (MirrorXYZ == vector<int>({ 1,1,1 }) || TecUtilZoneGetType(VolZoneNum) != ZoneType_Ordered){
+		return;
+	}
+
+	int ZoneNum = VolZoneNum;
+
+	Set DeleteZones(ZoneNum);
+
+	TecUtilLockStart(AddOnID);
+	TecUtilDataLoadBegin();
+
+	VolExtentIndexWeights_s VolInfo;
+	GetVolInfo(ZoneNum, XYZVarNums, FALSE, VolInfo);
+
+	char *ZoneNameCStr;
+	TecUtilZoneGetName(ZoneNum, &ZoneNameCStr);
+	string ZoneName = ZoneNameCStr;
+	TecUtilStringDealloc(&ZoneNameCStr);
+	ZoneName += " (" + to_string(MirrorXYZ[0]) + " " + to_string(MirrorXYZ[1]) + " " + to_string(MirrorXYZ[2]) + ") supercell";
+
+	// Get old nuclear positions
+	vector<AtomGroup_s> OldAtomGroups;
+	vector<int> OldAtomZoneNums;
+	for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
+		if (AuxDataZoneItemMatches(z, CSMAuxData.DL.ZoneType, CSMAuxData.DL.ZoneTypeNuclearPositions)) {
+			char *zName;
+			int I, J, K;
+			TecUtilZoneGetName(z, &zName);
+			TecUtilZoneGetIJK(z, &I, &J, &K);
+
+			OldAtomGroups.emplace_back(zName);
+			OldAtomGroups.back().Count = I;
+			OldAtomZoneNums.push_back(z);
+			for (int i = 0; i < 3; ++i) {
+				OldAtomGroups.back().Positions[i].resize(I);
+				FieldData_pa TmpRef = TecUtilDataValueGetReadableNativeRef(z, XYZVarNums[i]);
+				TecUtilDataValueArrayGetByRef(TmpRef, 1, I, OldAtomGroups.back().Positions[i].data());
+			}
+		}
+	}
+
+	// Setup new zone and get pointers to data
+
+	vector<int> TotIJK(3);
+	int TotNumPoints = 1;
+	for (int i = 0; i < 3; ++i){
+		TotIJK[i] = VolInfo.MaxIJK[i] * MirrorXYZ[i] - (MirrorXYZ[i] - 1);
+		TotNumPoints *= TotIJK[i];
+	}
+
+	vector<FieldDataType_e> VarTypes;
+	VarTypes.reserve(TecUtilDataSetGetNumVars());
+	vector<FieldDataPointer_c> ReadPtrs(TecUtilDataSetGetNumVars()), WritePtrs(TecUtilDataSetGetNumVars());
+
+
+	TecUtilPleaseWait("Preparing to copy volume zone...", TRUE);
+
+	for (int v = 1; v <= TecUtilDataSetGetNumVars(); ++v) {
+		ReadPtrs[v - 1].InitializeReadPtr(ZoneNum, v);
+		VarTypes.push_back(ReadPtrs[v - 1].FDType());
+	}
+
+	int NewZoneNum = -1;
+	if (TecUtilDataSetAddZone(ZoneName.c_str(), TotIJK[0], TotIJK[1], TotIJK[2], ZoneType_Ordered, VarTypes.data())) {
+		NewZoneNum = TecUtilDataSetGetNumZones();
+	}
+	else {
+		TecUtilDialogErrMsg("Failed to create new zone for translational mirroring!");
+		TecUtilDataLoadEnd();
+		TecUtilLockFinish(AddOnID);
+		return;
+	}
+
+	for (int v = 1; v <= TecUtilDataSetGetNumVars(); ++v) {
+		WritePtrs[v - 1].InitializeWritePtr(NewZoneNum, v);
+	}
+
+	FieldVecPointer_c XYZPtr(vector<FieldDataPointer_c>({ ReadPtrs[XYZVarNums[0] - 1], ReadPtrs[XYZVarNums[1] - 1], ReadPtrs[XYZVarNums[2] - 1] })),
+		NewXYZPtr(vector<FieldDataPointer_c>({ WritePtrs[XYZVarNums[0] - 1], WritePtrs[XYZVarNums[1] - 1], WritePtrs[XYZVarNums[2] - 1] }));
+
+	// Copy data to new zone
+
+	TecUtilPleaseWait("", FALSE);
+	CSMGuiLock();
+	auto StartTime = StatusLaunch("Copying volume zone...", AddOnID, TRUE);
+
+
+	Boolean_t TaskQuit = FALSE;
+	auto IJK = VolInfo.MaxIJK;
+	for (int ii = 0; ii < MirrorXYZ[0] && !TaskQuit; ++ii) {
+		for (int i = 1; i <= IJK[0] && !TaskQuit; ++i) {
+			if (MirrorXYZ[0] > 1 && ii < MirrorXYZ[0] - 1 && i == IJK[0]){
+				continue;
+			}
+			if (!StatusUpdate(i + IJK[0] * ii, TotIJK[0], "Copying volume zone...", AddOnID, StartTime)) {
+				TaskQuit = TRUE;
+			}
+			for (int jj = 0; jj < MirrorXYZ[1]; ++jj) {
+				for (int j = 1; j <= IJK[1] && !TaskQuit; ++j) {
+					if (MirrorXYZ[1] > 1 && jj < MirrorXYZ[1] - 1 && j == IJK[1]) {
+						continue;
+					}
+					for (int kk = 0; kk < MirrorXYZ[2]; ++kk) {
+						for (int k = 1; k <= IJK[2]; ++k) {
+							if (MirrorXYZ[2] > 1 && kk < MirrorXYZ[2] - 1 && k == IJK[2]) {
+								continue;
+							}
+							int ReadIndex = IndexFromIJK(i, j, k, IJK[0], IJK[1], IJK[2], TRUE) - 1;
+							int WriteIndex = IndexFromIJK(i + ii * IJK[0] - ii, j + jj * IJK[1] - jj, k + kk * IJK[2] - kk,
+								TotIJK[0], TotIJK[1], TotIJK[2], TRUE) - 1;
+							
+							vec3 PtFrac = VolInfo.XYZ_to_Fractional(XYZPtr[ReadIndex]);
+							vec3 PtNewFrac = PtFrac + vec3({ double(ii), double(jj), double(kk) });
+							vec3 PtNew = VolInfo.Fractional_to_XYZ(PtNewFrac);
+
+							// First copy the original point to its old and new positions
+							for (int vi = 0; vi < ReadPtrs.size(); ++vi) {
+								if (ReadPtrs[vi].VarNum() != XYZVarNums[0] && ReadPtrs[vi].VarNum() != XYZVarNums[1] && ReadPtrs[vi].VarNum() != XYZVarNums[2]) {
+									WritePtrs[vi].Write(WriteIndex, ReadPtrs[vi][ReadIndex]);
+								}
+							}
+							// Then write the new XYZ values
+							NewXYZPtr.Write(WriteIndex, PtNew);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	StatusDrop(AddOnID);
+
+	// Close data pointers
+	for (auto & p : ReadPtrs){
+		p.Close();
+	}
+	for (auto & p : WritePtrs) {
+		p.Close();
+	}
+	XYZPtr.Close();
+	NewXYZPtr.Close();
+
+	// copy and save nuclear coordinates
+	auto NewAtomGroups = OldAtomGroups;
+	for (auto & a : NewAtomGroups){
+		for (int ii = 0; ii < MirrorXYZ[0] && !TaskQuit; ++ii) {
+			for (int jj = 0; jj < MirrorXYZ[1]; ++jj) {
+				for (int kk = 0; kk < MirrorXYZ[2]; ++kk) {
+					for (int pti = 0; pti < a.Count; ++pti) {
+						vec3 OldPoint;
+						for (int i = 0; i < 3; ++i) {
+							OldPoint[i] = a.Positions[i][pti];
+						}
+						vec3 PtFrac = VolInfo.XYZ_to_Fractional(OldPoint);
+						vec3 PtNewFrac = PtFrac + vec3({ double(ii), double(jj), double(kk) });
+						vec3 PtNew = VolInfo.Fractional_to_XYZ(PtNewFrac);
+						for (int i = 0; i < 3; ++i) {
+							a.Positions[i].push_back(PtNew[i]);
+						}
+					}
+				}
+			}
+		}
+		a.Count = a.Positions[0].size();
+	}
+	vector<AtomColor_s> AtomColorList;
+	PopulateAtomColorList(AtomColorList);
+
+	CreateAtomZonesFromAtomGroupList(NewAtomGroups, { "X","Y","Z" }, vector<FieldDataType_e>(), 50);
+
+	TecUtilZoneSetActive(Set(NewZoneNum).getRef(), AssignOp_PlusEquals);
+
+	for (auto z : OldAtomZoneNums){
+		DeleteZones += z;
+	}
+
+	if (!DeleteZones.isEmpty()) {
+		TecUtilDataSetDeleteZone(DeleteZones.getRef());
+	}
+
+	SetZoneNum();
+
+	TecUtilDataLoadEnd();
+	CSMGuiUnlock();
+	TecUtilLockFinish(AddOnID);
+
+	return;
+}
+
+void TranslationalCopyGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelect, "Zone to mirror", CSMZoneName.FullVolume),
+		GuiField_c(Gui_VarSelect, "X variable", "X"),
+		GuiField_c(Gui_Label, "Define the supercell lattice factors"),
+		GuiField_c(Gui_Label, "((1,1,1) describes the current cell)"),
+		GuiField_c(Gui_Int, "X supercell factor", "1"),
+		GuiField_c(Gui_Int, "Y supercell factor", "1"),
+		GuiField_c(Gui_Int, "Z supercell factor", "1")
+	};
+
+	CSMGui("Translational mirror volume zone", Fields, TranslationalCopyReturnUserInfo, AddOnID);
+}
+
+void ImportNuclearCoordinatesFromXYZ(){
+
+	char *XYZCStr, *FileNameCStr;
+
+// 	TecUtilDialogGetSimpleText("Enter \"XYZ\" string describing nuclear coordinates", "ElementSymbol X Y Z", &XYZCStr);
+	TecUtilDialogGetFileName(SelectFileOption_ReadSingleFile, &FileNameCStr, "XYZ file", "Nuclear coordinates.xyz", "*.xyz");
+	std::ifstream SS(FileNameCStr);
+	TecUtilStringDealloc(&FileNameCStr);
+
+// 	stringstream SS;
+// 	SS.str(XYZCStr);
+// 	TecUtilStringDealloc(&XYZCStr);
+
+	vector<AtomGroup_s> AtomGroupList;
+	std::map<string, vector<vec3> > AtomNameToPositions;
+	vector<EntIndex_t> XYZVarNums;
+	EntIndex_t vNum = 1;
+	for (auto v : { "X","Y","Z" }){
+		XYZVarNums.push_back(MAX(VarNumByName(v), 1));
+	}
+
+	TecUtilDialogGetVariables("Select variables to use for \"XYZ\" values", "Column 1", "Column 2", "Column 3", &XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
+
+
+
+	while (SS.good()){
+		string Name;
+		vec3 Pos;
+		int i;
+		SS >> Name;
+		for (i = 0; i < 3 && SS.good(); ++i){
+			SS >> Pos[i];
+		}
+		if (!SS.good() && i < 3){
+			TecUtilDialogErrMsg("Failed to parse atom XYZ list");
+			return;
+		}
+		if (AtomNameToPositions.count(Name)){
+			AtomNameToPositions[Name].push_back(Pos);
+		}
+		else{
+			AtomNameToPositions[Name] = { Pos };
+		}
+	}
+
+	SS.close();
+
+	for (auto & Atom : AtomNameToPositions){
+		AtomGroupList.emplace_back(Atom.first);
+		AtomGroupList.back().Count = Atom.second.size();
+		for (auto & p : Atom.second){
+			for (int dir = 0; dir < 3; ++dir){
+				AtomGroupList.back().Positions[dir].push_back(p[dir]);
+			}
+		}
+	}
+
+	vector<AtomColor_s> AtomColorList;
+	PopulateAtomColorList(AtomColorList);
+
+	vector<string> XYZNameList(3);
+	for (int i = 0; i < 3; ++i){
+		char *TmpCStr;
+		TecUtilVarGetName(XYZVarNums[i], &TmpCStr);
+		XYZNameList[i] = TmpCStr;
+		TecUtilStringDealloc(&TmpCStr);
+	}
+
+	vector<FieldDataType_e> VarDataTypes(TecUtilDataSetGetNumVars(), FieldDataType_Bit);
+	for (auto i : XYZVarNums){
+		VarDataTypes[i - 1] = FieldDataType_Float;
+	}
+
+	CreateAtomZonesFromAtomGroupList(AtomGroupList, XYZNameList, VarDataTypes, 50);
+}
+
 /*
  * 		vector<string> VarNameList = {
 			"P over N",
@@ -10136,11 +10656,11 @@ vector<vec> CalculateShannonEntropiesFromDensitySolidAngleValues(vec & DensityVe
 		prob = DensityVec;
 
 	// Add values to output vector according to order of VarNameList above
-	Out.push_back(prob); // P over N
+	Out.push_back(prob); // Pr = P over N
 	val = prob / SolidAngleVec; // P/(N alpha)
 	Out.push_back(val);
-	Out.emplace_back(-prob * log(prob)); // S[P] shannon condensed entropy
-	val = prob / SolidAngleVec; // S[P / alpha]
+	Out.emplace_back(-prob * log(prob)); // S[Pr] shannon condensed entropy
+	val = prob / SolidAngleVec; // S[Pr / alpha]
 	Out.emplace_back(-val * log(val));
 	val = SolidAngleVec; // S[alpha]
 	Out.emplace_back(-val * log(val));
@@ -10208,7 +10728,7 @@ void CalculateAndSaveShannonEntropiesForSphereNameElements(
 	vector<ValueLocation_e> ValueLocations(TecUtilDataSetGetNumZones(), ValueLocation_Nodal);
 	for (int zi = 1; zi < TecUtilDataSetGetNumZones(); ++zi){
 		if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)){
-			FDTypes[zi - 1] = FieldDataType_Double;
+			FDTypes[zi - 1] = FieldDataType_Float;
 			ValueLocations[zi - 1] = ValueLocation_CellCentered;
 		}
 	}
@@ -10966,4 +11486,40 @@ void ExportGBADataGetUserInfo() {
 	Fields.emplace_back(Gui_Label, "(be sure to create a new folder)");
 
 	CSMGui("Export gradient bundle integration data", Fields, ExportGBADataReturnUserInfo, AddOnID);
+}
+
+
+void MapVolumeZoneVarsToOtherZonesReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+
+	int fNum = 0;
+
+	int SourceZoneNum = Fields[fNum++].GetReturnInt();
+	int XVarNum = Fields[fNum++].GetReturnInt();
+	auto CopyVarNums = Fields[fNum++].GetReturnIntVec(),
+		DestZoneNums = Fields[fNum++].GetReturnIntVec();
+
+	vector<int> XYZVarNums = { XVarNum, XVarNum + 1, XVarNum + 2 };
+
+	TecUtilLockStart(AddOnID);
+
+	MapAllVarsToAllZones(SourceZoneNum, XYZVarNums, CopyVarNums, DestZoneNums, AddOnID);
+
+	TecUtilLockFinish(AddOnID);
+
+	return;
+}
+
+void MapVolumeZoneVarsToOtherZonesGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelect, "Source zone", "Full Volume"),
+		GuiField_c(Gui_VarSelect, "X", "X"),
+		GuiField_c(Gui_VarSelectMulti, "Variables to map", ""),
+		GuiField_c(Gui_ZoneSelectMulti, "Destination zones", "")
+	};
+
+	CSMGui("Map volume zone variables to other zones", Fields, MapVolumeZoneVarsToOtherZonesReturnUserInfo, AddOnID);
 }

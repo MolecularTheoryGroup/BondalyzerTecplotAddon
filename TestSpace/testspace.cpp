@@ -488,15 +488,31 @@ int main(char *vargv, int argc){
 
 // 	PairSortTesting();
 
-	vec3 p1, p2, p3;
-	p1 << 0 << 0 << 0;
-	p2 << 1 << 0 << 0;
-	p3 << 0 << 1 << 0;
+// 	vec3 p1, p2, p3;
+// 	p1 << 0 << 0 << 0;
+// 	p2 << 1 << 0 << 0;
+// 	p3 << 0 << 1 << 0;
+// 
+// 	double a = TriArea(p1,p2,p3);
+	int n = 2;
+	cube a(n, n, n);
+	for (int k = 0; k < n; ++k) {
+		for (int j = 0; j < n; ++j) {
+			for (int i = 0; i < n; ++i) {
+				double val = i + j * n + k * n * n;
+				a.at(i, j, k) = val;
+				cout << "a[" << i << "," << j << "," << k << "] = " << val << endl;
+			}
+		}
+	}
 
-	double a = TriArea(p1,p2,p3);
+	double * p = a.memptr();
+	for (int i = 0; i < n*n*n; ++i){
+		cout << "p[" << i << "] = " << p[i] << endl;
+	}
 
 	cout << endl << endl;
-	system("pause");
+// 	system("pause");
 
 	return 0;
 }

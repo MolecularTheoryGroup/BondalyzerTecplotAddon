@@ -18,8 +18,8 @@ using namespace arma;
 
 
 #define MaxCPIter 100
-#define CheckPosIter 0
-#define DefaultCellSpacing 0.2
+#define CheckPosIter 1
+#define DefaultCellSpacing 0.1
 
 using std::vector;
 
@@ -200,7 +200,9 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 	Boolean_t IsPeriodic,
 	FieldDataPointer_c & RhoPtr,
 	vector<FieldDataPointer_c> & GradXYZPtrs,
-	vector<FieldDataPointer_c> & HessPtrs);
+	vector<FieldDataPointer_c> & HessPtrs,
+	double AgitationFactor = -1.0,
+	int AgitationMaxNumIter = 1000);
 
 Boolean_t CritPointInCell(vector<int> const & IJK,
 	vec3 & Point,

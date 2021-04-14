@@ -20,6 +20,8 @@ public:
 	Boolean_t Write(unsigned int i, double const & Val) const;
 	Boolean_t InitializeReadPtr(int ZoneNum, int VarNum);
 	Boolean_t InitializeWritePtr(int ZoneNum, int VarNum);
+	Boolean_t InitializeWritePtrFromArmaCube(arma::cube & InCube);
+	Boolean_t InitializeReadPtrFromArmaCube(arma::cube const & InCube);
 	void Close();
 
 	Boolean_t IsReady() const { return m_IsReady; }

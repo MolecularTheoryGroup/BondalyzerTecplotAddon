@@ -1363,9 +1363,9 @@ EntIndex_t GradPathBase_c::SaveAsOrderedZone(string const & ZoneName, ColorIndex
 			}
 
 			for (int i = 0; i < 3; ++i)
-				VarTypes[XYZVarNums[i] - 1] = FieldDataType_Double;
+				VarTypes[XYZVarNums[i] - 1] = FieldDataType_Float;
 
-			if (RhoVarNum > 0) VarTypes[RhoVarNum - 1] = FieldDataType_Double;
+			if (RhoVarNum > 0) VarTypes[RhoVarNum - 1] = FieldDataType_Float;
 
 			IsOk = (SaveAsOrderedZone(ZoneName, VarTypes, XYZVarNums, RhoVarNum, TRUE, MeshColor) > 0);
 		}
@@ -1396,7 +1396,7 @@ EntIndex_t GradPathBase_c::SaveAsOrderedZone(string const & ZoneName,
 			if (IsOk){
 				m_ZoneNum = TecUtilDataSetGetNumZones();
 
-				vector<vector<double> > TmpValues(3, vector<double>(m_XYZList.size()));
+				vector<vector<float> > TmpValues(3, vector<float>(m_XYZList.size()));
 				for (int i = 0; i < m_XYZList.size(); ++i){
 					for (int j = 0; j < 3; ++j)
 						TmpValues[j][i] = m_XYZList[i][j];
@@ -1410,7 +1410,13 @@ EntIndex_t GradPathBase_c::SaveAsOrderedZone(string const & ZoneName,
 				}
 				if (RhoVarNum > 0){
 					FieldData_pa RhoFDPtr = TecUtilDataValueGetWritableNativeRef(m_ZoneNum, RhoVarNum);
-					TecUtilDataValueArraySetByRef(RhoFDPtr, 1, GetCount(), m_RhoList.data());
+					if (TecUtilDataValueGetType(m_ZoneNum, RhoVarNum) == FieldDataType_Float){
+						vector<float> TmpFloatVec(m_RhoList.begin(), m_RhoList.end());
+						TecUtilDataValueArraySetByRef(RhoFDPtr, 1, GetCount(), TmpFloatVec.data());
+					}
+					else {
+						TecUtilDataValueArraySetByRef(RhoFDPtr, 1, GetCount(), m_RhoList.data());
+					}
 				}
 
 				TecUtilDataLoadEnd();

@@ -239,6 +239,34 @@ static void STDCALL SymmetryMirrorCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL TranslationalCopyCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		TranslationalCopyGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL ImportNuclearCoordinatesCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		ImportNuclearCoordinatesFromXYZ();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 
 static void STDCALL CalcVarsMenuCallback(void)
 {
@@ -332,7 +360,8 @@ static void STDCALL MapVarsToZonesMenuCallback(void)
 	{
 		CSMGuiLock();
 
-		MapAllVarsToAllZones(AddOnID);
+// 		MapAllVarsToAllZones(AddOnID);
+		MapVolumeZoneVarsToOtherZonesGetUserInfo();
 
 		CSMGuiUnlock();
 	}
@@ -785,7 +814,17 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 	TecUtilMenuAddOption("MTG_Utilities",
 		string("Symmetry mirror volume zone").c_str(),
 		'\0',
-		SymmetryMirrorCallback);
+		SymmetryMirrorCallback); 
+	
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Translational copy volume zone").c_str(),
+		'\0',
+		TranslationalCopyCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Import nuclear coordinates").c_str(),
+		'\0',
+		ImportNuclearCoordinatesCallback);
 
 // 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 		string(to_string(MenuNum++) + ". Gaussian blur").c_str(),
@@ -793,7 +832,7 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 // 	GaussianBlurMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
-		string("Map volume zone variables to all zones").c_str(),
+		string("Map volume zone variables to other zones").c_str(),
 		'\0',
 		MapVarsToZonesMenuCallback);
 

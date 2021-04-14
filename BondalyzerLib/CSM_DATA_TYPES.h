@@ -199,9 +199,15 @@ struct MultiRootParams_s{
 	mat33 const * BasisVectors = nullptr;
 	vec3 * Origin = nullptr;
 	vec3 * EquilPos = nullptr;
+	cube * RhoSupercell = nullptr;
+	cube * RhoSpareSupercell = nullptr;
+	VolExtentIndexWeights_s * VolInfo2 = nullptr;
+	FieldDataPointer_c * RhoPtr2 = nullptr;
+
 	int Index = -1;
 
 	double KDisp = 0.0, KGrad = 0.0;
+	double AgitationFactor = -1.0;
 };
 
 struct MultiRootObjects_s{

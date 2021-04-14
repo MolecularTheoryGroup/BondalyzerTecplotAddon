@@ -1057,7 +1057,7 @@ int FESurface_c::SaveAsTriFEZone(vector<int> const & XYZVarNums,
 
 		TecUtilSetDealloc(&TmpSet);
 
-		vector<vector<double> > TmpValues(3, vector<double>(m_RefinedXYZList.size()));
+		vector<vector<float> > TmpValues(3, vector<float>(m_RefinedXYZList.size()));
 		for (int i = 0; i < m_RefinedXYZList.size(); ++i){
 			for (int j = 0; j < 3; ++j)
 				TmpValues[j][i] = m_RefinedXYZList[i][j];
@@ -1067,7 +1067,7 @@ int FESurface_c::SaveAsTriFEZone(vector<int> const & XYZVarNums,
 			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, XYZVarNums[i]);
 			IsOk = VALID_REF(SetFDPtr);
 			if (IsOk){
-				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_RefinedXYZList.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
+				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_RefinedXYZList.size(), TmpValues[i].data());
 			}
 		}
 
@@ -1103,7 +1103,7 @@ int FESurface_c::SaveAsTriFEZone(string const & ZoneName,
 
 	if (IsOk){
 		if (DataTypes.size() > XYZVarNums[2]) for (int i = 0; i < 3; ++i)
-			DataTypes[XYZVarNums[i] - 1] = FieldDataType_Double;
+			DataTypes[XYZVarNums[i] - 1] = FieldDataType_Float;
 
 // 		IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), m_XYZList.size(), m_ElemList.size(), 0, ZoneType_FETriangle, DataTypes.data());
 		tecplot::toolbox::ArgList Args;
@@ -1136,7 +1136,7 @@ int FESurface_c::SaveAsTriFEZone(string const & ZoneName,
 		CurrentArgList.appendArbParam(SV_IVALUE, FALSE);
 		TecUtilStyleSetLowLevelX(CurrentArgList.getRef());
 
-		vector<vector<double> > TmpValues(3, vector<double>(m_XYZList.size()));
+		vector<vector<float> > TmpValues(3, vector<float>(m_XYZList.size()));
 		for (int i = 0; i < m_XYZList.size(); ++i){
 			for (int j = 0; j < 3; ++j)
 				TmpValues[j][i] = m_XYZList[i][j];
@@ -1146,14 +1146,14 @@ int FESurface_c::SaveAsTriFEZone(string const & ZoneName,
 			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, XYZVarNums[i]);
 			IsOk = VALID_REF(SetFDPtr);
 			if (IsOk){
-				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_XYZList.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
+				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_XYZList.size(), TmpValues[i].data());
 			}
 		}
 		if (IsOk && m_RhoList.size() == m_XYZList.size()){
 			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, RhoVarNum);
 			IsOk = VALID_REF(SetFDPtr);
 			if (IsOk){
-				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_NumNodes, reinterpret_cast<void*>(const_cast<double*>(m_RhoList.data())));
+				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_NumNodes, m_RhoList.data());
 			}
 		}
 

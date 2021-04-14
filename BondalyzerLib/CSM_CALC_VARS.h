@@ -187,6 +187,7 @@ double NEBForceFunction(vec3 & Point,
 void CalcEberlyFunctions(Boolean_t IsPeriodic, AddOn_pa const & AddOnID, double const & RhoCutoff);
 
 void MapAllVarsToAllZones(AddOn_pa const & AddOnID);
+void MapAllVarsToAllZones(int SourceZoneNum, vector<int> const & XYZVarNums, vector<int> const & CopyVarNums, vector<int> const & DestZoneNums, AddOn_pa const & AddOnID);
 
 vector<double> LogLevels(double Min, double Max);
 

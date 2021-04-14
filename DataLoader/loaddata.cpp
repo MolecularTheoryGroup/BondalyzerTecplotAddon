@@ -332,7 +332,7 @@ Boolean_t LoadVASPData(){
 				PopulateAtomColorList(AtomColorList);
 				while (true){
 					if (!IsNumber(TmpStr)){
-						AtomGroupList.push_back(AtomGroup_s(TmpStr));
+						AtomGroupList.emplace_back(TmpStr);
 						AtomGroupList.back().AtomColor = GetAtomColor(AtomColorList, TmpStr);
 						InFile >> TmpStr;
 					}
@@ -347,7 +347,7 @@ Boolean_t LoadVASPData(){
 					NumAtoms += stoi(TmpStr);
 					NumAtomList.push_back(stoi(TmpStr));
 					if (!HasAtomTypes)
-						AtomGroupList.push_back(string(string("Atom " + to_string(AtomNum))));
+						AtomGroupList.emplace_back(string(string("Atom " + to_string(AtomNum))));
 					AtomGroupList[AtomNum - 1].Count = stoi(TmpStr);
 					InFile >> TmpStr;
 				}
@@ -703,9 +703,9 @@ Boolean_t LoadVASPData(){
 			int NCells = 1;
 			int NCellsX = NCells, NCellsY = NCells, NCellsZ = NCells;
 
-			TecGUITextFieldGetLgIndex(XNC_TFS_D2, &NCellsX);
-			TecGUITextFieldGetLgIndex(YNC_TFS_D2, &NCellsY);
-			TecGUITextFieldGetLgIndex(ZNC_TFS_D2, &NCellsZ);
+// 			TecGUITextFieldGetLgIndex(XNC_TFS_D2, &NCellsX);
+// 			TecGUITextFieldGetLgIndex(YNC_TFS_D2, &NCellsY);
+// 			TecGUITextFieldGetLgIndex(ZNC_TFS_D2, &NCellsZ);
 
 			TecUtilDataLoadEnd();
 
@@ -739,7 +739,7 @@ Boolean_t LoadVASPData(){
 			LgIndex_t TMz = Mz * NCellsZ;
 			TotNumPoints = TMx * TMy * TMz;
 			vector<FieldDataType_e> VarDataTypes;
-			VarDataTypes.resize(NumVars, FieldDataType_Double);
+			VarDataTypes.resize(NumVars, FieldDataType_Float);
 
 
 			if (TecUtilDataSetCreate("CHGCAR", VarNames, TRUE))
@@ -1367,7 +1367,7 @@ int LoadADFTape41ASCIIData(char* FileNameCStr)
 		TecUtilStringListAppendString(VarNames, T41VarList[i].NameStr.c_str());
 
 	vector<FieldDataType_e> VarDataTypes;
-	VarDataTypes.resize(T41VarList.size(), FieldDataType_Double);
+	VarDataTypes.resize(T41VarList.size(), FieldDataType_Float);
 
 	if (TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE)){
 		TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, VarDataTypes.data());
@@ -2237,7 +2237,7 @@ void LoadADFTape41Data(){
 			VarDataTypes.reserve(SelectedVarNums.size());
 			for (int i : SelectedVarNums){
 				if (T41DataSizes[i - 1] > 0)
-					VarDataTypes.push_back(FieldDataType_Double);
+					VarDataTypes.push_back(FieldDataType_Float);
 				else
 					VarDataTypes.push_back(FieldDataType_Bit);
 			}
@@ -2249,7 +2249,7 @@ void LoadADFTape41Data(){
 				VarDataTypes.reserve(SelectedVarNums.size());
 				for (int i : SelectedVarNums){
 					if (T41DataSizes[i - 1] > 0)
-						VarDataTypes.push_back(FieldDataType_Double);
+						VarDataTypes.push_back(FieldDataType_Float);
 					else
 						VarDataTypes.push_back(FieldDataType_Bit);
 				}
@@ -2266,7 +2266,7 @@ void LoadADFTape41Data(){
 					TecUtilStringDealloc(&TmpCStr);
 					if (Ind >= 0){
 						if (T41DataSizes[Ind] > 0)
-							VarDataTypes.push_back(FieldDataType_Double);
+							VarDataTypes.push_back(FieldDataType_Float);
 						else
 							VarDataTypes.push_back(FieldDataType_Bit);
 					}
@@ -2288,7 +2288,7 @@ void LoadADFTape41Data(){
 	}
 
 	vector<FieldDataType_e> ZoneDataTypes(VolZoneNum, FieldDataType_Bit);
-	ZoneDataTypes[VolZoneNum - 1] = FieldDataType_Double;
+	ZoneDataTypes[VolZoneNum - 1] = FieldDataType_Float;
 
 	Set_pa VolZoneSet = TecUtilSetAlloc(TRUE);
 	if (IsOk){
@@ -2314,7 +2314,7 @@ void LoadADFTape41Data(){
 					IsOk = TecUtilDataSetAddVar(CurrentVarName.c_str(), ZoneDataTypes.data());
 					if (IsOk){
 						VarNum = TecUtilDataSetGetNumVars();
-						VarDataTypes.push_back(FieldDataType_Double);
+						VarDataTypes.push_back(FieldDataType_Float);
 						IsOk = (VarNum > 0);
 					}
 				}
@@ -2336,8 +2336,15 @@ void LoadADFTape41Data(){
 				TecUtilMemoryChangeNotify(TempBufferMemoryKB + ImportBufferMemoryKB);
 				vector<double> TempBuffer(T41DataSizes[SelectedVarNums[i] - 1]);
 				IsOk = (getKFData(&GlobalKFFile, T41LoadKFVarStrings[SelectedVarNums[i] - 1].c_str(), TempBuffer.data()) > 0);
-				if (IsOk)
-					TecUtilDataValueArraySetByRef(VarRef, 1, T41DataSizes[SelectedVarNums[i] - 1], TempBuffer.data());
+				if (IsOk) {
+					if (sizeof(ImportType_t) == sizeof(double)) {
+						TecUtilDataValueArraySetByRef(VarRef, 1, T41DataSizes[SelectedVarNums[i] - 1], TempBuffer.data());
+					}
+					else{
+						vector<float> TmpFloatData(TempBuffer.begin(), TempBuffer.end());
+						TecUtilDataValueArraySetByRef(VarRef, 1, T41DataSizes[SelectedVarNums[i] - 1], TmpFloatData.data());
+					}
+				}
 
 				TecUtilMemoryChangeNotify(-(TempBufferMemoryKB + ImportBufferMemoryKB));
 			}
@@ -2652,7 +2659,8 @@ void SelVarsLoadData(){
 	if (FileType == ADFFile)
 		LoadADFTape41Files();
 	else
-		TecGUIDialogLaunch(Dialog2Manager);
+		NumCellsLoadData();
+// 		TecGUIDialogLaunch(Dialog2Manager);
 }
 
 void LoadBANDTape41Data(){
@@ -2776,9 +2784,9 @@ void LoadBANDTape41Data(){
 	int NCells = 1;
 	int NCellsX = NCells, NCellsY = NCells, NCellsZ = NCells;
 
-	TecGUITextFieldGetLgIndex(XNC_TFS_D2, &NCellsX);
-	TecGUITextFieldGetLgIndex(YNC_TFS_D2, &NCellsY);
-	TecGUITextFieldGetLgIndex(ZNC_TFS_D2, &NCellsZ);
+// 	TecGUITextFieldGetLgIndex(XNC_TFS_D2, &NCellsX);
+// 	TecGUITextFieldGetLgIndex(YNC_TFS_D2, &NCellsY);
+// 	TecGUITextFieldGetLgIndex(ZNC_TFS_D2, &NCellsZ);
 
 	LgIndex_t TotNumPoints = MaxI * MaxJ * MaxK;
 
@@ -2792,7 +2800,7 @@ void LoadBANDTape41Data(){
 		TecUtilStringListAppendString(VarNames, T41LoadUserVarStrings[SelectedVarNums[i] - 1].c_str());
 
 	vector<FieldDataType_e> VarDataTypes;
-	VarDataTypes.resize(SelectedVarNums.size(), FieldDataType_Double);
+	VarDataTypes.resize(SelectedVarNums.size(), FieldDataType_Float);
 
 	if (IsOk && TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE)){
 		IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), TMx, TMy, TMz, ZoneType_Ordered, VarDataTypes.data());
@@ -3690,7 +3698,7 @@ void ImportAdditionalTape41Files(Boolean_t MatchZones, Boolean_t MatchDataSet){
 		string FileName, FullPath, ZoneName, InDataSetName;
 		EntIndex_t ZoneNum;
 		int MaxIJK[3], InNumPoints = 0;
-		vector<FieldDataType_e> DataTypes(NumZones, FieldDataType_Double);
+		vector<FieldDataType_e> DataTypes(NumZones, FieldDataType_Float);
 
 		TecUtilDataLoadBegin();
 
@@ -4123,7 +4131,7 @@ Boolean_t LoadADFTape21(){
 		 *	Add the atoms as zones for each type
 		 */
 
-		vector<FieldDataType_e> TypeVec(4, FieldDataType_Double);
+		vector<FieldDataType_e> TypeVec(4, FieldDataType_Float);
 		TypeVec[3] = FieldDataType_Bit;
 
 		ZoneSet = TecUtilSetAlloc(TRUE);
@@ -4464,7 +4472,7 @@ Boolean_t LoadADFTape21(){
 				BondPathZones = TecUtilSetAlloc(TRUE);
 				vector<GradPathBase_c> BPs(NumBPs);
 
-				TypeVec.resize(RhoVarNum, FieldDataType_Double);
+				TypeVec.resize(RhoVarNum, FieldDataType_Float);
 				TypeVec[RhoVarNum - 2] = FieldDataType_Bit;
 
 				double MinMaxRho[2] = { 1e100, -1e100 };
@@ -4991,12 +4999,12 @@ void LoadGaussianCubeFiles()
 			EntIndex_t ZoneNum, VolZoneNum = -1;
 			if (IsOk){
 				if (ReplaceDataSet){
-					VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Double);
+					VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
 					IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
 				}
 				else{
 					if (!TecUtilDataSetIsAvailable()){
-						VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Double);
+						VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
 						IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
 					}
 					else{
@@ -5008,7 +5016,7 @@ void LoadGaussianCubeFiles()
 							int Ind = SearchVectorForString(VarNameStrs, TmpCStr, true);
 							TecUtilStringDealloc(&TmpCStr);
 							if (Ind >= 0)
-								VarDataTypes.push_back(FieldDataType_Double);
+								VarDataTypes.push_back(FieldDataType_Float);
 							else
 								VarDataTypes.push_back(FieldDataType_Bit);
 						}
@@ -5029,7 +5037,7 @@ void LoadGaussianCubeFiles()
 			}
 
 			vector<FieldDataType_e> ZoneDataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Bit);
-			ZoneDataTypes[VolZoneNum - 1] = FieldDataType_Double;
+			ZoneDataTypes[VolZoneNum - 1] = FieldDataType_Float;
 
 			StatusDrop(AddOnID);
 
@@ -6099,6 +6107,7 @@ void LoadFLAPWCHARGEFiles() {
 	LatticeVector.at(1, 1) = dy;
 	LatticeVector.at(2, 2) = dz;
 	vec3 Origin = zeros<vec>(3);
+	Origin = (LatticeVector * vec3({ nx - 1., ny - 1., nz - 1. })) * -0.5;
 	string StatusStr = "Loading FLAPW data: " + DataSetName;
 	StatusLaunch(StatusStr, AddOnID, TRUE);
 
@@ -6660,7 +6669,7 @@ void LoadTurboMoleCubeFiles()
 						VolZoneNum = ZoneNumByName("Full Volume");
 					}
 					if (VolZoneNum <= 0){
-						IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Double).data());
+						IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Float).data());
 						if (IsOk){
 							VolZoneNum = TecUtilDataSetGetNumZones();
 							IsOk = VolZoneNum > 0;
@@ -6670,7 +6679,7 @@ void LoadTurboMoleCubeFiles()
 			}
 
 			vector<FieldDataType_e> ZoneDataTypes(TecUtilDataSetGetNumZones(), FieldDataType_Bit);
-			ZoneDataTypes[VolZoneNum - 1] = FieldDataType_Double;
+			ZoneDataTypes[VolZoneNum - 1] = FieldDataType_Float;
 
 			StatusDrop(AddOnID);
 

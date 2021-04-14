@@ -213,9 +213,9 @@ static void STDCALL LoadBANDTape41MenuCallback(void)
 	if (!TecUtilDataSetIsAvailable())
 	{
 		BuildDialog1(MAINDIALOGID);
-		BuildDialog2(MAINDIALOGID);
+// 		BuildDialog2(MAINDIALOGID);
 		if (GetTape41FileNames(FALSE) == Loading)
-			TecGUIDialogLaunch(Dialog1Manager);
+			TecGUIDialogLaunch(Dialog1Manager);    
 	}
 	else
 	{
@@ -229,9 +229,10 @@ static void STDCALL LoadCHGCARMenuCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (!TecUtilDataSetIsAvailable())
 	{
-		BuildDialog2(MAINDIALOGID);
+// 		BuildDialog2(MAINDIALOGID);
 		if (GetCHGCARFileName())
-			TecGUIDialogLaunch(Dialog2Manager);
+			NumCellsLoadData();
+// 			TecGUIDialogLaunch(Dialog2Manager);
 	}
 	else
 	{
@@ -245,9 +246,10 @@ static void STDCALL LoadAECCARMenuCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (!TecUtilDataSetIsAvailable())
 	{
-		BuildDialog2(MAINDIALOGID);
+// 		BuildDialog2(MAINDIALOGID);
 		if (GetAECCARFileNames())
-			TecGUIDialogLaunch(Dialog2Manager);
+			NumCellsLoadData();
+// 			TecGUIDialogLaunch(Dialog2Manager);
 	}
 	else
 	{

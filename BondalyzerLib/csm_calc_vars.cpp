@@ -117,7 +117,7 @@ void CalcGradGradMagForDataset(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 
 	EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 	vector<FieldDataType_e> DataType;
-	DataType.resize(NumZones, FieldDataType_Double);
+	DataType.resize(NumZones, FieldDataType_Float);
 
 	vector<ValueLocation_e> DataLoc(NumZones, ValueLocation_Nodal);
 
@@ -1012,7 +1012,7 @@ void CalcHessForDataSet(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 
 	EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 	vector<FieldDataType_e> DataType;
-	DataType.resize(NumZones, FieldDataType_Double);
+	DataType.resize(NumZones, FieldDataType_Float);
 
 	vector<ValueLocation_e> DataLoc(NumZones, ValueLocation_Nodal);
 
@@ -1206,98 +1206,122 @@ Boolean_t CalcEigenSystemForPoint(vec3 & Point,
 {
 	Boolean_t IsOk = TRUE;
 
-	if (RootParams.Index < 0 && !SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo))
-		// 	if (!SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo))
-		return FALSE;
-
-	int NumDirs = sqrt(RootParams.BasisVectors->size());
-
 	mat33 Hessian;
 
-	// 	/*
-	// 	*	Prepare gsl data structures for the Hessian and eigen vector matrices
-	// 	*	and eigen value vector.
-	// 	*/
-	// 	gsl_matrix * Hess = gsl_matrix_alloc(NumDirs, NumDirs);
-	// 	gsl_matrix * EigVecs = gsl_matrix_alloc(NumDirs, NumDirs);
-	// 	gsl_vector * EigVals = gsl_vector_alloc(NumDirs);
+	if (RootParams.AgitationFactor < 0 || RootParams.VolInfo2 == nullptr || RootParams.RhoPtr2 == nullptr) {
+		if (RootParams.Index < 0 && !SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo))
+			// 	if (!SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo))
+			return FALSE;
 
-	/*
-	*	Populate the Hessian matrix.
-	*/
+		int NumDirs = sqrt(RootParams.BasisVectors->size());
 
-	if (RootParams.HasHess && NumDirs >= 3){
+
+		// 	/*
+		// 	*	Prepare gsl data structures for the Hessian and eigen vector matrices
+		// 	*	and eigen value vector.
+		// 	*/
+		// 	gsl_matrix * Hess = gsl_matrix_alloc(NumDirs, NumDirs);
+		// 	gsl_matrix * EigVecs = gsl_matrix_alloc(NumDirs, NumDirs);
+		// 	gsl_vector * EigVals = gsl_vector_alloc(NumDirs);
+
 		/*
-		*	Analytical Hessian available, so use that.
+		*	Populate the Hessian matrix.
 		*/
 
-		int HessIndices[3][3] = {
-			{ 0, 1, 2 },
-			{ 1, 3, 4 },
-			{ 2, 4, 5 }
-		};
+		if (RootParams.HasHess && NumDirs >= 3) {
+			/*
+			*	Analytical Hessian available, so use that.
+			*/
 
-		for (int i = 0; i < 3; ++i)
-		for (int j = 0; j < 3; ++j)
-		if (RootParams.Index >= 0)
-			Hessian.at(i, j) = RootParams.HessPtrs->at(HessIndices[i][j])[RootParams.Index];
-		// 					gsl_matrix_set(Hess, i, j, RootParams.HessPtrs->at(HessIndices[i][j])[RootParams.Index]);
-		else
-			Hessian.at(i, j) = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, RootParams.HessPtrs->at(HessIndices[i][j]));
-		// 					gsl_matrix_set(Hess, i, j, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, RootParams.HessPtrs->at(HessIndices[i][j])));
-	}
-	else{
-		/*
-		*	No analytical Hessian, so need to find derivative numerically.
-		*	Need to do it manually, since the GSL solver doesn't know not to
-		*	go beyond the bounds of the system.
-		*/
-		if (!RootParams.HasGrad){
-			CalcHessForPoint(Point,
-				RootParams.VolInfo->PointSpacingV123,
-				*RootParams.VolInfo,
-				*RootParams.BasisVectors,
-				RootParams.IsPeriodic,
-				Hessian,
-				*RootParams.RhoPtr,
-				GPType_Invalid,
-				reinterpret_cast<void*>(&RootParams));
+			int HessIndices[3][3] = {
+				{ 0, 1, 2 },
+				{ 1, 3, 4 },
+				{ 2, 4, 5 }
+			};
+
+			for (int i = 0; i < 3; ++i)
+				for (int j = 0; j < 3; ++j)
+					if (RootParams.Index >= 0)
+						Hessian.at(i, j) = RootParams.HessPtrs->at(HessIndices[i][j])[RootParams.Index];
+			// 					gsl_matrix_set(Hess, i, j, RootParams.HessPtrs->at(HessIndices[i][j])[RootParams.Index]);
+					else
+						Hessian.at(i, j) = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, RootParams.HessPtrs->at(HessIndices[i][j]));
+			// 					gsl_matrix_set(Hess, i, j, ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, RootParams.HessPtrs->at(HessIndices[i][j])));
 		}
-		else{
-			if (NumDirs >= 3){
-				if (RootParams.HasGrad){
-					CalcHessFor3DPoint(Point,
-						RootParams.VolInfo->PointSpacingV123,
-						*RootParams.VolInfo,
-						RootParams.IsPeriodic,
-						Hessian,
-						*RootParams.GradPtrs,
-						GPType_Invalid,
-						reinterpret_cast<void*>(&RootParams));
-				}
-
-
-				// 			for (int i = 0; i < NumDirs; ++i)
-				// 				for (int j = 0; j < NumDirs; ++j)
-				// 					gsl_matrix_set(Hess, i, j, OutHess[i][j]);
-			}
-			else{
+		else {
+			/*
+			*	No analytical Hessian, so need to find derivative numerically.
+			*	Need to do it manually, since the GSL solver doesn't know not to
+			*	go beyond the bounds of the system.
+			*/
+			if (!RootParams.HasGrad) {
 				CalcHessForPoint(Point,
 					RootParams.VolInfo->PointSpacingV123,
 					*RootParams.VolInfo,
 					*RootParams.BasisVectors,
 					RootParams.IsPeriodic,
 					Hessian,
-					RootParams.GradPtrs->at(0),
+					*RootParams.RhoPtr,
 					GPType_Invalid,
 					reinterpret_cast<void*>(&RootParams));
-
-				// 			for (int i = 0; i < NumDirs; ++i)
-				// 				for (int j = 0; j < NumDirs; ++j)
-				// 					gsl_matrix_set(Hess, i, j, OutHess[i][j]);
 			}
-		}
+			else {
+				if (NumDirs >= 3) {
+					if (RootParams.HasGrad) {
+						CalcHessFor3DPoint(Point,
+							RootParams.VolInfo->PointSpacingV123,
+							*RootParams.VolInfo,
+							RootParams.IsPeriodic,
+							Hessian,
+							*RootParams.GradPtrs,
+							GPType_Invalid,
+							reinterpret_cast<void*>(&RootParams));
+					}
 
+
+					// 			for (int i = 0; i < NumDirs; ++i)
+					// 				for (int j = 0; j < NumDirs; ++j)
+					// 					gsl_matrix_set(Hess, i, j, OutHess[i][j]);
+				}
+				else {
+					CalcHessForPoint(Point,
+						RootParams.VolInfo->PointSpacingV123,
+						*RootParams.VolInfo,
+						*RootParams.BasisVectors,
+						RootParams.IsPeriodic,
+						Hessian,
+						RootParams.GradPtrs->at(0),
+						GPType_Invalid,
+						reinterpret_cast<void*>(&RootParams));
+
+					// 			for (int i = 0; i < NumDirs; ++i)
+					// 				for (int j = 0; j < NumDirs; ++j)
+					// 					gsl_matrix_set(Hess, i, j, OutHess[i][j]);
+				}
+			}
+
+		}
+	}
+	else{
+		if (RootParams.Index < 0 && !SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo2))
+			// 	if (!SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo))
+			return FALSE;
+
+		int NumDirs = sqrt(RootParams.VolInfo2->BasisVectors.size());
+
+		/*
+		*	Populate the Hessian matrix.
+		*/
+
+		CalcHessForPoint(Point,
+			RootParams.VolInfo2->PointSpacingV123,
+			*RootParams.VolInfo2,
+			RootParams.VolInfo2->BasisVectors,
+			FALSE,
+			Hessian,
+			*RootParams.RhoPtr2,
+			GPType_Invalid,
+			reinterpret_cast<void*>(&RootParams));
 	}
 
 	// 	// Setup the GSL eigensystem workspace
@@ -1453,7 +1477,7 @@ void CalcEigenSystemForDataSet(Boolean_t IsPeriodic, AddOn_pa const & AddOnID){
 
 	EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 	vector<FieldDataType_e> DataType;
-	DataType.resize(NumZones, FieldDataType_Double);
+	DataType.resize(NumZones, FieldDataType_Float);
 
 	vector<ValueLocation_e> DataLoc(NumZones, ValueLocation_Nodal);
 
@@ -1645,7 +1669,7 @@ void CalcEigenvecDotGradForDataSet(Boolean_t IsPeriodic,
 
 	EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 	vector<FieldDataType_e> DataType;
-	DataType.resize(NumZones, FieldDataType_Double);
+	DataType.resize(NumZones, FieldDataType_Float);
 
 	vector<ValueLocation_e> DataLoc(NumZones, ValueLocation_Nodal);
 
@@ -1973,7 +1997,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, AddOn_pa const & AddOnID, double 
 	{
 		EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 		vector<FieldDataType_e> DataType;
-		DataType.resize(NumZones, FieldDataType_Double);
+		DataType.resize(NumZones, FieldDataType_Float);
 
 		vector<ValueLocation_e> DataLoc(NumZones, ValueLocation_Nodal);
 
@@ -2036,7 +2060,7 @@ void CalcEberlyFunctions(Boolean_t IsPeriodic, AddOn_pa const & AddOnID, double 
 	{
 		EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 		vector<FieldDataType_e> DataType;
-		DataType.resize(NumZones, FieldDataType_Double);
+		DataType.resize(NumZones, FieldDataType_Float);
 
 		vector<ValueLocation_e> DataLoc(NumZones, ValueLocation_Nodal);
 
@@ -2259,6 +2283,143 @@ void MapAllVarsToAllZones(AddOn_pa const & AddOnID)
 	TecUtilLockFinish(AddOnID);
 }
 
+void MapAllVarsToAllZones(int SourceZoneNum, vector<int> const & XYZVarNums, vector<int> const & CopyVarNums, vector<int> const & DestZoneNums, AddOn_pa const & AddOnID)
+{
+	REQUIRE(SourceZoneNum >= 1 && SourceZoneNum <= TecUtilDataSetGetNumZones());
+	for (auto const & i : XYZVarNums){
+		REQUIRE(i >= 1 && i <= TecUtilDataSetGetNumVars());
+	}
+	for (auto const & i : CopyVarNums) {
+		REQUIRE(i >= 1 && i <= TecUtilDataSetGetNumVars());
+	}
+	for (auto const & i : DestZoneNums) {
+		REQUIRE(i >= 1 && i <= TecUtilDataSetGetNumZones());
+	}
+
+	SYSTEM_INFO sysinfo;
+	GetSystemInfo(&sysinfo);
+
+	int numCPU = sysinfo.dwNumberOfProcessors;
+	omp_set_num_threads(numCPU);
+
+	TecUtilLockStart(AddOnID);
+
+	// 	char tmpStr[100];
+	// 	sprintf(tmpStr, "Vol zone = %d, x/y/z var nums = %d/%d/%d", VolZoneNum, XYZVarNums[0], XYZVarNums[1], XYZVarNums[2]);
+	// 	TecUtilDialogMessageBox(tmpStr, MessageBoxType_Information);
+
+	VolExtentIndexWeights_s VolInfo;
+	VolInfo.AddOnID = AddOnID;
+	int VolZoneNum = SourceZoneNum;
+	GetVolInfo(VolZoneNum, XYZVarNums, FALSE, VolInfo);
+	VolInfo.IsPeriodic = FALSE;
+
+
+	vector<VolExtentIndexWeights_s> ThreadVolInfo(numCPU, VolInfo);
+
+	Boolean_t IsOk = TRUE;
+
+
+	vector<LgIndex_t> ZoneMaxIJK(3);
+
+	vector<FieldDataPointer_c> VolReadPtrs;
+	VolReadPtrs.reserve(CopyVarNums.size());
+	TecUtilDataLoadBegin();
+
+	for (int const & i : CopyVarNums) {
+		VolReadPtrs.push_back(FieldDataPointer_c());
+		VolReadPtrs.back().InitializeReadPtr(VolZoneNum, i);
+	}
+
+	for (auto & ChkPtr : VolReadPtrs) {
+		if (ChkPtr.IsReady()) {
+			bool HasUniqueVals = false;
+
+			for (int i = 0; i < MIN(4, ChkPtr.Size() - 1) && !HasUniqueVals; ++i) {
+				for (int j = i + 1; j < MIN(5, ChkPtr.Size()) && !HasUniqueVals; ++j) {
+					HasUniqueVals = (ChkPtr[j] != ChkPtr[i]);
+				}
+			}
+
+			if (!HasUniqueVals) ChkPtr.Close();
+		}
+	}
+
+	string StatusStr = "Mapping all variables to each zone";
+	StatusLaunch(StatusStr.c_str(), AddOnID, TRUE);
+
+	int zoneIter = 0;
+	for (int const ZoneNum : DestZoneNums) {
+		zoneIter++;
+		if (ZoneNum != VolZoneNum) {
+			IsOk = StatusUpdate(zoneIter, DestZoneNums.size(), StatusStr, AddOnID);
+			if (IsOk) {
+				vector<FieldDataPointer_c> ZoneWritePtrs;
+				ZoneWritePtrs.reserve(DestZoneNums.size());
+				FieldVecPointer_c DestXYZ;
+				DestXYZ.InitializeReadPtr(ZoneNum, XYZVarNums);
+
+				for (int const & i : CopyVarNums) {
+					ZoneWritePtrs.push_back(FieldDataPointer_c());
+					IsOk = ZoneWritePtrs.back().InitializeWritePtr(ZoneNum, i);
+				}
+
+				TecUtilZoneGetIJK(ZoneNum, &ZoneMaxIJK[0], &ZoneMaxIJK[1], &ZoneMaxIJK[2]);
+
+				if (TecUtilZoneIsOrdered(ZoneNum)) {
+#ifndef DEBUG
+#pragma omp parallel for
+#endif
+					for (int ii = 1; ii <= ZoneMaxIJK[0]; ++ii) {
+						int ThreadNum = omp_get_thread_num();
+						int Index;
+						double ReadVal, WriteVal;
+
+						for (int jj = 1; jj <= ZoneMaxIJK[1]; ++jj) {
+							for (int kk = 1; kk <= ZoneMaxIJK[2]; ++kk) {
+								Index = IndexFromIJK(ii, jj, kk, ZoneMaxIJK[0], ZoneMaxIJK[1]) - 1;
+
+								SetIndexAndWeightsForPoint(DestXYZ[Index], ThreadVolInfo[ThreadNum]);
+
+								for (int Var = 0; Var < ZoneWritePtrs.size(); ++Var) {
+									ReadVal = ValByCurrentIndexAndWeightsFromRawPtr(ThreadVolInfo[ThreadNum], VolReadPtrs[Var]);
+									WriteVal = ZoneWritePtrs[Var][Index];
+									// 									if (WriteVal != 0)
+									ZoneWritePtrs[Var].Write(Index, ReadVal);
+								}
+							}
+						}
+					}
+				}
+				else if (TecUtilZoneIsFiniteElement(ZoneNum)) {
+#ifndef DEBUG
+#pragma omp parallel for
+#endif
+					for (int ii = 1; ii <= ZoneMaxIJK[0]; ++ii) {
+						int ThreadNum = omp_get_thread_num();
+						double ReadVal, WriteVal;
+
+						SetIndexAndWeightsForPoint(DestXYZ[ii-1], ThreadVolInfo[ThreadNum]);
+
+						for (int Var = 0; Var < ZoneWritePtrs.size(); ++Var) {
+							ReadVal = ValByCurrentIndexAndWeightsFromRawPtr(ThreadVolInfo[ThreadNum], VolReadPtrs[Var]);
+							WriteVal = ZoneWritePtrs[Var][ii - 1];
+							// 							if (WriteVal != 0)
+							ZoneWritePtrs[Var].Write(ii - 1, ReadVal);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	StatusDrop(AddOnID);
+
+	TecUtilDataLoadEnd();
+
+	TecUtilLockFinish(AddOnID);
+}
+
 
 void CalcVars(CalcVarsOptions_s & Opt)
 {
@@ -2282,7 +2443,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 	}
 	vector<ValueLocation_e> DataLoc(NumZones, ValueLocation_Nodal);
 	vector<FieldDataType_e> DataType;
-	DataType.resize(NumZones, FieldDataType_Double);
+	DataType.resize(NumZones, FieldDataType_Float);
 
 
 	/*
@@ -2318,7 +2479,7 @@ void CalcVars(CalcVarsOptions_s & Opt)
 		if (TecUtilZoneIsOrdered(i)){
 			int IJK[3];
 			TecUtilZoneGetIJK(i, &IJK[0], &IJK[1], &IJK[2]);
-			if (IJK[2] > 1){
+			if (IJK[0] > 1 && IJK[1] > 1 && IJK[2] > 1){
 				vector<vec3> TmpMinMaxXYZ = ZoneXYZVarGetMinMax_Ordered3DZone(XYZVarNums, i);
 				if (sum(TmpMinMaxXYZ[1] > MaxXYZ) == 3 && sum(TmpMinMaxXYZ[0] < MinXYZ) == 3){
 					VolZoneNum = i;

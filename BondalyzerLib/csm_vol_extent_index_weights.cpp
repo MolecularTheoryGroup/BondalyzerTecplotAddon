@@ -96,6 +96,32 @@ Boolean_t GetVolInfo(int VolZoneNum,
 	return TRUE;
 }
 
+Boolean_t InitializeVolInfo(vector<unsigned long long> const & MaxIJK,
+	vec3 const & MinXYZ,
+	vec3 const & MaxXYZ,
+	mat33 const & BasisVectors,
+	vec3 const & PointSpacingV123,
+	VolExtentIndexWeights_s & VolInfo)
+{
+	VolInfo.MaxIJK = vector<int>(MaxIJK.begin(), MaxIJK.end());
+	VolInfo.MinXYZ = MinXYZ;
+	VolInfo.MaxXYZ = MaxXYZ;
+	VolInfo.BasisVectors = BasisVectors;
+	VolInfo.PointSpacingV123 = PointSpacingV123;
+	for (int i = 0; i < 3; ++i){
+		VolInfo.BasisExtent[i] = norm(BasisVectors.col(i));
+	}
+
+	for (int i = 0; i < 3; ++i) REQUIRE(VolInfo.MaxIJK[i] >= 3); // if less than 3 points, can't do numerical gradients (if necessary)
+
+	VolInfo.BasisInverse = mat33(VolInfo.BasisVectors.i());
+	VolInfo.BasisNormalized = mat33(normalise(VolInfo.BasisVectors));
+	VolInfo.IsRectilinear = approx_equal(mat33({ {1,0,0},{0,1,0},{0,0,1} }), VolInfo.BasisNormalized, "absdiff", 1e-14);
+	VolInfo.IsPeriodic = FALSE;
+
+	return TRUE;
+}
+
 Boolean_t SetIndexAndWeightsForPoint(vec3 Point, VolExtentIndexWeights_s & VolZoneInfo)
 {
 
@@ -103,7 +129,8 @@ Boolean_t SetIndexAndWeightsForPoint(vec3 Point, VolExtentIndexWeights_s & VolZo
 	/*
 	*	Transform the point into the UVW coordinate system
 	*/
-	Point = VolZoneInfo.BasisInverse * (Point - VolZoneInfo.MinXYZ);
+	vec3 OldPoint = Point;
+	Point = VolZoneInfo.BasisInverse * (OldPoint - VolZoneInfo.MinXYZ);
 
 	if (VolZoneInfo.IsPeriodic){
 		for (int i = 0; i < 3; ++i){
