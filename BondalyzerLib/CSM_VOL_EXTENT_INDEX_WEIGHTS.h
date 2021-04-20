@@ -47,6 +47,15 @@ struct VolExtentIndexWeights_s{
 		return this->BasisVectors * UVW + this->MinXYZ;
 	}
 
+	unsigned long long int NumPts() const {
+		if (MaxIJK.size() == 3){
+			return MaxIJK[0] * MaxIJK[1] * MaxIJK[2];
+		}
+		else{
+			return 0;
+		}
+	}
+
 	bool PointIsInterior(vec3 const & r){
 		vec3 CheckPt = this->XYZ_to_Fractional(r);
 		for (int i = 0; i < 3; ++i){

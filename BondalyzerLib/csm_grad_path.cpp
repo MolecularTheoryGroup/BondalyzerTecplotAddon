@@ -2681,7 +2681,7 @@ Boolean_t GradPath_c::SetupGradPath(vec3 const & StartPoint,
 	if (TermValue != nullptr)
 		m_TermValue = *TermValue;
 
-	m_ODE_Data.VolZoneInfo = VolInfo;
+	m_ODE_Data.VolZoneInfo = VolExtentIndexWeights_s(VolInfo);
 
 	m_ODE_Data.HessPtrs = HessPtrs;
 	m_ODE_Data.HasHess = HessPtrs.size() == 6;
@@ -2719,7 +2719,7 @@ Boolean_t GradPath_c::SetupGradPath(vec3 const & StartPoint,
 	m_GradPathMade = FALSE;
 
 	if (m_GradPathReady){
-		int GPSize = GP_NumPointsBufferFactor * m_NumGPPoints;
+		int GPSize = MIN(GP_MaxNumPoints, GP_NumPointsBufferFactor * m_NumGPPoints);
 		m_XYZList.reserve(GPSize);
 		m_RhoList.reserve(GPSize);
 	}
@@ -2939,7 +2939,8 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 					}
 				}
 
-				double Rho = RhoByCurrentIndexAndWeights();
+// 				double Rho = RhoByCurrentIndexAndWeights();
+				double Rho = this->m_ODE_Data.RhoPtr.At(PtI, this->m_ODE_Data.VolZoneInfo);
 
 				if (m_HowTerminate == GPTerminate_AtRhoValue && Rho < m_TermValue){
 					double OldRho;

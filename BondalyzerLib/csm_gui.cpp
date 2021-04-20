@@ -287,6 +287,80 @@ void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
 	TecUtilLockFinish(*AddOnID);
 }
 
+
+void CSMGuiSelectPointsWithinRadius(AddOn_pa *AddOnID) {
+	if (AddOnID == nullptr) AddOnID = &CSMGuiAddOnID;
+	TecUtilLockStart(*AddOnID);
+	if (CSMGuiMultiListID != BADDIALOGID) {
+		LgIndex_t * SelectedItems;
+		LgIndex_t NumSelected;
+		TecGUIListGetSelectedItems(CSMGuiMultiListID, &SelectedItems, &NumSelected);
+		if (NumSelected > 0) {
+			vector<vec3> SelectedPoints, AllPoints;
+
+			SelectedPoints.reserve(NumSelected);
+			for (int i = 0; i < NumSelected; ++i) {
+				vec3 Point = GetPointCoordsFromListItem(SelectedItems[i], CSMGuiPointSelectZoneNum);
+				SelectedPoints.push_back(Point);
+			}
+
+			int NumPoints = TecGUIListGetItemCount(CSMGuiMultiListID);
+			AllPoints.reserve(NumPoints);
+			for (int i = 1; i <= NumPoints; ++i) {
+				vec3 Point = GetPointCoordsFromListItem(i, CSMGuiPointSelectZoneNum);
+				AllPoints.push_back(Point);
+			}
+
+			// Get radius from user
+			double Radius = -1.;
+			while (Radius < 0.) {
+				char * cStr;
+				if (TecUtilDialogGetSimpleText("Select CPs around selected CPs within radius:", "4.0", &cStr)) {
+					if (StringIsFloat(cStr) || StringIsInt(cStr)) {
+						Radius = atof(cStr);
+					}
+					else {
+						TecUtilDialogErrMsg("Please enter positive number");
+					}
+					TecUtilStringDealloc(&cStr);
+				}
+				else{
+					Radius = -1;
+					break;
+				}
+			}
+			double RadiusSqr = Radius * Radius;
+
+			// Now loop over points of associated CP zone to select those with
+			// specified distance. (Would like to do all CPs, but this way
+			// one can select only a particular type of CP, which is nice.
+			// 
+			vector<LgIndex_t> NewSelectedItems;
+			for (int i = 0; i < AllPoints.size(); ++i){
+				auto const & p1 = AllPoints[i];
+				for (auto const & p2 : SelectedPoints){
+					if (DistSqr(p1,p2) <= RadiusSqr){
+						NewSelectedItems.push_back(i + 1);
+						break;
+					}
+				}
+			}
+
+			TecGUIListSetSelectedItems(CSMGuiMultiListID, NewSelectedItems.data(), NewSelectedItems.size());
+		}
+		TecUtilArrayDealloc((void **)&SelectedItems);
+	}
+	TecUtilMouseSetMode(MouseButtonMode_Select);
+	TecUtilLockFinish(*AddOnID);
+}
+
+void CSMGuiSelectPointsWithinRadiusButtonCB(){
+	CSMGuiSelectPointsWithinRadius(&CSMGuiAddOnID);
+	CSMGuiLabelSelectedPoints(&CSMGuiAddOnID);
+}
+
+
+
 void CSMGuiPointSelectMultiListCallback(const LgIndex_t* Val){
 	TecUtilLockStart(CSMGuiAddOnID);
 	if (CSMGuiMultiListIsPointSelect){
@@ -886,6 +960,39 @@ void(STDCALL *CSMGuiPointSelectProbeCBs[])(Boolean_t WasSuccessful,
 	CSMGuiPointSelectProbeCB4
 };
 
+void CSMGuiSelectPointsWithinRadiusButtonCB0() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[0];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[0];
+	CSMGuiSelectPointsWithinRadiusButtonCB();
+}
+void CSMGuiSelectPointsWithinRadiusButtonCB1() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[1];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[1];
+	CSMGuiSelectPointsWithinRadiusButtonCB();
+}
+void CSMGuiSelectPointsWithinRadiusButtonCB2() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[2];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[2];
+	CSMGuiSelectPointsWithinRadiusButtonCB();
+}
+void CSMGuiSelectPointsWithinRadiusButtonCB3() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[3];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[3];
+	CSMGuiSelectPointsWithinRadiusButtonCB();
+}
+void CSMGuiSelectPointsWithinRadiusButtonCB4() {
+	CSMGuiMultiListID = CSMGuiMultiListIDs[4];
+	CSMGuiMultiListIsPointSelect = CSMGuiMultiListIsPointSelects[4];
+	CSMGuiSelectPointsWithinRadiusButtonCB();
+}
+void(*CSMGuiSelectPointsWithinRadiusButtonCBs[])() = {
+	CSMGuiSelectPointsWithinRadiusButtonCB0,
+	CSMGuiSelectPointsWithinRadiusButtonCB1,
+	CSMGuiSelectPointsWithinRadiusButtonCB2,
+	CSMGuiSelectPointsWithinRadiusButtonCB3,
+	CSMGuiSelectPointsWithinRadiusButtonCB4
+};
+
 
 void CSMLaunchGui(string const & Title, 
 	vector<GuiField_c> const & Fields)
@@ -1059,13 +1166,15 @@ void CSMLaunchGui(string const & Title,
 				if (t == Gui_ZonePointSelectMulti){
 					TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Select with mouse", CSMGuiPointSelectButtonCBs[ListIDInd]);
 					Y += LineHeight * 1.5;
+					TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Select within radius", CSMGuiSelectPointsWithinRadiusButtonCBs[ListIDInd]);
+					Y += LineHeight * 1.5;
 				}
 				TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Invert selection", CSMGuiMultiListInvertSelectionButtonCallBacks[ListIDInd]);
 				Y += LineHeight * 1.5;
 				TecGUIButtonAdd(CSMGuiDialogManager, X, Y - LineHeight * 0.1, CharWidth * 16, LineHeight * 1.2, "Toggle all", CSMGuiMultiListSelectAllButtonCallBacks[ListIDInd]);
 				if (t == Gui_ZonePointSelectMulti){
 					int Val = MAX(1, FieldZoneVarNums[fNum].back());
-					CSMGuiPointSelectOptionCallback(&Val);
+					CSMGuiPointSelectOptionCallbacks[ListIDInd](&Val);
 				}
 				else for (auto const & s : ListItems) TecGUIListAppendItem(f.GetID(), s.c_str());
 				if (t != Gui_ZonePointSelectMulti && FieldZoneVarNums[fNum].size() > 0){

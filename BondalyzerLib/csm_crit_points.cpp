@@ -950,6 +950,20 @@ int F3D(gsl_vector const * pos, void * params, gsl_vector * GradValues){
 	return GSL_SUCCESS;
 }
 
+
+static int
+singular(const gsl_matrix * LU)
+{
+	size_t i, n = LU->size1;
+
+	for (i = 0; i < n; i++)
+	{
+		double u = gsl_matrix_get(LU, i, i);
+		if (u == 0) return 1;
+	}
+
+	return 0;
+}
 /*
 *	Function to return the derivatives (jacobian matrix of gradient, ie Hessian of rho)
 */
@@ -959,6 +973,7 @@ int DF3D(gsl_vector const * pos, void * params, gsl_matrix * Jacobian){
 	MultiRootParams_s * RootParams = reinterpret_cast<MultiRootParams_s*>(params);
 
 	vec3 Point(pos->data);
+	mat33 Hess;
 
 	if (RootParams->AgitationFactor < 0 || RootParams->VolInfo2 == nullptr || RootParams->RhoPtr2 == nullptr) {
 		if (!SetIndexAndWeightsForPoint(Point, *RootParams->VolInfo))
@@ -990,7 +1005,6 @@ int DF3D(gsl_vector const * pos, void * params, gsl_matrix * Jacobian){
 			*	Need to do it manually, since the GSL solver doesn't know not to
 			*	go beyond the bounds of the system.
 			*/
-			mat33 Hess;
 			if (RootParams->HasGrad) {
 				CalcHessFor3DPoint(Point,
 					RootParams->VolInfo->PointSpacingV123,
@@ -1026,7 +1040,6 @@ int DF3D(gsl_vector const * pos, void * params, gsl_matrix * Jacobian){
 		*	Need to do it manually, since the GSL solver doesn't know not to
 		*	go beyond the bounds of the system.
 		*/
-		mat33 Hess;
 		CalcHessForPoint(Point,
 			RootParams->VolInfo2->PointSpacingV123,
 			*RootParams->VolInfo2,
@@ -1037,7 +1050,13 @@ int DF3D(gsl_vector const * pos, void * params, gsl_matrix * Jacobian){
 			GPType_Invalid,
 			params);
 
-		for (int i = 0; i < 3; ++i) for (int j = 0; j < 3; ++j) gsl_matrix_set(Jacobian, i, j, Hess.at(i, j));
+		
+	}
+	if (singular(Jacobian)){
+#ifdef _DEBUG
+		Hess = mat33(Jacobian->data);
+#endif
+		return GSL_ESANITY;
 	}
 
 	return GSL_SUCCESS;
@@ -1744,14 +1763,14 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 	vector<int> StartPt(3, 0), EndPt = NumPtsXYZ;
 
 	if (!VolInfo.IsPeriodic){
-		for (auto & i : StartPt) i += DataAgitationNumPadPoints + 1;
-		for (auto & i : EndPt) i -= DataAgitationNumPadPoints + 2;
+		for (auto & i : StartPt) i += DataAgitationNumPadPoints + 2;
+		for (auto & i : EndPt) i -= DataAgitationNumPadPoints + 3;
 	}
 
 
 	for (int i = 0; i < 3 && IsOk; ++i){
 // 		NumPtsXYZ[i] = EndPt[i] - StartPt[i] + 1;
-		IsOk = (NumPtsXYZ[i] > 14);
+		IsOk = (NumPtsXYZ[i] > 14 || (DataAgitationNumPadPoints == 0 && NumPtsXYZ[i] > 5));
 	}
 
 	if (!IsOk){
@@ -1772,7 +1791,7 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 
 	cube RhoVals(NumPtsXYZ[0], NumPtsXYZ[1], NumPtsXYZ[2]);
 #ifndef _DEBUG
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for
 #endif
 	for (int zi = 0; zi < NumPtsXYZ[2]; ++zi){
 		int ThreadNum = omp_get_thread_num();

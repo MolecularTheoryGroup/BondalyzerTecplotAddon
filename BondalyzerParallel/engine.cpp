@@ -1547,7 +1547,7 @@ Boolean_t FindCritPoints(int VolZoneNum,
 
 		NumCPs = VolCPs.NumCPs();
 
-		Spacing *= 0.9;
+		Spacing *= 0.97;
 
 	} while (NumMatch < CheckMatch && ++Iter < MaxIter);
 

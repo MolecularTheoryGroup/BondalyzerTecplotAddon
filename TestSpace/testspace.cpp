@@ -37,8 +37,8 @@ using namespace arma;
 // *	Taken from    http://keisan.casio.com/exec/system/1329962711
 // */
 // double const TetVolume(vector<double> const & e2){
-// 
 // 	double v = 0.0069444444444444 * (
+// 
 // 		e2[0] * e2[4] * (e2[1] + e2[2] + e2[3] + e2[5] - e2[0] - e2[4])
 // 		+ e2[1] * e2[5] * (e2[0] + e2[2] + e2[3] + e2[4] - e2[1] - e2[5])
 // 		+ e2[2] * e2[3] * (e2[0] + e2[1] + e2[4] + e2[5] - e2[2] - e2[3])
@@ -494,21 +494,34 @@ int main(char *vargv, int argc){
 // 	p3 << 0 << 1 << 0;
 // 
 // 	double a = TriArea(p1,p2,p3);
-	int n = 2;
-	cube a(n, n, n);
-	for (int k = 0; k < n; ++k) {
-		for (int j = 0; j < n; ++j) {
-			for (int i = 0; i < n; ++i) {
-				double val = i + j * n + k * n * n;
-				a.at(i, j, k) = val;
-				cout << "a[" << i << "," << j << "," << k << "] = " << val << endl;
-			}
+// 	int n = 2;
+// 	cube a(n, n, n);
+// 	for (int k = 0; k < n; ++k) {
+// 		for (int j = 0; j < n; ++j) {
+// 			for (int i = 0; i < n; ++i) {
+// 				double val = i + j * n + k * n * n;
+// 				a.at(i, j, k) = val;
+// 				cout << "a[" << i << "," << j << "," << k << "] = " << val << endl;
+// 			}
+// 		}
+// 	}
+// 
+// 	double * p = a.memptr();
+// 	for (int i = 0; i < n*n*n; ++i){
+// 		cout << "p[" << i << "] = " << p[i] << endl;
+// 	}
+// 	
+// 	
+	while (true) {
+		mat33    A(fill::randu);
+		double c = cond(A);
+		if (log10(c) > 3){
+			cout << "singular-ish: log(c) = " << log10(c) << endl;
 		}
-	}
-
-	double * p = a.memptr();
-	for (int i = 0; i < n*n*n; ++i){
-		cout << "p[" << i << "] = " << p[i] << endl;
+		else{
+			cout << "not singular" << endl;
+		}
+		int t = 0;
 	}
 
 	cout << endl << endl;

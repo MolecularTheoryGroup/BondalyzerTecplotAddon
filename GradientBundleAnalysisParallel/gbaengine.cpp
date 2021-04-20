@@ -9167,18 +9167,20 @@ void GetSphereBasinIntegrations(FESurface_c const & Sphere,
 		MinMaxIndices.assign(2, vector<int>());
 		TerminalMinMaxIndices.assign(ElemConnectivity.size(), vector<int>(2, -1));
 
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
 		for (int i = 0; i < NumElems; ++i) {
-			for (int Dir = 0; Dir < 2; ++Dir)
-				if (ConvegedIter[Dir] < NumConvergedIter) 
+			for (int Dir = 0; Dir < 2; ++Dir) {
+				if (ConvegedIter[Dir] < NumConvergedIter) {
 					ElemWiseGradPath(i, Dir, ElemConnectivity, SmoothElemIntVals, 0, TerminalMinMaxIndices);
+				}
+			}
 		}
 
 		/*
 		 *	Now all the terminal elements have been identified.
 		 *	Get a list of the unique min and max element indices.
 		 */
-#pragma omp parallel for
+// #pragma omp parallel for
 		for (int Dir = 0; Dir < 2; ++Dir) {
 			if (ConvegedIter[Dir] < NumConvergedIter) {
 				for (auto const & i : TerminalMinMaxIndices) {
@@ -9245,7 +9247,7 @@ void GetSphereBasinIntegrations(FESurface_c const & Sphere,
 	}
 
 	for (int Dir = 0; Dir < 2; ++Dir) {
- #pragma omp parallel for schedule(dynamic)
+//  #pragma omp parallel for schedule(dynamic)
 		for (int te = 0; te < MinMaxIndices[Dir].size(); ++te) {
 			vector<int> NewNodeNums(XYZListPtr->size(), -1);
 			for (int e = 0; e < NumElems; ++e) {
@@ -9324,12 +9326,72 @@ void FindSphereBasins() {
  		}
  	}
 
+	/*
+				*	Get all necessary raw pointers for GradPath creation.
+				*/
+	EntIndex_t CutoffVarNum = VarNumByName(string("Electron Density"));
+	int VolZoneNum = ZoneNumByName("Full Volume");
+	EntIndex_t GradXYZVarNums[3];
+	vector<int> GradVarNums;
+	Boolean_t IsOk = TRUE;
+	if (IsOk) {
+		vector<string> TmpStrs = {
+			"X Density Gradient",
+			"Y Density Gradient",
+			"Z Density Gradient"
+		};
+		for (int i = 0; i < 3 && IsOk; ++i) {
+			GradXYZVarNums[i] = VarNumByName(TmpStrs[i]);
+			if (GradXYZVarNums[i] <= 0) {
+				GradVarNums.clear();
+				break;
+			}
+			GradVarNums.push_back(GradXYZVarNums[i]);
+		}
+	}
+
+	vector<VolExtentIndexWeights_s> VolInfo(omp_get_num_procs());
+	GetVolInfo(VolZoneNum, { 1,2,3 }, FALSE, VolInfo[0]);
+	for (int i = 1; i < VolInfo.size(); ++i) VolInfo[i] = VolInfo[0];
+
+	bool DeleteGradVars = false;
+	if (GradVarNums.empty() && VolInfo[0].NumPts() < 600000000) {
+		CalcVarsOptions_s opt;
+		opt.AddOnID = AddOnID;
+		opt.CalcForAllZones = FALSE;
+		opt.CalcZoneNum = VolZoneNum;
+		opt.RhoVarNum = CutoffVarNum;
+		opt.HasGrad = (!GradVarNums.empty());
+		if (opt.HasGrad) {
+			opt.GradVarNums = GradVarNums;
+		}
+		else {
+			DeleteGradVars = true;
+			opt.CalcVarList = { CalcGradientVectors };
+		}
+		opt.IsPeriodic = FALSE;
+
+		CalcVars(opt);
+
+		if (GradVarNums.empty()) {
+			GradVarNums.push_back(VarNumByName("X Density", true));
+			for (int i = 1; i < 3; ++i) {
+				GradVarNums.push_back(GradVarNums[0] + i);
+				GradXYZVarNums[i - 1] = GradVarNums.back();
+			}
+
+			if (GradVarNums.empty())
+				return;
+		}
+	}
+
+	StatusLaunch("Finding gradient bundles...(please wait)", AddOnID);
+
 	// Resize spheres to original size
 	ResizeSpheres(1.0, TRUE, FALSE);
 
 	high_resolution_clock::time_point startTime = high_resolution_clock::now();
 	if (IntNum > 0 && SphereZoneNums.size() > 0) {
-		StatusLaunch("Finding gradient bundles...(please wait)", AddOnID);
 		for (int z = 0; z < SphereZoneNums.size(); ++z) {
 // 			z = 1;
 			SphereName = (NuclearNames[z] != "" ? NuclearNames[z] : SphereZoneNames[z]);
@@ -9342,12 +9404,19 @@ void FindSphereBasins() {
 				*/
 			int NumElems = Sphere.GetElemListPtr()->size();
 			vector<vector<double> > ElemIntVals(NumIntVars, vector<double>(NumElems));
+			vector<float> TmpVals(NumElems);
 			for (int i = 0; i < NumIntVars; ++i) {
 				int IntVarNum = VarNumByName(TecGUIListGetString(SLSelVar_SLST_T3_1, i + 1));
 				REQUIRE(IntVarNum > 0);
 				FieldData_pa CCRef = TecUtilDataValueGetReadableCCRef(SphereZoneNum, IntVarNum);
 				REQUIRE(VALID_REF(CCRef));
-				TecUtilDataValueArrayGetByRef(CCRef, 1, NumElems, ElemIntVals[i].data());
+				if (TecUtilDataValueGetType(SphereZoneNum, IntVarNum) == FieldDataType_Float) {
+					TecUtilDataValueArrayGetByRef(CCRef, 1, NumElems, TmpVals.data());
+					ElemIntVals[i] = vector<double>(TmpVals.begin(), TmpVals.end());
+				}
+				else {
+					TecUtilDataValueArrayGetByRef(CCRef, 1, NumElems, ElemIntVals[i].data());
+				}
 				IntVarNames[i] = TecGUIListGetString(SLSelVar_SLST_T3_1, i + 1);
 			}
 
@@ -9436,25 +9505,7 @@ void FindSphereBasins() {
 
 			
 
-			/*
-				*	Get all necessary raw pointers for GradPath creation.
-				*/
-			EntIndex_t CutoffVarNum = VarNumByName(string("Electron Density"));
-			int VolZoneNum = ZoneNumByName("Full Volume");
-			EntIndex_t GradXYZVarNums[3];
-			Boolean_t IsOk = TRUE;
-			if (IsOk) {
-				vector<string> TmpStrs = {
-					"X Density Gradient",
-					"Y Density Gradient",
-					"Z Density Gradient"
-				};
-				for (int i = 0; i < 3 && IsOk; ++i) {
-					GradXYZVarNums[i] = VarNumByName(TmpStrs[i]);
-					if (GradXYZVarNums[i] <= 0)
-						break;
-				}
-			}
+			
 
 // 			if (IsOk) {
 // 
@@ -9489,9 +9540,7 @@ void FindSphereBasins() {
 
 			double TermRhoValue;
 			vector<vector<FESurface_c> > WedgeSurfaces(2);
-			vector<VolExtentIndexWeights_s> VolInfo(omp_get_num_procs());
-			GetVolInfo(VolZoneNum, { 1,2,3 }, FALSE, VolInfo[0]);
-			for (int i = 1; i < VolInfo.size(); ++i) VolInfo[i] = VolInfo[0];
+			
 			TecGUITextFieldGetDouble(TFCutoff_TF_T1_1, &TermRhoValue);
 			int NumBasins = 0;
 			for (int i = 0; i < 2; ++i) {
@@ -9552,7 +9601,7 @@ void FindSphereBasins() {
 				CondensedBasinToConstrainedNodeNums[i].resize(BasinNodes[i].size(), std::make_pair(-1,-1));
 			}
 
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
 			for (int b = 0; b < NumBasins; ++b) {
 				int i, j;
 				if (b < MinMaxIndices[0].size()) {
@@ -9564,13 +9613,13 @@ void FindSphereBasins() {
 					j = b - MinMaxIndices[0].size();
 				}
 				MinMaxBasinAverageDirVecs[i][j] = { 0,0,0 };
-#pragma omp parallel for
+// #pragma omp parallel for
 				for (int ti = 0; ti < BasinElems[i][j].size(); ++ti){
 					vec3 WeightedDir = zeros(3);
 					for (auto const & ni : BasinElems[i][j][ti])
 						WeightedDir += (BasinNodes[i][j][ni] - CPPos);
 					WeightedDir *= abs(ElemIntVals[IntNum][SphereElemNums[i][j][ti]]);
-#pragma omp critical(UpdateMinMaxBasinAverageDirVecs)
+// #pragma omp critical(UpdateMinMaxBasinAverageDirVecs)
 					{
 						MinMaxBasinAverageDirVecs[i][j] += WeightedDir;
 					}
@@ -9658,9 +9707,12 @@ void FindSphereBasins() {
 			}
 
 //  		#ifndef _DEBUG
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
 // #endif
 			for (int b = 0; b < NumBasins; ++b) {
+				if (!StatusUpdate(z, SphereZoneNums.size(), "Finding gradient bundles for " + SphereZoneNames[z] + " (" + to_string(z + 1) + " of " + to_string(SphereZoneNums.size()) + "; basin " + to_string(b + 1) + " of " + to_string(NumBasins) + ")", AddOnID, startTime)){
+					break;
+				}
 // 				break;
 				int i, j;
 				if (b < MinMaxIndices[0].size()) {
@@ -9674,7 +9726,6 @@ void FindSphereBasins() {
 
 // 				i = 0; j = 2;
 
-				int ThreadNum = omp_get_thread_num();
 				vector<vec3> SeedPts;
 				vector<vector<int> > BasinPerimeterEdges;
 				if (GetSortedPerimeterEdgeMidpoints(BasinElems[i][j], BasinNodes[i][j], SeedPts, BasinPerimeterEdges)) {
@@ -9739,10 +9790,10 @@ void FindSphereBasins() {
 							}
 						}
 					}
-					vector<GradPath_c> BasinParameterGPs(NumSeedPts);
+					vector<GradPath_c> BasinParimeterGPs(NumSeedPts);
 					vector<GradPath_c*> GPPtrs;
 					for (int p = 0; p < NumSeedPts; ++p) {
-						BasinParameterGPs[p].SetupGradPath(
+						BasinParimeterGPs[p].SetupGradPath(
 							SeedPts[p],
 							StreamDir_Both,
 							NumGPPts,
@@ -9750,16 +9801,23 @@ void FindSphereBasins() {
 							GPTerminate_AtRhoValue,
 							nullptr, nullptr, nullptr,
 							&TermRhoValue,
-							VolInfo[ThreadNum],
+							VolInfo[0],
 							vector<FieldDataPointer_c>(),
 							GradRawPtrs,
 							RhoRawPtr);
-						GPPtrs.push_back(&BasinParameterGPs[p]);
+						GPPtrs.push_back(&BasinParimeterGPs[p]);
 					}
-#pragma omp parallel for
+					bool UserQuit = false;
+					int NumCompleted = 0;
+#ifndef _DEBUG
+#pragma omp parallel for schedule(dynamic)
+#endif
 					for (int p = 0; p < NumSeedPts; ++p) {
-						BasinParameterGPs[p].Seed();
-						BasinParameterGPs[p].Reverse();
+						BasinParimeterGPs[p].Seed();
+						BasinParimeterGPs[p].Reverse();
+					}
+					if (UserQuit){
+						break;
 					}
 					if (ContainsConstrainedNode) {
 						/*
@@ -9813,7 +9871,7 @@ void FindSphereBasins() {
 											GPTerminate_AtRhoValue,
 											nullptr, nullptr, nullptr,
 											&TermRhoValue,
-											VolInfo[ThreadNum],
+											VolInfo[0],
 											vector<FieldDataPointer_c>(),
 											GradRawPtrs,
 											RhoRawPtr);
@@ -9954,6 +10012,16 @@ void FindSphereBasins() {
 		if (!oldZoneSet.isEmpty()) {
 			TecUtilDataSetDeleteZone(oldZoneSet.getRef());
 		}
+	}
+
+	Set DelVars;
+	if (DeleteGradVars) {
+		for (int i : GradVarNums)
+			DelVars += i;
+	}
+
+	if (!DelVars.isEmpty()) {
+		TecUtilDataSetDeleteVar(DelVars.getRef());
 	}
 
 	GBAResultViewerPopulateGBs();
