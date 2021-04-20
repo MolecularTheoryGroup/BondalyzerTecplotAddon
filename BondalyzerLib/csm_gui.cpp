@@ -21,7 +21,7 @@ static int const CharWidth = 110;
 static int const VertSpacing = 50;
 static int const HorzSpacing = 100;
 
-static int const ListNumLines = 5;
+static int const ListNumLines = 7;
 
 vector<GuiField_c> CSMGuiFields;
 vector<GuiField_c> CSMPassthroughFields;
@@ -1089,7 +1089,7 @@ void CSMLaunchGui(string const & Title,
 
 	for (int t = 0; t < NumFields.size(); ++t){
 		if (GuiFieldType_e(t) <= Gui_ToggleEnable || GuiFieldType_e(t) == Gui_Label) H += (LineHeight + VertSpacing) * NumFields[t];
-		else if (GuiFieldType_e(t) <= Gui_ZonePointSelectMulti) H += (LineHeight * (MultiListNumLines + 1.5)) * NumFields[t];
+		else if (GuiFieldType_e(t) <= Gui_ZonePointSelectMulti) H += (LineHeight * (MultiListNumLines + 2.0)) * NumFields[t];
 		else if (GuiFieldType_e(t) == Gui_Radio) H += LineHeight * NumFields[t];
 			// For radio selection, need to count the lines in each.
 // 			for (const auto f : CSMGuiFields)
@@ -1191,7 +1191,7 @@ void CSMLaunchGui(string const & Title,
 				}
 				Y += LineHeight * (MultiListNumLines - 2);
 				Y -= LineHeight * 1.5;
-				if (t == Gui_ZonePointSelectMulti) Y -= LineHeight * 1.5;
+				if (t == Gui_ZonePointSelectMulti) Y -= LineHeight * 2.5;
 
 				ListIDInd++;
 			}
