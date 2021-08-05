@@ -130,5 +130,6 @@ void RemoveDuplicatePointsFromVec3Vec(vector<vec3> & Points, double tol = 1e-8, 
  */
 double PointLineDist(vec3 const & p, vec3 const & a, vec3 const & b);
 double PointLineDist(tpcsm::Vec3 const & p, tpcsm::Vec3 const & a, tpcsm::Vec3 const & b);
+double PointLineSegDist(vec3 const & p, vec3 const & a, vec3 const & b);
 
-vec3 ClosestPointToPath(vector<vec3> const & Path, vec3 const & CheckPt, int & PtNum);
+vec3 ClosestPointOnPathToOtherPoint(vector<vec3> const & Path, vec3 const & CheckPt, int & PtNum);

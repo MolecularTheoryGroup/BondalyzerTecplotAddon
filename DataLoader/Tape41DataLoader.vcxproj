@@ -227,7 +227,7 @@
       <AdditionalDependencies>SCM_KFReader.lib;gsl.lib;cblas.lib;tptoolbox2013r1.lib;libtec.lib;adkutil.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);blas_win64_MT.lib;lapack_win64_MT.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D $(SolutionDir)armadillo\lib\*.dll $(OutDir)</Command>
+      <Command>xcopy $(SolutionDir)armadillo\lib\*.dll $(OutDir) /y /c</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_with_optimized_library|x64'">
@@ -251,7 +251,7 @@
       <AdditionalDependencies>SCM_KFReader.lib;gsl.lib;cblas.lib;tptoolbox2013r1.lib;libtec.lib;adkutil.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);blas_win64_MT.lib;lapack_win64_MT.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D $(SolutionDir)armadillo\lib\*.dll $(OutDir)</Command>
+      <Command>xcopy $(SolutionDir)armadillo\lib\*.dll $(OutDir) /y /c</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -348,7 +348,7 @@
       <AdditionalOptions>/ignore:4098 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D $(SolutionDir)armadillo\lib\*.dll $(OutDir)</Command>
+      <Command>xcopy $(SolutionDir)armadillo\lib\*.dll $(OutDir) /y /c</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugPlus|x64'">
@@ -381,7 +381,7 @@
       <AdditionalOptions>/ignore:4098 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D $(SolutionDir)armadillo\lib\*.dll $(OutDir)</Command>
+      <Command>xcopy $(SolutionDir)armadillo\lib\*.dll $(OutDir) /y /c</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

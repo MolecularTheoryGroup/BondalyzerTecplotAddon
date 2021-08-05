@@ -3754,7 +3754,7 @@ void RemoveDuplicatePointsFromVec3Vec(vector<vec3> & Points, double tol, vector<
  */
 double PointLineDist(vec3 const & p, vec3 const & a, vec3 const & b) {
 	double LineDist = Distance(b, a);
-	if (LineDist <= 1e-12) {
+	if (LineDist <= 1e-14) {
 		return Distance(p, a);
 	}
 	else {
@@ -3764,7 +3764,7 @@ double PointLineDist(vec3 const & p, vec3 const & a, vec3 const & b) {
 }
 double PointLineDist(tpcsm::Vec3 const & p, tpcsm::Vec3 const & a, tpcsm::Vec3 const & b) {
 	double LineDist = (b - a).getNorm();
-	if ( LineDist <= 1e-12) {
+	if ( LineDist <= 1e-14) {
 		return (a - p).getNorm();
 	}
 	else {
@@ -3785,7 +3785,23 @@ tpcsm::Vec3 ProjectPointToLine(tpcsm::Vec3 const & p, tpcsm::Vec3 const & a, tpc
 	return a + ab * ap.dot(ab) / ab.dot(ab);
 }
 
-vec3 ClosestPointToPath(vector<vec3> const & Path, vec3 const & CheckPt, int & PtNum)
+double PointLineSegDist(vec3 const & p, vec3 const & a, vec3 const & b){
+	vec3 AB;
+	
+	AB = b - a;
+	double t = dot(p - a, AB) / dot(AB, AB);
+	if (t < 0.0){
+		return Distance(p, a);
+	}
+	else if (t > 1.0){
+		return Distance(p, b);
+	}
+	else{
+		return Distance(p, a + AB * t);
+	}
+}
+
+vec3 ClosestPointOnPathToOtherPoint(vector<vec3> const & Path, vec3 const & CheckPt, int & PtNum)
 {
 	vec3 ClosestPt;
 	if (!Path.empty()) {

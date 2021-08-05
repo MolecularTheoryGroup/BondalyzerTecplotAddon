@@ -15,9 +15,12 @@
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_DATA_LOADER_FUNCTIONS.h"
 
+#include "Set.h"
+
 #include <armadillo>
 using namespace arma;
 
+using tecplot::toolbox::Set;
 
 
 using std::vector;
@@ -354,13 +357,14 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 	*	Now create zones for each atom group and set their style settings accordingly
 	*/
 	Set_pa NewZones = TecUtilSetAlloc(TRUE);
+	vector<int> NewZoneNums;
 	vector<AtomColor_s> AtomColorList;
 	PopulateAtomColorList(AtomColorList);
 
 	Boolean_t IsOk = (AtomGroupList.size() > 0 && XYZVarNames.size() == 3);
 
 	for (int GroupNum = 0; GroupNum < AtomGroupList.size() && IsOk; ++GroupNum){
-		IsOk = TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Positions[0].size(), 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : nullptr);
+		IsOk = TecUtilDataSetAddZone(string(NuclearPositionsZoneNameBase + AtomGroupList[GroupNum].Name).c_str(), AtomGroupList[GroupNum].Positions[0].size(), 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : nullptr);
 
 		EntIndex_t ZoneNum;
 
@@ -385,6 +389,7 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 			}
 
 			TecUtilSetAddMember(NewZones, ZoneNum, FALSE);
+			NewZoneNums.push_back(ZoneNum);
 
 			Set_pa TempSet = TecUtilSetAlloc(TRUE);
 			TecUtilSetAddMember(TempSet, ZoneNum, TRUE);
@@ -417,8 +422,139 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 
 		TecUtilZoneSetActive(NewZones, AssignOp_PlusEquals);
 
+		DrawBondLinesBetweenNuclearPositions(NewZoneNums, { 1,2,3 }, 4.2, -1.0, 0.1, 0.4, false);
+
+
 		TecUtilSetDealloc(&NewZones);
 	}
 
 	return IsOk;
+}
+
+
+void DrawBondLinesBetweenNuclearPositions(vector<int> const & ZoneNumList, vector<int> XYZVarNums, float BondCutoff, float WDVCutoff, float MinLineThickness, float MaxLineThickness, bool ReplaceOldBonds, bool HeteroBondsOnly){
+	REQUIRE(!ZoneNumList.empty());
+	for (int const & i : ZoneNumList){
+		REQUIRE(i >= 1 && i <= TecUtilDataSetGetNumZones());
+		if (!AuxDataZoneItemMatches(i, CSMAuxData.DL.ZoneType, CSMAuxData.DL.ZoneTypeNuclearPositions)){
+			TecUtilDialogErrMsg("You can only select nuclear positions for this tool");
+			return;
+		}
+	}
+	REQUIRE(XYZVarNums.size() == 3);
+	for (int const & i : XYZVarNums) {
+		REQUIRE(i >= 1 && i <= TecUtilDataSetGetNumVars());
+	}
+	REQUIRE(BondCutoff > 0.0);
+
+	float BondCutoffSqr = BondCutoff * BondCutoff;
+	float WDVCutoffSqr = WDVCutoff * WDVCutoff;
+
+	TecUtilDataLoadBegin();
+
+	vector<FieldVecPointer_c> ZoneXYZPtrs(ZoneNumList.size());
+	vector<string> ZoneNames(ZoneNumList.size());
+	for (int zi = 0; zi < ZoneNumList.size(); ++zi){
+		ZoneXYZPtrs[zi].InitializeReadPtr(ZoneNumList[zi], XYZVarNums);
+		char * TmpChar;
+		TecUtilZoneGetName(ZoneNumList[zi], &TmpChar);
+		ZoneNames[zi] = TmpChar;
+		ZoneNames[zi] = StringRemoveSubString(ZoneNames[zi], NuclearPositionsZoneNameBase);
+		TecUtilStringDealloc(&TmpChar);
+	}
+
+	Set DeleteZones;
+
+	// Get min distance between any two points
+	float MinDistSqr = FLT_MAX, MaxDistSqr = FLT_MIN;
+	for (int zi = 0; zi < ZoneXYZPtrs.size(); ++zi) {
+		for (int pi = 0; pi < ZoneXYZPtrs[zi].Size(); ++pi) {
+			vec3 p1 = ZoneXYZPtrs[zi][pi];
+			for (int zj = 0; zj < ZoneXYZPtrs.size(); ++zj) {
+				if ((HeteroBondsOnly && zj > zi) || (!HeteroBondsOnly && zj >= zi)) {
+					for (int pj = (zj == zi ? pi + 1 : 0); pj < ZoneXYZPtrs[zj].Size(); ++pj) {
+						if (zi != zj || pi != pj) {
+							vec3 p2 = ZoneXYZPtrs[zj][pj];
+							auto PtDistSqr = DistSqr(p1, p2);
+							MinDistSqr = MIN(MinDistSqr, PtDistSqr);
+							MaxDistSqr = MAX(MaxDistSqr, PtDistSqr);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	float MaxDist = BondCutoff, MinDist = sqrt(MinDistSqr);
+	float DistRange = MaxDist - MinDist;
+	float LineThicknessRange = MaxLineThickness - MinLineThickness;
+
+	// Now make bond line zones for each pair
+	for (int zi = 0; zi < ZoneXYZPtrs.size(); ++zi){
+		for (int pi = 0; pi < ZoneXYZPtrs[zi].Size(); ++pi) {
+			vec3 p1 = ZoneXYZPtrs[zi][pi];
+			for (int zj = 0; zj < ZoneXYZPtrs.size(); ++zj) {
+				if ((HeteroBondsOnly && zj > zi) || (!HeteroBondsOnly && zj >= zi)) {
+					for (int pj = (zj == zi ? pi + 1 : 0); pj < ZoneXYZPtrs[zj].Size(); ++pj) {
+						if (zi != zj || pi != pj) {
+							vec3 p2 = ZoneXYZPtrs[zj][pj];
+							auto PtDistSqr = DistSqr(p1, p2);
+
+							if (PtDistSqr < BondCutoffSqr || (WDVCutoff > 0.0 && PtDistSqr < WDVCutoffSqr)) {
+								string ZoneName = GUIBondZoneNameBase;
+								int ZoneNum = 0;
+								if (ZoneNames[zi][0] <= ZoneNames[zj][0]){
+									ZoneName += ZoneNames[zi] + to_string(pi + 1) + "-" + ZoneNames[zj] + to_string(pj + 1);
+								}
+								else{
+									ZoneName += ZoneNames[zj] + to_string(pj + 1) + "-" + ZoneNames[zi] + to_string(pi + 1);
+								}
+								int OldZoneNum = ZoneNumByName(ZoneName);
+								if (OldZoneNum > 0) {
+									if (ReplaceOldBonds) {
+										DeleteZones.add(OldZoneNum);
+									}
+									else{
+										continue;
+									}
+								}
+								if (PtDistSqr < BondCutoffSqr) {
+									// determine line thickness
+									float PtDist = sqrt(PtDistSqr);
+									float LineThickness = CLAMP(MinLineThickness + (MaxDist - PtDist) / DistRange * LineThicknessRange, MinLineThickness, MaxLineThickness);
+
+									if (ZoneNames[zi] == "H" || ZoneNames[zj] == "H"){
+										LineThickness = MinLineThickness;
+									}
+
+									// make zone
+									ZoneNum = SaveVec3VecAsScatterZone({ p1, p2 }, ZoneName, Black_C, XYZVarNums);
+									if (ZoneNum > 0){
+										SetZoneStyle({ ZoneNum }, ZoneStyle_Path, Black_C, LineThickness);
+									}
+								}
+								else{
+									ZoneNum = SaveVec3VecAsScatterZone({ p1, p2 }, ZoneName, Black_C, XYZVarNums);
+									if (ZoneNum > 0) {
+										SetZoneStyle({ ZoneNum }, ZoneStyle_Path, Black_C, MinLineThickness);
+										TecUtilZoneSetMesh(SV_LINEPATTERN, Set(ZoneNum).getRef(), 0.0, LinePattern_Dashed);
+										TecUtilZoneSetMesh(SV_PATTERNLENGTH, Set(ZoneNum).getRef(), 0.8, 0);
+									}
+								}
+								if (ZoneNum > 0){
+									AuxDataZoneSetItem(ZoneNum, CSMAuxData.DL.ZoneType, CSMAuxData.DL.ZoneTypeGUIBond);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (!DeleteZones.isEmpty()){
+		TecUtilDataSetDeleteZone(DeleteZones.getRef());
+	}
+
+	TecUtilDataLoadEnd();
 }

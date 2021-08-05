@@ -267,6 +267,20 @@ static void STDCALL ImportNuclearCoordinatesCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL GenerateGUIBondsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		GenerateGUIBondsGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 
 static void STDCALL CalcVarsMenuCallback(void)
 {
@@ -825,6 +839,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Import nuclear coordinates").c_str(),
 		'\0',
 		ImportNuclearCoordinatesCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Generate GUI bond lines").c_str(),
+		'\0',
+		GenerateGUIBondsCallback);
 
 // 	TecUtilMenuAddOption("MTG_Bondalyzer",
 // 		string(to_string(MenuNum++) + ". Gaussian blur").c_str(),

@@ -1067,7 +1067,13 @@ int FESurface_c::SaveAsTriFEZone(vector<int> const & XYZVarNums,
 			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, XYZVarNums[i]);
 			IsOk = VALID_REF(SetFDPtr);
 			if (IsOk){
-				TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_RefinedXYZList.size(), TmpValues[i].data());
+				if (TecUtilDataValueGetType(ZoneNum, XYZVarNums[i]) == FieldDataType_Double) {
+					vector<double> TmpVec(TmpValues[i].begin(), TmpValues[i].end());
+					TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_RefinedXYZList.size(), TmpVec.data());
+				}
+				else {
+					TecUtilDataValueArraySetByRef(SetFDPtr, 1, m_RefinedXYZList.size(), TmpValues[i].data());
+				}
 			}
 		}
 

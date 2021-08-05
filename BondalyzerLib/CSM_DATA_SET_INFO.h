@@ -30,6 +30,9 @@ double const DefaultRhoCutoff = 1e-5;
 
 string const T21Prefix = "T21.";
 
+string const NuclearPositionsZoneNameBase = "NUCLEI ";
+string const GUIBondZoneNameBase = "GUIBOND ";
+
 /*
 *	These are the aux data tags and values (where applicable)
 *	used by the Bondalyzer add-ons.
@@ -46,6 +49,7 @@ struct CSMAuxData_s{
 			ZoneType = Prefix + "ZoneType",
 			ZoneTypeVolumeZone = "Volume Zone",
 			ZoneTypeNuclearPositions = "Nuclear Positions",
+			ZoneTypeGUIBond = "GUI Bond",
 			ZoneAtomicSpecies = Prefix + "Atomic Species";
 		vector<string> LatticeVecs;
 
@@ -99,6 +103,12 @@ struct CSMAuxData_s{
 			RadialSphereApproximation = Prefix + "RadialSphereApproximation",
 			NumGBs = Prefix + "NumberOfGradientBundles",
 			PointsPerGP = Prefix + "PointsPerGradientPath",
+			GPRhoCutoff = Prefix + "GradientPathRhoTruncationValue",
+			SphereMinNumGPs = Prefix + "MinimumNumberOfGradientPathsSetting",
+			SphereSubdivisionLevel = Prefix + "GBSubdivisionLevel",
+			SphereSubdivisionTightness = Prefix + "GBSubdivisionTightness",
+			SphereNumBondPathCoincidentGBs = Prefix + "NumBondPathCoincidentGBs",
+			GBSurfaceGPMaxSpacing = Prefix + "GBSurfaceGPMaxSpacing",
 			GPsPerGB = Prefix + "GradientPathsPerGradientBundle",
 			IntWallTime = Prefix + "IntegrationWallTime",
 			IntVarNames = Prefix + "IntegratedVariableNames",
@@ -510,7 +520,7 @@ LgIndex_t IndexFromIJK(LgIndex_t I,
 vector<LgIndex_t> IJKFromIndex(LgIndex_t Index,
 	const vector<LgIndex_t>& IJKMax);
 
-Boolean_t SaveVec3VecAsScatterZone(vector<vec3> const & VecVec,
+int SaveVec3VecAsScatterZone(vector<vec3> const & VecVec,
 	string const & ZoneName = "IOrderedZone",
 	ColorIndex_t const & Color = Black_C,
 	vector<EntIndex_t> const & XYZVarNums = { 1,2,3 });

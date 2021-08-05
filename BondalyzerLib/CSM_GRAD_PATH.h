@@ -15,7 +15,7 @@ using namespace arma;
 
 using std::vector;
 
-#define GP_NumPointsBufferFactor	10
+#define GP_NumPointsBufferFactor	2
 #define GP_StallPointCount			20
 #define GP_StallNumPointsToCheck	10
 #define GP_StallPointDistTol		1e-6
@@ -409,7 +409,7 @@ public:
 	void SetSurfPtr(FESurface_c const * SurfPtr, int SurfProjectionFrequency = -1) { m_Surface = SurfPtr; m_SurfGPProjectionFrequency = SurfProjectionFrequency; }
 	void SetDir(StreamDir_e Dir) { m_ODE_Data.Direction = Dir; }
 
-	void MakeRhoValuesMonotomic(VolExtentIndexWeights_s * VolInfo = nullptr, FieldDataPointer_c * RhoPtr = nullptr);
+	void MakeRhoValuesMonotonic(VolExtentIndexWeights_s * VolInfo = nullptr, FieldDataPointer_c * RhoPtr = nullptr);
 
 
 	Boolean_t ReinterpolateRhoValuesFromVolume(VolExtentIndexWeights_s * VolInfo = nullptr, FieldDataPointer_c * RhoPtr = nullptr);

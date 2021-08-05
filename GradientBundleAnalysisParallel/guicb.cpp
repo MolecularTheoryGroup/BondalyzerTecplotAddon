@@ -852,7 +852,7 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	/*
 	*	System boundary options
 	*/
-	TecGUITextFieldSetString(TFCutoff_TF_T1_1, to_string(DefaultRhoCutoff).c_str());
+	TecGUITextFieldSetString(TFCutoff_TF_T1_1, to_string(1e-3).c_str());
 
 	/*
 	*	Mesh parameters
@@ -865,7 +865,7 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	TecGUITextFieldSetString(TFSTPts_TF_T1_1, to_string(DefaultNumGPPts).c_str());
 
 	/*
-	*	IB detection paraneters
+	*	IB detection parameters
 	*/
 
 // 	TecGUITextFieldSetString(TFIBDist_TF_T1_1, to_string(DefaultIBDist).c_str());

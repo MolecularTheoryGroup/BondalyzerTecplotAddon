@@ -564,7 +564,7 @@ void NewMainFunction() {
 			Radius = UserRadius;
 
 
-		double GPNCPTermRadius = MAX(0.001, Radius * 0.05);
+		double GPNCPTermRadius = MAX(0.001, Radius * 0.01);
 		double GPTermRadius = MIN(0.01, GPNCPTermRadius);
 		double RTypeGPTermRadiusFactor = 1.0;
 		double RTypeTermRadius = GPTermRadius * RTypeGPTermRadiusFactor;
@@ -1785,7 +1785,7 @@ void NewMainFunction() {
 
 		// reinterpolate rho values and force to be monotomic for bond path segments
 		for (auto & b : IntBondPathSegments){
-			b.second.MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
+			b.second.MakeRhoValuesMonotonic(&VolInfo, &RhoPtr);
 			if (b.second.RhoAt(0) < b.second.RhoAt(-1)){
 				b.second.Reverse();
 			}
@@ -2858,28 +2858,28 @@ void NewMainFunction() {
 			vector<int> NodesTodoVec(NodesTodo.begin(), NodesTodo.end());
 			NumToDo = NodesTodoVec.size();
 
-#pragma omp parallel for schedule(dynamic)
-			for (int nii = 0; nii < NumToDo; ++nii) {
-				int ni = NodesTodoVec[nii];
-#else
-#pragma omp parallel for schedule(dynamic)
-			for (int ni = 0; ni < NumNodes; ++ni) {
+// #pragma omp parallel for schedule(dynamic)
+// 			for (int nii = 0; nii < NumToDo; ++nii) {
+// 				int ni = NodesTodoVec[nii];
+// #else
+// #pragma omp parallel for schedule(dynamic)
+// 			for (int ni = 0; ni < NumNodes; ++ni) {
 #endif
-				if (!GradPaths[ni].IsMade()) {
+// 				if (!GradPaths[ni].IsMade()) {
 // 					if (!RadialSphereApprx) {
-						InnerGradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Forward, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPNCPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
-						InnerGradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Nuclear);
+// 						InnerGradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Forward, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPNCPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
+// 						InnerGradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Nuclear);
+// // 					}
+// 					if (NodeTypes[ni] == NETypeC) {
+// 						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
+// 						GradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Cage);
 // 					}
-					if (NodeTypes[ni] == NETypeC) {
-						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
-						GradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Cage);
-					}
-					else if (NodeTypes[ni] == NETypeR) {
-						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &RTypeTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr, &IntSurfs[NodeIntSurfNums[ni]]);
-						GradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Ring);
-					}
-					else continue;
-				}
+// 					else if (NodeTypes[ni] == NETypeR) {
+// 						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &RTypeTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr, &IntSurfs[NodeIntSurfNums[ni]]);
+// 						GradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Ring);
+// 					}
+// 					else continue;
+// 				}
 // 				if (!GradPaths[ni].IsMade()) {
 // 					if (NodeTypes[ni] == NETypeC) {
 // 						if (RadialSphereApprx)
@@ -2900,7 +2900,7 @@ void NewMainFunction() {
 // 					}
 // 					else continue;
 // 				}
-			}
+// 			}
 
 	#ifdef SUPERDEBUG
 #pragma omp parallel for schedule(dynamic)
@@ -2944,6 +2944,20 @@ void NewMainFunction() {
 				if (!UserQuit && !GradPaths[ni].IsMade()) {
 #pragma omp atomic
 					NumCompleted++;
+					// 					if (!RadialSphereApprx) {
+					InnerGradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Forward, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPNCPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
+					InnerGradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Nuclear);
+					// 					}
+					if (NodeTypes[ni] == NETypeC) {
+						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &GPTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr);
+						GradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Cage);
+					}
+					else if (NodeTypes[ni] == NETypeR) {
+						GradPaths[ni].SetupGradPath(SphereNodes[ni], StreamDir_Reverse, NumGPPoints * 2, GPType_Classic, GPTerminate_AtCP, nullptr, &CPs, &RTypeTermRadius, &CutoffVal, ThVolInfo[0], HessPtrs, GradPtrs, RhoPtr, &IntSurfs[NodeIntSurfNums[ni]]);
+						GradPaths[ni].SetTerminalCPTypeNum(CPTypeNum_Ring);
+					}
+
+
 // 					if (RadialSphereApprx){
 // 						if (NodeTypes[ni] <= NETypeR) {
 // 							GradPaths[ni].Seed();
@@ -3721,7 +3735,7 @@ void NewMainFunction() {
 											}
 
 											GP = ConcatenateResample(GPList, NumGPPoints, {}, ResampleMethod);
-											GP.MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
+											GP.MakeRhoValuesMonotonic(&VolInfo, &RhoPtr);
 											EdgeGPs.emplace(Pt2, EdgeMidpt, GP);
 											Pt2--;
 											continue;
@@ -4012,7 +4026,7 @@ void NewMainFunction() {
 							GP.Seed();
 							if (SurfPtr != nullptr)
 								GP.ProjectPathToSurface();
-							GP.MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
+							GP.MakeRhoValuesMonotonic(&VolInfo, &RhoPtr);
 
 							NewGPs[ei - 1] = GP;
 							NewGPs[ei - 1].PointPrepend(BCP, BCPRho);
@@ -4024,7 +4038,7 @@ void NewMainFunction() {
 							if (NodeTypes[SphereElems[ti][c2]] == NETypeR) {
 								int TmpInt;
 								NewGPs[ei - 1] = ConcatenateResample({ NewGPs[ei - 1], *RPPtr }, NumGPPoints, {}, ResampleMethod);
-								NewGPs[ei - 1].MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
+								NewGPs[ei - 1].MakeRhoValuesMonotonic(&VolInfo, &RhoPtr);
 								GPList.push_back(*RPPtr);
 								GPNumPointList.push_back(-1);
 							}
@@ -4149,7 +4163,7 @@ void NewMainFunction() {
 										GP.RemoveKinks();
 // 										GP.SaveAsOrderedZone("midpoint gp forward " + to_string(Iter));
 										GP = ConcatenateResample({ GP, TmpGP }, NumGPPoints, {}, ResampleMethod);
-										GP.MakeRhoValuesMonotomic(&VolInfo, &RhoPtr);
+										GP.MakeRhoValuesMonotonic(&VolInfo, &RhoPtr);
 										if (DistSqr(BCP, GP[0]) > DistSqr(BCP, GP[-1]))
 											GP.Reverse();
 // 										GP.SaveAsOrderedZone("midpoint gp both " + to_string(Iter));
@@ -4237,7 +4251,7 @@ void NewMainFunction() {
 #pragma omp parallel for schedule(dynamic)
 			for (int ni = 0; ni < NumGPs; ++ni){
 				if (GradPaths[ni].IsMade()) {
-					GradPaths[ni].MakeRhoValuesMonotomic(&ThVolInfo[omp_get_thread_num()]);
+					GradPaths[ni].MakeRhoValuesMonotonic(&ThVolInfo[omp_get_thread_num()]);
 					if (GradPaths[ni].RhoAt(0) < GradPaths[ni].RhoAt(-1)) {
 						GradPaths[ni].Reverse();
 					}
@@ -5790,6 +5804,14 @@ void NewMainFunction() {
 		
 		AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.AtomicBasinIntegrationVariables, VectorToString(IntVarNameList, ","));
 		AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.AtomicBasinIntegrationValues, VectorToString(TotalList, ","));
+
+		AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.GPRhoCutoff, to_string(CutoffVal));
+		AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereMinNumGPs, to_string(Level));
+		AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereSubdivisionLevel, to_string(MaxSubdivisions));
+		AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereSubdivisionTightness, to_string(SubdivisionTightness));
+		AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereNumBondPathCoincidentGBs, to_string(NumAngularGBsAroundBPIntersectionNodes));
+		AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.GBSurfaceGPMaxSpacing, to_string(EdgeGPCheckDistance));
+
 		if (RadialSphereApprx) {
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.IntVarSphereInteriorVals, VectorToString(SphereTotalIntVals, ","));
 // 			vector<double> TotalIntTotals = SphereTotalIntVals; // Saving this since sphere integration isn't represented in the GB intVals
@@ -5893,8 +5915,16 @@ void NewMainFunction() {
 						for (int vi = 0; vi < NewVarNums.size(); ++vi) {
 							FieldData_pa FDPtr = TecUtilDataValueGetWritableNativeRef(GradientBundle.GetZoneNum(), NewVarNums[vi]);
 							if (VALID_REF(FDPtr)) {
-								vector<double> tmpDblVec(GradientBundle.GetXYZListPtr()->size(), IntVals[ti][vi]);
-								TecUtilDataValueArraySetByRef(FDPtr, 1, tmpDblVec.size(), tmpDblVec.data());
+
+								
+								if (TecUtilDataValueGetType(GradientBundle.GetZoneNum(), NewVarNums[vi]) == FieldDataType_Double) {
+									vector<double> tmpDblVec(GradientBundle.GetXYZListPtr()->size(), IntVals[ti][vi]);
+									TecUtilDataValueArraySetByRef(FDPtr, 1, tmpDblVec.size(), tmpDblVec.data());
+								}
+								else {
+									vector<float> tmpDblVec(GradientBundle.GetXYZListPtr()->size(), IntVals[ti][vi]);
+									TecUtilDataValueArraySetByRef(FDPtr, 1, tmpDblVec.size(), tmpDblVec.data());
+								}
 							}
 							else {
 								TecUtilDialogErrMsg("Failed to get write pointer for gradient bundle");
@@ -6066,8 +6096,14 @@ void NewMainFunction() {
 							for (int vi = 0; vi < NewVarNums.size(); ++vi) {
 								FieldData_pa FDPtr = TecUtilDataValueGetWritableNativeRef(GradientBundle.GetZoneNum(), NewVarNums[vi]);
 								if (VALID_REF(FDPtr)) {
-									vector<double> tmpDblVec(GradientBundle.GetXYZListPtr()->size(), IntVals[ti][vi]);
-									TecUtilDataValueArraySetByRef(FDPtr, 1, tmpDblVec.size(), tmpDblVec.data());
+									if (TecUtilDataValueGetType(GradientBundle.GetZoneNum(), NewVarNums[vi]) == FieldDataType_Double) {
+										vector<double> tmpDblVec(GradientBundle.GetXYZListPtr()->size(), IntVals[ti][vi]);
+										TecUtilDataValueArraySetByRef(FDPtr, 1, tmpDblVec.size(), tmpDblVec.data());
+									}
+									else {
+										vector<float> tmpDblVec(GradientBundle.GetXYZListPtr()->size(), IntVals[ti][vi]);
+										TecUtilDataValueArraySetByRef(FDPtr, 1, tmpDblVec.size(), tmpDblVec.data());
+									}
 								}
 								else {
 									TecUtilDialogErrMsg("Failed to get write pointer for gradient bundle");
@@ -9135,8 +9171,8 @@ void GetSphereBasinIntegrations(FESurface_c const & Sphere,
 	 *	smoothing) because they're less altered.
 	 *	Limit to MaxNumSmoothing rounds of smoothing.
 	 */
-	int MaxNumSmoothing = 1;
-	int NumConvergedIter = 1;
+	int MaxNumSmoothing = 20;
+	int NumConvergedIter = 3;
 	vector<int> NumMinMax(2,-1), OldNumMinMax(2,INT_MAX);
 	MinMaxIndices.resize(2);
 	vector<vector<int> > OldMinMaxIndices(2);
@@ -10149,9 +10185,18 @@ void CreateCircularGBsProbeCB(Boolean_t WasSuccessful, Boolean_t IsNearestPoint,
 						for (auto const & s : SearchStrs) {
 							if (TmpStr.find(s) == 0) {
 								double VarVal = TecUtilProbeFieldGetValue(v);
-								vector<double> ValVec(NumNodes, VarVal);
 								FieldData_pa TmpPtr = TecUtilDataValueGetWritableNativeRef(SurfZoneNum, v);
-								TecUtilDataValueArraySetByRef(TmpPtr, 1, NumNodes, ValVec.data());
+								
+
+								if (TecUtilDataValueGetType(SurfZoneNum, v) == FieldDataType_Double) {
+									vector<double> ValVec(NumNodes, VarVal);
+									TecUtilDataValueArraySetByRef(TmpPtr, 1, NumNodes, ValVec.data());
+								}
+								else {
+									vector<float> ValVec(NumNodes, VarVal);
+									TecUtilDataValueArraySetByRef(TmpPtr, 1, NumNodes, ValVec.data());
+								}
+
 								break;
 							}
 						}
@@ -10201,9 +10246,17 @@ void CreateCircularGBsProbeCB(Boolean_t WasSuccessful, Boolean_t IsNearestPoint,
 							for (auto const & s : SearchStrs) {
 								if (TmpStr.find(s) == 0) {
 									double VarVal = TecUtilProbeFieldGetValue(v);
-									vector<double> ValVec(ClientDataStruct.NumGPs+1, VarVal);
 									FieldData_pa TmpPtr = TecUtilDataValueGetWritableNativeRef(DiscZoneNum, v);
-									TecUtilDataValueArraySetByRef(TmpPtr, 1, ClientDataStruct.NumGPs+1, ValVec.data());
+
+									if (TecUtilDataValueGetType(DiscZoneNum, v) == FieldDataType_Double) {
+										vector<double> ValVec(ClientDataStruct.NumGPs + 1, VarVal);
+										TecUtilDataValueArraySetByRef(TmpPtr, 1, ClientDataStruct.NumGPs + 1, ValVec.data());
+									}
+									else {
+										vector<float> ValVec(ClientDataStruct.NumGPs + 1, VarVal);
+										TecUtilDataValueArraySetByRef(TmpPtr, 1, ClientDataStruct.NumGPs + 1, ValVec.data());
+									}
+
 									break;
 								}
 							}

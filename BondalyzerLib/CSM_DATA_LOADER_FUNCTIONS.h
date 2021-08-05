@@ -124,3 +124,5 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 	vector<string> const & XYZVarNames,
 	vector<FieldDataType_e> & VarDataTypes,
 	int GroupIndex);
+
+void DrawBondLinesBetweenNuclearPositions(vector<int> const & ZoneNumList, vector<int> XYZVarNums, float BondCutoff, float WDVCutoff, float MinLineThickness, float MaxLineThickness, bool ReplaceOldBonds = true, bool HeteroBondsOnly = false);

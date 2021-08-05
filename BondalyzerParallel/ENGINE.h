@@ -210,3 +210,5 @@ void ExportGBADataGetUserInfo();
 void ImportNuclearCoordinatesFromXYZ();
 
 void MapVolumeZoneVarsToOtherZonesGetUserInfo();
+
+void GenerateGUIBondsGetUserInfo();

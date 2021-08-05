@@ -246,10 +246,10 @@ string StringRemoveSubString(string const & InString,
 {
 	string NewString = InString;
 
-	size_t Pos = NewString.find_first_of(SubString);
+	size_t Pos = NewString.find(SubString);
 	while (Pos != string::npos) {
 		NewString.erase(Pos, SubString.length());
-		Pos = NewString.find_first_of(SubString);
+		Pos = NewString.find(SubString);
 	}
 
 	return NewString;
@@ -956,11 +956,12 @@ vector<LgIndex_t> IJKFromIndex(LgIndex_t Index,
 }
 
 
-Boolean_t SaveVec3VecAsScatterZone(vector<vec3> const & VecVec, 
+int SaveVec3VecAsScatterZone(vector<vec3> const & VecVec, 
 	string const & ZoneName,
 	ColorIndex_t const & Color,
 	vector<EntIndex_t> const & XYZVarNums){
 	Boolean_t IsOk = VecVec.size() > 0;
+	int ZoneNum = 0;
 	if (IsOk){
 
 		TecUtilDataSetAddZone(ZoneName.c_str(), VecVec.size(), 1, 1, ZoneType_Ordered, nullptr);
@@ -969,7 +970,7 @@ Boolean_t SaveVec3VecAsScatterZone(vector<vec3> const & VecVec,
 // 				TecUtilDataValueSetByZoneVar(TecUtilDataSetGetNumZones(), XYZVarNums[dir], i + 1, VecVec[i][dir]);
 // 			}
 // 		}
-		int ZoneNum = TecUtilDataSetGetNumZones();
+		ZoneNum = TecUtilDataSetGetNumZones();
 
 		vector<vector<double> > TmpValues(3, vector<double>(VecVec.size()));
 		for (int i = 0; i < VecVec.size(); ++i){
@@ -981,7 +982,13 @@ Boolean_t SaveVec3VecAsScatterZone(vector<vec3> const & VecVec,
 			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, XYZVarNums[i]);
 			IsOk = VALID_REF(SetFDPtr);
 			if (IsOk){
-				TecUtilDataValueArraySetByRef(SetFDPtr, 1, VecVec.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
+				if (TecUtilDataValueGetType(ZoneNum, XYZVarNums[i]) == FieldDataType_Double) {
+					TecUtilDataValueArraySetByRef(SetFDPtr, 1, VecVec.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
+				}
+				else {
+					vector<float> TmpVec(TmpValues[i].begin(), TmpValues[i].end());
+					TecUtilDataValueArraySetByRef(SetFDPtr, 1, VecVec.size(), reinterpret_cast<void*>(const_cast<float*>(TmpVec.data())));
+				}
 			}
 		}
 		Set_pa TmpSet = TecUtilSetAlloc(FALSE);
@@ -998,7 +1005,7 @@ Boolean_t SaveVec3VecAsScatterZone(vector<vec3> const & VecVec,
 
 		TecUtilSetDealloc(&TmpSet);
 	}
-	return IsOk;
+	return ZoneNum;
 }
 
 Boolean_t SaveTetVec3VecAsFEZone(vector<vec3> const & Verts,
@@ -1026,7 +1033,13 @@ Boolean_t SaveTetVec3VecAsFEZone(vector<vec3> const & Verts,
 			FieldData_pa SetFDPtr = TecUtilDataValueGetWritableNativeRef(ZoneNum, XYZVarNums[i]);
 			IsOk = VALID_REF(SetFDPtr);
 			if (IsOk){
-				TecUtilDataValueArraySetByRef(SetFDPtr, 1, Verts.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
+				if (TecUtilDataValueGetType(ZoneNum, XYZVarNums[i]) == FieldDataType_Double) {
+					TecUtilDataValueArraySetByRef(SetFDPtr, 1, Verts.size(), reinterpret_cast<void*>(const_cast<double*>(TmpValues[i].data())));
+				}
+				else {
+					vector<float> TmpVec(TmpValues[i].begin(), TmpValues[i].end());
+					TecUtilDataValueArraySetByRef(SetFDPtr, 1, Verts.size(), reinterpret_cast<void*>(const_cast<float*>(TmpVec.data())));
+				}
 			}
 		}
 

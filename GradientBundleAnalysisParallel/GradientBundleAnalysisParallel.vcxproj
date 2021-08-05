@@ -210,7 +210,7 @@
       <AdditionalLibraryDirectories>$(TEC_360_2013R1)\bin;$(SolutionDir)..\gsl-1.16\lib\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories);$(SolutionDir)armadillo\lib;$(SolutionDir)..\TP_Toolbox_2013r1\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D $(SolutionDir)armadillo\lib\*.dll $(OutDir)</Command>
+      <Command>xcopy $(SolutionDir)armadillo\lib\*.dll $(OutDir) /y /c</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_with_optimized_library|x64'">
@@ -232,7 +232,7 @@
       <AdditionalLibraryDirectories>$(TEC_360_2013R1)\bin;$(SolutionDir)..\gsl-1.16\lib\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories);$(SolutionDir)armadillo\lib;$(SolutionDir)..\TP_Toolbox_2013r1\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D $(SolutionDir)armadillo\lib\*.dll $(OutDir)</Command>
+      <Command>xcopy $(SolutionDir)armadillo\lib\*.dll $(OutDir) /y /c</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -317,7 +317,7 @@
       <AdditionalOptions>/ignore:4098 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D $(SolutionDir)armadillo\lib\*.dll $(OutDir)</Command>
+      <Command>xcopy $(SolutionDir)armadillo\lib\*.dll $(OutDir) /y /c</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugPlus|x64'">
@@ -350,7 +350,7 @@
       <AdditionalOptions>/ignore:4098 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D $(SolutionDir)armadillo\lib\*.dll $(OutDir)</Command>
+      <Command>xcopy $(SolutionDir)armadillo\lib\*.dll $(OutDir) /y /c</Command>
     </PostBuildEvent>
     <ProjectReference>
       <LinkLibraryDependencies>true</LinkLibraryDependencies>

@@ -74,7 +74,7 @@ using namespace tecplot::toolbox;
 
 
 #define DEBUG_PRINTPATHS
-// #define DEBUG_SAVESCREENSHOTS
+#define DEBUG_SAVESCREENSHOTS
 
 using std::string;
 using std::to_string;
@@ -158,7 +158,7 @@ struct MinFuncParams_GPLengthSpherical{
 string const DS_ZoneName_Delim = "_-_";
 string const T41Ext = ".t41";
 
-static int const MinNumCircleCheckGPs = 60;
+static int const MinNumCircleCheckGPs = 180;
 static int const MinNumCircleGPs = 120;
 static int const MinNumRCSFuncCircleCheckPts = 3600;
 static int const DefaultRCSNumCheckRadii = 128;
@@ -1028,7 +1028,7 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, vector<GuiField_c> con
 
 		Fields.push_back(GuiField_c(Gui_ZonePointSelectMulti, "Source critical point(s)", SearchString));
 		Fields.push_back(GuiField_c(Gui_Double, "GP rho cutoff", to_string(DefaultRhoCutoff)));
-		Fields.push_back(GuiField_c(Gui_Int, "GP Number of points", "300"));
+		Fields.push_back(GuiField_c(Gui_Int, "GP Number of points", "500"));
 	}
 	else if (CalcType == BondalyzerCalcType_Batch){
 		int TogNum = Fields.size();
@@ -1045,7 +1045,7 @@ void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, vector<GuiField_c> con
 		Fields.push_back(GuiField_c(Gui_ToggleEnable, "1-RCS function present", to_string(Fields.size() + 1)));
 		Fields.push_back(GuiField_c(Gui_VarSelect, "1-ridge function variable", CSMVarName.EberlyFunc[0]));
 		Fields.push_back(GuiField_c(Gui_Double, "GP rho cutoff", to_string(DefaultRhoCutoff)));
-		Fields.push_back(GuiField_c(Gui_Int, "GP Number of points", "300"));
+		Fields.push_back(GuiField_c(Gui_Int, "GP Number of points", "500"));
 		Fields.push_back(GuiField_c(Gui_Label, "Calculation steps"));
 		for (int i = (int)BondalyzerCalcType_BondPaths; i <= (int)BondalyzerCalcType_RingSurfaces; ++i) Fields.push_back(GuiField_c(Gui_Toggle, BondalyzerStepGUITitles[i], "1"));
 	}
@@ -1742,7 +1742,7 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 
 	double const StartPointOffset = 0.01 * AllCPs.GetMinCPDist(MinDistTypes);
 	int const NumGPPts = 300;
-	double TermRadius = 5e-2;
+	double TermRadius = 0.1 * AllCPs.GetMinCPDist(MinDistTypes);
 	double RhoCutoff = DefaultRhoCutoff;
 
 	CPTypeNum_e TermTypeNum = (CPType == CPType_Bond ? CPTypeNum_Nuclear : CPTypeNum_Cage);
@@ -1772,7 +1772,7 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 		GPs[iGP].Seed(false);
 		GPs[iGP].PointPrepend(AllCPs.GetXYZ(GPs[iGP].GetStartEndCPNum()[0]), AllCPs.GetRho(GPs[iGP].GetStartEndCPNum()[0]));
 		GPs[iGP].Resample(NumGPPts);
-		GPs[iGP].MakeRhoValuesMonotomic(&Th_VolInfo[omp_get_thread_num()], &RhoPtr);
+		GPs[iGP].MakeRhoValuesMonotonic(&Th_VolInfo[omp_get_thread_num()], &RhoPtr);
 		if (GPDir == StreamDir_Reverse) GPs[iGP].Reverse();
 	}
 
@@ -2509,7 +2509,12 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 	vector<int> const & HessVarNums,
 	Boolean_t IsPeriodic,
 	double RhoCutoff,
-	int NumGPPts)
+	int NumGPPts,
+	bool SavePaths,
+	bool SaveSurfaces,
+	bool EvenPointSpacing, 
+	double SeedOffset,
+	bool PrependSaddlePoint)
 {
 	TecUtilLockStart(AddOnID);
 
@@ -2612,7 +2617,7 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 		vec3 EigVals = AllCPs.GetEigVals(SelectedCPNums[iCP] - 1);
 		mat33 EigVecs = AllCPs.GetEigVecs(SelectedCPNums[iCP] - 1);
 
-		double StartPointOffset = 0.02;
+		double StartPointOffset = SeedOffset;
 
 		vec3 RotAxis,
 			RotVec = normalise(EigVecs.col(1)) * StartPointOffset;
@@ -2635,9 +2640,8 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 		vector<GradPath_c const *> GPPtrs;
 		for (int iGP = 0; iGP < NumGPs; ++iGP){
 			vec3 StartPoint = AllCPs.GetXYZ(CPTypeIndOffset[0], CPTypeIndOffset[1]) + Rotate(RotVec, RotStep * double(iGP), RotAxis);
-			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts * 5, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
 			GPs.back().SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(CPTypeIndOffset[0], CPTypeIndOffset[1]), 0);
-			GPPtrs.push_back(&GPs[iGP]);
 		}
 
 #ifndef _DEBUG
@@ -2645,19 +2649,35 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 #endif
 		for (int iGP = 0; iGP < NumGPs; ++iGP) {
 			GPs[iGP].Seed(false);
+			GPs[iGP].Resample(NumGPPts, EvenPointSpacing ? GPResampleMethod_Linear : GPResampleMethod_Adaptive);
 		}
 
 		for (auto & i : GPs){
-			i.PointPrepend(AllCPs.GetXYZ(CPTypeIndOffset[0], CPTypeIndOffset[1]), AllCPs.GetRho(CPTypeIndOffset[0], CPTypeIndOffset[1]));
+			if (PrependSaddlePoint) {
+				i.PointPrepend(AllCPs.GetXYZ(CPTypeIndOffset[0], CPTypeIndOffset[1]), AllCPs.GetRho(CPTypeIndOffset[0], CPTypeIndOffset[1]));
+			}
+			if (SavePaths) {
+				int zoneNum = i.SaveAsOrderedZone("Simple Surface " + CPNameList[CPTypeIndOffset[0]] + " " + to_string(CPTypeIndOffset[1]));
+				NewZones += zoneNum;
+				SetZoneStyle({ zoneNum }, ZoneStyle_Path);
+			}
+			GPPtrs.push_back(&i);
 		}
 
-		FESurface_c OutSurf;
-		OutSurf.MakeFromGPs(GPPtrs, true, false, false);
+		if (SaveSurfaces) {
+			FESurface_c OutSurf;
+			OutSurf.MakeFromGPs(GPPtrs, true, false, false);
 
-		OutSurf.SaveAsTriFEZone({ 1,2,3 }, "Simple Surface " + CPNameList[CPTypeIndOffset[0]] + " " + to_string(CPTypeIndOffset[1]));
+			int zoneNum = OutSurf.SaveAsTriFEZone({ 1,2,3 }, "Simple Surface " + CPNameList[CPTypeIndOffset[0]] + " " + to_string(CPTypeIndOffset[1]));
+			NewZones += zoneNum;
+
+			SetZoneStyle({ zoneNum }, ZoneStyle_Surface);
+		}
 	}
 
-	TecUtilZoneSetActive(NewZones.getRef(), AssignOp_PlusEquals);
+	if (!NewZones.isEmpty()) {
+		TecUtilZoneSetActive(NewZones.getRef(), AssignOp_PlusEquals);
+	}
 
 	TecUtilDataLoadEnd();
 
@@ -2803,7 +2823,14 @@ void SimpleSurfacesAroundSaddlesReturnUserInfo(bool const GuiSuccess,
 	int PointsPerPath = Fields[fNum++].GetReturnInt();
 	double RhoCutoff = Fields[fNum++].GetReturnDouble();
 
-	SimpleSurfacesAroundSaddles(NumGPs, VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, RhoCutoff, NumGPs);
+	double SeedOffset = Fields[fNum++].GetReturnDouble();
+
+	bool EvenPointSpacing = Fields[fNum++].GetReturnBool();
+	bool PrependSaddlePoint = Fields[fNum++].GetReturnBool();
+	bool SavePaths = Fields[fNum++].GetReturnBool();
+	bool SaveSurfaces = Fields[fNum++].GetReturnBool();
+
+	SimpleSurfacesAroundSaddles(NumGPs, VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, RhoCutoff, NumGPs, SavePaths, SaveSurfaces, EvenPointSpacing, SeedOffset, PrependSaddlePoint);
 
 	TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
 
@@ -2851,6 +2878,16 @@ void SimpleSurfacesAroundSaddlesGetUserInfo() {
 	Fields.push_back(GuiField_c(Gui_Int, "Number of points per path", "800"));
 
 	Fields.push_back(GuiField_c(Gui_Double, "Path rho cutoff", "0.001"));
+
+	Fields.push_back(GuiField_c(Gui_Double, "Seed point offset from saddle point", "0.01"));
+
+	Fields.push_back(GuiField_c(Gui_Toggle, "Even point spacing along gradient paths", "0"));
+
+	Fields.push_back(GuiField_c(Gui_Toggle, "Prepend saddle CP as first point on paths", "1"));
+
+	Fields.push_back(GuiField_c(Gui_Toggle, "Save gradient paths as zones", "0"));
+
+	Fields.push_back(GuiField_c(Gui_Toggle, "Save gradient paths as surface", "1"));
 
 	CSMGui("GPs around bond/ring CPs", Fields, SimpleSurfacesAroundSaddlesReturnUserInfo, AddOnID);
 }
@@ -3473,13 +3510,17 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 		if (AllCPs.NumRings() > 0) CPTypesForMinDistCheck.push_back(CPType_Ring);
 	}
-	GPTerminalCPTypeNums = { GPTerminalCPTypeNum, GPTerminalCPSaddleTypeNum };
+ 	GPTerminalCPTypeNums = { GPTerminalCPTypeNum, GPTerminalCPSaddleTypeNum };
+//	GPTerminalCPTypeNums = { GPTerminalCPSaddleTypeNum };
 
 // 	int const NumGPPts = 800;
+	// Increase number of GP points when working, then resample it to specified number
+	double NumGPPtsWorkingFactor = 5.0;
+	NumGPPts *= NumGPPtsWorkingFactor;
 	double TermRadius = 0.02;
 	double SaddleTermRadius = TermRadius * 5.0;
 	double CoincidentPointCheckDistSqr = 1e-12;
-	double CoincidentPointCheckAngle = 1e-12;
+	double CoincidentPointCheckAngle = 1e-40;
 	double GPMidPointConvergenceTolerance = 1e-6;
 	double GPMidPointUseCurvatureMidpointTolerance = 0.05;
 	int GPMidPointConvergenceNumCheckPts = 10;
@@ -3550,11 +3591,11 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 #ifdef DEBUG_SAVESCREENSHOTS
 		TecUtilRedrawAll(TRUE);
-		TecUtilMacroExecuteCommand("$!EXPORTSETUP EXPORTFORMAT = PNG");
-		TecUtilMacroExecuteCommand("$!EXPORTSETUP IMAGEWIDTH = 2000");
-		TecUtilMacroExecuteCommand("$!EXPORTSETUP USESUPERSAMPLEANTIALIASING = YES");
+		TecUtilMacroExecuteCommand("$!EXPORTSETUP EXPORTFORMAT = JPEG");
+		TecUtilMacroExecuteCommand("$!EXPORTSETUP IMAGEWIDTH = 1000");
+		TecUtilMacroExecuteCommand("$!EXPORTSETUP USESUPERSAMPLEANTIALIASING = NO");
 
-		TecUtilMacroExecuteCommand(string("$!EXPORTSETUP EXPORTFNAME = \'W:\\Tecplot\\StorageWorkspace\\2019_GBAAlgotithm\\RSScreens\\pass " + to_string(PassNum) + " full.png\'").c_str());
+		TecUtilMacroExecuteCommand(string("$!EXPORTSETUP EXPORTFNAME = \'C:\\Users\\Haiiro\\Desktop\\pass " + to_string(PassNum) + " full.jpg\'").c_str());
 		TecUtilMacroExecuteCommand("$!EXPORT EXPORTREGION = CURRENTFRAME");
 
 // 		sprintf(buf, "$!EXPORTSETUP EXPORTFORMAT = PNG\n$!EXPORTSETUP IMAGEWIDTH = 2000\n$!EXPORTSETUP USESUPERSAMPLEANTIALIASING = YES\n$!EXPORTSETUP EXPORTFNAME = \'W:\\Tecplot\\StorageWorkspace\\2019_GBAAlgotithm\\RSScreens\\pass %d full.png\'\n$!EXPORT \n  EXPORTREGION = CURRENTFRAME", PassNum);
@@ -3582,11 +3623,11 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 #else
 			DoContinue = TRUE;
 			if (PassNum >= 0 && SubPassNum >= 0) {
-				TecUtilMacroExecuteCommand("$!EXPORTSETUP EXPORTFORMAT = PNG");
-				TecUtilMacroExecuteCommand("$!EXPORTSETUP IMAGEWIDTH = 2000");
-				TecUtilMacroExecuteCommand("$!EXPORTSETUP USESUPERSAMPLEANTIALIASING = YES");
+				TecUtilMacroExecuteCommand("$!EXPORTSETUP EXPORTFORMAT = JPEG");
+				TecUtilMacroExecuteCommand("$!EXPORTSETUP IMAGEWIDTH = 1000");
+				TecUtilMacroExecuteCommand("$!EXPORTSETUP USESUPERSAMPLEANTIALIASING = NO");
 
-				TecUtilMacroExecuteCommand(string("$!EXPORTSETUP EXPORTFNAME = \'W:\\Tecplot\\StorageWorkspace\\2019_GBAAlgotithm\\RSScreens\\pass " + to_string(PassNum) + "-" + to_string(SubPassNum) + "-" + to_string(SubSubPassNum) + ".png\'").c_str());
+				TecUtilMacroExecuteCommand(string("$!EXPORTSETUP EXPORTFNAME = \'C:\\Users\\Haiiro\\Desktop\\pass " + to_string(PassNum) + "-" + to_string(SubPassNum) + "-" + to_string(SubSubPassNum) + ".jpg\'").c_str());
 				TecUtilMacroExecuteCommand("$!EXPORT EXPORTREGION = CURRENTFRAME");
 
 // 				sprintf(buf, "$!EXPORTSETUP EXPORTFORMAT = PNG\n$!EXPORTSETUP IMAGEWIDTH = 2000\n$!EXPORTSETUP USESUPERSAMPLEANTIALIASING = YES\n$!EXPORTSETUP EXPORTFNAME = \'W:\\Tecplot\\StorageWorkspace\\2019_GBAAlgotithm\\RSScreens\\pass %d-%04d-%d.png\'\n$!EXPORT \n  EXPORTREGION = CURRENTFRAME", PassNum, SubPassNum, SubSubPassNum);
@@ -3672,7 +3713,11 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 			CPNum = TypeOffset[1];
 		}
 
-		double MinCPDist = AllCPs.GetMinCPDist(TypeInd, CPNum);
+		double MinCPDist = AllCPs.GetMinCPDist(TypeInd, CPNum, CPTypesForMinDistCheck);
+
+		TermRadius = 0.01 * MinCPDist;
+		SaddleTermRadius = TermRadius * 5.0;
+
 		StartPointOffset = MIN(0.05 * MinCPDist, DelXYZNorm);
 		double SourceCPTermRadius = 0.05 * StartPointOffset;
 		vec3 StartVec = normalise(AllCPs.GetEigVecs(TypeInd, CPNum).col(1)) * StartPointOffset;
@@ -3706,7 +3751,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 			SeedDiscPts.push_back(CPPosition + SeedPt * 1.5);
 			SeedPt += CPPosition;
 
-			GPs.push_back(GradPath_c(SeedPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
+			GPs.push_back(GradPath_c(SeedPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &StartPointOffset, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
 			GPs.back().SetTerminalCPTypeNums(GPTerminalCPTypeNums);
 			GPs.back().SetStartEndCPNum(CurrentCPNum, 0);
 
@@ -3739,9 +3784,9 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		// 		CSMGuiUnlock();
 		// 		return TRUE;
 
-#ifndef _DEBUG
+// #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
-#endif
+// #endif
 		for (int gpNum = 0; gpNum < NumCircleCheckGPs; ++gpNum) {
 			GPs[gpNum].Seed(false);
 			// 			GPs[gpNum].PointPrepend(CPPosition, AllCPs.GetRho(TypeInd, cpNum));
@@ -3764,7 +3809,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 			GPs[gpNum].ReinterpolateRhoValuesFromVolume();
 
-			GPs[gpNum].MakeRhoValuesMonotomic();
+			GPs[gpNum].MakeRhoValuesMonotonic();
 
 // 			if ((CPType == CPType_Ring && GPs[gpNum].RhoAt(0) > GPs[gpNum].RhoAt(-1))
 // 				|| (CPType == CPType_Bond && GPs[gpNum].RhoAt(0) < GPs[gpNum].RhoAt(-1))) {
@@ -3781,9 +3826,9 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 		// Reseed GPs with smaller temrinal radius
 
-#ifndef _DEBUG
+// #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
-#endif
+// #endif
 		for (int gpNum = 0; gpNum < NumCircleCheckGPs; ++gpNum) {
 			if (GPEndCPTypes[gpNum] != SaddleCPTermType) {
 				GPs[gpNum].Clear();
@@ -3797,7 +3842,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 				GPs[gpNum].ReinterpolateRhoValuesFromVolume();
 
-				GPs[gpNum].MakeRhoValuesMonotomic();
+				GPs[gpNum].MakeRhoValuesMonotonic();
 			}
 		}
 
@@ -3839,6 +3884,10 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 //       
 //  		DoContinue = false;
 //  		if (!DoContinue) break;
+//  		
+
+
+		// Doing a removal to paths too close to their neighbors before the saddle-saddle step
 
 
 		int Path1Ind, Path2Ind;
@@ -3850,6 +3899,208 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		auto Path1 = GPList.begin();
 		auto Path2 = Path1;
 		auto Path3 = Path2;
+
+
+		string DebugPathStringBase;
+
+
+		// Pass to remove GPs that are consistently too close to their neighbors.
+		// If the paths to the left and right of a test path are too close, then remove
+		// the test path.
+
+// 		Path1 = GPList.begin();
+// 		Path2 = Path1;
+// 		Path2++;
+// 		Path3 = Path2;
+// 		Path3++;
+// 		CheckDist = 0.01 * MinCPDist;
+// 		while (Path2 != GPList.end()) {
+// 			if (!Path1->IsSGP && !Path2->IsSGP
+// 				&& (Path1->CPNum == Path2->CPNum
+// 					|| (Path1->CPType == CPType_Invalid
+// 						&& Path2->CPType == CPType_Invalid))
+// 				&& Path1->GP.GetMaxSeparationMidpointFromOtherGP(Path2->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist)
+// 				&& MaxDist < CheckDist)
+// 			{
+// 				// Paths are too close, replace them with a path at their midpoint
+// 
+// 				GPWithInfo GP;
+// 				GP.CPType = Path1->CPType;
+// 				GP.CPNum = Path1->CPNum;
+// 				GP.Angle = (Path1->Angle + Path2->Angle) * 0.5;
+// 				// 				GP.GP = GradPath_c({ &Path1->GP, &Path2->GP }, 0.5, Path1->GP.RhoAt(0), 1);
+// 				GP.GP = Path1->GP;
+// 				GP.GP.Clear();
+// 				GP.GP.SetStartPoint(GPMidPt);
+// 				GP.GP.SetDir(GPDir);
+// 				GP.GP.SetSurfPtr(nullptr);
+// 				GP.GP.SetGPTermType(GPTerminate_AtPoint);
+// 				GP.GP.SetTermPoint(AllCPs.GetXYZ(GP.CPNum));
+// 				GP.GP.SetTermPointRadius(1e-4);
+// 				GP.GP.Seed(false);
+// 
+// 				GradPath_c TmpGP({ &Path1->GP,&Path2->GP }, GPMidPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), std::make_pair(0, MAX(Path2->GP.GetIndAtLength(Path2->GP.GetLength(Path2Ind) + Path2->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path2Ind + NeighborGPSurfaceIndOffset)) }, &CPPosition);
+// 				GP.GP += TmpGP;
+// 				GP.GP.RemoveKinks();
+// 				GP.GP.Resample(NumGPPts);
+// 				GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+// 
+// 				if (CPType == CPType_Ring && GP.GP.RhoAt(0) > GP.GP.RhoAt(-1)) {
+// 					// Need to reverse GP
+// 					GP.GP.Reverse();
+// 				}
+// 
+// 				GPList.insert(Path2, GP);
+// 
+// 				Path3 = Path2;
+// 				Path3--;
+// 				GPList.erase(Path2);
+// 				GPList.erase(Path1);
+// 				Path1 = Path3;
+// 				Path2 = Path3;
+// 				Path2++;
+// 			}
+// 			else {
+// 				Path1++;
+// 				Path2++;
+// 			}
+// 		}
+// 		
+		if (DebugMode) {
+			TecUtilRedrawAll(TRUE);
+			TecUtilDialogMessageBox("Removing GPs too close together (GP triplet check)", MessageBoxType_Information);
+		}
+
+		Path1 = GPList.begin();
+		Path2 = Path1;
+		Path2++;
+		Path3 = Path2;
+		Path3++;
+		CheckDist = 0.04 * MinCPDist;
+		vector<int> IndList;
+		while (DoContinue &&  Path1 != GPList.end()) {
+			DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum], AddOnID, Time1);
+			if ((!Path2->IsSGP
+				&& (Path1->CPNum == Path2->CPNum
+					&& Path1->CPNum == Path3->CPNum)
+				|| (Path1->CPType == CPType_Invalid
+					&& Path2->CPType == CPType_Invalid
+					&& Path3->CPType == CPType_Invalid))
+				//  				&& Path1->SaddleCPNum < 0 && Path3->SaddleCPNum < 0
+				&& Path2->GP.GetMaxSeparationFromNeighboringGPs(vector<GradPathBase_c const *>({ &Path1->GP, &Path3->GP }), IndList, Path2Ind) < CheckDist)
+				//  				&& Path1->GP.GetMaxSeparationMidpointFromOtherGP(Path3->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist)
+				//  				&& MaxDist < CheckDist)
+			{
+				// Paths are too close, so remove the path between them.
+
+#ifdef DEBUG_PRINTPATHS
+				SubPassNum++;
+				DebugPathStringBase = "Path1 id:" + to_string(Path1->Identifier) + ", CP:" + to_string(Path1->CPNum) + "\nPath2 id:" + to_string(Path2->Identifier) + ", CP:" + to_string(Path2->CPNum) + "\nPath3 id:" + to_string(Path3->Identifier) + ", CP:" + to_string(Path3->CPNum) + "\nRemoving path 2";
+// 				DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(Path2->GP, XYZVarNums, RhoVarNum, DebugPathStringBase, true, PassNum, SubPassNum, 1);
+#endif
+				GPList.erase(Path2);
+				Path2 = Path3;
+				GPIncrement(Path3, GPList);
+			}
+			else {
+				Path1++;
+				GPIncrement(Path2, GPList);
+				GPIncrement(Path3, GPList);
+			}
+		}
+
+
+		// DEBUG
+#ifdef DEBUG_PRINTPATHS
+		SubPassNum = 0;
+		DoPrintPaths = DebugMode;
+		if (DoPrintPaths) {
+			{
+// 				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
+// 				Set DebugDeleteZoneSet;
+// 				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
+// 					DebugDeleteZoneSet += i;
+// 
+// 				if (!DebugDeleteZoneSet.isEmpty())
+// 					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
+			}
+			DebugSaveGPList(GPList, ++PassNum, XYZVarNums, RhoVarNum, AllCPs, true, true);
+		}
+#endif
+		// 
+		//  		DoQuit = true;
+		if (!DoContinue) break;
+
+		if (DebugMode) {
+			TecUtilRedrawAll(TRUE);
+			TecUtilDialogMessageBox("Removing GPs too close together (GP neighbor check)", MessageBoxType_Information);
+		}
+
+		Path1 = GPList.begin();
+		Path2 = Path1;
+		Path2++;
+		CheckDist = 0.015 * MinCPDist;
+		while (DoContinue && Path1 != GPList.end()) {
+			DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum], AddOnID, Time1);
+			if ((!Path2->IsSGP
+				&& Path1->CPNum == Path2->CPNum
+				|| (Path1->CPType == CPType_Invalid
+					&& Path2->CPType == CPType_Invalid))
+				&& Path1->SaddleCPNum < 0 && Path3->SaddleCPNum < 0
+				&& Path1->GP.GetMaxSeparationMidpointFromOtherGP(Path2->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist)
+				&& MaxDist < CheckDist)
+			{
+#ifdef DEBUG_PRINTPATHS
+				SubPassNum++;
+				DebugPathStringBase = "Path1 id:" + to_string(Path1->Identifier) + ", CP:" + to_string(Path1->CPNum) + "\nPath2 id:" + to_string(Path2->Identifier) + ", CP:" + to_string(Path2->CPNum) + "\nRemoving path 2";
+// 				DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(Path2->GP, XYZVarNums, RhoVarNum, DebugPathStringBase, true, PassNum, SubPassNum, 1);
+#endif
+				// Paths are too close, so remove the path between them.
+				GPList.erase(Path2);
+				Path2 = Path1;
+				GPIncrement(Path2, GPList);
+			}
+			else {
+				Path1++;
+				GPIncrement(Path2, GPList);
+			}
+		}
+
+
+		// DEBUG
+#ifdef DEBUG_PRINTPATHS
+		SubPassNum = 0;
+		DoPrintPaths = DebugMode;
+		if (DoPrintPaths) {
+			{
+				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
+				Set DebugDeleteZoneSet;
+				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
+					DebugDeleteZoneSet += i;
+
+				if (!DebugDeleteZoneSet.isEmpty())
+					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
+			}
+			DebugSaveGPList(GPList, ++PassNum, XYZVarNums, RhoVarNum, AllCPs, true, true);
+		}
+#endif
+
+
+// 		int Path1Ind, Path2Ind;
+// 		vec3 Path2Pt, GPMidPt, GPMidPointOld;
+// 		double Weight;
+// 		double CheckDist = 0.2 * MinCPDist;;
+// 		double MaxDist;
+// 		auto Path1 = GPList.begin();
+// 		auto Path2 = Path1;
+// 		auto Path3 = Path2;
+
+
+		CheckDist = 0.2 * MinCPDist;
+
+		Path1 = GPList.begin();
+		Path2 = Path1;
+		Path3 = Path2;
 
 
 		// Pass to get bond-ring paths and any missing bond-cage or ring-nuclear paths.
@@ -3864,7 +4115,6 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		Path2++;
 		std::deque<vec3> GPMidPtDeque;
 
-		string DebugPathStringBase;
 
 		DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum], AddOnID, Time1);
 
@@ -4014,6 +4264,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 					GP.CPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
 					GP.CPType = AllCPs.GetTypeFromTotOffset(GP.CPNum);
+					
 
 					bool Reiterate = false;
 
@@ -4176,250 +4427,294 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 // 							TecUtilDialogMessageBox("Finding Saddle-saddle paths: deviating: term at saddle", MessageBoxType_Information);
 // 						}
 						// New path terminates at a saddle.
-						// We'll find the shortest length GP by starting a 1-D minimization of path length
-						// as a function of the weight 'b' used to position the seed point between the points
-						// on Path1 and Path2.
-						// First need to find a lower and upper bound on 'b' for the minimization.
-						// Do a binary search on either side of the min to get larger values;
 						// 
+						// Before we're satisfied with this saddle-saddle path, want to make sure it wasn't too 
+						// far of a long-shot, that is, that we're closer to the terminal saddle point than to the originating
+						// saddle point.
+						// If we're closer to the originating than the terminal saddle point, by some factor, then redo this 
+						// such that it doesn't terminate at the saddle point.
+						// Take the distance between the path seed point and the originating and terminating saddle points to
+						// make the decision.
+						// Just using a straight-line distance here rather than partial path lengths.
+						// 
+						double DistStartToSeed = Distance(GPMidPt, CPPosition),
+							DistSeedToEnd = Distance(GPMidPt, GP.GP[-1]);
 
+						double DistSeedToStartEndRatioCutoff = 0.02; // this is the maximum value allowed of (DistSeedToEnd / DistStartToSeed), so if set to 0.1, then DistStartToSeed must be 10 times larger than DistSeedToEnd, that is, we must be much closer to the terminating saddle than to the originating one.
 
-						GradPath_c GPSaddle(vec3(), GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &SaddleTermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
-						GPSaddle.SetTerminalCPTypeNum(GPTerminalCPSaddleTypeNum);
-						GPSaddle.SetStartEndCPNum(CurrentCPNum, 0);
-						int Iter = 0, MaxIter = 10;
-						int OuterIter = 0, MaxOuterIter = 10;
-						double CheckLen = GP.GP.GetLength();
-						vec3 Pts[2];
-						double Lengths[] = { -1.0,-1.0 };
-						while (OuterIter++ < MaxOuterIter && (Lengths[0] < CheckLen || Lengths[1] < CheckLen)) {
-							for (int i = 0; i < 2; ++i) {
-								vec3 LeftPt = (i == 0 ? Path1->GP.XYZAt(Path1Ind) : Path2Pt);
-								vec3 RightPt = GPMidPt;
-								double tmpLength = CheckLen - 1.0;
-								Iter = 0;
-								do {
-									Pts[i] = (LeftPt + RightPt) * 0.5;
-									GPSaddle.Clear();
-									GPSaddle.SetStartPoint(Pts[i]);
-									GPSaddle.Seed(false);
-									if (GPSaddle.GetStartEndCPNum(EndCPPosition) != GP.CPNum) {
-										LeftPt = Pts[i];
-										tmpLength = CheckLen - 1.0;
-									}
-									else if (GPSaddle.GetLength() < CheckLen) {
-										RightPt = Pts[i];
-									}
-									else {
-										tmpLength = GPSaddle.GetLength();
-									}
-									Lengths[i] = tmpLength;
-								} while (Iter++ < MaxIter && Lengths[i] < CheckLen);
-								if (Iter >= MaxIter)
-									break;
-							}
-							GPSaddle.Clear();
-							GPSaddle.SetStartPoint((Pts[0] + Pts[1]) * 0.5);
-							GPSaddle.Seed(false);
-							CheckLen = GPSaddle.GetLength();
+						double DistSeedToStartEndRatio;
+
+						if (DistStartToSeed > 1e-4){
+							DistSeedToStartEndRatio = DistSeedToEnd / DistStartToSeed;
 						}
-						std::pair<vec3 const *, vec3 const *> StartPoints(&Pts[0], &Pts[1]);
-						double bMin = 0.5;
-						if (Iter >= MaxIter || !MinLengthGPBetweenPointsCheckStartPoints(GPSaddle, StartPoints, bMin)) {
-							// Failed to get a lower and upper bound for the minimization, so remake the GP so that 
-							// it won't terminate at the saddle CP, then we can iterate and try again.
+						else {
+							DistSeedToStartEndRatio = DistSeedToStartEndRatioCutoff + 1.;
+						}
+
+						if (DistSeedToStartEndRatio > DistSeedToStartEndRatioCutoff) {
+							// Cutoff is exeeded, so redo the path so that it won't terminate at the saddle
 							GP.GP.Clear();
-							GP.GP.SetStartPoint(GPMidPt);
+							GP.GP.SetupGradPath(GPMidPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &SaddleTermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 							GP.GP.SetTerminalCPTypeNum(GPTerminalCPTypeNum);
+							GP.GP.SetStartEndCPNum(CurrentCPNum, 0);
 							GP.GP.Seed(false);
+
+							//DEBUG
+		// 					GP.GP.SaveAsOrderedZone();
 
 							GP.CPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
 							GP.CPType = AllCPs.GetTypeFromTotOffset(GP.CPNum);
-// 
-							DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\n Failed to get min-length saddle-saddle path", PassNum, SubPassNum, 1);
 
 							Reiterate = true;
 						}
-						else {
-							// 							FESurface_c TmpSurf;
-							// 							vector<GradPath_c> SubGPs = { Path1->GP.SubGP(0, Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor)), Path2->GP.SubGP(0,  Path2->GP.GetIndAtLength(Path2->GP.GetLength(Path2Ind) + Path2->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor)) };
-							// 							vector<GradPath_c const *> GPPtrs = { &SubGPs[0], &SubGPs[1] };
-							// 							TmpSurf.MakeFromGPs(GPPtrs);
-							// 							TmpSurf.GeneratePointElementDistanceCheckData();
-							// 							GPSaddle.SetSurfPtr(&TmpSurf);
-							// 							GPSaddle.SetTermPoint(CPPosition);
-
-							if (MinLengthGPBetweenPoints(GPSaddle, StartPoints, bMin)) {
-								// Minimum length GP found.
-								// Combine with midpoint GP from Path1 and Path2 and put into GPList.
-								vec3 bMinPt = Pts[0] * bMin + Pts[1] * (1.0 - bMin);
-								//  								MidPtRhoVal = ValAtPointByPtr(bMinPt, VolInfo, RhoPtr);
-								 // 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMin, MidPtRhoVal, -1);
-								 // 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMin, Path1->GP.RhoAt(Path1Ind), -1);
-								 // 								GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
-								// 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMinPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MIN(Path1Ind + NeighborGPSurfaceIndOffset, Path1->GP.GetCount() - 1)), std::make_pair(0, MIN(Path2Ind + NeighborGPSurfaceIndOffset, Path2->GP.GetCount() - 1)) }, &CPPosition);
-								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMinPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), std::make_pair(0, MAX(Path2->GP.GetIndAtLength(Path2->GP.GetLength(Path2Ind) + Path2->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path2Ind + NeighborGPSurfaceIndOffset)) }, &CPPosition);
-								// Need to trim points off GP.GP to make sure that the resulting rho values
-								// when combined with GPSaddle are monotonic down the path.
-// 								GPSaddle.Resample(NumGPPts, GPResampleMethod_Linear);
-								int tmpInd = 0;
-								while ((CPType == CPType_Ring && GP.GP.RhoAt(tmpInd) > GPSaddle.RhoAt(0)) || (CPType == CPType_Bond && GP.GP.RhoAt(tmpInd) < GPSaddle.RhoAt(0)))
-									tmpInd++;
-
-								if (tmpInd > 0)
-									GP.GP = GP.GP.SubGP(tmpInd, -1);
-								GP.GP += GPSaddle;
-								// 								GP.GP = GPSaddle;
-
-								GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
-
-								GP.GP.Resample(NumGPPts + 5);
-								GP.GP.RemoveKinks();
-
-								if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition))
-									// Need to reverse GP
-									GP.GP.Reverse();
-
-// 								if ((CPType == CPType_Ring && GP.GP.RhoAt(0) > GP.GP.RhoAt(-1))
-// 									|| (CPType == CPType_Bond && GP.GP.RhoAt(0) < GP.GP.RhoAt(-1))) {
-// 									GP.GP.Reverse();
-// 								}
-								GP.Identifier = Path1->Identifier * bMin + Path2->Identifier * (1.0 - bMin);
-								GP.SaddleCPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
-								GP.CPType = AllCPs.GetTypeFromTotOffset(GP.SaddleCPNum);
-								GP.IsSGP = true;
+						else{
 
 
-								DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle", PassNum, SubPassNum, 2);
+							// We'll find the shortest length GP by starting a 1-D minimization of path length
+							// as a function of the weight 'b' used to position the seed point between the points
+							// on Path1 and Path2.
+							// First need to find a lower and upper bound on 'b' for the minimization.
+							// Do a binary search on either side of the min to get larger values;
+							// 
 
-								// Find the end GPs to combine with the saddle GP at a later step.
-								// The saddle-min/max CP paths could go to the terminal CPs of Path1 and Path2,
-								// or they may go to another CP, in which case there are more CPs to be found
-								// in this loop.
-								GP.SaddleEndGPs.resize(2);
-								int ZoneNums[2];
-								vec3 SeedOrigin = AllCPs.GetXYZ(GP.SaddleCPNum);
-								int Iter = 1;
-								bool IsEdgeGP[] = { false,false };
 
-								// EDIT: First, check for existing paths then seed new ones if necessary
-
-								vector<std::list<GPWithInfo>::iterator> TmpPaths({ Path1,Path2 });
-								
-								for (int i = 0; i < 2; ++i){
-									if (AllCPs.HasEdge(TmpPaths[i]->CPNum, GP.SaddleCPNum, &ZoneNums[i])) {
-										IsEdgeGP[i] = true;
-										GP.SaddleEndGPs[i] = GradPath_c(ZoneNums[i], XYZRhoVarNums, AddOnID);
-										vec3 SaddleCPPos = AllCPs.GetXYZ(GP.SaddleCPNum);
-										if (DistSqr(GP.SaddleEndGPs[i][0], SaddleCPPos) > DistSqr(GP.SaddleEndGPs[i][-1], SaddleCPPos))
-											// Need to reverse GP
-											GP.SaddleEndGPs[i].Reverse();
-										// 											if (CPType == CPType_Ring && GP.SaddleEndGPs[i].RhoAt(0) > GP.SaddleEndGPs[i].RhoAt(-1)) {
-										// 												// Need to reverse GP
-										// 												GP.SaddleEndGPs[i].Reverse();
-										// 											}
-										DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.SaddleEndGPs[i], XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle: existing saddle GP", PassNum, SubPassNum, 3);
-									}
+							GradPath_c GPSaddle(vec3(), GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &SaddleTermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+							GPSaddle.SetTerminalCPTypeNum(GPTerminalCPSaddleTypeNum);
+							GPSaddle.SetStartEndCPNum(CurrentCPNum, 0);
+							int Iter = 0, MaxIter = 10;
+							int OuterIter = 0, MaxOuterIter = 10;
+							double CheckLen = GP.GP.GetLength();
+							vec3 Pts[2];
+							double Lengths[] = { -1.0,-1.0 };
+							while (OuterIter++ < MaxOuterIter && (Lengths[0] < CheckLen || Lengths[1] < CheckLen)) {
+								for (int i = 0; i < 2; ++i) {
+									vec3 LeftPt = (i == 0 ? Path1->GP.XYZAt(Path1Ind) : Path2Pt);
+									vec3 RightPt = GPMidPt;
+									double tmpLength = CheckLen - 1.0;
+									Iter = 0;
+									do {
+										Pts[i] = (LeftPt + RightPt) * 0.5;
+										GPSaddle.Clear();
+										GPSaddle.SetStartPoint(Pts[i]);
+										GPSaddle.Seed(false);
+										if (GPSaddle.GetStartEndCPNum(EndCPPosition) != GP.CPNum) {
+											LeftPt = Pts[i];
+											tmpLength = CheckLen - 1.0;
+										}
+										else if (GPSaddle.GetLength() < CheckLen) {
+											RightPt = Pts[i];
+										}
+										else {
+											tmpLength = GPSaddle.GetLength();
+										}
+										Lengths[i] = tmpLength;
+									} while (Iter++ < MaxIter && Lengths[i] < CheckLen);
+									if (Iter >= MaxIter)
+										break;
 								}
+								GPSaddle.Clear();
+								GPSaddle.SetStartPoint((Pts[0] + Pts[1]) * 0.5);
+								GPSaddle.Seed(false);
+								CheckLen = GPSaddle.GetLength();
+							}
+							std::pair<vec3 const *, vec3 const *> StartPoints(&Pts[0], &Pts[1]);
+							double bMin = 0.5;
+							if (Iter >= MaxIter || !MinLengthGPBetweenPointsCheckStartPoints(GPSaddle, StartPoints, bMin)) {
+								// Failed to get a lower and upper bound for the minimization, so remake the GP so that 
+								// it won't terminate at the saddle CP, then we can iterate and try again.
+								GP.GP.Clear();
+								GP.GP.SetStartPoint(GPMidPt);
+								GP.GP.SetTerminalCPTypeNum(GPTerminalCPTypeNum);
+								GP.GP.Seed(false);
 
-								while (!GP.SaddleEndGPs[0].IsMade() || !GP.SaddleEndGPs[1].IsMade()) {
-									vec3 PrinceDir = AllCPs.GetPrincDir(GP.SaddleCPNum);
-									bool DoLoop = false;
+								GP.CPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
+								GP.CPType = AllCPs.GetTypeFromTotOffset(GP.CPNum);
+								// 
+								DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\n Failed to get min-length saddle-saddle path", PassNum, SubPassNum, 1);
+
+								Reiterate = true;
+							}
+							else {
+								// 							FESurface_c TmpSurf;
+								// 							vector<GradPath_c> SubGPs = { Path1->GP.SubGP(0, Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor)), Path2->GP.SubGP(0,  Path2->GP.GetIndAtLength(Path2->GP.GetLength(Path2Ind) + Path2->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor)) };
+								// 							vector<GradPath_c const *> GPPtrs = { &SubGPs[0], &SubGPs[1] };
+								// 							TmpSurf.MakeFromGPs(GPPtrs);
+								// 							TmpSurf.GeneratePointElementDistanceCheckData();
+								// 							GPSaddle.SetSurfPtr(&TmpSurf);
+								// 							GPSaddle.SetTermPoint(CPPosition);
+
+								if (MinLengthGPBetweenPoints(GPSaddle, StartPoints, bMin)) {
+									// Minimum length GP found.
+									// Combine with midpoint GP from Path1 and Path2 and put into GPList.
+									vec3 bMinPt = Pts[0] * bMin + Pts[1] * (1.0 - bMin);
+									//  								MidPtRhoVal = ValAtPointByPtr(bMinPt, VolInfo, RhoPtr);
+									 // 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMin, MidPtRhoVal, -1);
+									 // 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMin, Path1->GP.RhoAt(Path1Ind), -1);
+									 // 								GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+									// 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMinPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MIN(Path1Ind + NeighborGPSurfaceIndOffset, Path1->GP.GetCount() - 1)), std::make_pair(0, MIN(Path2Ind + NeighborGPSurfaceIndOffset, Path2->GP.GetCount() - 1)) }, &CPPosition);
+									GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMinPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), std::make_pair(0, MAX(Path2->GP.GetIndAtLength(Path2->GP.GetLength(Path2Ind) + Path2->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path2Ind + NeighborGPSurfaceIndOffset)) }, &CPPosition);
+									// Need to trim points off GP.GP to make sure that the resulting rho values
+									// when combined with GPSaddle are monotonic down the path.
+	// 								GPSaddle.Resample(NumGPPts, GPResampleMethod_Linear);
+									int tmpInd = 0;
+									while ((CPType == CPType_Ring && GP.GP.RhoAt(tmpInd) > GPSaddle.RhoAt(0)) || (CPType == CPType_Bond && GP.GP.RhoAt(tmpInd) < GPSaddle.RhoAt(0)))
+										tmpInd++;
+
+									if (tmpInd > 0)
+										GP.GP = GP.GP.SubGP(tmpInd, -1);
+									GP.GP += GPSaddle;
+									// 								GP.GP = GPSaddle;
+
+									GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+
+									GP.GP.Resample(NumGPPts + 5);
+									GP.GP.RemoveKinks();
+
+									if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition))
+										// Need to reverse GP
+										GP.GP.Reverse();
+
+									// 								if ((CPType == CPType_Ring && GP.GP.RhoAt(0) > GP.GP.RhoAt(-1))
+									// 									|| (CPType == CPType_Bond && GP.GP.RhoAt(0) < GP.GP.RhoAt(-1))) {
+									// 									GP.GP.Reverse();
+									// 								}
+									GP.Identifier = Path1->Identifier * bMin + Path2->Identifier * (1.0 - bMin);
+									GP.SaddleCPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
+									GP.CPType = AllCPs.GetTypeFromTotOffset(GP.SaddleCPNum);
+									GP.IsSGP = true;
+
+
+									DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle", PassNum, SubPassNum, 2);
+
+									// Find the end GPs to combine with the saddle GP at a later step.
+									// The saddle-min/max CP paths could go to the terminal CPs of Path1 and Path2,
+									// or they may go to another CP, in which case there are more CPs to be found
+									// in this loop.
+									GP.SaddleEndGPs.resize(2);
+									int ZoneNums[2];
+									vec3 SeedOrigin = AllCPs.GetXYZ(GP.SaddleCPNum);
+									int Iter = 1;
+									bool IsEdgeGP[] = { false,false };
+
+									// EDIT: First, check for existing paths then seed new ones if necessary
+
+									vector<std::list<GPWithInfo>::iterator> TmpPaths({ Path1,Path2 });
+
 									for (int i = 0; i < 2; ++i) {
-// 										if (AllCPs.HasEdge(TmpPaths[i]->CPNum, GP.SaddleCPNum, &ZoneNums[i])) {
-// 											IsEdgeGP[i] = true;
-// 											GP.SaddleEndGPs[i] = GradPath_c(ZoneNums[i], XYZRhoVarNums, AddOnID);
-// 											vec3 SaddleCPPos = AllCPs.GetXYZ(GP.SaddleCPNum);
-// 											if (DistSqr(GP.SaddleEndGPs[i][0], SaddleCPPos) > DistSqr(GP.SaddleEndGPs[i][-1], SaddleCPPos))
-// 												// Need to reverse GP
-// 												GP.SaddleEndGPs[i].Reverse();
-// // 											if (CPType == CPType_Ring && GP.SaddleEndGPs[i].RhoAt(0) > GP.SaddleEndGPs[i].RhoAt(-1)) {
-// // 												// Need to reverse GP
-// // 												GP.SaddleEndGPs[i].Reverse();
-// // 											}
-// 											DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.SaddleEndGPs[i], XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle: existing saddle GP", PassNum, SubPassNum, 3);
-// 										}
-// 										else 
-										if (!GP.SaddleEndGPs[i].IsMade())
-										{
-											DoLoop = true;
-											auto * sGP = &GP.SaddleEndGPs[i];
-											vec3 OffsetVec = PrinceDir * 0.01 * (double)Iter;
-											vec3 SeedPt = SeedOrigin + OffsetVec;
-											if (GP.SaddleEndGPs[(i + 1) % 2].IsMade() && DistSqr(GP.SaddleEndGPs[(i + 1) % 2][-1], SeedPt) < DistSqr(GP.SaddleEndGPs[(i + 1) % 2][-1], SeedOrigin)) {
-												SeedPt = SeedOrigin - OffsetVec;
-											}
+										if (AllCPs.HasEdge(TmpPaths[i]->CPNum, GP.SaddleCPNum, &ZoneNums[i])) {
+											IsEdgeGP[i] = true;
+											GP.SaddleEndGPs[i] = GradPath_c(ZoneNums[i], XYZRhoVarNums, AddOnID);
+											vec3 SaddleCPPos = AllCPs.GetXYZ(GP.SaddleCPNum);
+											if (DistSqr(GP.SaddleEndGPs[i][0], SaddleCPPos) > DistSqr(GP.SaddleEndGPs[i][-1], SaddleCPPos))
+												// Need to reverse GP
+												GP.SaddleEndGPs[i].Reverse();
+											// 											if (CPType == CPType_Ring && GP.SaddleEndGPs[i].RhoAt(0) > GP.SaddleEndGPs[i].RhoAt(-1)) {
+											// 												// Need to reverse GP
+											// 												GP.SaddleEndGPs[i].Reverse();
+											// 											}
+											DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.SaddleEndGPs[i], XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle: existing saddle GP", PassNum, SubPassNum, 3);
+										}
+									}
 
-											sGP->SetupGradPath(SeedPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
-											sGP->SetTerminalCPTypeNum(GPTerminalCPTypeNum);
-											sGP->SetStartEndCPNum(GP.SaddleCPNum, 0);
-											sGP->Seed(false);
-											sGP->PointPrepend(SeedOrigin, AllCPs.GetRho(GP.SaddleCPNum));
+									while (!GP.SaddleEndGPs[0].IsMade() || !GP.SaddleEndGPs[1].IsMade()) {
+										vec3 PrinceDir = AllCPs.GetPrincDir(GP.SaddleCPNum);
+										bool DoLoop = false;
+										for (int i = 0; i < 2; ++i) {
+											// 										if (AllCPs.HasEdge(TmpPaths[i]->CPNum, GP.SaddleCPNum, &ZoneNums[i])) {
+											// 											IsEdgeGP[i] = true;
+											// 											GP.SaddleEndGPs[i] = GradPath_c(ZoneNums[i], XYZRhoVarNums, AddOnID);
+											// 											vec3 SaddleCPPos = AllCPs.GetXYZ(GP.SaddleCPNum);
+											// 											if (DistSqr(GP.SaddleEndGPs[i][0], SaddleCPPos) > DistSqr(GP.SaddleEndGPs[i][-1], SaddleCPPos))
+											// 												// Need to reverse GP
+											// 												GP.SaddleEndGPs[i].Reverse();
+											// // 											if (CPType == CPType_Ring && GP.SaddleEndGPs[i].RhoAt(0) > GP.SaddleEndGPs[i].RhoAt(-1)) {
+											// // 												// Need to reverse GP
+											// // 												GP.SaddleEndGPs[i].Reverse();
+											// // 											}
+											// 											DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.SaddleEndGPs[i], XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle: existing saddle GP", PassNum, SubPassNum, 3);
+											// 										}
+											// 										else 
+											if (!GP.SaddleEndGPs[i].IsMade())
+											{
+												DoLoop = true;
+												auto * sGP = &GP.SaddleEndGPs[i];
+												vec3 OffsetVec = PrinceDir * 0.01 * (double)Iter;
+												vec3 SeedPt = SeedOrigin + OffsetVec;
+												if (GP.SaddleEndGPs[(i + 1) % 2].IsMade() && DistSqr(GP.SaddleEndGPs[(i + 1) % 2][-1], SeedPt) < DistSqr(GP.SaddleEndGPs[(i + 1) % 2][-1], SeedOrigin)) {
+													SeedPt = SeedOrigin - OffsetVec;
+												}
 
-											if (GP.SaddleEndGPs[(i+1)%2].IsMade() && DistSqr(GP.SaddleEndGPs[(i+1)%2].XYZAt(-1), sGP->XYZAt(-1)) < TermRadius * TermRadius) {
-											// if (i == 1 && DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), sGP->XYZAt(-1)) < TermRadius * TermRadius) {
-// 											if ((i == 1 && DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), sGP->XYZAt(-1)) < TermRadius * TermRadius)
-// 												|| (DistSqr(TmpPaths[i]->GP.XYZAt(-1), sGP->XYZAt(-1)) > DistSqr(TmpPaths[(i+1)%2]->GP.XYZAt(-1), sGP->XYZAt(-1)))) {
-												SeedPt = SeedOrigin - OffsetVec;
-												sGP->Clear();
-												sGP->SetStartPoint(SeedPt);
+												sGP->SetupGradPath(SeedPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+												sGP->SetTerminalCPTypeNum(GPTerminalCPTypeNum);
 												sGP->SetStartEndCPNum(GP.SaddleCPNum, 0);
 												sGP->Seed(false);
 												sGP->PointPrepend(SeedOrigin, AllCPs.GetRho(GP.SaddleCPNum));
+
+												if (GP.SaddleEndGPs[(i + 1) % 2].IsMade() && DistSqr(GP.SaddleEndGPs[(i + 1) % 2].XYZAt(-1), sGP->XYZAt(-1)) < TermRadius * TermRadius) {
+													// if (i == 1 && DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), sGP->XYZAt(-1)) < TermRadius * TermRadius) {
+		// 											if ((i == 1 && DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), sGP->XYZAt(-1)) < TermRadius * TermRadius)
+		// 												|| (DistSqr(TmpPaths[i]->GP.XYZAt(-1), sGP->XYZAt(-1)) > DistSqr(TmpPaths[(i+1)%2]->GP.XYZAt(-1), sGP->XYZAt(-1)))) {
+													SeedPt = SeedOrigin - OffsetVec;
+													sGP->Clear();
+													sGP->SetStartPoint(SeedPt);
+													sGP->SetStartEndCPNum(GP.SaddleCPNum, 0);
+													sGP->Seed(false);
+													sGP->PointPrepend(SeedOrigin, AllCPs.GetRho(GP.SaddleCPNum));
+												}
+												DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.SaddleEndGPs[i], XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle: new saddle GP", PassNum, SubPassNum, 4);
 											}
-											DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.SaddleEndGPs[i], XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle: new saddle GP", PassNum, SubPassNum, 4);
+											// 										PrinceDir = -PrinceDir;
 										}
-// 										PrinceDir = -PrinceDir;
-									}
-									if (DoLoop && DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), GP.SaddleEndGPs[1].XYZAt(-1)) < CoincidentPointCheckDistSqr) {
-										// Gradpaths went to same terminus, so repeat with larger seed point offset
-										for (int i = 0; i < 2; ++i) {
-											if (!IsEdgeGP[i])
-												GP.SaddleEndGPs[i].Clear();
+										if (DoLoop && DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), GP.SaddleEndGPs[1].XYZAt(-1)) < CoincidentPointCheckDistSqr) {
+											// Gradpaths went to same terminus, so repeat with larger seed point offset
+											for (int i = 0; i < 2; ++i) {
+												if (!IsEdgeGP[i])
+													GP.SaddleEndGPs[i].Clear();
+											}
 										}
+										Iter++;
 									}
-									Iter++;
-								}
 
-								// Now check that the end GPs terminate at the terminuses of Path1
-								// and Path2 respectively.
-// 								if (DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), Path1->GP.XYZAt(-1)) > DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), Path2->GP.XYZAt(-1))) {
-								if (DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), Path1->GP.XYZAt(-1)) > DistSqr(GP.SaddleEndGPs[1].XYZAt(-1), Path1->GP.XYZAt(-1))) {
-									// Need to swap end GPs because they're going in the wrong directions.
-									GP.SaddleEndGPs = vector<GradPath_c>(GP.SaddleEndGPs.rbegin(), GP.SaddleEndGPs.rend());
-								}
+									// Now check that the end GPs terminate at the terminuses of Path1
+									// and Path2 respectively.
+	// 								if (DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), Path1->GP.XYZAt(-1)) > DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), Path2->GP.XYZAt(-1))) {
+									if (DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), Path1->GP.XYZAt(-1)) > DistSqr(GP.SaddleEndGPs[1].XYZAt(-1), Path1->GP.XYZAt(-1))) {
+										// Need to swap end GPs because they're going in the wrong directions.
+										GP.SaddleEndGPs = vector<GradPath_c>(GP.SaddleEndGPs.rbegin(), GP.SaddleEndGPs.rend());
+									}
 
-								for (auto & i : GP.SaddleEndGPs)
-									i.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+									for (auto & i : GP.SaddleEndGPs)
+										i.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
 
-								GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+									GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
 
-								if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition))
-									// Need to reverse GP
-									GP.GP.Reverse();
-// 								if (CPType == CPType_Ring && GP.GP.RhoAt(0) > GP.GP.RhoAt(-1)) {
-// 									// Need to reverse GP
-// 									GP.GP.Reverse();
-// 								}
+									if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition))
+										// Need to reverse GP
+										GP.GP.Reverse();
+									// 								if (CPType == CPType_Ring && GP.GP.RhoAt(0) > GP.GP.RhoAt(-1)) {
+									// 									// Need to reverse GP
+									// 									GP.GP.Reverse();
+									// 								}
 
-								GPList.insert(Path2, GP);
+									GPList.insert(Path2, GP);
 
-								// Update the GPList iterators to continue the search
-								// If the first end GP doesn't share its terminus with Path1 then
-								// resume between the saddle GP and Path1.
-								// Else if the second end GP doesn't share its terminus with Path2
-								// then resume between the saddle GP and Path2.
-								// Else the saddle end GPs share terminuses with Path1 and Path2 so
-								// resume the search to the right of Path2.
-								if (DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), Path1->GP.XYZAt(-1)) > CoincidentPointCheckDistSqr) {
-									Path2--;
-								}
-								else if (DistSqr(GP.SaddleEndGPs[1].XYZAt(-1), Path2->GP.XYZAt(-1)) > CoincidentPointCheckDistSqr) {
-									Path1++;
-								}
-								else {
-									Path1 = Path2;
-									Path2++;
+									// Update the GPList iterators to continue the search
+									// If the first end GP doesn't share its terminus with Path1 then
+									// resume between the saddle GP and Path1.
+									// Else if the second end GP doesn't share its terminus with Path2
+									// then resume between the saddle GP and Path2.
+									// Else the saddle end GPs share terminuses with Path1 and Path2 so
+									// resume the search to the right of Path2.
+									if (DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), Path1->GP.XYZAt(-1)) > CoincidentPointCheckDistSqr) {
+										Path2--;
+									}
+									else if (DistSqr(GP.SaddleEndGPs[1].XYZAt(-1), Path2->GP.XYZAt(-1)) > CoincidentPointCheckDistSqr) {
+										Path1++;
+									}
+									else {
+										Path1 = Path2;
+										Path2++;
+									}
 								}
 							}
 						}
@@ -4518,12 +4813,12 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		DoPrintPaths = DebugMode;
 		if (DoPrintPaths) {
 			{
-				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
-				Set DebugDeleteZoneSet;
-				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
-					DebugDeleteZoneSet += i;
-				if (!DebugDeleteZoneSet.isEmpty())
-					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
+// 				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
+// 				Set DebugDeleteZoneSet;
+// 				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
+// 					DebugDeleteZoneSet += i;
+// 				if (!DebugDeleteZoneSet.isEmpty())
+// 					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
 			}
 			DebugSaveGPList(GPList, ++PassNum, XYZVarNums, RhoVarNum, AllCPs, true, true);
 		}
@@ -4641,13 +4936,13 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		DoPrintPaths = DebugMode;
 		if (DoPrintPaths) {
 			{
-				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
-				Set DebugDeleteZoneSet;
-				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
-					DebugDeleteZoneSet += i;
-
-				if (!DebugDeleteZoneSet.isEmpty())
-					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
+// 				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
+// 				Set DebugDeleteZoneSet;
+// 				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
+// 					DebugDeleteZoneSet += i;
+// 
+// 				if (!DebugDeleteZoneSet.isEmpty())
+// 					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
 			}
 			DebugSaveGPList(GPList, ++PassNum, XYZVarNums, RhoVarNum, AllCPs, true, true);
 		}
@@ -4729,7 +5024,8 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		Path3 = Path2;
 		Path3++;
 		CheckDist = 0.04 * MinCPDist;
-		vector<int> IndList;
+// 		vector<int> IndList;
+		IndList.clear();
 		while (DoContinue &&  Path1 != GPList.end()) {
 			DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum], AddOnID, Time1);
 			if ((!Path2->IsSGP
@@ -4768,13 +5064,13 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		DoPrintPaths = DebugMode;
 		if (DoPrintPaths) {
 			{
-				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
-				Set DebugDeleteZoneSet;
-				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
-					DebugDeleteZoneSet += i;
-
-				if (!DebugDeleteZoneSet.isEmpty())
-					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
+// 				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
+// 				Set DebugDeleteZoneSet;
+// 				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
+// 					DebugDeleteZoneSet += i;
+// 
+// 				if (!DebugDeleteZoneSet.isEmpty())
+// 					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
 			}
 			DebugSaveGPList(GPList, ++PassNum, XYZVarNums, RhoVarNum, AllCPs, true, true);
 		}
@@ -4825,13 +5121,13 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		DoPrintPaths = DebugMode;
 		if (DoPrintPaths) {
 			{
-				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
-				Set DebugDeleteZoneSet;
-				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
-					DebugDeleteZoneSet += i;
-
-				if (!DebugDeleteZoneSet.isEmpty())
-					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
+// 				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
+// 				Set DebugDeleteZoneSet;
+// 				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
+// 					DebugDeleteZoneSet += i;
+// 
+// 				if (!DebugDeleteZoneSet.isEmpty())
+// 					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
 			}
 			DebugSaveGPList(GPList, ++PassNum, XYZVarNums, RhoVarNum, AllCPs, true, true);
 		}
@@ -4849,19 +5145,28 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 		DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum++], AddOnID, Time1);
 
+		// Remake path identifiers so that it can be useful as a way to cap the depth to which new paths are added.
+		double tmpDbl = 0.0;
+		for (auto & GP : GPList){
+			GP.Identifier = tmpDbl;
+			tmpDbl += 10.0;
+		}
+
 		if (DebugMode) {
 			TecUtilRedrawAll(TRUE);
 			TecUtilDialogMessageBox("Filling sparse regions", MessageBoxType_Information);
 		}
 		while (DoContinue && Path1 != GPList.end()) {
 			DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum], AddOnID, Time1);
-			if ((
-				(Path1->CPNum == Path2->CPNum)
-				|| (Path1->CPType == CPType_Invalid && Path2->CPType == CPType_Invalid))
-				&& (!Path1->IsSGP || !Path2->IsSGP)
+			if (
+// 				((Path1->CPNum == Path2->CPNum)
+// 				|| (Path1->CPType == CPType_Invalid && Path2->CPType == CPType_Invalid))
+// 				&& 
+				(!Path1->IsSGP || !Path2->IsSGP)
 // 				&& Path1->GP.GetSeparationMidpointAtDistFromOtherGP(Path2->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, CheckDist, GPDeviationStartPtLengthFactor))
-				&& Path2->Identifier - Path1->Identifier > CoincidentPointCheckAngle
+ 				&& Path2->Identifier - Path1->Identifier > CoincidentPointCheckAngle
 				&& Path1->GP.GetMaxSeparationMidpointFromOtherGP(Path2->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist)
+				// && Path1->GP.GetMaxSeparationMidpointFromOtherGPRhoBased(Path2->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist, 1)
 				&& ((!Path1->IsSGP && !Path2->IsSGP && MaxDist > CheckDist)
 					|| MaxDist > CheckDist * 0.8))
 			{
@@ -4926,13 +5231,13 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		DoPrintPaths = DebugMode;
 		if (DoPrintPaths) {
 			{
-				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
-				Set DebugDeleteZoneSet;
-				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
-					DebugDeleteZoneSet += i;
-
-				if (!DebugDeleteZoneSet.isEmpty())
-					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
+// 				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
+// 				Set DebugDeleteZoneSet;
+// 				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
+// 					DebugDeleteZoneSet += i;
+// 
+// 				if (!DebugDeleteZoneSet.isEmpty())
+// 					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
 			}
 			DebugSaveGPList(GPList, ++PassNum, XYZVarNums, RhoVarNum, AllCPs, true, true);
 		}
@@ -4966,7 +5271,8 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 			Path2 = Path1;
 			int CurrentCPCount = 0;
 			int iter = 0;
-			while (DoContinue && Path1 != EndPath){
+			while (false) {
+// 				while (DoContinue && Path1 != EndPath) {
 				if (iter == 0){
 					GPIncrement(EndPath, GPList);
 				}
@@ -5059,13 +5365,13 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		DoPrintPaths = DebugMode;
 		if (DoPrintPaths) {
 			{
-				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
-				Set DebugDeleteZoneSet;
-				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
-					DebugDeleteZoneSet += i;
-
-				if (!DebugDeleteZoneSet.isEmpty())
-					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
+// 				int DebugNumZonesAfter = TecUtilDataSetGetNumZones();
+// 				Set DebugDeleteZoneSet;
+// 				for (int i = DebugNumZonesBefore + 1; i <= DebugNumZonesAfter; ++i)
+// 					DebugDeleteZoneSet += i;
+// 
+// 				if (!DebugDeleteZoneSet.isEmpty())
+// 					TecUtilZoneDelete(DebugDeleteZoneSet.getRef());
 			}
 			DebugSaveGPList(GPList, ++PassNum, XYZVarNums, RhoVarNum, AllCPs, true, true);
 		}
@@ -5082,9 +5388,6 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		// less than 1 and 3.
 		// (Recall that the last GP in GPlist is the same as the first)
 		// 
-
-		//TODO: fix this because it breaks sometimes... Right now it just finds the minimum length
-		// existing path to each nuclear CP and saves that.
 
 		Path1 = GPList.begin();
 		Path2 = Path1;
@@ -5159,6 +5462,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				}
 
 				Path2 = MinPath;
+				Path2->GP.SetTermPointRadius(SourceCPTermRadius);
 				Path1 = Path2;
 				GPDecrement(Path1, GPList);
 				Path3 = Path2;
@@ -5406,6 +5710,12 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		if (DebugMode) {
 			TecUtilRedrawAll(TRUE);
 			TecUtilDialogMessageBox("Saving SGPs and SZFSs", MessageBoxType_Information);
+		}
+
+		// Now resample GPs to user-specified number of points
+		NumGPPts /= NumGPPtsWorkingFactor;
+		for (auto & GP : GPList){
+			GP.GP.Resample(NumGPPts, GP.IsSGP ? GPResampleMethod_Linear : GPResampleMethod_Adaptive);
 		}
 
 		// Now the full GPList is made, so make SGPs, special zero flux surface segments
@@ -11522,4 +11832,49 @@ void MapVolumeZoneVarsToOtherZonesGetUserInfo() {
 	};
 
 	CSMGui("Map volume zone variables to other zones", Fields, MapVolumeZoneVarsToOtherZonesReturnUserInfo, AddOnID);
+}
+
+void GenerateGUIBondsReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+
+	int fNum = 0;
+
+	auto SourceZoneNums = Fields[fNum++].GetReturnIntVec();
+	auto XVarNum = Fields[fNum++].GetReturnInt();
+	auto BondCutoff = Fields[fNum++].GetReturnDouble();
+	auto DoVDW = Fields[fNum++].GetReturnBool();
+	auto VDWCutoff = Fields[fNum++].GetReturnDouble();
+	auto MinLineThickness = Fields[fNum++].GetReturnDouble();
+	auto MaxLineThickness = Fields[fNum++].GetReturnDouble();
+	auto ReplaceOldBonds = Fields[fNum++].GetReturnBool();
+	auto HeteroBondsOnly = Fields[fNum++].GetReturnBool();
+
+	vector<int> XYZVarNums = { XVarNum, XVarNum + 1, XVarNum + 2 };
+
+	TecUtilLockStart(AddOnID);
+
+	DrawBondLinesBetweenNuclearPositions(SourceZoneNums, XYZVarNums, BondCutoff, DoVDW ? VDWCutoff : -1.0, MinLineThickness, MaxLineThickness, ReplaceOldBonds, HeteroBondsOnly);
+
+	TecUtilLockFinish(AddOnID);
+
+	return;
+}
+
+void GenerateGUIBondsGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelectMulti, "Nuclear position zones to use", NuclearPositionsZoneNameBase),
+		GuiField_c(Gui_VarSelect, "X variable", "X"),
+		GuiField_c(Gui_Double, "\"Bond\" cutoff distance", "3.0"),
+		GuiField_c(Gui_Toggle, "Include intermolecular bonds", "0"),
+		GuiField_c(Gui_Double, "Intermolecular bond cutoff distance", "8.0"),
+		GuiField_c(Gui_Double, "Minimum bond line thickness", "0.4"),
+		GuiField_c(Gui_Double, "Maximum bond line thickness", "0.8"),
+		GuiField_c(Gui_Toggle, "Replace existing GUI bonds where collisions occur?", "1"),
+		GuiField_c(Gui_Toggle, "Heteronuclear bonds only?", "0")
+	};
+
+	CSMGui("Generate GUI bonds", Fields, GenerateGUIBondsReturnUserInfo, AddOnID);
 }

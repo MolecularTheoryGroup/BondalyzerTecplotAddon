@@ -377,7 +377,7 @@ vec3 GradPathBase_c::ClosestPoint(vec3 const & CheckPt) const
 
 vec3 GradPathBase_c::ClosestPoint(vec3 const & CheckPt, int & PtNum) const
 {
-	return ClosestPointToPath(m_XYZList, CheckPt, PtNum);
+	return ClosestPointOnPathToOtherPoint(m_XYZList, CheckPt, PtNum);
 }
 
 vec3 GradPathBase_c::ClosestMaxCurvaturePoint(vec3 const & CheckPt, int & PtInd) const{
@@ -1971,8 +1971,9 @@ bool GradPathBase_c::GetMaxSeparationMidpointFromOtherGPRhoBased(GradPathBase_c 
 #pragma omp parallel for
 	for (int i = StartInd; i < EndInd; i+=step) {
 		DataVec[i].Ind1 = i;
-		if (GP.GetPointAtRhoValue(RhoAt(i), DataVec[i].Pt, DataVec[i].Ind2, Weight))
+		if (GP.GetPointAtRhoValue(RhoAt(i), DataVec[i].Pt, DataVec[i].Ind2, Weight)) {
 			DataVec[i].DistSqr = DistSqr(m_XYZList[i], DataVec[i].Pt);
+		}
 		else {
 			DataVec[i].Pt = GP.ClosestPoint(m_XYZList[i], DataVec[i].Ind2);
 			DataVec[i].DistSqr = DistSqr(m_XYZList[i], DataVec[i].Pt);
@@ -2406,7 +2407,7 @@ GradPath_c::GradPath_c(vector<GradPath_c const *> const & GPs,
 
 // 	this->ProjectPathToSurface();
 	this->RemoveKinks();
-	this->MakeRhoValuesMonotomic();
+	this->MakeRhoValuesMonotonic();
 
 	if (TermPoint != nullptr && GPTermType == GPTerminate_AtPoint){
 		double TermDistSqr = DistSqr(this->XYZAt(-1), *TermPoint);
@@ -2954,12 +2955,13 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 					break;
 				}
 				else if (m_HowTerminate == GPTerminate_AtPoint || m_HowTerminate == GPTerminate_AtPointRadius){
-					double PointRadiusSqr = DistSqr(PtI, (m_TermPoint));
+					double PointRadius = PointLineSegDist(m_TermPoint, PtI, PtIm1);
+					double PointRadiusSqr = PointRadius * PointRadius;
 					if (PointRadiusSqr <= m_TermPointRadiusSqr){
 						if (m_HowTerminate == GPTerminate_AtPointRadius){
 							double OldRadius = Distance(PtIm1, m_TermPoint);
 
-							NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (sqrt(PointRadiusSqr) - OldRadius));
+							NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (PointRadius - OldRadius));
 						}
 						else
 							NewPoint = m_TermPoint;
@@ -2988,12 +2990,13 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 								else{
 									NewPoint = m_CPs->GetXYZ(CPNum);
 								}
-								double PointRadiusSqr = DistSqr(PtI, NewPoint);
+								double PointRadius = PointLineSegDist(NewPoint, PtI, PtIm1);
+								double PointRadiusSqr = PointRadius * PointRadius;
 								if (PointRadiusSqr <= m_TermPointRadiusSqr){
 									if (m_HowTerminate == GPTerminate_AtCPRadius){
 										double OldRadius = Distance(PtIm1, NewPoint);
 
-										NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (sqrt(PointRadiusSqr) - OldRadius));
+										NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (PointRadius - OldRadius));
 									}
 
 									IsOk = SetIndexAndWeightsForPoint(NewPoint, m_ODE_Data.VolZoneInfo);
@@ -3048,11 +3051,13 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 								int TotCPNum = m_CPs->GetTotOffsetFromTypeNumOffset(CPTypeNum, CPNum);
 								if (TotCPNum != m_StartEndCPNum[0]){
 									NewPoint = m_CPs->GetXYZ(CPTypeNum, CPNum);
-									double PointRadiusSqr = DistSqr(PtI, NewPoint);
+// 									double PointRadiusSqr = DistSqr(PtI, NewPoint);
+									double PointRadius = PointLineSegDist(NewPoint, PtI, PtIm1);
+									double PointRadiusSqr = PointRadius * PointRadius;
 									if (PointRadiusSqr <= CheckRadiusSqr){
 										if (m_HowTerminate == GPTerminate_AtCPRadius){
 											double OldRadius = Distance(PtIm1, NewPoint);
-											NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (sqrt(PointRadiusSqr) - OldRadius));
+											NewPoint = PtIm1 + (PtI - PtIm1) * ((sqrt(m_TermPointRadiusSqr) - OldRadius) / (PointRadius - OldRadius));
 										}
 
 										IsOk = SetIndexAndWeightsForPoint(NewPoint, m_ODE_Data.VolZoneInfo);
@@ -3311,7 +3316,7 @@ void GradPath_c::SetTerminalCPTypeNums(vector<CPTypeNum_e> const & CPTypeNums)
 	m_TerminalCPTypeNums = CPTypeNums;
 }
 
-void GradPath_c::MakeRhoValuesMonotomic(VolExtentIndexWeights_s * VolInfo, FieldDataPointer_c * RhoPtr)
+void GradPath_c::MakeRhoValuesMonotonic(VolExtentIndexWeights_s * VolInfo, FieldDataPointer_c * RhoPtr)
 {
 	if (IsMade()){
 		ReinterpolateRhoValuesFromVolume(VolInfo, RhoPtr);
