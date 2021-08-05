@@ -913,7 +913,7 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 	ArbParam_t ClientData)
 {
 	TecUtilLockStart(AddOnID);
-	CSMGuiLock();
+	CSMGUILock();
 	if (WasSuccessful){
 
 		string TmpStr1, TmpStr2, TmpStr3;
@@ -1071,7 +1071,7 @@ void STDCALL ToggleFEVolumesProbeCB(Boolean_t WasSuccessful,
 		}
 	}
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 	TecGUIDialogLaunch(Dialog1Manager);
 }
@@ -1322,7 +1322,7 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
 	ArbParam_t ClientData)
 {
 	TecUtilLockStart(AddOnID);
-	CSMGuiLock();
+	CSMGUILock();
 
 	if (WasSuccessful){
 		Boolean_t IsOk = TRUE;
@@ -1334,7 +1334,7 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
 		SelectGBsInRegion(ProbedZoneNum, ElemNum, GroupNumberToWrite);
 	}
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 	TecGUIDialogLaunch(Dialog1Manager);
 }
@@ -1835,7 +1835,7 @@ bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin){
 }
 
 void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t AbsoluteRadius){
-	CSMGuiLock();
+	CSMGUILock();
 
 	vector<EntIndex_t> XYZVarNums(3);
 	TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
@@ -1908,5 +1908,5 @@ void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t Ab
 		}
 	}
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 }

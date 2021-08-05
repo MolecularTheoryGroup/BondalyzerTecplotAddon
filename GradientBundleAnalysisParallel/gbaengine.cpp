@@ -10089,7 +10089,7 @@ void CreateCircularGBsProbeCB(Boolean_t WasSuccessful, Boolean_t IsNearestPoint,
 
 		int ZoneNum = TecUtilProbeFieldGetZone();
 		if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)) {
-			CSMGuiLock();
+			CSMGUILock();
 
 			string SphereName = AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.SourceNucleusName);
 			if (SphereName == "") SphereName = "GBA Sphere";
@@ -10281,7 +10281,7 @@ void CreateCircularGBsProbeCB(Boolean_t WasSuccessful, Boolean_t IsNearestPoint,
 			else
 				TecUtilDataLoadEnd();
 
-			CSMGuiUnlock();
+			CSMGUIUnlock();
 		}
 	}
 	TecUtilLockFinish(AddOnID);

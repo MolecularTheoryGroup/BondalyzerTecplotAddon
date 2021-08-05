@@ -238,7 +238,7 @@ void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID);
 void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
 	if (AddOnID == nullptr) AddOnID = &CSMGuiAddOnID;
 	TecUtilLockStart(*AddOnID);
-	CSMGuiLock();
+	CSMGUILock();
 	if (CSMGuiMultiListID != BADDIALOGID){
 		LgIndex_t * SelectedItems;
 		LgIndex_t NumSelected;
@@ -283,7 +283,7 @@ void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID){
 		}
 		TecUtilArrayDealloc((void **)&SelectedItems);
 	}
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(*AddOnID);
 }
 
@@ -364,9 +364,9 @@ void CSMGuiSelectPointsWithinRadiusButtonCB(){
 void CSMGuiPointSelectMultiListCallback(const LgIndex_t* Val){
 	TecUtilLockStart(CSMGuiAddOnID);
 	if (CSMGuiMultiListIsPointSelect){
-		CSMGuiLock();
+		CSMGUILock();
 		CSMGuiLabelSelectedPoints();
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	TecUtilLockFinish(CSMGuiAddOnID);
 }
@@ -416,7 +416,7 @@ void STDCALL CSMGuiPointSelectProbeCB(Boolean_t WasSuccessful,
 
 	TecUtilLockStart(CSMGuiAddOnID);
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	bool PointSelected = false;
 	int NumSelected;
@@ -446,7 +446,7 @@ void STDCALL CSMGuiPointSelectProbeCB(Boolean_t WasSuccessful,
 	CSMGuiPointSelectButtonCB();
 // 	TecUtilRedraw(TRUE);
 
-	CSMGuiLock();
+	CSMGUILock();
 
 
 	TecUtilLockFinish(CSMGuiAddOnID);
@@ -1290,13 +1290,13 @@ void CSMGui(string const & Title,
 	CSMLaunchGui(Title, Fields);
 }
 
-; void CSMGuiLock() {
+; void CSMGUILock() {
 	TecUtilDrawGraphics(FALSE);
 	TecUtilInterfaceSuspend(TRUE);
 	TecUtilWorkAreaSuspend(TRUE);
 }
 
-void CSMGuiUnlock(){
+void CSMGUIUnlock(){
 	TecUtilDrawGraphics(TRUE);
 	TecUtilInterfaceSuspend(FALSE);
 	TecUtilWorkAreaSuspend(FALSE);

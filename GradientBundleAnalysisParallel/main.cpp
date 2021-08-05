@@ -119,9 +119,9 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
 // 			TecUtilDialogMessageBox("node maps altered", MessageBoxType_Information);
 			break;
 		case StateChange_MouseModeUpdate: /* the new mouse mode */
-			CSMGuiLock();
+			CSMGUILock();
 			GBAProcessSystemDeleteCPLabels();
-			CSMGuiUnlock();
+			CSMGUIUnlock();
 // 			TecUtilDialogMessageBox("mouse mode update", MessageBoxType_Information);
 			break;
 		case StateChange_Style:           /* Style Parameters P1,P2,P3,P4,P5,P6 */

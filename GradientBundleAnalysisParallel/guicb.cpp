@@ -213,11 +213,11 @@ static void SLSelSphere_SLST_T3_1_CB(LgIndex_t const *I)
 	int NewGBAResultViewerSelectSphereNum = TecGUIListGetSelectedItem(SLSelSphere_SLST_T3_1);
 	if (NewGBAResultViewerSelectSphereNum != GBAResultViewerSelectSphereNum){
 		GBAResultViewerSelectSphereNum = NewGBAResultViewerSelectSphereNum;
-		CSMGuiLock();
+		CSMGUILock();
 		GBAResultViewerSelectSphere();
 		if (GBACntSrc == 1)
 			GBAResultViewerSelectIntVar();
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 		GBAReloadDialog();
 	}
 	TecUtilLockFinish(AddOnID);
@@ -230,9 +230,9 @@ static void TGLSphereVis_TOG_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLSphere_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
-	CSMGuiLock();
+	CSMGUILock();
 	GBAResultViewerToggleSphere();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	GBAReloadDialog();
 	TecUtilLockFinish(AddOnID);
 }
@@ -243,9 +243,9 @@ static void BTNSphereDel_BTN_T3_1_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE("Delete Button Pushed\n");
-	CSMGuiLock();
+	CSMGUILock();
 	GBAResultViewerDeleteSphere();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	GBAReloadDialog();
 	TecUtilLockFinish(AddOnID);
 }
@@ -318,9 +318,9 @@ static void BTNSmooth_BTN_T3_1_CB(void)
 	TecUtilLockStart(AddOnID);
 	TRACE("Smooth Button Pushed\n");
 
-	CSMGuiLock();
+	CSMGUILock();
 	SmoothGBAIntResults();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	GBAReloadDialog();
 
 	TecUtilLockFinish(AddOnID);
@@ -334,9 +334,9 @@ static void MLSelGB_MLST_T3_1_CB(LgIndex_t const *I)
 	TecUtilLockStart(AddOnID);
 	TRACE1("Multi selection list (MLSelVol_MLST_T3_1) item selected,  First Item is: %d\n", *I);
 // 	GBAResultViewerSelectGB();
-	CSMGuiLock();
+	CSMGUILock();
 	GBAResultViewerSelectCondensedGBs();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	GBAReloadDialog();
 	TecUtilLockFinish(AddOnID);
 }
@@ -350,9 +350,9 @@ static void SLSelVar_SLST_T3_1_CB(LgIndex_t const *I)
 	int NewGBAResultViewerSelectIntVarNum = TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1);
 	if (NewGBAResultViewerSelectIntVarNum != GBAResultViewerSelectIntVarNum){
 		GBAResultViewerSelectIntVarNum = NewGBAResultViewerSelectIntVarNum;
-		CSMGuiLock();
+		CSMGUILock();
 		GBAResultViewerSelectIntVar();
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 		GBAReloadDialog();
 	}
 	TecUtilLockFinish(AddOnID);
@@ -376,9 +376,9 @@ static void BTNAllGB_BTN_T3_1_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE("         Activate All Button Pushed\n");
-	CSMGuiLock();
+	CSMGUILock();
 	GBAResultViewerActivateAllGB();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	GBAReloadDialog();
 	TecUtilLockFinish(AddOnID);
 }
@@ -405,9 +405,9 @@ static void Dialog1CloseButton_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	GBAIsOpen = false;
-	CSMGuiLock();
+	CSMGUILock();
 	GBAProcessSystemDeleteCPLabels();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecGUIDialogDrop(Dialog1Manager);
 	TecUtilLockFinish(AddOnID);
 }
@@ -423,11 +423,11 @@ static void BTNRun_BTN_T1_1_CB(void)
 	TecUtilArrayDealloc((void**)&IJunk);
 	if (NumSelected > 0) {
 		TecGUIDialogDrop(Dialog1Manager);
-		CSMGuiLock();
+		CSMGUILock();
 		GBAProcessSystemDeleteCPLabels();
 		// 		MainFunction();
 		NewMainFunction();
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 		GBAResultViewerPrepareGUI();
 // 		GBATabNumber = 3;
 // 		Boolean_t DoIntegration = TecGUIToggleGet(TGLInt_TOG_T1_1);
@@ -464,9 +464,9 @@ static void MLSelCPs_MLST_T1_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Multi selection list (MLSelCPs_MLST_T1_1) item selected,  First Item is: %d\n", *I);
-	CSMGuiLock();
+	CSMGUILock();
 	GBAProcessSystemLabelSelectedCPs();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	GBAReloadDialog();
 	TecUtilLockFinish(AddOnID);
 }
@@ -1188,9 +1188,9 @@ static void RBCntSrc_RADIO_T3_1_CB(LgIndex_t const *I)
 	TecUtilLockStart(AddOnID);
 	TRACE1("RadioBox (RBCntSrc_RADIO_T3_1) Value Changed,  New value is: %d\n", *I);
 	GBACntSrc = TecGUIRadioBoxGetToggle(RBCntSrc_RADIO_T3_1);
-	CSMGuiLock();
+	CSMGUILock();
 	GBAResultViewerSelectIntVar();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 }
 
@@ -1201,9 +1201,9 @@ static void RBLogLin_RADIO_T3_1_CB(LgIndex_t const *I)
 	TecUtilLockStart(AddOnID);
 	TRACE1("RadioBox (RBLogLin_RADIO_T3_1) Value Changed,  New value is: %d\n", *I);
 	GBALogLin = TecGUIRadioBoxGetToggle(RBLogLin_RADIO_T3_1);
-	CSMGuiLock();
+	CSMGUILock();
 	GBAResultViewerSelectIntVar();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 }
 
@@ -1329,7 +1329,7 @@ static void TGLShowMesh_TOG_T3_1_CB(LgIndex_t const *I)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGLShowMesh_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
-	CSMGuiLock();
+	CSMGUILock();
 
 	Set_pa ZoneSet = TecUtilSetAlloc(FALSE);
 	for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones(); ++ZoneNum){
@@ -1342,7 +1342,7 @@ static void TGLShowMesh_TOG_T3_1_CB(LgIndex_t const *I)
 
 	TecUtilSetDealloc(&ZoneSet);
 	
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 }
 
@@ -1412,9 +1412,9 @@ static void BTNFndBas_BTN_T3_1_CB(void)
 {
 	TecUtilLockStart(AddOnID);
 	TRACE("Find basins Button Pushed\n");
-	CSMGuiLock();
+	CSMGUILock();
 	FindSphereBasins();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	GBAResultViewerPrepareGUI();
 	TecUtilLockFinish(AddOnID);
 }

@@ -109,5 +109,5 @@ void CSMGui(string const & Title,
 void CSMGuiLabelSelectedPoints(AddOn_pa *AddOnID = nullptr);
 void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID = nullptr);
 
-void CSMGuiLock();
-void CSMGuiUnlock();
+void CSMGUILock();
+void CSMGUIUnlock();

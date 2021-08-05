@@ -372,12 +372,12 @@ static void STDCALL MapVarsToZonesMenuCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		CSMGuiLock();
+		CSMGUILock();
 
 // 		MapAllVarsToAllZones(AddOnID);
 		MapVolumeZoneVarsToOtherZonesGetUserInfo();
 
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	else
 	{
@@ -392,11 +392,11 @@ static void STDCALL RefineActiveZonesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		CSMGuiLock();
+		CSMGUILock();
 
 		RefineActiveZones();
 
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	else
 	{
@@ -469,11 +469,11 @@ static void STDCALL GetClosedIsoSurfaceFromPointsCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		CSMGuiLock();
+		CSMGUILock();
 
 		GetClosedIsoSurfaceFromPoints();
 
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	else
 	{
@@ -501,11 +501,11 @@ static void STDCALL GetClosedIsoSurfaceFromNodesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		CSMGuiLock();
+		CSMGUILock();
 
 		GetClosedIsoSurfaceFromNodes();
 
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	else
 	{
@@ -519,11 +519,11 @@ static void STDCALL GetAllClosedIsoSurfacesCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		CSMGuiLock();
+		CSMGUILock();
 
 		GetAllClosedIsoSurfaces();
 
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	else
 	{
@@ -537,11 +537,11 @@ static void STDCALL ConnectCPsCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		CSMGuiLock();
+		CSMGUILock();
 
 		ConnectCPsGetUserInfo();
 
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	else
 	{
@@ -695,11 +695,11 @@ static void STDCALL DrawEigenvectorArrowsCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		CSMGuiLock();
+		CSMGUILock();
 
 		DrawEigenvectorArrowsGetUserInfo();
 
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	else
 	{
@@ -713,11 +713,11 @@ static void STDCALL TestFunctionCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		CSMGuiLock();
+		CSMGUILock();
 
 		TestFunction();
 
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	else
 	{
@@ -732,11 +732,11 @@ static void STDCALL ExtractRSIntersectionsCallback(void)
 	TecUtilLockStart(AddOnID);
 	if (TecUtilDataSetIsAvailable())
 	{
-		CSMGuiLock();
+		CSMGUILock();
 
 		ExtractRSIntersectionsGetUserInfo();
 
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 	}
 	else
 	{

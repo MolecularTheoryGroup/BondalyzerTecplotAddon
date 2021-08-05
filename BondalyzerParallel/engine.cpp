@@ -74,7 +74,7 @@ using namespace tecplot::toolbox;
 
 
 #define DEBUG_PRINTPATHS
-#define DEBUG_SAVESCREENSHOTS
+// #define DEBUG_SAVESCREENSHOTS
 
 using std::string;
 using std::to_string;
@@ -220,7 +220,7 @@ void RefineActiveZones(){
 
 	vector<FESurface_c> Vols;
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	StatusLaunch("Refining zones", AddOnID, TRUE);
 
@@ -259,7 +259,7 @@ void RefineActiveZones(){
 
 	StatusDrop(AddOnID);
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 }
 
 bool const FEZoneDFS(int NodeNum,
@@ -1110,7 +1110,7 @@ void DeleteCPsReturnUserInfo(bool const GuiSuccess,
 	if (!GuiSuccess) return;
 
 	TecUtilLockStart(AddOnID);
-	CSMGuiLock();
+	CSMGUILock();
 
 	int fNum = 0;
 
@@ -1241,7 +1241,7 @@ void DeleteCPsReturnUserInfo(bool const GuiSuccess,
 	SetZoneNum(MinZoneNumNew, MinZoneNumOld);
 
 	TecUtilSetDealloc(&ZoneNumsSet);
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 }
 
@@ -1508,7 +1508,7 @@ Boolean_t FindCritPoints(int VolZoneNum,
 		return FALSE;
 	}
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	CritPoints_c VolCPs;
 
@@ -1571,7 +1571,7 @@ Boolean_t FindCritPoints(int VolZoneNum,
 
 	TecUtilDataLoadEnd();
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 
 	return TRUE;
@@ -1736,7 +1736,7 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 		for (int i = 0; i < AllCPs.NumCPs(TypeInd); ++i) SelectedCPNums.push_back(i+1);
 	}
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	vec3 StartPoint;
 
@@ -1859,7 +1859,7 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 	TecUtilDataLoadEnd();
 
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 
 	return TRUE;
@@ -2048,7 +2048,7 @@ Boolean_t FindCageNuclearPaths(int VolZoneNum,
 		for (int i = 0; i < AllCPs.NumCPs(TypeInd); ++i) SelectedCPNums.push_back(i + 1);
 	}
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	vec3 StartPoint;
 
@@ -2278,7 +2278,7 @@ Boolean_t FindCageNuclearPaths(int VolZoneNum,
 	TecUtilDataLoadEnd();
 
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 
 	return TRUE;
@@ -2384,7 +2384,7 @@ Boolean_t const GradientPathsOnSphere(int NumSphereGPs,
 	StreamDir_e GPDir = StreamDir_Both;
 	ColorIndex_t PathColor = Red_C;
 	
-	CSMGuiLock();
+	CSMGUILock();
 
 	vec3 StartPoint;
 
@@ -2488,7 +2488,7 @@ Boolean_t const GradientPathsOnSphere(int NumSphereGPs,
 	TecUtilDataLoadEnd();
 
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 
 	return TRUE;
@@ -2505,7 +2505,7 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 	int CPTypeVarNum,
 	vector<int> const & XYZVarNums,
 	int RhoVarNum,
-	vector<int> const & GradVarNums,
+	vector<int> & GradVarNums,
 	vector<int> const & HessVarNums,
 	Boolean_t IsPeriodic,
 	double RhoCutoff,
@@ -2514,7 +2514,8 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 	bool SaveSurfaces,
 	bool EvenPointSpacing, 
 	double SeedOffset,
-	bool PrependSaddlePoint)
+	bool PrependSaddlePoint,
+	bool PrecalcVars)
 {
 	TecUtilLockStart(AddOnID);
 
@@ -2549,6 +2550,36 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 		RhoPtr, GradPtrs, HessPtrs)) {
 		TecUtilDialogErrMsg("Failed to get read pointer(s)");
 		return FALSE;
+	}
+
+	// Grad and Hess needed, so calculate them if they weren't already present
+	bool DeleteGradVars = false;
+	if (PrecalcVars && GradVarNums.empty()) {
+		CalcVarsOptions_s opt;
+		opt.AddOnID = AddOnID;
+		opt.CalcForAllZones = FALSE;
+		opt.CalcZoneNum = VolZoneNum;
+		opt.RhoVarNum = RhoVarNum;
+		opt.HasGrad = (!GradVarNums.empty());
+		if (opt.HasGrad) {
+			opt.GradVarNums = GradVarNums;
+		}
+		else {
+			DeleteGradVars = true;
+			opt.CalcVarList = { CalcGradientVectors };
+		}
+		opt.IsPeriodic = FALSE;
+
+		CalcVars(opt);
+
+		if (GradVarNums.empty()) {
+			GradVarNums.push_back(VarNumByName("X Density", true));
+			for (int i = 1; i < 3; ++i)
+				GradVarNums.push_back(GradVarNums[0] + i);
+
+			if (GradVarNums.empty())
+				return FALSE;
+		}
 	}
 
 	VolExtentIndexWeights_s VolInfo;
@@ -2598,7 +2629,7 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 	int EndCPNumforName = 0;
 	ColorIndex_t PathColor = Red_C;
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	vec3 StartPoint;
 
@@ -2607,6 +2638,12 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 // 	double RhoCutoff = DefaultRhoCutoff;
 
 	Set NewZones;
+
+	StatusLaunch("Working...", AddOnID, TRUE);
+
+	int numIter = SelectedCPNums.size() * NumGPs;
+	int iter = 0;
+	auto Time1 = high_resolution_clock::now();
 
 	for (int iCP = 0; iCP < SelectedCPNums.size(); ++iCP) {
 		vector<int> CPTypeIndOffset;
@@ -2643,13 +2680,57 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 			GPs.push_back(GradPath_c(StartPoint, GPDir, NumGPPts * 5, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr));
 			GPs.back().SetStartEndCPNum(AllCPs.GetTotOffsetFromTypeNumOffset(CPTypeIndOffset[0], CPTypeIndOffset[1]), 0);
 		}
+		int gpIter = 0;
+		bool UserQuit = false;
 
 #ifndef _DEBUG
 #pragma omp parallel for schedule(dynamic)
 #endif
 		for (int iGP = 0; iGP < NumGPs; ++iGP) {
-			GPs[iGP].Seed(false);
-			GPs[iGP].Resample(NumGPPts, EvenPointSpacing ? GPResampleMethod_Linear : GPResampleMethod_Adaptive);
+			int ThNum = omp_get_thread_num();
+			if (ThNum == 0) {
+				UserQuit = !StatusUpdate(iter, numIter, "CP " + to_string(iCP + 1) + " of " + to_string(SelectedCPNums.size()) + ": GP " + to_string(gpIter + 1) + " of " + to_string(NumGPs), AddOnID, Time1, false);
+#pragma omp flush (UserQuit)
+			}
+#pragma omp flush (UserQuit)
+			if (UserQuit) {
+#pragma omp critical
+				{
+					if (ThNum == 0) {
+						if (TecUtilDialogMessageBox("Cancel run? All progress will be lost if you press \"Yes.\"", MessageBoxType_YesNo)) {
+							UserQuit = true;
+						}
+						else {
+							StatusLaunch("CP " + to_string(iCP + 1) + " of " + to_string(SelectedCPNums.size()) + ": GP " + to_string(gpIter + 1) + " of " + to_string(NumGPs), AddOnID, TRUE, TRUE, TRUE);
+							StatusUpdate(iter, numIter, "CP " + to_string(iCP + 1) + " of " + to_string(SelectedCPNums.size()) + ": GP " + to_string(gpIter + 1) + " of " + to_string(NumGPs), AddOnID, Time1, false);
+							UserQuit = false;
+						}
+						// 						}
+						// 						if (omp_get_thread_num() == 0){
+						// 							if (!TecUtilDialogMessageBox("Cancel run? All progress will be lost if you press \"Yes.\"", MessageBoxType_YesNo)) {
+						// // 								StatusLaunch(TmpString, AddOnID, TRUE, TRUE, TRUE);
+						// // 								StatusUpdate(NumCompleted, NumToDo, TmpString, AddOnID, Time1);
+						// 								UserQuit = false;
+						// 							}
+#pragma omp flush (UserQuit)
+					}
+#pragma omp flush (UserQuit)
+				}
+			}
+			if (!UserQuit){
+#pragma omp atomic
+				iter++;
+				gpIter++;
+
+				GPs[iGP].Seed(false);
+				GPs[iGP].Resample(NumGPPts, EvenPointSpacing ? GPResampleMethod_Linear : GPResampleMethod_Adaptive);
+			}
+		}
+		if (UserQuit){
+			TecUtilDataLoadEnd();
+			CSMGUIUnlock();
+			StatusDrop(AddOnID);
+			return FALSE;
 		}
 
 		for (auto & i : GPs){
@@ -2679,10 +2760,12 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 		TecUtilZoneSetActive(NewZones.getRef(), AssignOp_PlusEquals);
 	}
 
+	StatusDrop(AddOnID);
+
 	TecUtilDataLoadEnd();
 
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 
 	return TRUE;
@@ -2801,6 +2884,8 @@ void SimpleSurfacesAroundSaddlesReturnUserInfo(bool const GuiSuccess,
 	RhoVarNum = Fields[fNum++].GetReturnInt();
 	fNum++;
 
+	bool PrecalcVars = Fields[fNum++].GetReturnBool();
+
 
 	if (Fields[fNum++].GetReturnBool()) {
 		GradVarNums.resize(3);
@@ -2830,7 +2915,7 @@ void SimpleSurfacesAroundSaddlesReturnUserInfo(bool const GuiSuccess,
 	bool SavePaths = Fields[fNum++].GetReturnBool();
 	bool SaveSurfaces = Fields[fNum++].GetReturnBool();
 
-	SimpleSurfacesAroundSaddles(NumGPs, VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, RhoCutoff, NumGPs, SavePaths, SaveSurfaces, EvenPointSpacing, SeedOffset, PrependSaddlePoint);
+	SimpleSurfacesAroundSaddles(NumGPs, VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, RhoCutoff, NumGPs, SavePaths, SaveSurfaces, EvenPointSpacing, SeedOffset, PrependSaddlePoint, PrecalcVars);
 
 	TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
 
@@ -2850,6 +2935,8 @@ void SimpleSurfacesAroundSaddlesGetUserInfo() {
 
 	Fields.push_back(GuiField_c(Gui_VarSelect, "Electron Density", CSMVarName.Dens));
 	Fields.push_back(GuiField_c(Gui_VertSep));
+
+	Fields.push_back(GuiField_c(Gui_Toggle, "Precalculate missing variables", "1"));
 
 	int iTmp = Fields.size();
 	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density gradient vector variables present"));
@@ -2873,9 +2960,9 @@ void SimpleSurfacesAroundSaddlesGetUserInfo() {
 
 	Fields.push_back(GuiField_c(Gui_ZonePointSelectMulti, "Source critical point(s)", SearchString));
 
-	Fields.push_back(GuiField_c(Gui_Int, "Number of gradient paths", "720"));
+	Fields.push_back(GuiField_c(Gui_Int, "Number of gradient paths", "360"));
 
-	Fields.push_back(GuiField_c(Gui_Int, "Number of points per path", "800"));
+	Fields.push_back(GuiField_c(Gui_Int, "Number of points per path", "500"));
 
 	Fields.push_back(GuiField_c(Gui_Double, "Path rho cutoff", "0.001"));
 
@@ -3482,7 +3569,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		for (int i = 0; i < AllCPs.NumCPs(TypeInd); ++i) SelectedCPNums.push_back(i + 1);
 	}
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	vector<CPType_e> CPTypesForMinDistCheck;
 	CPTypeNum_e GPTerminalCPSaddleTypeNum = CPTypeNum_Ring,
@@ -3607,7 +3694,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 	auto DebugSaveGPWaitForUser = [](GradPath_c GP, vector<int> XYZVarNums, int RhoVarNum, string statusStr = "", bool DeleteGP = false, int PassNum = -1, int SubPassNum = -1, int SubSubPassNum = -1)
 	{
 #ifdef DEBUG_PRINTPATHS
-		CSMGuiUnlock();
+		CSMGUIUnlock();
 		int ZoneNum = GP.SaveAsOrderedZone("Temp GP Zone");
 		Boolean_t DoContinue;
 		if (ZoneNum > 0) {
@@ -3644,7 +3731,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		else{
 			DoContinue = TecUtilDialogMessageBox(string(statusStr + "\nFAILED TO PRINT GP\nWaiting to continue or quit...").c_str(), MessageBox_YesNo);
 		}
-		CSMGuiLock();
+		CSMGUILock();
 
 		return DoContinue;
 #else
@@ -5878,7 +5965,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 	//DEBUG
 	TecUtilDataLoadEnd();
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 	return TRUE;
 }
@@ -5996,7 +6083,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 		for (int i = 0; i < AllCPs.NumCPs(TypeInd); ++i) SelectedCPNums.push_back(i + 1);
 	}
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	vector<CPType_e> CPTypesForMinDistCheck;
 	vector<CPTypeNum_e> GPTerminalCPTypeNums;
@@ -7104,7 +7191,7 @@ Boolean_t FindBondRingSurfaces(int VolZoneNum,
 	//DEBUG
 	TecUtilDataLoadEnd();
 	
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 	return TRUE;
 
@@ -7757,11 +7844,11 @@ Boolean_t GBA_Generation(
 
 	CritPoints_c CPs(CPZoneNum, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	// This is where the magic happens!
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 
 	TecUtilLockFinish(AddOnID);
 }
@@ -8278,7 +8365,7 @@ void MakeSliceFromPointSelectionReturnUserInfo(bool const GuiSuccess,
 		return;
 	}
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	Set VolumeZones;
 	Set_pa ActiveZones = TecUtilSetAlloc(FALSE);
@@ -8333,7 +8420,7 @@ void MakeSliceFromPointSelectionReturnUserInfo(bool const GuiSuccess,
 	TecUtilZoneSetShade(SV_SHOW, NewZone.getRef(), 0.0, FALSE);
 	TecUtilZoneSetContour(SV_SHOW, NewZone.getRef(), 0.0, TRUE);
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 
 	TecUtilZoneRename(TecUtilDataSetGetNumZones(), ZoneName.c_str());
 
@@ -10338,7 +10425,7 @@ void STDCALL GradientPathToolProbeCB(Boolean_t WasSuccessful,
 
 	TecUtilLockStart(AddOnID);
 
-	CSMGuiLock();
+	CSMGUILock();
 
 	
 	GradPath_c GP(Pt, GPToolData.Dir, 1000, GPType_Classic, GPTerminate_AtBoundary, nullptr, nullptr, nullptr, nullptr, GPToolData.VolInfo, GPToolData.HessPtrs, GPToolData.GradPtrs, GPToolData.RhoPtr);
@@ -10348,7 +10435,7 @@ void STDCALL GradientPathToolProbeCB(Boolean_t WasSuccessful,
 	TecUtilRedraw(TRUE);
 
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 
 
 	TecUtilLockFinish(AddOnID);
@@ -10592,7 +10679,7 @@ void SymmetryMirrorReturnUserInfo(bool const GuiSuccess,
 	Set DeleteZones;
 
 	TecUtilLockStart(AddOnID);
-	CSMGuiLock();
+	CSMGUILock();
 
 	VolExtentIndexWeights_s VolInfo;
 	for (int i = 0; i < 3; ++i) {
@@ -10621,7 +10708,7 @@ void SymmetryMirrorReturnUserInfo(bool const GuiSuccess,
 
 	SetZoneNum();
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 
 	return;
@@ -10747,7 +10834,7 @@ void TranslationalCopyReturnUserInfo(bool const GuiSuccess,
 	// Copy data to new zone
 
 	TecUtilPleaseWait("", FALSE);
-	CSMGuiLock();
+	CSMGUILock();
 	auto StartTime = StatusLaunch("Copying volume zone...", AddOnID, TRUE);
 
 
@@ -10847,7 +10934,7 @@ void TranslationalCopyReturnUserInfo(bool const GuiSuccess,
 	SetZoneNum();
 
 	TecUtilDataLoadEnd();
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 
 	return;
@@ -11411,11 +11498,11 @@ void CalculateShannonEntropyReturnUserInfo(bool const GuiSuccess,
 
 	TecUtilLockStart(AddOnID);
 	TecUtilPleaseWait("Calculating Shannon entropy of condensed density... Please wait.", TRUE);
-	CSMGuiLock();
+	CSMGUILock();
 
 	CalculateShannonEntropies(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, DoRegion, DoVar);
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilPleaseWait("Calculating Shannon entropy of condensed density... Please wait.", FALSE);
 	TecUtilDialogMessageBox("Finished", MessageBox_Information);
 
@@ -11754,11 +11841,11 @@ void ExportGBADataReturnUserInfo(bool const GuiSuccess,
 
 	TecUtilLockStart(AddOnID);
 	TecUtilPleaseWait("Exporting... Please wait.", TRUE);
-	CSMGuiLock();
+	CSMGUILock();
 
 	ExportGBAData(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, DoRegion, IncludeAllDGBs);
 
-	CSMGuiUnlock();
+	CSMGUIUnlock();
 	TecUtilPleaseWait("Exporting... Please wait.", FALSE);
 	TecUtilDialogMessageBox("Finished", MessageBox_Information);
 
