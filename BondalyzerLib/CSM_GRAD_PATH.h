@@ -22,7 +22,7 @@ using std::vector;
 #define GP_MaxNumPoints				10000
 #define GP_PlaneCPStallCount		30
 #define GP_PlaneCPMaxIter			100
-#define GP_MaxStepSize				0.01
+#define GP_MaxStepSize				5e-4
 
 static double const GP_DeviationAngleMaxCutoff = 170. / 180. * PI;
 
@@ -157,6 +157,8 @@ public:
 
 	Boolean_t TruncateAtRhoValue(double const & RhoVal);
 
+
+
 	/*
 	*	Getter methods
 	*/
@@ -176,6 +178,11 @@ public:
 		REQUIRE(i < 2);
 		return m_StartEndCPNum[i];
 	}
+
+	double ComputeTotalCurvature() const;
+	double ComputeAverageCurvature() const;
+	double ComputeTotalTorsion() const;
+	double ComputeAverageTorsion() const;
 
 	vec3 ClosestMaxCurvaturePoint(vec3 const & CheckPt) const { int i; return ClosestMaxCurvaturePoint(CheckPt, i); }
 	vec3 ClosestMaxCurvaturePoint(vec3 const & CheckPt, int & PtInd) const; 

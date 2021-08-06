@@ -2723,6 +2723,9 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 				gpIter++;
 
 				GPs[iGP].Seed(false);
+				if (PrependSaddlePoint) {
+					GPs[iGP].PointPrepend(AllCPs.GetXYZ(CPTypeIndOffset[0], CPTypeIndOffset[1]), AllCPs.GetRho(CPTypeIndOffset[0], CPTypeIndOffset[1]));
+				}
 				GPs[iGP].Resample(NumGPPts, EvenPointSpacing ? GPResampleMethod_Linear : GPResampleMethod_Adaptive);
 			}
 		}
@@ -2733,16 +2736,14 @@ Boolean_t const SimpleSurfacesAroundSaddles(int NumGPs,
 			return FALSE;
 		}
 
-		for (auto & i : GPs){
-			if (PrependSaddlePoint) {
-				i.PointPrepend(AllCPs.GetXYZ(CPTypeIndOffset[0], CPTypeIndOffset[1]), AllCPs.GetRho(CPTypeIndOffset[0], CPTypeIndOffset[1]));
-			}
+		for (int i = 0; i < GPs.size(); ++i) {
+			auto & GP = GPs[i];
 			if (SavePaths) {
-				int zoneNum = i.SaveAsOrderedZone("Simple Surface " + CPNameList[CPTypeIndOffset[0]] + " " + to_string(CPTypeIndOffset[1]));
+				int zoneNum = GP.SaveAsOrderedZone("Simple Surface " + CPNameList[CPTypeIndOffset[0]] + " " + to_string(CPTypeIndOffset[1]) + " GP " + to_string(i+1));
 				NewZones += zoneNum;
 				SetZoneStyle({ zoneNum }, ZoneStyle_Path);
 			}
-			GPPtrs.push_back(&i);
+			GPPtrs.push_back(&GP);
 		}
 
 		if (SaveSurfaces) {
@@ -2977,6 +2978,108 @@ void SimpleSurfacesAroundSaddlesGetUserInfo() {
 	Fields.push_back(GuiField_c(Gui_Toggle, "Save gradient paths as surface", "1"));
 
 	CSMGui("GPs around bond/ring CPs", Fields, SimpleSurfacesAroundSaddlesReturnUserInfo, AddOnID);
+}
+
+void ExportPathDataReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+	TecUtilLockStart(AddOnID);
+
+	vector<int> ExportZoneNums;
+	vector<int> XYZVarNums(3);
+	int RhoVarNum;
+	int fNum = 0;
+
+	ExportZoneNums = Fields[fNum++].GetReturnIntVec();
+	for (int i = 0; i < 3; ++i) XYZVarNums[i] = i + Fields[fNum].GetReturnInt();
+	RhoVarNum = Fields[++fNum].GetReturnInt();
+	XYZVarNums.push_back(RhoVarNum);
+
+	TecUtilLockStart(AddOnID);
+	TecUtilPleaseWait("Exporting... Please wait.", TRUE);
+	CSMGUILock();
+
+	char* FileNameCStr;
+
+	vector<string> ColumnHeadings = {
+		"Zone number",
+		"Zone name",
+		"Number of points",
+		"Length",
+		"Total curvature (sum of angle changes along path) [radians]",
+		"Average curvature (total curvature over length) [radians / length]",
+		"Net plane curvature (angle difference between endpoints; first and last 1% of path) [radians]",
+		"Average net plane curvature (net plane curvature over length) [radians / length]",
+		"Total torsion (sum of angle changes of binormal along path) [radians]",
+		"Average torsion (total torsion over length) [radians / length]"
+	};
+
+	if (TecUtilDialogGetFileName(SelectFileOption_WriteFile, &FileNameCStr, "Comma separated values", "Bondalyzer exported path data.csv", "*.csv")) {
+		string FileName = FileNameCStr;
+		TecUtilStringDealloc(&FileNameCStr);
+
+		ofstream OutFile(FileName.c_str(), std::ios::trunc);
+		if (OutFile.is_open()){
+			OutFile << StringJoin(ColumnHeadings, ",");
+			OutFile << endl;
+			for (auto zi : ExportZoneNums){
+				int ijk[3];
+				TecUtilZoneGetIJK(zi, &ijk[0], &ijk[1], &ijk[2]);
+				if (TecUtilZoneIsOrdered(zi) && ijk[0] > 2 && ijk[1] == 1 && ijk[2] == 1) {
+					GradPath_c GP(zi, XYZVarNums, AddOnID);
+					double l = GP.GetLength(),
+						k = GP.ComputeTotalCurvature(),
+						t = GP.ComputeAverageTorsion();
+
+					int startInd = MAX(1, GP.GetIndAtLength(0.01 * l)),
+						endInd = MIN(GP.GetCount() - 2, GP.GetIndAtLength(0.99 * l));
+					double k1 = VectorAngleMagnitude(GP[startInd] - GP[0], GP[-1] - GP[-endInd - 1]);
+
+					char* ZoneNameCStr;
+					TecUtilZoneGetName(zi, &ZoneNameCStr);
+					OutFile << zi
+						<< "," << ZoneNameCStr
+						<< "," << GP.GetCount()
+						<< "," << l
+						<< "," << k
+						<< "," << k / l
+						<< "," << k1
+						<< "," << k1 / l
+						<< "," << t
+						<< "," << t / l
+						<< endl;
+					TecUtilStringDealloc(&ZoneNameCStr);
+				}
+			}
+
+			OutFile.close();
+
+			TecUtilDialogMessageBox("Finished", MessageBox_Information);
+		}
+		else{
+			TecUtilDialogErrMsg("Failed to open file for writing! (perhaps it's open in another program?)");
+		}
+
+		
+	}
+
+	CSMGUIUnlock();
+	TecUtilPleaseWait("Exporting... Please wait.", FALSE);
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void ExportPathDataGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelectMulti, "Zones to export", ""),
+		GuiField_c(Gui_VarSelect, "X", "X"),
+		GuiField_c(Gui_VarSelect, "Electron Charge Density", "Electron Density")
+	};
+
+
+	CSMGui("GPs around bond/ring CPs", Fields, ExportPathDataReturnUserInfo, AddOnID);
 }
 
 double MinFunc_GPLength_InPlane(double alpha, void * params) {

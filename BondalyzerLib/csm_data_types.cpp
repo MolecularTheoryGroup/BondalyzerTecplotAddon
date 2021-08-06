@@ -57,7 +57,28 @@ double Distance(vec const & A, vec const & B) {
 }
 
 double VectorAngle(vec3 const & A, vec3 const & B){
-	return acos(dot(A, B) / (norm(A) * norm(B)));
+	double denom = (norm(A) * norm(B));
+	if (!isnan(denom) && denom > 0.0) {
+		double arg = dot(A, B) / (norm(A) * norm(B));
+		arg = CLAMP(arg, -1.0, 1.0);
+		return acos(arg);
+	}
+	else{
+		return 0.0;
+	}
+}
+
+// output in range [0, 180]
+double VectorAngleMagnitude(vec3 const & A, vec3 const & B) {
+	double denom = (norm(A) * norm(B));
+	if (!isnan(denom) && denom > 0.0) {
+		double arg = abs(dot(A, B)) / (norm(A) * norm(B));
+		arg = CLAMP(arg, 0.0, 1.0);
+		return acos(arg);
+	}
+	else {
+		return 0.0;
+	}
 }
 
 vec3 const SphericalToCartesian(double const & r, double const & theta, double const & phi){

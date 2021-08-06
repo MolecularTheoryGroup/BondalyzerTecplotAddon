@@ -354,6 +354,104 @@ int GradPathBase_c::GetIndAtLength(double const & Length) const{
 	return i;
 }
 
+/*
+ *  Compute the total curvature down a path, |dT/ds| the change in tangent vector wrt arclength.
+ *  Simply compute the angle between neighboring segments of the path, 
+ *  and for the denominator rather than use the length of the left or right segment
+ *  use the sum of half of each.
+ *  
+ *  To get average curvature for the path, divide this value by path length.
+ */
+ double GradPathBase_c::ComputeTotalCurvature() const{
+	double k = 0.0;
+
+	if (this->GetCount() < 3){
+		return k;
+	}
+
+	vec3 v1, v2;
+	double s1, s2;
+	v1 = this->XYZAt(1) - this->XYZAt(0);
+	s1 = norm(v1);
+	for (int i = 2; i < this->GetCount(); ++i){
+		v2 = this->XYZAt(i) - this->XYZAt(i-1);
+		s2 = norm(v2);
+		double delT = VectorAngleMagnitude(v1, v2);
+// 		double delS = 0.5 * s1 + 0.5 * s2;
+// 		if (delS > 0.0){
+// 			k += delT / delS;
+// 		}
+		k += delT;
+		v1 = v2;
+		s1 = s2;
+	}
+
+	return k;
+}
+
+ double GradPathBase_c::ComputeAverageCurvature() const{
+	 if (this->GetCount() > 2 && this->GetLength() > 0.0) {
+		 return this->ComputeTotalCurvature() / this->GetLength();
+	 }
+	 else {
+		 return 0.0;
+	 }
+ }
+
+
+ /*
+  *  Similar to above, but now calculating the torsion, |dB/ds| the change in the binormal vector
+  *  (normal to the plane defined by v1 x v2) instead of the tangent vector.
+  *  Above we computed the curvature at a node between two segments, but here we'll be computing 
+  *  torsion for the segments themselves.
+  *  Also, the curvature at the points on either end of a segment must
+  *  be above some threshold to keep the torsion from just being in the noise.
+  *  (the binormal vector points in an undefined direction when a line is "straight")
+  */
+ double MinCurvatureCutoff = 1e-2; // value pulled out of my butt
+ double GradPathBase_c::ComputeTotalTorsion() const {
+	 double T = 0.0;
+
+	 if (this->GetCount() < 3) {
+		 return T;
+	 }
+
+	 vec3 v1, v2, v3, b1, b2;
+// 	 double delS;
+	 v1 = this->XYZAt(1) - this->XYZAt(0);
+	 v2 = this->XYZAt(2) - this->XYZAt(1);
+// 	 delS = norm(v2);
+	 b1 = cross(v1, v2);
+	 for (int i = 3; i < this->GetCount(); ++i) {
+		 v3 = this->XYZAt(i) - this->XYZAt(i-1);
+
+		 if (VectorAngleMagnitude(v1, v2) >= MinCurvatureCutoff && VectorAngleMagnitude(v2, v3) >= MinCurvatureCutoff) {
+			 b2 = cross(v2, v3);
+
+			 double delB = MIN(VectorAngleMagnitude(b1, b2), VectorAngleMagnitude(b1, -b2));
+			 // 		 if (delS > 0.0) {
+			 // 			 T += delB / delS;
+			 // 		 }
+			 T += delB;
+		 }
+		 v1 = v2;
+		 v2 = v3;
+		 b1 = b2;
+// 		 delS = norm(v2);
+	 }
+
+	 return T;
+ }
+
+ double GradPathBase_c::ComputeAverageTorsion() const {
+	 if (this->GetCount() > 3 && this->GetLength() > 0.0) {
+		 return this->ComputeTotalTorsion() / this->GetLength();
+	 }
+	 else {
+		 return 0.0;
+	 }
+ }
+
 GradPathBase_c GradPathBase_c::SubGP(int BegPt, int EndPt) const{
 	BegPt = GetInd(BegPt);
 	EndPt = GetInd(EndPt);
@@ -2757,7 +2855,7 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 		double tInit = 0.0;
 		double tFinal = DBL_MAX;
 
-		double h = 1e-10;
+		double h = 1e-12;
 
 		double y[3] = { m_StartPoint[0], m_StartPoint[1], m_StartPoint[2] };
 

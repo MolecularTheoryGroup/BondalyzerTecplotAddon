@@ -156,6 +156,7 @@ std::pair<double, double> MinMax(vector<double> const & Vals);
 double DistSqr(vec const & A, vec const & B);
 double Distance(vec const & A, vec const & B);
 double VectorAngle(vec3 const & A, vec3 const & B);
+double VectorAngleMagnitude(vec3 const & A, vec3 const & B);
 vec3 const SphericalToCartesian(double const & r, double const & theta, double const & phi);
 const mat44	RotationMatrix(double const & Angle, vec3 const & Axis);
 vec3 const Rotate(vec3 const & Point, double const & Angle, vec3 const & Axis);

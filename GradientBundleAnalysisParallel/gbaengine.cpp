@@ -4525,6 +4525,7 @@ void NewMainFunction() {
 #endif
 			for (int gi = 0; gi < NumGPs; ++gi) {
 				if (GradPaths[gi].IsMade()) {
+
 					double TermCPInd = GradPaths[gi].GetStartEndCPNum(1);
 					auto TermCPType = CPs.GetTypeFromTotOffset(TermCPInd);
 					if ((TermCPType == CPType_Cage || TermCPType == CPType_Invalid) && gi != TerminalCPIndToMaxLenGPIndMap[TermCPInd]) {
@@ -5390,12 +5391,44 @@ void NewMainFunction() {
 
 		int VolumeNumInVarList = IntVals[0].size() - 1;
 
+// 		IntVarNameList.emplace_back("Total curvature");
+		IntVarNameList.emplace_back("Average curvature");
+// 		IntVarNameList.emplace_back("Net plane curvature");
+		IntVarNameList.emplace_back("Average net plane curvature");
+// 		IntVarNameList.emplace_back("Total torsion");
+		IntVarNameList.emplace_back("Average torsion");
+
+		// compute curvatures and tortions of elements (length averages of the paths for the elements)
+
+		for (int ti = 0; ti < NumElems; ++ti){
+			double totalLen = 0.0,
+				totalK = 0.0,
+				totalPlaneK = 0.0,
+				totalT = 0.0;
+			for (auto const & GP : GPPtrList[ti]){
+				double l = GP->GetLength();
+				totalLen += l;
+				totalK += GP->ComputeTotalCurvature();
+				totalT += GP->ComputeTotalTorsion();
+
+				int startInd = MAX(1, GP->GetIndAtLength(0.01 * l)),
+					endInd = MIN(GP->GetCount() - 2, GP->GetIndAtLength(0.99 * l));
+				double k1 = VectorAngleMagnitude(GP->XYZAt(startInd) - GP->XYZAt(0), GP->XYZAt(-1) - GP->XYZAt(-endInd - 1));
+				totalPlaneK += k1;
+			}
+
+			IntVals[ti].push_back(totalK / totalLen);
+			IntVals[ti].push_back(totalPlaneK / totalLen);
+			IntVals[ti].push_back(totalT / totalLen);
+		}
+
 		int TeNumInVarList = -1;
 		for (int vi = 0; vi < IntVarNameList.size(); ++vi) {
 			auto v = IntVarNameList[vi];
 			if (v.find("inetic") != string::npos) {
 				TeNumInVarList = vi;
 				IntVarNameList.emplace_back("Te Per Electron");
+				IntVarNameList.emplace_back("Bond (kinetic) energy");
 				break;
 			}
 		}
@@ -5410,7 +5443,8 @@ void NewMainFunction() {
 			IntVarNameList.emplace_back("Valence Bader Charge");
 			if (TeNumInVarList >= 0)
 				IntVarNameList.emplace_back("Te Per Valence Electron");
-			IntVarNameList.emplace_back("Area Condensed Charge");
+			IntVarNameList.emplace_back("Bond Charge");
+			IntVarNameList.emplace_back("Bond Volume");
 
 			IntVarNameList.emplace_back("Volume Bader Charge");
 // 			IntVarNameList.emplace_back("Volume Valence Density");
@@ -5663,19 +5697,24 @@ void NewMainFunction() {
 		vec SphereTriangleAreaFactors = SphereTriangleAreas / TotalArea;
 
 		/*
-		 * Add derived properties if applicable
+		 * Add derived properties if applicable. This is done in the same order as in the list of condensed variable names
 		 */
 
 		TotalDensity = 0.0;
 		double TotalVolume = 0.0;
+		double TotalKineticEnergy = 0.0;
 		for (auto const & elemIntVals : IntVals) {
 			TotalDensity += elemIntVals[DensityVarNumInIntList];
 			TotalVolume += elemIntVals[VolumeNumInVarList];
 		}
 
 		if (TeNumInVarList >= 0) {
+			for (auto const & elemIntVals : IntVals) {
+				TotalKineticEnergy += elemIntVals[TeNumInVarList];
+			}
 			for (int i = 0; i < NumElems; ++i) {
 				IntVals[i].push_back(IntVals[i][TeNumInVarList] / MAX(IntVals[i][DensityVarNumInIntList], 1e-100)); // Te per electron
+				IntVals[i].push_back(IntVals[i][TeNumInVarList] - (TotalKineticEnergy * SphereTriangleAreaFactors[i])); // Bond (Te) energy (Spherical GB energy minus GB energy)
 			}
 		}
 
@@ -5704,7 +5743,8 @@ void NewMainFunction() {
 				if (TeNumInVarList >= 0) {
 					IntVals[i].push_back(IntVals[i][TeNumInVarList] / MAX(IntVals[i][IntVals[i].size() - 2], 1e-100)); // Te per valence electron
 				}
-				IntVals[i].push_back((TotalDensity * SphereTriangleAreaFactors[i]) - IntVals[i][DensityVarNumInIntList]); // Area condensed charge
+				IntVals[i].push_back(IntVals[i][DensityVarNumInIntList] - (TotalDensity * SphereTriangleAreaFactors[i])); // Bond charge
+				IntVals[i].push_back(IntVals[i][VolumeNumInVarList] - (TotalVolume * SphereTriangleAreaFactors[i])); // Bond Volume
 
 				IntVals[i].push_back(((double)AtomicNumber * IntVals[i][VolumeFractionNumInVarList]) - IntVals[i][DensityVarNumInIntList]); // Volume Bader charge
 // 				IntVals[i].push_back(IntVals[i][DensityVarNumInIntList] - (CoreElectronCount * IntVals[i][VolumeFractionNumInVarList])); // Volume Valence

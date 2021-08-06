@@ -65,6 +65,7 @@ void MakeSliceFromPointSelectionGetUserInfo();
 
 void GradientPathsOnSphereGetUserInfo();
 void SimpleSurfacesAroundSaddlesGetUserInfo();
+void ExportPathDataGetUserInfo();
 
 void BondalyzerGetUserInfo(BondalyzerCalcType_e CalcType, vector<GuiField_c> const PassthroughFields = vector<GuiField_c>());
 

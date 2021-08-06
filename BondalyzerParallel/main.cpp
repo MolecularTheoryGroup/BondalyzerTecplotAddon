@@ -464,6 +464,21 @@ static void STDCALL SimpleSurfacesAroundSaddlesMenuCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL ExportPathDataMenuCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		ExportPathDataGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL GetClosedIsoSurfaceFromPointsCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -869,6 +884,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Simple surfaces around bond/ring CPs").c_str(),
 		'\0',
 		SimpleSurfacesAroundSaddlesMenuCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Export gradient path information").c_str(),
+		'\0',
+		ExportPathDataMenuCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		string("Make surface from path zones").c_str(),
