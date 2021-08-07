@@ -2071,6 +2071,39 @@ $!ATTACHTEXT
     }
   MACROFUNCTIONCOMMAND = 'VarName=LBL29 Type=Label'
   TEXT = 'Uncheck to only include active.'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 70.51165643158923
+    Y = 62.61000378753281
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGL_Surfs Type=Toggle'
+  TEXT = '<math>7</math>.'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 73.1117255567202
+    Y = 62.40216411114501
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL31 Type=Label'
+  TEXT = 'Save special gradient\nbundle surfaces'
 $!ATTACHGEOM 
   GEOMTYPE = RECTANGLE
   POSITIONCOORDSYS = FRAME

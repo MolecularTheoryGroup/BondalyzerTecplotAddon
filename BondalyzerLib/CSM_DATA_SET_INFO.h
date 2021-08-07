@@ -98,6 +98,7 @@ struct CSMAuxData_s{
 			CondensedBasinSphereElements = Prefix + "BasinElements",
 			CondensedBasinCentralElementIndex = Prefix + "BasinCentralElementIndex",
 			CondensedBasinDefiningVariable = Prefix + "CondensedBasinDefiningVariable",
+			CondensedBasinBoundaryIntVals = Prefix + "CondensedBasinBoundaryIntVals",
 			VolumeCPName = Prefix + "VolumeCP",
 			IntPrecision = Prefix + "IntegrationPrecision",
 			RadialSphereApproximation = Prefix + "RadialSphereApproximation",

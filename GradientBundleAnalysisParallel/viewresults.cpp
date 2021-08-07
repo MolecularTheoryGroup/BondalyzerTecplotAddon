@@ -226,7 +226,7 @@ void GBAResultViewerSelectIntVar(){
 
 
 		if (LogSpaceContours){
-			if (VarMin <= 0){
+			if (VarMin <= 0.0){
 				/*
 				*	The variable spans (or stops/starts at) 0, so need to find the negative and positive numbers closest to 0
 				*	and use their exponents as a range in the logspace call.

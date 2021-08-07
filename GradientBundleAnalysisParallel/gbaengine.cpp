@@ -5428,7 +5428,7 @@ void NewMainFunction() {
 			if (v.find("inetic") != string::npos) {
 				TeNumInVarList = vi;
 				IntVarNameList.emplace_back("Te Per Electron");
-				IntVarNameList.emplace_back("Bond (kinetic) energy");
+				IntVarNameList.emplace_back("Deformation (kinetic) energy");
 				break;
 			}
 		}
@@ -5443,8 +5443,8 @@ void NewMainFunction() {
 			IntVarNameList.emplace_back("Valence Bader Charge");
 			if (TeNumInVarList >= 0)
 				IntVarNameList.emplace_back("Te Per Valence Electron");
-			IntVarNameList.emplace_back("Bond Charge");
-			IntVarNameList.emplace_back("Bond Volume");
+			IntVarNameList.emplace_back("Deformation Charge");
+			IntVarNameList.emplace_back("Deformation Volume");
 
 			IntVarNameList.emplace_back("Volume Bader Charge");
 // 			IntVarNameList.emplace_back("Volume Valence Density");
@@ -9386,6 +9386,8 @@ void FindSphereBasins() {
 		}
 	}
 
+	bool SaveSurfaces = TecGUIToggleGet(TGL_TOG_T3_1);
+
  	/*
  	 *	Delete any preexisting zones that would be created here
  	 *	to prevent a conflict later.
@@ -9431,7 +9433,7 @@ void FindSphereBasins() {
 	for (int i = 1; i < VolInfo.size(); ++i) VolInfo[i] = VolInfo[0];
 
 	bool DeleteGradVars = false;
-	if (GradVarNums.empty() && VolInfo[0].NumPts() < 600000000) {
+	if (SaveSurfaces && GradVarNums.empty() && VolInfo[0].NumPts() < 600000000) {
 		CalcVarsOptions_s opt;
 		opt.AddOnID = AddOnID;
 		opt.CalcForAllZones = FALSE;
@@ -9505,12 +9507,20 @@ void FindSphereBasins() {
 				*	and one with the elements of each (2 x number of min/max x number of elements).
 				*/
 			vector<vector<int> > MinMaxIndices;
-			vector<vector<vector<double> > > BasinIntVals;
+			vector<vector<vector<double> > > BasinIntVals, BasinBoundaryIntVals;
 			vector<vector<vector<vec3> > > BasinNodes;
 			vector<vector<vector<vector<int> > > > BasinElems;
 			vector<vector<vector<int> > > SphereElemNums, SphereNodeNums;
 
 			GetSphereBasinIntegrations(Sphere, ElemIntVals, IntNum - 1, MinMaxIndices, BasinIntVals, BasinNodes, BasinElems, SphereNodeNums, SphereElemNums);
+
+			BasinBoundaryIntVals.resize(BasinIntVals.size());
+			for (int i = 0; i < BasinIntVals.size(); ++i){
+				BasinBoundaryIntVals[i].resize(BasinIntVals[i].size());
+				for (int j = 0; j < BasinIntVals[i].size(); ++j){
+					BasinBoundaryIntVals[i][j].resize(BasinIntVals[i][j].size(), 0.0);
+				}
+			}
 
 			/*
 				*	Make a surface from gradient paths seeded at the basin parameter edge midpoints.
@@ -9805,6 +9815,30 @@ void FindSphereBasins() {
 				vector<vec3> SeedPts;
 				vector<vector<int> > BasinPerimeterEdges;
 				if (GetSortedPerimeterEdgeMidpoints(BasinElems[i][j], BasinNodes[i][j], SeedPts, BasinPerimeterEdges)) {
+					// Compute total amount of condensed properties in boundary elements (to gauge the error of using this method of finding condensed basins
+					{
+						auto & Elems = BasinElems[i][j];
+						auto & BoundaryIntVals = BasinBoundaryIntVals[i][j];
+
+						std::set<Edge> EdgeSet;
+						for (auto & e : BasinPerimeterEdges){
+							EdgeSet.insert(MakeEdge(e[0], e[1]));
+						}
+
+						for (int iElem = 0; iElem < Elems.size(); ++iElem) {
+							auto & elem = Elems[iElem];
+							for (int ei = 0; ei < 3; ++ei) {
+								if (EdgeSet.count(MakeEdge(elem[ei], elem[(ei + 1) % 3]))){
+									for (int i = 0; i < BoundaryIntVals.size(); ++i){
+										BoundaryIntVals[i] += ElemIntVals[i][iElem];
+									}
+									break;
+								}
+							}
+						}
+					}
+
+
 					/*
 					 *	Prepare workspace for wedge cap
 					 */
@@ -9851,120 +9885,123 @@ void FindSphereBasins() {
 // 						CapNodes[ni] = GPPtr->XYZAt(-1);
 // 					}
 
-					int NumSeedPts = SeedPts.size();
-					/*
-						*	Check to see if any bond path-sphere intersections appear in the perimeter.
-						*	If they do, need to add them to the surface.
-						*/
-					std::set<int> ConstrainedNodeNums(SphereConstrainedGPNodeNums.begin(), SphereConstrainedGPNodeNums.end());
-					bool ContainsConstrainedNode = false;
-					for (int e = 0; e < BasinPerimeterEdges.size() && !ContainsConstrainedNode; ++e) {
-						for (int ei : BasinPerimeterEdges[e]) {
-							if (ConstrainedNodeNums.count(SphereNodeNums[i][j][ei]) > 0) {
-								ContainsConstrainedNode = true;
-								break;
-							}
-						}
-					}
-					vector<GradPath_c> BasinParimeterGPs(NumSeedPts);
-					vector<GradPath_c*> GPPtrs;
-					for (int p = 0; p < NumSeedPts; ++p) {
-						BasinParimeterGPs[p].SetupGradPath(
-							SeedPts[p],
-							StreamDir_Both,
-							NumGPPts,
-							GPType_Classic,
-							GPTerminate_AtRhoValue,
-							nullptr, nullptr, nullptr,
-							&TermRhoValue,
-							VolInfo[0],
-							vector<FieldDataPointer_c>(),
-							GradRawPtrs,
-							RhoRawPtr);
-						GPPtrs.push_back(&BasinParimeterGPs[p]);
-					}
-					bool UserQuit = false;
-					int NumCompleted = 0;
-#ifndef _DEBUG
-#pragma omp parallel for schedule(dynamic)
-#endif
-					for (int p = 0; p < NumSeedPts; ++p) {
-						BasinParimeterGPs[p].Seed();
-						BasinParimeterGPs[p].Reverse();
-					}
-					if (UserQuit){
-						break;
-					}
-					if (ContainsConstrainedNode) {
+					if (SaveSurfaces) {
+
+						int NumSeedPts = SeedPts.size();
 						/*
-							*	There are one or more constrained nodes that need to be added
-							*	to the surface.
+							*	Check to see if any bond path-sphere intersections appear in the perimeter.
+							*	If they do, need to add them to the surface.
 							*/
-// 						auto * XYZListPtr = Sphere.GetXYZListPtr();
-						vector<GradPath_c*> TmpGPPtrs;
-						for (int p = 0; p < NumSeedPts; ++p) {
-							TmpGPPtrs.push_back(GPPtrs[p]);
-							for (int n = 0; n < SphereConstrainedGPNodeNums.size(); ++n) {
-								if (SphereConstrainedGPNodeNums[n] == SphereNodeNums[i][j][BasinPerimeterEdges[p][1]]) {
-									/*
-										*	Now need to take the bond path segment for the constrained node
-										*	and add new gradient paths in the interatomic surface to be stitched with the
-										*	neighboring edge midpoint gradient paths.
-										*	First, get the closest points on the neighboring edge midpoint gradient
-										*	paths to the bond path and use that information to find the
-										*	angle between them in the interatomic plane and then the
-										*	seed points for the new gradient paths in the interatomic plane.
-										*/
-									vector<vec3> TmpSeedPts;
-									for (int gpi = 0; gpi < 2; ++gpi) {
-										vec3 ClosestPt = GPPtrs[(p + gpi) % GPPtrs.size()]->ClosestPoint(SphereConstrainedNodeGPs[n][-1]);
-
-										/*
-											*	Now place the closest point in the interatomic plane
-											*/
-										vec3 v1 = normalise(SphereConstrainedNodeGPs[n][-2] - SphereConstrainedNodeGPs[n][-1]),
-											v3 = ClosestPt - SphereConstrainedNodeGPs[n][-1],
-											v2 = normalise(cross(v1, v3));
-										double tmpLen = norm(v3);
-										vec3 tmpv3 = normalise(cross(v1, v2));
-										if (dot(tmpv3, v3) < 0)
-											v3 = -tmpv3;
-										else
-											v3 = tmpv3;
-
-										TmpSeedPts.push_back(v3);
-									}
-
-									/*
-										*	Now we've got the two vectors to use to seed the neighboring gradient paths
-										*/
-									for (auto const & seedPt : TmpSeedPts) {
-										TmpGPPtrs.push_back(new GradPath_c);
-										TmpGPPtrs.back()->SetupGradPath(SphereConstrainedNodeGPs[n][-1] + (seedPt * 0.5),
-											StreamDir_Reverse,
-											NumGPPts,
-											GPType_Classic,
-											GPTerminate_AtRhoValue,
-											nullptr, nullptr, nullptr,
-											&TermRhoValue,
-											VolInfo[0],
-											vector<FieldDataPointer_c>(),
-											GradRawPtrs,
-											RhoRawPtr);
-										TmpGPPtrs.back()->Seed();
-										*TmpGPPtrs.back() = SphereConstrainedNodeGPs[n] + *TmpGPPtrs.back();
-									}
-
+						std::set<int> ConstrainedNodeNums(SphereConstrainedGPNodeNums.begin(), SphereConstrainedGPNodeNums.end());
+						bool ContainsConstrainedNode = false;
+						for (int e = 0; e < BasinPerimeterEdges.size() && !ContainsConstrainedNode; ++e) {
+							for (int ei : BasinPerimeterEdges[e]) {
+								if (ConstrainedNodeNums.count(SphereNodeNums[i][j][ei]) > 0) {
+									ContainsConstrainedNode = true;
+									break;
 								}
 							}
 						}
-						GPPtrs = TmpGPPtrs;
-					}
-					if (GPPtrs.size() > 2) {
-						vector<GradPath_c const *> ConstGPPtrs;
-						for (auto * g : GPPtrs)
-							ConstGPPtrs.push_back(const_cast<GradPath_c const *>(g));
-						WedgeSurfaces[i][j].MakeFromGPs(ConstGPPtrs, true);
+						vector<GradPath_c> BasinParimeterGPs(NumSeedPts);
+						vector<GradPath_c*> GPPtrs;
+						for (int p = 0; p < NumSeedPts; ++p) {
+							BasinParimeterGPs[p].SetupGradPath(
+								SeedPts[p],
+								StreamDir_Both,
+								NumGPPts,
+								GPType_Classic,
+								GPTerminate_AtRhoValue,
+								nullptr, nullptr, nullptr,
+								&TermRhoValue,
+								VolInfo[0],
+								vector<FieldDataPointer_c>(),
+								GradRawPtrs,
+								RhoRawPtr);
+							GPPtrs.push_back(&BasinParimeterGPs[p]);
+						}
+						bool UserQuit = false;
+						int NumCompleted = 0;
+#ifndef _DEBUG
+#pragma omp parallel for schedule(dynamic)
+#endif
+						for (int p = 0; p < NumSeedPts; ++p) {
+							BasinParimeterGPs[p].Seed();
+							BasinParimeterGPs[p].Reverse();
+						}
+						if (UserQuit) {
+							break;
+						}
+						if (ContainsConstrainedNode) {
+							/*
+								*	There are one or more constrained nodes that need to be added
+								*	to the surface.
+								*/
+								// 						auto * XYZListPtr = Sphere.GetXYZListPtr();
+							vector<GradPath_c*> TmpGPPtrs;
+							for (int p = 0; p < NumSeedPts; ++p) {
+								TmpGPPtrs.push_back(GPPtrs[p]);
+								for (int n = 0; n < SphereConstrainedGPNodeNums.size(); ++n) {
+									if (SphereConstrainedGPNodeNums[n] == SphereNodeNums[i][j][BasinPerimeterEdges[p][1]]) {
+										/*
+											*	Now need to take the bond path segment for the constrained node
+											*	and add new gradient paths in the interatomic surface to be stitched with the
+											*	neighboring edge midpoint gradient paths.
+											*	First, get the closest points on the neighboring edge midpoint gradient
+											*	paths to the bond path and use that information to find the
+											*	angle between them in the interatomic plane and then the
+											*	seed points for the new gradient paths in the interatomic plane.
+											*/
+										vector<vec3> TmpSeedPts;
+										for (int gpi = 0; gpi < 2; ++gpi) {
+											vec3 ClosestPt = GPPtrs[(p + gpi) % GPPtrs.size()]->ClosestPoint(SphereConstrainedNodeGPs[n][-1]);
+
+											/*
+												*	Now place the closest point in the interatomic plane
+												*/
+											vec3 v1 = normalise(SphereConstrainedNodeGPs[n][-2] - SphereConstrainedNodeGPs[n][-1]),
+												v3 = ClosestPt - SphereConstrainedNodeGPs[n][-1],
+												v2 = normalise(cross(v1, v3));
+											double tmpLen = norm(v3);
+											vec3 tmpv3 = normalise(cross(v1, v2));
+											if (dot(tmpv3, v3) < 0)
+												v3 = -tmpv3;
+											else
+												v3 = tmpv3;
+
+											TmpSeedPts.push_back(v3);
+										}
+
+										/*
+											*	Now we've got the two vectors to use to seed the neighboring gradient paths
+											*/
+										for (auto const & seedPt : TmpSeedPts) {
+											TmpGPPtrs.push_back(new GradPath_c);
+											TmpGPPtrs.back()->SetupGradPath(SphereConstrainedNodeGPs[n][-1] + (seedPt * 0.5),
+												StreamDir_Reverse,
+												NumGPPts,
+												GPType_Classic,
+												GPTerminate_AtRhoValue,
+												nullptr, nullptr, nullptr,
+												&TermRhoValue,
+												VolInfo[0],
+												vector<FieldDataPointer_c>(),
+												GradRawPtrs,
+												RhoRawPtr);
+											TmpGPPtrs.back()->Seed();
+											*TmpGPPtrs.back() = SphereConstrainedNodeGPs[n] + *TmpGPPtrs.back();
+										}
+
+									}
+								}
+							}
+							GPPtrs = TmpGPPtrs;
+						}
+						if (GPPtrs.size() > 2) {
+							vector<GradPath_c const *> ConstGPPtrs;
+							for (auto * g : GPPtrs)
+								ConstGPPtrs.push_back(const_cast<GradPath_c const *>(g));
+							WedgeSurfaces[i][j].MakeFromGPs(ConstGPPtrs, true);
+						}
 					}
 				}
 			}
@@ -10013,6 +10050,7 @@ void FindSphereBasins() {
 						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinDefiningVariable, BasinDefineVarName);
 						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.IntVarNames, VectorToString(IntVarNames, ","));
 						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.IntVarVals, VectorToString(BasinIntVals[i][b], ","));
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinBoundaryIntVals, VectorToString(BasinBoundaryIntVals[i][b], ","));
 						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.ZoneType, (i == 0 ? CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin : CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin));
 						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinSphereElements, VectorToString(SphereElemNums[i][b], ","));
 						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinSphereNodes, VectorToString(SphereNodeNums[i][b], ","));
@@ -10039,7 +10077,7 @@ void FindSphereBasins() {
 
 					}
 
-  					if (WedgeSurfaces[i][b].IsMade()) {
+  					if (SaveSurfaces && WedgeSurfaces[i][b].IsMade()) {
   						ZoneNum = WedgeSurfaces[i][b].SaveAsTriFEZone({ 1,2,3 }, SphereName + ": " + MinMax[i] + " wedge (node " + to_string(MinMaxIndices[i][b]) + ") " + BasinDefineVarName);
   						if (ZoneNum > 0) {
   							if (i == 1) ZoneSet += ZoneNum;
@@ -10099,6 +10137,8 @@ void FindSphereBasins() {
 	if (!DelVars.isEmpty()) {
 		TecUtilDataSetDeleteVar(DelVars.getRef());
 	}
+
+	TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
 
 	GBAResultViewerPopulateGBs();
 }

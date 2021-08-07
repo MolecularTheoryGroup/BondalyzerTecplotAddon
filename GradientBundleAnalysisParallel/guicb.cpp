@@ -1504,5 +1504,14 @@ static void TGLSphTest_TOG_T1_1_CB(const LgIndex_t *I)
 	TecUtilLockFinish(AddOnID);
 }
 
+/**
+ */
+static void TGL_TOG_T3_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Toggle (TGL_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
+	TecUtilLockFinish(AddOnID);
+}
+
 
 #include "guibld.cpp"

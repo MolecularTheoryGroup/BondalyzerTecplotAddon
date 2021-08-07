@@ -3009,11 +3009,11 @@ void ExportPathDataReturnUserInfo(bool const GuiSuccess,
 		"Number of points",
 		"Length",
 		"Total curvature (sum of angle changes along path) [radians]",
-		"Average curvature (total curvature over length) [radians / length]",
-		"Net plane curvature (angle difference between endpoints; first and last 1% of path) [radians]",
-		"Average net plane curvature (net plane curvature over length) [radians / length]",
-		"Total torsion (sum of angle changes of binormal along path) [radians]",
-		"Average torsion (total torsion over length) [radians / length]"
+		"Average curvature k (total curvature over length) [radians / length]",
+		"Net curvature (angle difference between endpoints; first and last 1% of path) [radians]",
+		"Average net curvature (net curvature over length) [radians / length]",
+		"Total curvature-scaled torsion (sum of angle changes of binormal along path) [radians]",
+		"Average curvature-scaled torsion (total torsion over length) [radians / length]"
 	};
 
 	if (TecUtilDialogGetFileName(SelectFileOption_WriteFile, &FileNameCStr, "Comma separated values", "Bondalyzer exported path data.csv", "*.csv")) {
@@ -11333,7 +11333,8 @@ void CollectGradientBundlesByRegionType(int PVarNum,
 	std::map<string, string> & CondensedBasinNameToSphereName,
 	std::map<string, std::set<string> > & SpecialGradientBundleNameToCondensedBasinNames,
 	std::map<string, vector<int> > & SphereNameToActiveDGBElemNums,
-	std::map<string, std::map<string, vector<int> > > & TopoCageNameToSphereNameToElems)
+	std::map<string, std::map<string, vector<int> > > & TopoCageNameToSphereNameToElems,
+	std::map<string, vector<double> > & CondensedBasinNameToBoundaryIntVals)
 {
 	REQUIRE(PVarNum > 0 && PVarNum <= TecUtilDataSetGetNumVars());
 	REQUIRE(CPZoneNum > 0 && CPZoneNum <= TecUtilDataSetGetNumZones());
@@ -11413,15 +11414,22 @@ void CollectGradientBundlesByRegionType(int PVarNum,
 	for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
 		if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin) || AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin)) {
 			// condensed basin
-			string CondensedBasinName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinInfo);
+			string CondensedBasinName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinInfo) + " from " + AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinDefiningVariable);
 			string SphereName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName);
 			auto ElemList = SplitStringInt(AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinSphereElements)); // 0-based
 			CondensedBasinNameToSphereName[CondensedBasinName] = SphereName;
 			CondensedBasinNameToSphereElems[CondensedBasinName] = ElemList;
 
+			// Get boundary element integration values
+			string BoundaryIntValStr;
+			if (AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinBoundaryIntVals, BoundaryIntValStr)) {
+				auto BoundaryIntValList = SplitStringDbl(BoundaryIntValStr);
+				CondensedBasinNameToBoundaryIntVals[CondensedBasinName] = BoundaryIntValList;
+			}
+
 			// Add to special gradient bundle if present
 			if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.CondensedBasinIsSpecialGradientBundle, "true")) {
-				string SpecialGradientBundleName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinName);
+				string SpecialGradientBundleName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinName) + " from " + AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinDefiningVariable);
 				SpecialGradientBundleNameToCondensedBasinNames[SpecialGradientBundleName].insert(CondensedBasinName);
 			}
 		}
@@ -11467,11 +11475,12 @@ void CalculateShannonEntropies(int PVarNum, int CPZoneNum, vector<int> XYZVarNum
 	std::map<string, std::map<string, vector<int> > > TopoCageNameToSphereNameToElems;
 	std::map<string, string> CondensedBasinNameToSphereName;
 	std::map<string, std::set<string> > SpecialGradientBundleNameToCondensedBasinNames;
+	std::map<string, vector<double> > CondensedBasinNameToBoundaryIntVals;
 
 
 	TecUtilDataLoadBegin();
 
-	CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames, SphereNameToActiveDGBElemNums, TopoCageNameToSphereNameToElems);
+	CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames, SphereNameToActiveDGBElemNums, TopoCageNameToSphereNameToElems, CondensedBasinNameToBoundaryIntVals);
 
 	//3. For each max/min basin
 	//	1. compute the Shannon entropy for the basin
@@ -11660,7 +11669,8 @@ void ExportGBADataForRegions(
 	std::map<string, FESurface_c> & SpheresByName,
 	std::map<string, FieldDataPointer_c> & SphereNameToVarPtr,
 	std::map<string, vec> & SphereNameToElemSolidAngles,
-	string const & AllGBOutPathSuffix = "")
+	string const & AllGBOutPathSuffix = "",
+	std::map<string, vector<double> > SphereNameToBoundaryIntTotals = std::map<string, vector<double> >())
 {
 	// update elements for whole spheres
 	for (auto & s : SphereNameAndElements){
@@ -11675,7 +11685,7 @@ void ExportGBADataForRegions(
 	// Get data
 	std::map<string, vector<vec> > SphereNameToAllVals;
 	std::map<string, vector<double> > SphereNameToValTotals;
-	vector<double> VarTotals(IntVarNums.size(), 0.0);
+	vector<double> VarTotals(IntVarNums.size(), 0.0), BoundaryVarTotals(IntVarNums.size(), 0.0);
 	for (auto s : SphereNameAndElements){
 		int SphereZoneNum = SphereNameToVarPtr[s.first].ZoneNum();
 		for (int vi = 0; vi < IntVarNums.size(); ++vi) {
@@ -11691,6 +11701,9 @@ void ExportGBADataForRegions(
 			double total = sum(Vals);
 			VarTotals[vi] += total;
 			SphereNameToValTotals[s.first].push_back(total);
+			if (!SphereNameToBoundaryIntTotals.empty()){
+				BoundaryVarTotals[vi] += SphereNameToBoundaryIntTotals[s.first][vi];
+			}
 		}
 	}
 
@@ -11711,6 +11724,11 @@ void ExportGBADataForRegions(
 			for (auto const & vn : IntVarNames) {
 				OutFile << "," << vn;
 			}
+			if (!SphereNameToBoundaryIntTotals.empty()){
+				for (auto const & vn : IntVarNames) {
+					OutFile << "," << vn << " (boundary)";
+				}
+			}
 			OutFile << endl;
 		}
 		if (SphereNameToValTotals.size() > 1) {
@@ -11719,6 +11737,11 @@ void ExportGBADataForRegions(
 			for (auto const & total : VarTotals) {
 				OutFile << "," << std::setprecision(16) << total;
 			}
+			if (!SphereNameToBoundaryIntTotals.empty()) {
+				for (auto const & total : BoundaryVarTotals) {
+					OutFile << "," << std::setprecision(16) << total;
+				}
+			}
 			OutFile << endl;
 		}
 		// then values for each sphere
@@ -11726,6 +11749,11 @@ void ExportGBADataForRegions(
 			OutFile << RegionName << "," << s.first;
 			for (auto const & val : s.second){
 				OutFile << "," << std::setprecision(16) << val;
+			}
+			if (!SphereNameToBoundaryIntTotals.empty()) {
+				for (auto const & val : SphereNameToBoundaryIntTotals[s.first]) {
+					OutFile << "," << std::setprecision(16) << val;
+				}
 			}
 			OutFile << endl;
 		}
@@ -11774,6 +11802,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 	std::map<string, std::map<string, vector<int> > > TopoCageNameToSphereNameToElems;
 	std::map<string, string> CondensedBasinNameToSphereName;
 	std::map<string, std::set<string> > SpecialGradientBundleNameToCondensedBasinNames;
+	std::map<string, vector<double> > CondensedBasinNameToBoundaryIntVals;
 
 
 	TecUtilDataLoadBegin();
@@ -11782,7 +11811,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 	char* FolderNameCStr;
 	if (TecUtilDialogGetFolderName("Select folder to save files", &FolderNameCStr)) {
 
-		CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames, SphereNameToActiveDGBElemNums, TopoCageNameToSphereNameToElems);
+		CollectGradientBundlesByRegionType(PVarNum, CPZoneNum, XYZVarNums, CPTypeVarNum, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, MoleculeMGNamesToSphereNames, MoleculeOSNamesToSphereNames, CondensedBasinNameToSphereElems, CondensedBasinNameToSphereName, SpecialGradientBundleNameToCondensedBasinNames, SphereNameToActiveDGBElemNums, TopoCageNameToSphereNameToElems, CondensedBasinNameToBoundaryIntVals);
 
 		vector<int> IntVarNums;
 		vector<string> IntVarNames;
@@ -11883,10 +11912,14 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 			string OutPath = "";
 			for (auto & sgb : SpecialGradientBundleNameToCondensedBasinNames) {
 				SphereNameAndElements.clear();
+				std::map<string, vector<double> > SphereNameToBoundaryIntTotals;
 				for (auto & cb : sgb.second) {
 					SphereNameAndElements.push_back(std::make_pair(CondensedBasinNameToSphereName[cb], CondensedBasinNameToSphereElems[cb]));
+					if (CondensedBasinNameToBoundaryIntVals.count(cb)){
+						SphereNameToBoundaryIntTotals[CondensedBasinNameToSphereName[cb]] = CondensedBasinNameToBoundaryIntVals[cb];
+					}
 				}
-				ExportGBADataForRegions(DataSetName + " Special gradient bundles", sgb.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + sgb.first);
+				ExportGBADataForRegions(DataSetName + " Special gradient bundles", sgb.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + sgb.first, SphereNameToBoundaryIntTotals);
 // 				CalculateAndSaveShannonEntropiesForSphereNameElements(sgb.first + ": ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 			}
 		}
@@ -11895,7 +11928,11 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 			// Then all condensed basins
 			string OutPath = "";
 			for (auto & cb : CondensedBasinNameToSphereName) {
-				ExportGBADataForRegions(DataSetName + " Condensed basins", cb.first, OutDir, OutPath, vector<std::pair<string, vector<int> > >({ std::make_pair(cb.second, CondensedBasinNameToSphereElems[cb.first]) }), IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + cb.first);
+				std::map<string, vector<double> > SphereNameToBoundaryIntTotals;
+				if (CondensedBasinNameToBoundaryIntVals.count(cb.first)) {
+					SphereNameToBoundaryIntTotals[cb.second] = CondensedBasinNameToBoundaryIntVals[cb.first];
+				}
+				ExportGBADataForRegions(DataSetName + " Condensed basins", cb.first, OutDir, OutPath, vector<std::pair<string, vector<int> > >({ std::make_pair(cb.second, CondensedBasinNameToSphereElems[cb.first]) }), IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + cb.first, SphereNameToBoundaryIntTotals);
 // 				CalculateAndSaveShannonEntropiesForSphereNameElements(cb.first + ": ", vector<std::pair<string, vector<int> > >({ std::make_pair(cb.second, CondensedBasinNameToSphereElems[cb.first]) }), DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 			}
 		}

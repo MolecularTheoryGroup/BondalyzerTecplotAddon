@@ -2513,7 +2513,9 @@ void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 	int NumNeighbors = (NumSharedCorners == 1 ? 12 : 3);
 	for (auto & i : ElemConnectivity) i.reserve(NumNeighbors); // A triangle can have as many as 12 neighbors if NumSharedCorners == 1, else 3
 
-#pragma omp parallel for schedule(dynamic)
+// #ifndef _DEBUG
+#pragma omp parallel for
+// #endif
 	for (int i = 0; i < NumElems - 1; ++i) {
 		for (int j = i + 1; j < NumElems; ++j) {
 			int NumMatches = 0;

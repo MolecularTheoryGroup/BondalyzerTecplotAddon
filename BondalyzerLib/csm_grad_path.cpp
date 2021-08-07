@@ -425,15 +425,16 @@ int GradPathBase_c::GetIndAtLength(double const & Length) const{
 	 for (int i = 3; i < this->GetCount(); ++i) {
 		 v3 = this->XYZAt(i) - this->XYZAt(i-1);
 
-		 if (VectorAngleMagnitude(v1, v2) >= MinCurvatureCutoff && VectorAngleMagnitude(v2, v3) >= MinCurvatureCutoff) {
+// 		 if (VectorAngleMagnitude(v1, v2) >= MinCurvatureCutoff && VectorAngleMagnitude(v2, v3) >= MinCurvatureCutoff) {
+		 double lowK = MIN(VectorAngleMagnitude(v1, v2), VectorAngleMagnitude(v2, v3));
 			 b2 = cross(v2, v3);
 
 			 double delB = MIN(VectorAngleMagnitude(b1, b2), VectorAngleMagnitude(b1, -b2));
 			 // 		 if (delS > 0.0) {
 			 // 			 T += delB / delS;
 			 // 		 }
-			 T += delB;
-		 }
+			 T += delB * lowK;
+// 		 }
 		 v1 = v2;
 		 v2 = v3;
 		 b1 = b2;
