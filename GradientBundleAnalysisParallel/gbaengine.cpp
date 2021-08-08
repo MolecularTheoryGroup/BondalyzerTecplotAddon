@@ -5395,8 +5395,9 @@ void NewMainFunction() {
 		IntVarNameList.emplace_back("Average curvature");
 // 		IntVarNameList.emplace_back("Net plane curvature");
 		IntVarNameList.emplace_back("Average net plane curvature");
-// 		IntVarNameList.emplace_back("Total torsion");
+		// 		IntVarNameList.emplace_back("Total torsion");
 		IntVarNameList.emplace_back("Average torsion");
+		IntVarNameList.emplace_back("Average curvature-scaled torsion");
 
 		// compute curvatures and tortions of elements (length averages of the paths for the elements)
 
@@ -5404,12 +5405,14 @@ void NewMainFunction() {
 			double totalLen = 0.0,
 				totalK = 0.0,
 				totalPlaneK = 0.0,
-				totalT = 0.0;
+				totalT = 0.0,
+				totalT1 = 0.0;
 			for (auto const & GP : GPPtrList[ti]){
 				double l = GP->GetLength();
 				totalLen += l;
 				totalK += GP->ComputeTotalCurvature();
 				totalT += GP->ComputeTotalTorsion();
+				totalT1 += GP->ComputeTotalTorsion(true);
 
 				int startInd = MAX(1, GP->GetIndAtLength(0.01 * l)),
 					endInd = MIN(GP->GetCount() - 2, GP->GetIndAtLength(0.99 * l));
@@ -5420,6 +5423,7 @@ void NewMainFunction() {
 			IntVals[ti].push_back(totalK / totalLen);
 			IntVals[ti].push_back(totalPlaneK / totalLen);
 			IntVals[ti].push_back(totalT / totalLen);
+			IntVals[ti].push_back(totalT1 / totalLen);
 		}
 
 		int TeNumInVarList = -1;

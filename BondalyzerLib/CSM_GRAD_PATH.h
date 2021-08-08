@@ -181,8 +181,8 @@ public:
 
 	double ComputeTotalCurvature() const;
 	double ComputeAverageCurvature() const;
-	double ComputeTotalTorsion() const;
-	double ComputeAverageTorsion() const;
+	double ComputeTotalTorsion(bool ScaleByCurvature = false) const;
+	double ComputeAverageTorsion(bool ScaleByCurvature = false) const;
 
 	vec3 ClosestMaxCurvaturePoint(vec3 const & CheckPt) const { int i; return ClosestMaxCurvaturePoint(CheckPt, i); }
 	vec3 ClosestMaxCurvaturePoint(vec3 const & CheckPt, int & PtInd) const; 

@@ -409,7 +409,7 @@ int GradPathBase_c::GetIndAtLength(double const & Length) const{
   *  (the binormal vector points in an undefined direction when a line is "straight")
   */
  double MinCurvatureCutoff = 1e-2; // value pulled out of my butt
- double GradPathBase_c::ComputeTotalTorsion() const {
+ double GradPathBase_c::ComputeTotalTorsion(bool ScaleByCurvature) const {
 	 double T = 0.0;
 
 	 if (this->GetCount() < 3) {
@@ -425,8 +425,8 @@ int GradPathBase_c::GetIndAtLength(double const & Length) const{
 	 for (int i = 3; i < this->GetCount(); ++i) {
 		 v3 = this->XYZAt(i) - this->XYZAt(i-1);
 
-// 		 if (VectorAngleMagnitude(v1, v2) >= MinCurvatureCutoff && VectorAngleMagnitude(v2, v3) >= MinCurvatureCutoff) {
-		 double lowK = MIN(VectorAngleMagnitude(v1, v2), VectorAngleMagnitude(v2, v3));
+		 if (ScaleByCurvature){
+			 double lowK = MIN(VectorAngleMagnitude(v1, v2), VectorAngleMagnitude(v2, v3));
 			 b2 = cross(v2, v3);
 
 			 double delB = MIN(VectorAngleMagnitude(b1, b2), VectorAngleMagnitude(b1, -b2));
@@ -434,7 +434,20 @@ int GradPathBase_c::GetIndAtLength(double const & Length) const{
 			 // 			 T += delB / delS;
 			 // 		 }
 			 T += delB * lowK;
-// 		 }
+			 // 		 }
+		 }
+		 else {
+			 if (VectorAngleMagnitude(v1, v2) >= MinCurvatureCutoff && VectorAngleMagnitude(v2, v3) >= MinCurvatureCutoff) {
+				 b2 = cross(v2, v3);
+
+				 double delB = MIN(VectorAngleMagnitude(b1, b2), VectorAngleMagnitude(b1, -b2));
+				 // 		 if (delS > 0.0) {
+				 // 			 T += delB / delS;
+				 // 		 }
+				 T += delB;
+				 // 		 }
+			 }
+		 }
 		 v1 = v2;
 		 v2 = v3;
 		 b1 = b2;
@@ -444,9 +457,9 @@ int GradPathBase_c::GetIndAtLength(double const & Length) const{
 	 return T;
  }
 
- double GradPathBase_c::ComputeAverageTorsion() const {
+ double GradPathBase_c::ComputeAverageTorsion(bool ScaleByCurvature) const {
 	 if (this->GetCount() > 3 && this->GetLength() > 0.0) {
-		 return this->ComputeTotalTorsion() / this->GetLength();
+		 return this->ComputeTotalTorsion(ScaleByCurvature) / this->GetLength();
 	 }
 	 else {
 		 return 0.0;

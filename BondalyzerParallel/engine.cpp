@@ -3012,6 +3012,8 @@ void ExportPathDataReturnUserInfo(bool const GuiSuccess,
 		"Average curvature k (total curvature over length) [radians / length]",
 		"Net curvature (angle difference between endpoints; first and last 1% of path) [radians]",
 		"Average net curvature (net curvature over length) [radians / length]",
+		"Total torsion (sum of angle changes of binormal along path) [radians]",
+		"Average torsion (total torsion over length) [radians / length]",
 		"Total curvature-scaled torsion (sum of angle changes of binormal along path) [radians]",
 		"Average curvature-scaled torsion (total torsion over length) [radians / length]"
 	};
@@ -3031,7 +3033,8 @@ void ExportPathDataReturnUserInfo(bool const GuiSuccess,
 					GradPath_c GP(zi, XYZVarNums, AddOnID);
 					double l = GP.GetLength(),
 						k = GP.ComputeTotalCurvature(),
-						t = GP.ComputeAverageTorsion();
+						t = GP.ComputeTotalTorsion(),
+						t1 = GP.ComputeTotalTorsion(true);
 
 					int startInd = MAX(1, GP.GetIndAtLength(0.01 * l)),
 						endInd = MIN(GP.GetCount() - 2, GP.GetIndAtLength(0.99 * l));
@@ -3049,6 +3052,8 @@ void ExportPathDataReturnUserInfo(bool const GuiSuccess,
 						<< "," << k1 / l
 						<< "," << t
 						<< "," << t / l
+						<< "," << t1
+						<< "," << t1 / l
 						<< endl;
 					TecUtilStringDealloc(&ZoneNameCStr);
 				}
