@@ -11664,6 +11664,7 @@ void CalculateShannonEntropyGetUserInfo() {
 
 void ExportGBADataForRegions(
 	string const & FileName,
+	string const & DatasetName,
 	string const & RegionName,
 	string const & OutDir,
 	string & OutPath,
@@ -11725,7 +11726,7 @@ void ExportGBADataForRegions(
 	if (OutFile.is_open()){
 		// write headers (region name, sphere name (or full), var names)
 		if (!AppendToFile) {
-			OutFile << "Region name,Atom name";
+			OutFile << "Dataset name,Region name,Atom name";
 			for (auto const & vn : IntVarNames) {
 				OutFile << "," << vn;
 			}
@@ -11733,31 +11734,46 @@ void ExportGBADataForRegions(
 				for (auto const & vn : IntVarNames) {
 					OutFile << "," << vn << " (boundary)";
 				}
+				for (auto const & vn : IntVarNames) {
+					OutFile << "," << vn << " (with boundary error)";
+				}
 			}
 			OutFile << endl;
 		}
 		if (SphereNameToValTotals.size() > 1) {
 			// write the full values
-			OutFile << RegionName << ",full";
+			OutFile << DatasetName << "," << RegionName << ",full";
 			for (auto const & total : VarTotals) {
-				OutFile << "," << std::setprecision(16) << total;
+				OutFile << "," << std::setprecision(8) << total;
 			}
 			if (!SphereNameToBoundaryIntTotals.empty()) {
 				for (auto const & total : BoundaryVarTotals) {
-					OutFile << "," << std::setprecision(16) << total;
+					OutFile << "," << std::setprecision(8) << total;
+				}
+				for (int vi = 0; vi < BoundaryVarTotals.size(); ++vi){
+					auto & val = VarTotals[vi];
+					auto & bval = BoundaryVarTotals[vi];
+					auto err = 0.5 * abs(bval);
+					OutFile << "," << std::setprecision(8) << val - err << " +/- " << err;
 				}
 			}
 			OutFile << endl;
 		}
 		// then values for each sphere
 		for (auto const & s : SphereNameToValTotals){
-			OutFile << RegionName << "," << s.first;
+			OutFile << DatasetName << "," << RegionName << "," << s.first;
 			for (auto const & val : s.second){
-				OutFile << "," << std::setprecision(16) << val;
+				OutFile << "," << std::setprecision(8) << val;
 			}
 			if (!SphereNameToBoundaryIntTotals.empty()) {
 				for (auto const & val : SphereNameToBoundaryIntTotals[s.first]) {
-					OutFile << "," << std::setprecision(16) << val;
+					OutFile << "," << std::setprecision(8) << val;
+				}
+				for (int vi = 0; vi < SphereNameToBoundaryIntTotals[s.first].size(); ++vi) {
+					auto & val = s.second[vi];
+					auto & bval = SphereNameToBoundaryIntTotals[s.first][vi];
+					auto err = 0.5 * abs(bval);
+					OutFile << "," << std::setprecision(8) << val - err << " +/- " << err;
 				}
 			}
 			OutFile << endl;
@@ -11769,7 +11785,7 @@ void ExportGBADataForRegions(
 			// Now the individual dGBs
 // 			if (!AppendToFile) {
 				// write headers (sphere name, element number, var names)
-				OutFileGBs << "Region name,Atom name,dGB index (starts at 0)";
+				OutFileGBs << "Dataset name,Region name,Atom name,dGB index (starts at 0)";
 				for (auto const & vn : IntVarNames) {
 					OutFileGBs << "," << vn;
 				}
@@ -11780,9 +11796,9 @@ void ExportGBADataForRegions(
 			for (auto const & s : SphereNameAndElements) {
 				auto *SphereElemVals = &SphereNameToAllVals[s.first];
 				for (int ei = 0; ei < s.second.size(); ++ei) {
-					OutFileGBs << RegionName << "," << s.first << "," << s.second[ei];
+					OutFileGBs << DatasetName << "," << RegionName << "," << s.first << "," << s.second[ei];
 					for (int vi = 0; vi < IntVarNums.size(); ++vi){
-						OutFileGBs << "," << std::setprecision(16) << SphereElemVals->at(vi)[ei];
+						OutFileGBs << "," << std::setprecision(8) << SphereElemVals->at(vi)[ei];
 					}
 					OutFileGBs << endl;
 				}
@@ -11862,7 +11878,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 
 				// The individual sphere
 				if (DoRegion[Region_AtomicBasin]) {
-					ExportGBADataForRegions(DataSetName + " Atomic basins", s.first, OutDir, OutPath, vector<std::pair<string, vector<int> > >({ std::make_pair(s.first, vector<int>()) }), IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + s.first);
+					ExportGBADataForRegions(DataSetName + " Atomic basins", DataSetName, s.first, OutDir, OutPath, vector<std::pair<string, vector<int> > >({ std::make_pair(s.first, vector<int>()) }), IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + s.first);
 // 					CalculateAndSaveShannonEntropiesForSphereNameElements(VarNamePrefix, vector<std::pair<string, vector<int> > >({ std::make_pair(s.first, vector<int>()) }), DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 				}
 			}
@@ -11871,7 +11887,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 			if (DoRegion[Region_AllAtomicBasins]) {
 				if (SphereNameAndElements.size() > 1) {
 					OutPath = "";
-					ExportGBADataForRegions(DataSetName + " All atomic basins", "All atomic basins", OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+					ExportGBADataForRegions(DataSetName + " All atomic basins", DataSetName, "All atomic basins", OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 // 					CalculateAndSaveShannonEntropiesForSphereNameElements(VarNamePrefix, SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 				}
 			}
@@ -11883,7 +11899,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 				for (auto & s : m.second) {
 					SphereNameAndElements.push_back(std::make_pair(s, vector<int>()));
 				}
-				ExportGBADataForRegions(DataSetName + " Molecules (mol. graph) ", m.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + m.first);
+				ExportGBADataForRegions(DataSetName + " Molecules (mol. graph) ", DataSetName, m.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + m.first);
 // 				CalculateAndSaveShannonEntropiesForSphereNameElements(m.first + ": ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 			}
 		}
@@ -11895,7 +11911,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 				for (auto & s : m.second) {
 					SphereNameAndElements.push_back(std::make_pair(s, vector<int>()));
 				}
-				ExportGBADataForRegions(DataSetName + " Molecules (1-skeleton) ", m.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + m.first);
+				ExportGBADataForRegions(DataSetName + " Molecules (1-skeleton) ", DataSetName, m.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + m.first);
 // 				CalculateAndSaveShannonEntropiesForSphereNameElements(m.first + ": ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 			}
 		}
@@ -11908,7 +11924,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 				for (auto & cage_sphere : cage.second) {
 					SphereNameAndElements.push_back(cage_sphere);
 				}
-				ExportGBADataForRegions(DataSetName + " Topological cages", cage.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + cage.first);
+				ExportGBADataForRegions(DataSetName + " Topological cages", DataSetName, cage.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + cage.first);
 			}
 		}
 
@@ -11924,7 +11940,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 						SphereNameToBoundaryIntTotals[CondensedBasinNameToSphereName[cb]] = CondensedBasinNameToBoundaryIntVals[cb];
 					}
 				}
-				ExportGBADataForRegions(DataSetName + " Special gradient bundles", sgb.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + sgb.first, SphereNameToBoundaryIntTotals);
+				ExportGBADataForRegions(DataSetName + " Special gradient bundles", DataSetName, sgb.first, OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + sgb.first, SphereNameToBoundaryIntTotals);
 // 				CalculateAndSaveShannonEntropiesForSphereNameElements(sgb.first + ": ", SphereNameAndElements, DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 			}
 		}
@@ -11937,7 +11953,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 				if (CondensedBasinNameToBoundaryIntVals.count(cb.first)) {
 					SphereNameToBoundaryIntTotals[cb.second] = CondensedBasinNameToBoundaryIntVals[cb.first];
 				}
-				ExportGBADataForRegions(DataSetName + " Condensed basins", cb.first, OutDir, OutPath, vector<std::pair<string, vector<int> > >({ std::make_pair(cb.second, CondensedBasinNameToSphereElems[cb.first]) }), IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + cb.first, SphereNameToBoundaryIntTotals);
+				ExportGBADataForRegions(DataSetName + " Condensed basins", DataSetName, cb.first, OutDir, OutPath, vector<std::pair<string, vector<int> > >({ std::make_pair(cb.second, CondensedBasinNameToSphereElems[cb.first]) }), IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles, "_" + cb.first, SphereNameToBoundaryIntTotals);
 // 				CalculateAndSaveShannonEntropiesForSphereNameElements(cb.first + ": ", vector<std::pair<string, vector<int> > >({ std::make_pair(cb.second, CondensedBasinNameToSphereElems[cb.first]) }), DoVar, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 			}
 		}
@@ -11948,7 +11964,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 			for (auto & s : SphereNameToActiveDGBElemNums) {
 				SphereNameAndElements.push_back(std::make_pair(s.first, s.second));
 			}
-			ExportGBADataForRegions(DataSetName + " Active dGBs", "active dGB", OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
+			ExportGBADataForRegions(DataSetName + " Active dGBs", DataSetName, "active dGB", OutDir, OutPath, SphereNameAndElements, IntVarNames, IntVarNums, IncludeAllDGBs, SpheresByName, SphereNameToVarPtr, SphereNameToElemSolidAngles);
 		}
 	}
 
