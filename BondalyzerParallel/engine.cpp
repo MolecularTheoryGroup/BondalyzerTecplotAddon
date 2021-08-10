@@ -11669,8 +11669,8 @@ void ExportGBADataForRegions(
 	string const & OutDir,
 	string & OutPath,
 	vector<std::pair<string, vector<int> > > & SphereNameAndElements, // empty vector<int> means use all elements
-	vector<string> const & IntVarNames,
-	vector<int> const & IntVarNums,
+	vector<string> const & IntVarNamesIn,
+	vector<int> const & IntVarNumsIn,
 	bool IncludeAllGBs,
 	std::map<string, FESurface_c> & SpheresByName,
 	std::map<string, FieldDataPointer_c> & SphereNameToVarPtr,
@@ -11678,6 +11678,20 @@ void ExportGBADataForRegions(
 	string const & AllGBOutPathSuffix = "",
 	std::map<string, vector<double> > SphereNameToBoundaryIntTotals = std::map<string, vector<double> >())
 {
+	// Get alphabetically sorted list of variables so files with mismatched variable sets can be merged more easily
+	std::map<string, int> SortedVarNames;
+	for (int vi = 0; vi < IntVarNamesIn.size(); ++vi){
+		SortedVarNames[IntVarNamesIn[vi]] = IntVarNumsIn[vi];
+	}
+
+	vector<string> IntVarNames;
+	vector<int> IntVarNums;
+	for (auto & const v : SortedVarNames){
+		IntVarNames.push_back(v.first);
+		IntVarNums.push_back(v.second);
+	}
+	
+
 	// update elements for whole spheres
 	for (auto & s : SphereNameAndElements){
 		if (s.second.empty()) {
