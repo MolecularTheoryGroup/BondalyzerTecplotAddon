@@ -258,6 +258,8 @@ bool CritPoints_c::HasEdge(Edge const & e, int * zoneNum) const {
  			// new level reached, so increment level and put new marker in queue
  			if (++searchDepth > searchDepthLimit && searchDepthLimit >= 0)
  				break;
+			if (q.size() <= 1)
+				break;
  			q.push(-1);
  		}
  		if (m_CPAdjacencyList.count(q.front())) {
@@ -299,6 +301,8 @@ bool CritPoints_c::HasEdge(Edge const & e, int searchDepthLimit, vector<int> * P
 		if (q.front() == DepthMarker) {
 			// new level reached, so increment level and put new marker in queue
 			if (++searchDepth > searchDepthLimit && searchDepthLimit >= 0)
+				break;
+			if (q.size() <= 1)
 				break;
 			q.push(DepthMarker);
 		}

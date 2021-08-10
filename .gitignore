@@ -158,3 +158,6 @@ $RECYCLE.BIN/
 /BondalyzerLib/spdlog
 /BondalyzerLib/tseqjtti.tzv
 /BondalyzerLib/kebgfbrz.yse
+*.sqlite-journal
+*.db
+*.sqlite

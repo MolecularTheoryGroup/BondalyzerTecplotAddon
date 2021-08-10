@@ -9708,7 +9708,7 @@ void FindSphereBasins() {
 					vec3 WeightedDir = zeros(3);
 					for (auto const & ni : BasinElems[i][j][ti])
 						WeightedDir += (BasinNodes[i][j][ni] - CPPos);
-					WeightedDir *= abs(ElemIntVals[IntNum][SphereElemNums[i][j][ti]]);
+					WeightedDir *= abs(ElemIntVals[IntNum-1][SphereElemNums[i][j][ti]]);
 // #pragma omp critical(UpdateMinMaxBasinAverageDirVecs)
 					{
 						MinMaxBasinAverageDirVecs[i][j] += WeightedDir;
