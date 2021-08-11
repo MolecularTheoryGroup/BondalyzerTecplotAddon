@@ -44,6 +44,7 @@ extern LgIndex_t  LBLBPGBInit_LBL_T1_1;
 extern LgIndex_t  SCMinGBs_SC_T1_1;
 extern LgIndex_t  SCBPGBInit_SC_T1_1;
 extern LgIndex_t  TGLSphTest_TOG_T1_1;
+extern LgIndex_t  TGL_TOG_T1_1;
 extern LgIndex_t Tab3_1Manager;
 extern void BuildTab3_1(LgIndex_t  Parent);
 

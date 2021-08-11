@@ -150,6 +150,7 @@ void NewMainFunction() {
 
 	Boolean_t IsOk = TRUE;
 
+
 	EntIndex_t NumVars = TecUtilDataSetGetNumVars();
 
 	/*
@@ -209,9 +210,103 @@ void NewMainFunction() {
 
 	int GroupNum = 0;
 
+	/*
+	*	information for integration
+	*/
+	/*
+ *	Get job parameters from dialog
+ */
+	double CutoffVal = 0.001;
+	TecGUITextFieldGetDouble(TFCutoff_TF_T1_1, &CutoffVal);
+	EntIndex_t RhoVarNum = VarNumByName("Electron Density");
+
+	vector<string> AtomNameList;
+	vector<string> IntVarNameList, BaseIntVarNameList;
+	vector<int> IntVarNumList;
+	int IntResolution = TecGUIScaleGetValue(SCPrecise_SC_T1_1);
+	vector<FieldDataPointer_c> IntVarPtrs;
+
+	int DensityVarNumInIntList;
+
+
+	AtomNameList = ListGetSelectedStrings(MLSelCPs_MLST_T1_1);
+	IntVarNameList = ListGetSelectedStrings(MLSelVars_MLST_T1_1);
+	BaseIntVarNameList = IntVarNameList;
+	IntVarNumList = ListGetSelectedItemNums(MLSelVars_MLST_T1_1);
+	for (auto & i : IntVarNumList)
+		i += 3;
+	for (int i = 0; i < IntVarNumList.size(); ++i) {
+		if (IntVarNumList[i] == RhoVarNum) {
+			DensityVarNumInIntList = i;
+			break;
+		}
+	}
+
+	int TeNumInVarList = -1;
+	for (int vi = 0; vi < IntVarNameList.size(); ++vi) {
+		auto v = IntVarNameList[vi];
+		if (v.find("inetic") != string::npos) {
+			TeNumInVarList = vi;
+			break;
+		}
+	}
+
 	LgIndex_t * CPNums = nullptr;
 	LgIndex_t NumSelectedCPs = 1;
 	TecGUIListGetSelectedItems(MLSelCPs_MLST_T1_1, &CPNums, &NumSelectedCPs);
+
+	std::map<string, double> AtomicReferenceEnergies;
+
+	if (TecGUIToggleGet(TGL_TOG_T1_1)) {
+		while (true)
+		{
+			std::map<string, double> AtomicReferenceEnergiesLoop;
+			// If user selected to enter atomic reference energies, here we collect those energies
+			for (int SelectCPNum = 0; SelectCPNum < NumSelectedCPs && IsOk; ++SelectCPNum)
+			{
+				char * SphereNameCStr = TecGUIListGetString(MLSelCPs_MLST_T1_1, CPNums[SelectCPNum]);
+				string SphereName = SphereNameCStr;
+				TecUtilStringDealloc(&SphereNameCStr);
+				vector<string> SplitName = SplitString(SphereName);
+				string MsgStr;
+				string AtomName;
+
+				if (SplitName[0] == "Atom" || SplitName[0] == "Nuclear") {
+					// Here we don't know the atom type, so hopefully the user does :)
+					MsgStr = "Please enter a reference energy for \"" + SphereName + "\" in hartree (or whatever the units are for your kinetic energy density grid). Note that this atom cannot be identified as one element or another, so please be certain you're assigning the correct reference energy!";
+					AtomName = SphereName;
+				}
+				else if (!AtomicReferenceEnergiesLoop.count(SplitName[0])) {
+					// if the first word isn't "atom" or "nuclear" then it's an elemental symbol, and we only need reference energies on a per-element basis
+					MsgStr = "Please enter a reference energy for \"" + SphereName + "\" in hartree (or whatever the units are for your kinetic energy density grid). This energy will be used for all other " + SplitName[0] + " atoms.";
+					AtomName = SplitName[0];
+				}
+
+				char * ValCStr;
+				if (!TecUtilDialogGetSimpleText(MsgStr.c_str(), to_string(AtomicReferenceEnergies.count(AtomName) ? AtomicReferenceEnergies[AtomName] : 0.0).c_str(), &ValCStr)) {
+					return;
+				}
+
+				if (StringIsFloat(ValCStr)) {
+					AtomicReferenceEnergiesLoop[AtomName] = atof(ValCStr);
+				}
+
+			}
+
+			// All done getting values. Now show the list to the user and see if they want to reenter values
+			string TestVals = "Here's the value(s) you entered. Do you need to make corrections?\n";
+			for (auto const & atom : AtomicReferenceEnergiesLoop) {
+				TestVals += "\n" + atom.first + ": " + to_string(atom.second);
+			}
+
+			AtomicReferenceEnergies = AtomicReferenceEnergiesLoop;
+
+			if (!TecUtilDialogMessageBox(TestVals.c_str(), MessageBox_YesNo)) {
+				break;
+			}
+		}
+	}
+
 
 	Set oldSphereZonesToDelete;
 	bool deleteOldSphereZones = false, deleteOldSphereZonesAsked = false;
@@ -249,12 +344,7 @@ void NewMainFunction() {
 	}
 
 
-	/*
-	 *	Get job parameters from dialog
-	 */
-	double CutoffVal = 0.001;
-	TecGUITextFieldGetDouble(TFCutoff_TF_T1_1, &CutoffVal);
-	EntIndex_t RhoVarNum = VarNumByName("Electron Density");
+
 
 	vector<int> GradVarNums, HessVarNums;
 	GradVarNums.push_back(VarNumByName("X Density", true));
@@ -423,30 +513,6 @@ void NewMainFunction() {
 
 	EntIndex_t OldNumZones = TecUtilDataSetGetNumZones();
 
-	/*
-		*	information for integration
-		*/
-	vector<string> AtomNameList;
-	vector<string> IntVarNameList, BaseIntVarNameList;
-	vector<int> IntVarNumList;
-	int IntResolution = TecGUIScaleGetValue(SCPrecise_SC_T1_1);
-	vector<FieldDataPointer_c> IntVarPtrs;
-
-	int DensityVarNumInIntList;
-
-	
-	AtomNameList = ListGetSelectedStrings(MLSelCPs_MLST_T1_1);
-	IntVarNameList = ListGetSelectedStrings(MLSelVars_MLST_T1_1);
-	BaseIntVarNameList = IntVarNameList;
-	IntVarNumList = ListGetSelectedItemNums(MLSelVars_MLST_T1_1);
-	for (auto & i : IntVarNumList)
-		i += 3;
-	for (int i = 0; i < IntVarNumList.size(); ++i){
-		if (IntVarNumList[i] == RhoVarNum){
-			DensityVarNumInIntList = i;
-			break;
-		}
-	}
 
 	IntVarPtrs.resize(IntVarNumList.size());
 
@@ -467,6 +533,18 @@ void NewMainFunction() {
 	vector<int> NumCPs;
 	for (int SelectCPNum = 0; SelectCPNum < NumSelectedCPs && IsOk; ++SelectCPNum)
 	{
+		char * SphereNameCStr = TecGUIListGetString(MLSelCPs_MLST_T1_1, CPNums[SelectCPNum]);
+		string SphereName = SphereNameCStr;
+		TecUtilStringDealloc(&SphereNameCStr);
+		vector<string> SplitName = SplitString(SphereName);
+		string AtomicRefName = "";
+		if (AtomicReferenceEnergies.count(SplitName[0])){
+			AtomicRefName = SplitName[0];
+		}
+		else if (AtomicReferenceEnergies.count(SphereName)){
+			AtomicRefName = SphereName;
+		}
+		
 		LgIndex_t CPNum = -1;
 		int CPType = -3;
 
@@ -5426,37 +5504,45 @@ void NewMainFunction() {
 			IntVals[ti].push_back(totalT1 / totalLen);
 		}
 
-		int TeNumInVarList = -1;
-		for (int vi = 0; vi < IntVarNameList.size(); ++vi) {
-			auto v = IntVarNameList[vi];
-			if (v.find("inetic") != string::npos) {
-				TeNumInVarList = vi;
-				IntVarNameList.emplace_back("Te Per Electron");
-				IntVarNameList.emplace_back("Deformation (kinetic) energy");
-				break;
+		if (TeNumInVarList >= 0) {
+			IntVarNameList.emplace_back("Te per electron");
+			IntVarNameList.emplace_back("Deformation (kinetic) energy");
+			IntVarNameList.emplace_back("Deformation (kinetic) positive energy");
+			IntVarNameList.emplace_back("Deformation (kinetic) negative energy");
+			if (!AtomicReferenceEnergies.empty()) {
+				IntVarNameList.emplace_back("Bond bundle (kinetic) energy");
+				IntVarNameList.emplace_back("Bond bundle (kinetic) positive energy");
+				IntVarNameList.emplace_back("Bond bundle (kinetic) negative energy");
 			}
 		}
 
-		IntVarNameList.emplace_back("Solid Angle (alpha)");
-		IntVarNameList.emplace_back("Volume Fraction");
+		IntVarNameList.emplace_back("Solid angle (alpha)");
+		IntVarNameList.emplace_back("Volume fraction");
 		string ElemName = SplitString(NucleusName, " ", true, true).front();
 		int AtomicNumber = SearchVectorForString(ElementSymbolList, ElemName, false) + 1;
 		if (AtomicNumber > 0) {
-			IntVarNameList.emplace_back("Area Bader Charge");
-			IntVarNameList.emplace_back("Valence Density");
-			IntVarNameList.emplace_back("Valence Bader Charge");
+			IntVarNameList.emplace_back("Area Bader charge");
+			IntVarNameList.emplace_back("Valence density");
+			IntVarNameList.emplace_back("Valence Bader charge");
 			if (TeNumInVarList >= 0)
-				IntVarNameList.emplace_back("Te Per Valence Electron");
-			IntVarNameList.emplace_back("Deformation Charge");
-			IntVarNameList.emplace_back("Deformation Volume");
+				IntVarNameList.emplace_back("Te per valence electron");
+			IntVarNameList.emplace_back("Deformation charge");
+			IntVarNameList.emplace_back("Deformation positive charge");
+			IntVarNameList.emplace_back("Deformation negative charge");
+			IntVarNameList.emplace_back("Deformation volume");
+			IntVarNameList.emplace_back("Deformation positive volume");
+			IntVarNameList.emplace_back("Deformation negative volume");
 
-			IntVarNameList.emplace_back("Volume Bader Charge");
+// 			IntVarNameList.emplace_back("Volume Bader charge");
 // 			IntVarNameList.emplace_back("Volume Valence Density");
 // 			IntVarNameList.emplace_back("Volume Valence Bader Charge");
 // 			if (TeNumInVarList >= 0)
 // 				IntVarNameList.emplace_back("Volume Te Per Valence Electron");
-			IntVarNameList.emplace_back("Volume Condensed Charge");
+// 			IntVarNameList.emplace_back("Volume deformation charge");
+// 			IntVarNameList.emplace_back("Volume deformation positive charge");
+// 			IntVarNameList.emplace_back("Volume deformation negative charge");
 		}
+		// Shannon entropy calculation moved to standalone utility in order to consider more than just atomic basins
 // 		IntVarNameList.emplace_back("P over N");
 // 		IntVarNameList.emplace_back("P/(N alpha)"); // shannon condensed entropy
 // 		IntVarNameList.emplace_back("S[P]"); // shannon condensed entropy
@@ -5468,7 +5554,7 @@ void NewMainFunction() {
 // 		IntVarNameList.emplace_back("S[P / alpha]"); // shannon condensed entropy
 // 		IntVarNameList.emplace_back("S[alpha]"); // shannon condensed entropy
 // 		IntVarNameList.emplace_back("S[P] / S[alpha]"); // shannon condensed entropy over max entropy
-// 		IntVarNameList.emplace_back("S[alpha] - S[P]"); // shannon condensed entropy over max entropy
+// 		IntVarNameList.emplace_back("S[alpha] - S[P]"); // max minus shannon condensed entropy
 
 		/*
 		 *	Now collect and save integration values
@@ -5716,10 +5802,24 @@ void NewMainFunction() {
 			for (auto const & elemIntVals : IntVals) {
 				TotalKineticEnergy += elemIntVals[TeNumInVarList];
 			}
+			double AtomicRefVal = 0.0;
+			if (AtomicRefName != "") {
+				AtomicRefVal = AtomicReferenceEnergies[AtomicRefName];
+			}
 			for (int i = 0; i < NumElems; ++i) {
 				IntVals[i].push_back(IntVals[i][TeNumInVarList] / MAX(IntVals[i][DensityVarNumInIntList], 1e-100)); // Te per electron
-				IntVals[i].push_back(IntVals[i][TeNumInVarList] - (TotalKineticEnergy * SphereTriangleAreaFactors[i])); // Bond (Te) energy (Spherical GB energy minus GB energy)
+				double TmpVal = IntVals[i][TeNumInVarList] - (TotalKineticEnergy * SphereTriangleAreaFactors[i]);
+				IntVals[i].push_back(TmpVal); // Deformation (Te) energy (Spherical GB energy minus GB energy)
+				IntVals[i].push_back(MAX(0.0, TmpVal)); // then positive component
+				IntVals[i].push_back(MIN(0.0, TmpVal)); // then negative component (this will be done for all deformation values
+				if (AtomicRefVal > 0.0){
+					TmpVal = IntVals[i][TeNumInVarList] - (AtomicRefVal * SphereTriangleAreaFactors[i]); // deformation energy based on user-provided reference energy
+					IntVals[i].push_back(TmpVal); 
+					IntVals[i].push_back(MAX(0.0, TmpVal)); // then positive component
+					IntVals[i].push_back(MIN(0.0, TmpVal)); // then negative component (this will be done for all deformation values
+				}
 			}
+			
 		}
 
 		for (int i = 0; i < NumElems; ++i) {
@@ -5747,8 +5847,15 @@ void NewMainFunction() {
 				if (TeNumInVarList >= 0) {
 					IntVals[i].push_back(IntVals[i][TeNumInVarList] / MAX(IntVals[i][IntVals[i].size() - 2], 1e-100)); // Te per valence electron
 				}
-				IntVals[i].push_back(IntVals[i][DensityVarNumInIntList] - (TotalDensity * SphereTriangleAreaFactors[i])); // Bond charge
-				IntVals[i].push_back(IntVals[i][VolumeNumInVarList] - (TotalVolume * SphereTriangleAreaFactors[i])); // Bond Volume
+				double TmpVal = IntVals[i][DensityVarNumInIntList] - (TotalDensity * SphereTriangleAreaFactors[i]);
+				IntVals[i].push_back(TmpVal); // Bond charge
+				IntVals[i].push_back(MAX(0.0, TmpVal)); // then positive component
+				IntVals[i].push_back(MIN(0.0, TmpVal)); // then negative component (this will be done for all deformation values
+
+				TmpVal = IntVals[i][VolumeNumInVarList] - (TotalVolume * SphereTriangleAreaFactors[i]);
+				IntVals[i].push_back(TmpVal); // Bond Volume
+				IntVals[i].push_back(MAX(0.0, TmpVal)); // then positive component
+				IntVals[i].push_back(MIN(0.0, TmpVal)); // then negative component (this will be done for all deformation values
 
 				IntVals[i].push_back(((double)AtomicNumber * IntVals[i][VolumeFractionNumInVarList]) - IntVals[i][DensityVarNumInIntList]); // Volume Bader charge
 // 				IntVals[i].push_back(IntVals[i][DensityVarNumInIntList] - (CoreElectronCount * IntVals[i][VolumeFractionNumInVarList])); // Volume Valence
@@ -5756,7 +5863,10 @@ void NewMainFunction() {
 // 				if (TeNumInVarList >= 0) {
 // 					IntVals[i].push_back(IntVals[i][TeNumInVarList] / MAX(IntVals[i][IntVals.size() - 2], 1e-100)); // Te per Volume valence electron
 // 				}
-				IntVals[i].push_back((TotalDensity * IntVals[i][VolumeFractionNumInVarList]) - IntVals[i][DensityVarNumInIntList]); // Volume condensed charge
+// 				TmpVal = IntVals[i][DensityVarNumInIntList] - (TotalDensity * IntVals[i][VolumeFractionNumInVarList]);
+// 				IntVals[i].push_back(TmpVal); // Volume deformation charge
+// 				IntVals[i].push_back(MAX(0.0, TmpVal)); // then positive component
+// 				IntVals[i].push_back(MIN(0.0, TmpVal)); // then negative component (this will be done for all deformation values
 			}
 		}
 // 		double OneOverTotalDensity = 1.0 / TotalDensity;

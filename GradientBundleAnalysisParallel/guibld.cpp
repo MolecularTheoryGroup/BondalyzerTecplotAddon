@@ -294,6 +294,14 @@ void BuildTab1_1(LgIndex_t  Parent)
                                ".",
                                TGLSphTest_TOG_T1_1_CB);
 
+  TGL_TOG_T1_1 = TecGUIToggleAdd(Tab1_1Manager,
+                               498,
+                               2747,
+                               4033,
+                               126,
+                               "Enter atomic reference energies",
+                               TGL_TOG_T1_1_CB);
+
 }
 
 /**
