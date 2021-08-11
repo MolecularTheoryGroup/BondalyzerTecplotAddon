@@ -11784,15 +11784,15 @@ void ExportGBADataForRegions(
 				OutFile << "," << std::setprecision(8) << val;
 			}
 			if (!SphereNameToBoundaryIntTotals.empty()) {
-				auto & vals = SphereNameToBoundaryIntTotals[s.first];
+				auto & bvals = SphereNameToBoundaryIntTotals[s.first];
 				for (auto const & varName : IntVarNames) {
-					auto & val = vals[varName];
+					auto & val = bvals[varName];
 					OutFile << "," << std::setprecision(8) << val;
 				}
 				for (int vi = 0; vi < IntVarNames.size(); ++vi) {
 					auto & val = s.second[vi];
-					auto & bval = vals[IntVarNames[vi]];
-					OutFile << "," << std::setprecision(8) << val - 0.5 * bval << " +/- " << 0.8 * abs(bval);
+					auto & bval = bvals[IntVarNames[vi]];
+					OutFile << "," << std::setprecision(8) << val - 0.5 * bval << " +/- " << 0.5 * abs(bval);
 				}
 			}
 			OutFile << endl;
