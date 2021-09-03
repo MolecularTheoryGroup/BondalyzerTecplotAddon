@@ -466,6 +466,71 @@ int GradPathBase_c::GetIndAtLength(double const & Length) const{
 	 }
  }
 
+
+ /* 
+  *  This is an attempt of dealing with the fact that the normal and binormal are
+  *  "undefined" along a nearly straight, discretized path.
+  *  The the less curvature at a point (i.e. a node along the path), the less clearly
+  *  defined the normal and binormal vectors are; they can just swing around as you
+  *  move down the path because it's just imperceptibly wiggling back in forth due to
+  *  the numerical error in the GP algorithm (mostly interpolation error from using
+  *  grid data).
+  *  
+  *  So the approach is to use a weighted "jiggle-mesh" algorithm on the normal vector.
+  *  Jiggle-mesh is a type of mesh-smoothing where you simply iterate over the entire mesh,
+  *  again and again, each time moving each node to the midpoint (mean position) of its neighboring
+  *  nodes from the previous iteration.
+  *  For a mesh with high and low node density regions, this will spread out the high-density
+  *  points and collect the low-density points.
+  *  
+  *  Here, the jiggle-mesh will work by rotating the normal vector at for a segment so that it orients
+  *	 to the weighted average direction of it and it's left and right neighbor segments.
+  *	 The weight used is the curvature of each segment, that is, the 
+  *	 average curvature at the segment nodes.
+  *	 So the lower the curvature for a segment, the less its normal direction will influence
+  *	 the normal directions of its neighbors.
+  *	 
+  *	 Consider a gradient path with some high curvature and some low curvature regions.
+  *	 The normal vectors for segments in a high curvature region are of high confidence 
+  *	 owing to the high degree of curvature, and they vary smoothly from segment to segment
+  *	 because the paths are smooth.
+  *	 The normal vectors in the low curvature regions, however, can bound around, and with
+  *	 nearly straight lengths of path they are of very low confidence.
+  *	 When jiggle-mesh does its first iteration, the low curvature segments neighboring high
+  *	 curvature segments will have their low-confidence direction overridden by the high curvature
+  *	 segment's normal direction.
+  *	 With each subsequent iteration, this propagates down the path until it converges.
+  *	 
+  *	 The result is that the normal direction in high curvature regions has a sort of
+  *	 "momentum" that allows the correct direction (if the curve were analytical) to
+  *	 "coast" along the flat regions.
+  *	 
+  *	 Here's the basic process
+  *	 1. Procompute the tangent, normal, and binormal vectors for each segment, and the curvatures at each node
+  *	 2. Do a prepass to invert the normal vector for where the direction is nearly opposite that of neighboring segments, so that they're all pointing to the same "side"
+  *	 3. Start iterating jiggle-mesh and don't stop until the total resulting angle change (sum) for the whole path is less than some convergence threshold
+  *	 
+  *	 Now, I'm unsure of what to do in the event of a nearly straight path.
+  *	 The problem with a nearly straight path is the lack of high curvature segments
+  *	 to "ground" the direction of the normal vector; it would just point, consistently
+  *	 at least, in some random direction about the path.
+  *	 It would make sense to use the eigenvectors of the hessian of charge density
+  *	 to ground the normal direction for a nearly straight path, but I wouldn't want 
+  *	 to do that on all paths, so this would require some logic to identify the paths
+  *	 on which to apply this correction.
+  *	 (This only makes sense given the context of charge density analysis. Geometrically
+  *	 the normal direction is simply undifined for lines.)
+  *	 One of the benefits of the above method is the complete lack of any step-wise
+  *	 bahavior, that is, no cutoff value of curvature to change the behavior of the
+  *	 algorithm, so I'm reluctant to try anything like this right now.
+  *	 I'll just let the straight paths have an undefined normal-binormal.
+  *	 
+  *	 (I'll also save the normal direction as a zone for each iteration, so you should be able to see it converging.)
+  */
+//  vector<mat33> GradPathBase_c::ComputeOptimizedFrenetFrame() const{
+// 
+//  }
+
 GradPathBase_c GradPathBase_c::SubGP(int BegPt, int EndPt) const{
 	BegPt = GetInd(BegPt);
 	EndPt = GetInd(EndPt);

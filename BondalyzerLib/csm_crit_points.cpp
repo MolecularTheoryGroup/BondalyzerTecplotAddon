@@ -1906,24 +1906,82 @@ Boolean_t FindCPs(CritPoints_c & CPs,
   							(StreamDir_e)s,
   							100,
   							GPType_Classic,
-  							GPTerminate_AtRhoValue,
+  							GPTerminate_AtBoundary,
   							nullptr,
-  							&ThreadCPs[ThreadNum],
   							nullptr,
-  							&RhoCutoff,
+  							nullptr,
+  							nullptr,
   							*RootParams[ThreadNum].VolInfo,
   							*RootParams[ThreadNum].HessPtrs,
   							*RootParams[ThreadNum].GradPtrs,
   							*RootParams[ThreadNum].RhoPtr);
   
   						GP.Seed(false);
+
+						// Seed GPs from all 8 corners of the cell to confirm they converge at the same point
+						vector<vec3> SeedPts = {
+							CellMinXYZ[ThreadNum],
+							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(0), double(0), double(1)}),
+							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(0), double(1), double(0)}),
+							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(0), double(0)}),
+							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(0), double(1), double(1)}),
+							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(0), double(1)}),
+							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(1), double(0)}),
+							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(1), double(1)}),
+						};
+
+						vector<GradPath_c> GPs(8);
+						vec TermRhoVals(8);
+						vec3 TermMidPoint;
+						for (int iGP = 0; iGP < 8 && IsMaxMin; ++iGP){
+							auto & GP = GPs[iGP];
+							GP.SetupGradPath(SeedPts[iGP],
+								(StreamDir_e)s,
+								100,
+								GPType_Classic,
+								GPTerminate_AtBoundary,
+								nullptr,
+								nullptr,
+								nullptr,
+								nullptr,
+								*RootParams[ThreadNum].VolInfo,
+								*RootParams[ThreadNum].HessPtrs,
+								*RootParams[ThreadNum].GradPtrs,
+								*RootParams[ThreadNum].RhoPtr);
+
+							GP.Seed(false);
+
+							if (GP.IsMade()){
+								TermRhoVals[iGP] = GP.RhoAt(-1);
+								if (iGP == 0){
+									TermMidPoint = GP[-1];
+								}
+								else{
+									TermMidPoint += GP[-1];
+								}
+							}
+							else{
+								IsMaxMin = false;
+							}
+						}
+
+						if (IsMaxMin) {
+							TermMidPoint /= 8.0;
+							vec Distances(8);
+							for (int iGP = 0; iGP < 8; ++iGP) {
+								Distances[iGP] = Distance(TermMidPoint, GPs[iGP][-1]);
+							}
+
+
+							double StdDev = stddev(Distances);
+
   
-  						if (GP.IsMade()){
-  // #ifdef _DEBUG
+	  // #ifdef _DEBUG
   // 							GP.SaveAsOrderedZone();
   // #endif
   
-  							CompPt = GP[-1];
+							CompPt = TermMidPoint;
+//   							CompPt = GP[-1];
   							vec3 EigVals, PrincDir;
   							mat33 EigVecs;
   							char Type = 0;
@@ -1948,7 +2006,7 @@ Boolean_t FindCPs(CritPoints_c & CPs,
   
   							// 						if (IsMaxMin)
   							// 						ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, Type);
-  							ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, (s == 0 ? CPType_Nuclear : CPType_Cage));
+  							ThreadCPs[ThreadNum].AddPoint(mean(TermRhoVals), CompPt, PrincDir, (s == 0 ? CPType_Nuclear : CPType_Cage));
   						}
  						else {
  							IsMaxMin = false;

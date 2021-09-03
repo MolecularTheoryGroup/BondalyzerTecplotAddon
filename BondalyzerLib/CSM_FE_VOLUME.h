@@ -290,3 +290,5 @@ private:
 	vector<vector<int> > m_E;
 	FESurface_c *m_Vol = nullptr;
 };
+
+void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadius);

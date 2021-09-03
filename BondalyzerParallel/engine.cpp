@@ -63,6 +63,7 @@
 #include "CSM_GEOMETRY.h"
 
 #include "updateSphericalTriangulation.h"
+#include "meshgen2d_sphere.h"
 
 #include "KFc.h"
 
@@ -87,6 +88,7 @@ using std::endl;
 using std::setprecision;
 
 #define PI2 PI * 2.
+#define ONEOVERPI 1. / PI
 
 
 //for profiling
@@ -866,7 +868,7 @@ void BondalyzerReturnUserInfo(bool const GuiSuccess,
 		else if (CurrentCalcType == BondalyzerCalcType_RingLines || CurrentCalcType == BondalyzerCalcType_RingSurfaces) CPType = CPType_Ring;
 
 		if (CurrentCalcType == BondalyzerCalcType_BondPaths || CurrentCalcType == BondalyzerCalcType_RingLines)
-			FindBondRingLines(VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, PrecalcVars);
+			FindBondRingLines(VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, CPType, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, PrecalcVars, NumGPPts);
 		else if (CurrentCalcType == BondalyzerCalcType_CageNuclearPaths)
 			FindCageNuclearPaths(VolZoneNum, OtherCPZoneNums, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, PrecalcVars);
 		else if (CurrentCalcType == BondalyzerCalcType_InteratomicSurfaces || CurrentCalcType == BondalyzerCalcType_RingSurfaces) {
@@ -939,7 +941,7 @@ void BondalyzerReturnUserInfo(bool const GuiSuccess,
 			CPTypeVarNum = VarNumByName(CSMVarName.CritPointType);
 		}
 
-		BondalyzerBatch(VolZoneNum, CPZoneNums, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, RidgeFuncVarNum, DoCalcs);
+		BondalyzerBatch(VolZoneNum, CPZoneNums, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, RidgeFuncVarNum, DoCalcs, NumGPPts);
 	}
 
 	TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
@@ -1635,7 +1637,8 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 	vector<int> const & GradVarNums,
 	vector<int> const & HessVarNums,
 	Boolean_t IsPeriodic,
-	bool PrecalcVars)
+	bool PrecalcVars,
+	int NumGPPts)
 {
 	TecUtilLockStart(AddOnID);
 
@@ -1726,7 +1729,7 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 	ColorIndex_t PathColor = Black_C;
 	vector<CPType_e> MinDistTypes = { CPType_Nuclear, CPType_Bond };
 	if (CPType == CPType_Ring){
-		MinDistTypes = { CPType_Nuclear, CPType_Ring };
+		MinDistTypes = { CPType_Cage, CPType_Ring };
 		GPDir = StreamDir_Reverse;
 		PathColor = Green_C;
 		EndCPNumforName++;
@@ -1741,7 +1744,7 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 	vec3 StartPoint;
 
 	double const StartPointOffset = 0.01 * AllCPs.GetMinCPDist(MinDistTypes);
-	int const NumGPPts = 300;
+// 	int const NumGPPts = 300;
 	double TermRadius = 0.1 * AllCPs.GetMinCPDist(MinDistTypes);
 	double RhoCutoff = DefaultRhoCutoff;
 
@@ -1854,6 +1857,302 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 			AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPathSegment);
 
 		AuxDataZoneSetItem(GP.GetZoneNum(), CSMAuxData.GBA.SourceZoneNum, to_string(ZoneFinalSourceZoneNum(SelectedCPZoneNum, true)));
+	}
+
+	TecUtilDataLoadEnd();
+
+
+	CSMGUIUnlock();
+	TecUtilLockFinish(AddOnID);
+
+	return TRUE;
+}
+
+/*
+ *	Create bond paths/ring lines from a source CP zone(s)
+ */
+Boolean_t DrawRepresentationQuadrics(int VolZoneNum,
+	int SelectedCPZoneNum,
+	vector<int> SelectedCPNums,
+	int CPTypeVarNum,
+	vector<int> const & XYZVarNums,
+	int RhoVarNum,
+	vector<int> const & GradVarNums,
+	vector<int> const & HessVarNums,
+	double SizeFactor)
+{
+	TecUtilLockStart(AddOnID);
+
+	int NumZones = TecUtilDataSetGetNumZones();
+	int NumVars = TecUtilDataSetGetNumVars();
+
+	REQUIRE(XYZVarNums.size() == 3);
+	for (auto const & i : XYZVarNums) REQUIRE(i > 0 && i <= NumVars);
+
+	if (CPTypeVarNum < 0) {
+		TecUtilDialogErrMsg("Failed to find CP Type variable");
+		return FALSE;
+	}
+
+	FieldDataPointer_c RhoPtr;
+	vector<FieldDataPointer_c> GradPtrs, HessPtrs;
+
+	TecUtilDataLoadBegin();
+
+	if (!GetReadPtrsForZone(VolZoneNum,
+		RhoVarNum, GradVarNums, HessVarNums,
+		RhoPtr, GradPtrs, HessPtrs)) {
+		TecUtilDialogErrMsg("Failed to get read pointer(s)");
+		return FALSE;
+	}
+
+	VolExtentIndexWeights_s VolInfo;
+	VolInfo.AddOnID = AddOnID;
+
+	if (!GetVolInfo(VolZoneNum, XYZVarNums, FALSE, VolInfo)) {
+		TecUtilDialogErrMsg("Failed to get volume zone info");
+		return FALSE;
+	}
+
+	vector<int> iJunk(2);
+	int NumCPs;
+	string CPZoneCheckString;
+
+	char* tmpName;
+	TecUtilZoneGetName(SelectedCPZoneNum, &tmpName);
+	CPZoneCheckString = tmpName;
+	TecUtilStringDealloc(&tmpName);
+
+	vec3 EigVals;
+	mat33 EigVecs;
+
+	MultiRootParams_s MR;
+	MR.CalcType = GPType_Classic;
+	MR.VolInfo = &VolInfo;
+	MR.IsPeriodic = FALSE;
+	MR.HasGrad = (GradPtrs.size() == 3);
+	MR.HasHess = (HessPtrs.size() == 6);
+	MR.RhoPtr = &RhoPtr;
+	MR.GradPtrs = &GradPtrs;
+	MR.HessPtrs = &HessPtrs;
+	MR.BasisVectors = &VolInfo.BasisNormalized;
+
+	CritPoints_c AllCPs(SelectedCPZoneNum, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
+
+	if (SelectedCPNums.size() == 0) {
+		for (int i = 0; i < AllCPs.NumCPs(); ++i) SelectedCPNums.push_back(i + 1);
+	}
+
+	CSMGUILock();
+
+	int NumHyperboloidPts = 120;
+	int SphereSubdivision = 3;
+
+	double AngleStep = TWOPI / double(NumHyperboloidPts);
+
+	Set NewZoneNums, DeleteZoneNums;
+
+	for (int iCP = 0; iCP < SelectedCPNums.size(); ++iCP) {
+		int CPInd = SelectedCPNums[iCP] - 1;
+		
+		auto CPPos = AllCPs.GetXYZ(CPInd);
+		auto EigenVecs = AllCPs.GetEigVecs(CPInd);
+		auto EigenVals = AllCPs.GetEigVals(CPInd);
+		auto CPType = AllCPs.GetTypeFromTotOffset(CPInd);
+		int TypeInd = VectorGetElementNum(CPTypeList, CPType);
+		int TypeOffset = AllCPs.GetTypeNumOffsetFromTotOffset(CPInd)[1];
+		auto DistToOtherCP = AllCPs.GetMinCPDist(CPInd);
+		auto r = DistToOtherCP * SizeFactor;
+		if (DistToOtherCP < 0.0){
+			DistToOtherCP = 0.5;
+		}
+
+		stringstream ZoneName;
+		FESurface_c Surf;
+		vector<vec3> Nodes;
+		vector<vector<int> > Elems;
+
+		ZoneName << CPNameList[TypeInd] << " " << to_string(TypeOffset + 1) << " quadric: ";
+
+		if (CPType == CPType_Bond || CPType == CPType_Ring) {
+			vec3 RotAxis, v1, v2 = EigenVecs.col(1);;
+			double th, phi;
+
+			if (CPType == CPType_Bond) {
+				RotAxis = EigenVecs.col(2);
+				v1 = EigenVecs.col(0);
+				th = atan(sqrt(abs(EigenVals[0] / EigenVals[2])));
+				phi = atan(sqrt(abs(EigenVals[1] / EigenVals[2])));
+			}
+			else {
+				RotAxis = EigenVecs.col(0);
+				v1 = EigenVecs.col(2);
+				th = atan(sqrt(abs(EigenVals[0] / EigenVals[2])));
+				phi = atan(sqrt(abs(EigenVals[1] / EigenVals[2])));
+			}
+
+			ZoneName << setprecision(4) << "theta = " << th * 180. * ONEOVERPI << "; phi = " << phi * 180. * ONEOVERPI;
+
+			Nodes.resize(2*NumHyperboloidPts+9);
+
+			for (int i = 0; i < NumHyperboloidPts; ++i){
+				double alpha = double(i) * AngleStep;
+				vec3 NewNode = Rotate(v1, alpha, RotAxis);
+				vec3 NormVec = Rotate(v2, alpha, RotAxis);
+				double beta = th * pow(dot(NewNode, v1), 2) + phi * pow(dot(NewNode, v2), 2);
+				NewNode = Rotate(NewNode, beta, NormVec) * r;
+				Nodes[i] = CPPos + NewNode;
+				Nodes[i + NumHyperboloidPts] = CPPos - NewNode;
+			}
+
+			// Now make tri surface
+			
+			for (int i = 0; i < NumHyperboloidPts; ++i){
+				Elems.push_back(vector<int>({ i, (i + 1) % NumHyperboloidPts, 2 * NumHyperboloidPts }));
+				Elems.push_back(vector<int>({ i + NumHyperboloidPts, (i + 1) % NumHyperboloidPts + NumHyperboloidPts, 2 * NumHyperboloidPts }));
+			}
+
+			int ii = 2 * NumHyperboloidPts, CPii = ii++;
+			Nodes[CPii] = CPPos;
+
+			vec3 NewNode = Rotate(v1, th, v2) * r;
+			Nodes[ii++] = CPPos + NewNode;
+			Nodes[ii++] = CPPos - NewNode;
+			Elems.push_back(vector<int>({ ii - 1,ii - 2,CPii }));
+
+			NewNode = Rotate(v1, -th, v2) * r;
+			Nodes[ii++] = CPPos + NewNode;
+			Nodes[ii++] = CPPos - NewNode;
+			Elems.push_back(vector<int>({ ii - 1,ii - 2,CPii }));
+
+			NewNode = Rotate(v2, phi, v1) * r;
+			Nodes[ii++] = CPPos + NewNode;
+			Nodes[ii++] = CPPos - NewNode;
+			Elems.push_back(vector<int>({ ii - 1,ii - 2,CPii }));
+
+			NewNode = Rotate(v2, -phi, v1) * r;
+			Nodes[ii++] = CPPos + NewNode;
+			Nodes[ii++] = CPPos - NewNode;
+			Elems.push_back(vector<int>({ ii - 1,ii - 2,CPii }));
+		}
+		else {
+			// Make triangulated sphere, then loop over each point, adjusting its distance from the center based on its alignment with eigenvectors
+			int NumNodes, NumElems, NumEdges;
+			point * meshP;
+			triangle * meshT;
+			int ** meshE;
+			vector<int> MovedPointNums;
+			vector<point> IntersectionPoints;
+			auto MeshStatus = meshgen2D_sphere(1.0, SphereSubdivision, IntersectionPoints, MovedPointNums, meshP, meshT, meshE, NumNodes, NumElems, NumEdges);
+
+			vec3 v1, v2 = EigenVecs.col(1) , v3;
+			double r1 = r, r2, r3;
+			if (CPType == CPType_Nuclear){
+				v1 = EigenVecs.col(0);
+				v3 = EigenVecs.col(2);
+				r2 = EigenVals[1] / EigenVals[0] * r;
+				r3 = EigenVals[2] / EigenVals[0] * r;
+			}
+			else {
+				v1 = EigenVecs.col(2);
+				v3 = EigenVecs.col(0);
+				r2 = EigenVals[1] / EigenVals[2] * r;
+				r3 = EigenVals[0] / EigenVals[2] * r;
+			}
+			ZoneName << setprecision(4) << "EigenValues = (" << EigenVals[0] << "; " << EigenVals[1] << "; " << EigenVals[2] << ")";
+
+			Nodes.resize(NumNodes);
+			Nodes.reserve(NumNodes + 3 * NumHyperboloidPts);
+			Elems.resize(NumElems, vector<int>(3));
+
+			for (int i = 0; i < NumNodes; ++i) {
+				auto & n = Nodes[i];
+				n = { meshP[i].x, meshP[i].y, meshP[i].z };
+				double rr = r1 * pow(dot(v1, n), 2)
+					+ r2 * pow(dot(v2, n), 2)
+					+ r3 * pow(dot(v3, n), 2);
+				n *= rr;
+				n = CPPos + n;
+			}
+			for (int i = 0; i < NumElems; ++i) {
+				Elems[i] = { meshT[i].n1, meshT[i].n2, meshT[i].n3 };
+			}
+
+			for (int i = 0; i < NumHyperboloidPts; ++i){
+				double alpha = double(i) * AngleStep;
+				auto n = Rotate(v1, alpha, v2);
+				double rr = r1 * pow(dot(v1, n), 2)
+					+ r2 * pow(dot(v2, n), 2)
+					+ r3 * pow(dot(v3, n), 2);
+				n *= rr;
+				n = CPPos + n;
+				Nodes.push_back(n);
+				Elems.push_back(vector<int>({ NumNodes + i, NumNodes + i, NumNodes + ((i + 1) % NumHyperboloidPts) }));
+			}
+			NumNodes = Nodes.size();
+
+			for (int i = 0; i < NumHyperboloidPts; ++i) {
+				double alpha = double(i) * AngleStep;
+				auto n = Rotate(v1, alpha, v3);
+				double rr = r1 * pow(dot(v1, n), 2)
+					+ r2 * pow(dot(v2, n), 2)
+					+ r3 * pow(dot(v3, n), 2);
+				n *= rr;
+				n = CPPos + n;
+				Nodes.push_back(n);
+				Elems.push_back(vector<int>({ NumNodes + i, NumNodes + i, NumNodes + ((i + 1) % NumHyperboloidPts) }));
+			}
+			NumNodes = Nodes.size();
+
+			for (int i = 0; i < NumHyperboloidPts; ++i) {
+				double alpha = double(i) * AngleStep;
+				auto n = Rotate(v2, alpha, v1);
+				double rr = r1 * pow(dot(v1, n), 2)
+					+ r2 * pow(dot(v2, n), 2)
+					+ r3 * pow(dot(v3, n), 2);
+				n *= rr;
+				n = CPPos + n;
+				Nodes.push_back(n);
+				Elems.push_back(vector<int>({ NumNodes + i, NumNodes + i, NumNodes + ((i + 1) % NumHyperboloidPts) }));
+			}
+			NumNodes = Nodes.size();
+
+		}
+
+		int OldZoneNum = ZoneNumByName(ZoneName.str());
+		if (OldZoneNum > 0) {
+			DeleteZoneNums += OldZoneNum;
+		}
+
+		Surf.MakeFromNodeElemList(Nodes, Elems);
+		int ZoneNum = Surf.SaveAsTriFEZone(XYZVarNums, ZoneName.str());
+		SetZoneStyle({ ZoneNum }, ZoneStyle_Surface);
+		TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0,
+			CPType == CPType_Nuclear ? White_C
+			: CPType == CPType_Bond ? Red_C
+			: CPType == CPType_Ring ? Green_C
+			: Cyan_C);
+		TecUtilZoneSetEdgeLayer(SV_COLOR, Set(ZoneNum).getRef(), 0.0,
+			CPType == CPType_Nuclear ? (ColorIndex_t)9 // gray
+			: CPType == CPType_Bond ? Red_C
+			: CPType == CPType_Ring ? Green_C
+			: Cyan_C);
+		NewZoneNums += ZoneNum;
+
+	}
+
+	TecUtilZoneSetActive(NewZoneNums.getRef(), AssignOp_PlusEquals);
+	TecUtilZoneSetContour(SV_SHOW, NewZoneNums.getRef(), 0.0, FALSE);
+	TecUtilZoneSetMesh(SV_SHOW, NewZoneNums.getRef(), 0.0, FALSE);
+	TecUtilZoneSetShade(SV_SHOW, NewZoneNums.getRef(), 0.0, TRUE);
+	TecUtilZoneSetEdgeLayer(SV_SHOW, NewZoneNums.getRef(), 0.0, TRUE);
+	TecUtilZoneSetEdgeLayer(SV_LINETHICKNESS, NewZoneNums.getRef(), 0.4, TRUE);
+	StyleValue styleValue;
+	styleValue.set((Boolean_t)1, NewZoneNums, SV_FIELDMAP, SV_EFFECTS, SV_USETRANSLUCENCY);
+	styleValue.set((SmInteger_t)2, NewZoneNums, SV_FIELDMAP, SV_EFFECTS, SV_SURFACETRANSLUCENCY);
+	styleValue.set((Boolean_t)1, SV_FIELDLAYERS, SV_SHOWSHADE);
+	if (!DeleteZoneNums.isEmpty()){
+		TecUtilZoneDelete(DeleteZoneNums.getRef());
 	}
 
 	TecUtilDataLoadEnd();
@@ -2863,6 +3162,79 @@ void GradientPathsOnSphereGetUserInfo(){
 	CSMGui("GPs around cage/nuclear CPs", Fields, GradientPathsOnSphereReturnUserInfo, AddOnID);
 }
 
+void DrawRepresentationQuadricsReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+	TecUtilLockStart(AddOnID);
+
+	int VolZoneNum, RhoVarNum;
+	vector<int> XYZVarNums(3), GradVarNums, HessVarNums;
+	Boolean_t IsPeriodic;
+
+	int fNum = 0;
+
+	VolZoneNum = Fields[fNum++].GetReturnInt();
+	for (int i = 0; i < 3; ++i) XYZVarNums[i] = i + Fields[fNum].GetReturnInt();
+	fNum++;
+	RhoVarNum = Fields[fNum++].GetReturnInt();
+
+
+	if (Fields[fNum++].GetReturnBool()) {
+		GradVarNums.resize(3);
+		for (int i = 0; i < 3; ++i) GradVarNums[i] = i + Fields[fNum].GetReturnInt();
+	}
+	fNum++;
+
+	if (Fields[fNum++].GetReturnBool()) {
+		HessVarNums.resize(6);
+		for (int i = 0; i < 6; ++i) HessVarNums[i] = i + Fields[fNum].GetReturnInt();
+	}
+	fNum++;
+
+	int CPTypeVarNum = Fields[fNum++].GetReturnInt();
+	int SelectCPsZoneNum = Fields[fNum].GetReturnInt();
+	vector<int> SelectedCPs = Fields[fNum++].GetReturnIntVec();
+	double SizeFactor = Fields[fNum++].GetReturnDouble();
+
+	DrawRepresentationQuadrics(VolZoneNum, SelectCPsZoneNum, SelectedCPs, CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, SizeFactor);
+
+	TecUtilDialogMessageBox("Finished", MessageBoxType_Information);
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void DrawRepresentationQuadricsGetUserInfo() {
+
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelect, "Volume zone", CSMZoneName.FullVolume.substr(0, 10)),
+		GuiField_c(Gui_VarSelect, "X", "X"),
+		GuiField_c(Gui_VarSelect, "Electron Density", CSMVarName.Dens)
+	};
+
+	int iTmp = Fields.size();
+	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density gradient vector variables present"));
+
+	Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+	Fields.push_back(GuiField_c(Gui_VarSelect, CSMVarName.DensGradVec[0], CSMVarName.DensGradVec[0]));
+
+	iTmp = Fields.size();
+	Fields.push_back(GuiField_c(Gui_ToggleEnable, "Density Hessian variables present"));
+
+	Fields[iTmp].AppendSearchString(to_string(Fields.size()));
+	Fields.push_back(GuiField_c(Gui_VarSelect, CSMVarName.DensHessTensor[0], CSMVarName.DensHessTensor[0]));
+
+	Fields.push_back(GuiField_c(Gui_VarSelect, "CP type variable", CSMVarName.CritPointType));
+	string SearchString = CSMZoneName.CriticalPoints;
+
+	Fields.push_back(GuiField_c(Gui_ZonePointSelectMulti, "Source critical point(s)", SearchString));
+
+	Fields.push_back(GuiField_c(Gui_Double, "Size of quadric (as factor of closest CP distance)", "0.3"));
+
+	CSMGui("Draw Representation Quadrics", Fields, DrawRepresentationQuadricsReturnUserInfo, AddOnID);
+}
+
 void SimpleSurfacesAroundSaddlesReturnUserInfo(bool const GuiSuccess,
 	vector<GuiField_c> const & Fields,
 	vector<GuiField_c> const PassthroughFields) {
@@ -2977,7 +3349,7 @@ void SimpleSurfacesAroundSaddlesGetUserInfo() {
 
 	Fields.push_back(GuiField_c(Gui_Toggle, "Save gradient paths as surface", "1"));
 
-	CSMGui("GPs around bond/ring CPs", Fields, SimpleSurfacesAroundSaddlesReturnUserInfo, AddOnID);
+	CSMGui("Simple surfaces (and GPs) around bond/ring CPs", Fields, SimpleSurfacesAroundSaddlesReturnUserInfo, AddOnID);
 }
 
 void ExportPathDataReturnUserInfo(bool const GuiSuccess,
@@ -3084,7 +3456,7 @@ void ExportPathDataGetUserInfo() {
 	};
 
 
-	CSMGui("GPs around bond/ring CPs", Fields, ExportPathDataReturnUserInfo, AddOnID);
+	CSMGui("Export gradient path data", Fields, ExportPathDataReturnUserInfo, AddOnID);
 }
 
 double MinFunc_GPLength_InPlane(double alpha, void * params) {
@@ -3911,7 +4283,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		double MinCPDist = AllCPs.GetMinCPDist(TypeInd, CPNum, CPTypesForMinDistCheck);
 
 		TermRadius = 0.01 * MinCPDist;
-		SaddleTermRadius = TermRadius * 5.0;
+		SaddleTermRadius = TermRadius * 50.0;
 
 		StartPointOffset = MIN(0.05 * MinCPDist, DelXYZNorm);
 		double SourceCPTermRadius = 0.05 * StartPointOffset;
@@ -4459,6 +4831,15 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 					GP.CPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
 					GP.CPType = AllCPs.GetTypeFromTotOffset(GP.CPNum);
+
+					// Do distance check to see if path skimmed saddle point (yes, the GP should have terminated at the saddle if this were the case, but here we are)
+// 					for (int jCP = 0; jCP < AllCPs.NumCPs(GPTerminalCPSaddleTypeNum); ++jCP){
+// 						if (Distance(GP.GP.ClosestPoint(AllCPs.GetXYZ(GPTerminalCPSaddleTypeNum, jCP)), AllCPs.GetXYZ(GPTerminalCPSaddleTypeNum, jCP)) <= SaddleTermRadius * 2.0){
+// 							GP.CPNum = AllCPs.GetTotOffsetFromTypeNumOffset(GPTerminalCPSaddleTypeNum, jCP);
+// 							GP.CPType = SaddleCPTermType;
+// 							break;
+// 						}
+// 					}
 					
 
 					bool Reiterate = false;
@@ -7599,7 +7980,7 @@ void DrawEigenvectorArrowsGetUserInfo(){
 	for (string const & s : CSMVarName.EigVals) Fields.push_back(GuiField_c(Gui_VarSelect, s, s));
 	for (string const & s : CSMVarName.EigVecs) Fields.push_back(GuiField_c(Gui_VarSelect, s, s));
 
-	CSMGui("Connect CPs with lines", Fields, DrawEigenvectotArrorsReturnUserInfo, AddOnID);
+	CSMGui("Draw eigenvector arrows", Fields, DrawEigenvectotArrorsReturnUserInfo, AddOnID);
 }
 
 
@@ -8027,14 +8408,15 @@ Boolean_t BondalyzerBatch(int VolZoneNum,
 	vector<int> const & HessVarNums,
 	Boolean_t IsPeriodic,
 	int RidgeFuncVarNum,
-	vector<bool> const & CalcSteps)
+	vector<bool> const & CalcSteps,
+	int NumGPPts)
 {
 	// Check and run each calculation step. (minus 1 because critical points isn't included)
 	if (CalcSteps[(int)BondalyzerCalcType_BondPaths - 1]){
-		FindBondRingLines(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, CPType_Bond, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+		FindBondRingLines(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, CPType_Bond, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, true, NumGPPts);
 	}
 	if (CalcSteps[(int)BondalyzerCalcType_RingLines - 1]){
-		FindBondRingLines(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, CPType_Ring, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
+		FindBondRingLines(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, CPType_Ring, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic, true, NumGPPts);
 	}
 	if (CalcSteps[(int)BondalyzerCalcType_CageNuclearPaths - 1]){
 		FindCageNuclearPaths(VolZoneNum, CPZoneNums, CPZoneNums[0], vector<int>(), CPTypeVarNum, XYZVarNums, RhoVarNum, GradVarNums, HessVarNums, IsPeriodic);
@@ -12162,4 +12544,38 @@ void GenerateGUIBondsGetUserInfo() {
 	};
 
 	CSMGui("Generate GUI bonds", Fields, GenerateGUIBondsReturnUserInfo, AddOnID);
+}
+
+
+void ResizeSpheresReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+	TecUtilLockStart(AddOnID);
+
+	int fNum = 0;
+
+	auto ZoneNums = Fields[fNum++].GetReturnIntVec();
+	auto SizeFactor = Fields[fNum++].GetReturnDouble();
+	auto RelativeSize = Fields[fNum++].GetReturnBool();
+
+	for (auto z : ZoneNums) {
+		ResizeSphere(z, SizeFactor, !RelativeSize);
+	}
+
+	TecUtilRedrawAll(TRUE);
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void ResizeSpheresGetUserInfo() {
+
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelectMulti, "Sphere zones", CSMZoneName.FullVolume.substr(0, 10)),
+		GuiField_c(Gui_Double, "New sphere size", "1.0"),
+		GuiField_c(Gui_Toggle, "Relative to current size", "0")
+	};
+
+	CSMGui("Resize sphere zones", Fields, ResizeSpheresReturnUserInfo, AddOnID);
 }

@@ -99,7 +99,8 @@ Boolean_t BondalyzerBatch(int VolZoneNum,
 	vector<int> const & HessVarNums,
 	Boolean_t IsPeriodic,
 	int RidgeFuncVarNum,
-	vector<bool> const & CalcSteps);
+	vector<bool> const & CalcSteps,
+	int NumGPPts);
 
 Boolean_t FindBondRingLines(int VolZoneNum,
 	vector<int> const & OtherCPZoneNums,
@@ -112,7 +113,8 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 	vector<int> const & GradVarNums,
 	vector<int> const & HessVarNums,
 	Boolean_t IsPeriodic,
-	bool PrecalcVars = true);
+	bool PrecalcVars = true,
+	int NumGPPts = 500);
 
 Boolean_t FindCageNuclearPaths(int VolZoneNum,
 	vector<int> const & OtherCPZoneNums,
@@ -213,3 +215,7 @@ void ImportNuclearCoordinatesFromXYZ();
 void MapVolumeZoneVarsToOtherZonesGetUserInfo();
 
 void GenerateGUIBondsGetUserInfo();
+
+void DrawRepresentationQuadricsGetUserInfo();
+
+void ResizeSpheresGetUserInfo();

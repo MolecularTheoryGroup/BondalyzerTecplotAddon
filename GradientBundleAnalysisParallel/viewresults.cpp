@@ -1753,13 +1753,13 @@ void ExportGBAData(){
 	}
 }
 
-bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin){
+bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin) {
 	if (AuxDataZoneItemMatches(SphereZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone))
 	{
 		bool OriginFound = false;
 		// If origin is saved to sphere, just use that
 		string OriginString;
-		if (AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereOrigin, OriginString)){
+		if (AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereOrigin, OriginString)) {
 			vector<double> OriginVec = SplitStringDbl(OriginString);
 			if (OriginString.size() == 3) {
 				for (int i = 0; i < 3; ++i) {
@@ -1798,7 +1798,7 @@ bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin){
 		vec3 SphereMaxXYZ = vec3() * DBL_MIN,
 			SphereMinXYZ = vec3() * DBL_MAX;
 		vec3 SphereMidPoint = { 0,0,0 };
-		for (int i = 0; i < SphereXYZ.Size(); ++i){
+		for (int i = 0; i < SphereXYZ.Size(); ++i) {
 			for (int j = 0; j < 3; ++j) {
 				SphereMaxXYZ[j] = MAX(SphereMaxXYZ[j], SphereXYZ[i][j]);
 				SphereMinXYZ[j] = MAX(SphereMinXYZ[j], SphereXYZ[i][j]);
@@ -1806,9 +1806,9 @@ bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin){
 		}
 		SphereMidPoint = (SphereMaxXYZ + SphereMinXYZ) * 0.5;
 
-// 		SaveVec3VecAsScatterZone({ SphereMidPoint }, "sphere midpoint");
-		
-		// Now get closest nuclear CP
+		// 		SaveVec3VecAsScatterZone({ SphereMidPoint }, "sphere midpoint");
+
+				// Now get closest nuclear CP
 		double MinDistSqr = DBL_MAX;
 		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
 			if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.CPSubTypes[0])) {
@@ -1824,7 +1824,7 @@ bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin){
 			}
 		}
 
-		if (Distance(SphereMidPoint, Origin) > 0.1){
+		if (Distance(SphereMidPoint, Origin) > 0.1) {
 			// too far from the sphere midpoint, so use the midpoint instead.
 			Origin = SphereMidPoint;
 		}

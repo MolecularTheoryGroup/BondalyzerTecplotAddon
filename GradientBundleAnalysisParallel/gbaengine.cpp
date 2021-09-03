@@ -10267,6 +10267,7 @@ struct CreateGBProbeClientData_s
 	double SeedRadius;
 	int NumGPs;
 	int PointsPerGP;
+	double RhoCutoff;
 	bool SaveGPs;
 	int GroupNum;
 	bool CapSurf;
@@ -10330,7 +10331,7 @@ void CreateCircularGBsProbeCB(Boolean_t WasSuccessful, Boolean_t IsNearestPoint,
 				vec3 SeedPt = SeedOrigin + Rotate( RotVec, TWOPI * (double)i / (double)ClientDataStruct.NumGPs, RotAxis);
 // 				SaveVec3VecAsScatterZone({ SeedPt }, "seed origin");
 				SeedPts.push_back(SeedPt);
-				GPs[i].SetupGradPath(SeedPt, StreamDir_Both, ClientDataStruct.PointsPerGP, GPType_Classic, GPTerminate_AtBoundary, nullptr, nullptr, nullptr, nullptr, ClientDataStruct.VolInfo, vector<FieldDataPointer_c>(), GradPtrs, RhoPtr);
+				GPs[i].SetupGradPath(SeedPt, StreamDir_Both, ClientDataStruct.PointsPerGP, GPType_Classic, GPTerminate_AtRhoValue, nullptr, nullptr, nullptr, &ClientDataStruct.RhoCutoff, ClientDataStruct.VolInfo, vector<FieldDataPointer_c>(), GradPtrs, RhoPtr);
 				GPPtrs[i] = &GPs[i];
 			}
 			SeedPts.push_back(SeedOrigin);
@@ -10514,6 +10515,7 @@ void STDCALL CreateCircularGBsReturnUserInfo(bool const GuiSuccess,
 	ClientDataStruct.SeedRadius = Fields[fNum++].GetReturnDouble();
 	ClientDataStruct.NumGPs = Fields[fNum++].GetReturnInt();
 	ClientDataStruct.PointsPerGP = Fields[fNum++].GetReturnInt();
+	ClientDataStruct.RhoCutoff = Fields[fNum++].GetReturnDouble();
 	ClientDataStruct.SaveGPs = Fields[fNum++].GetReturnBool();
 	ClientDataStruct.GroupNum = Fields[fNum++].GetReturnInt();
 	ClientDataStruct.CapSurf = Fields[fNum++].GetReturnBool();
@@ -10560,6 +10562,7 @@ void CreateCircularGBsGetUserInfo() {
 	Fields.emplace_back(Gui_Double, "GB seed radius", "0.1");
 	Fields.emplace_back(Gui_Int, "Number of GPs", "30");
 	Fields.emplace_back(Gui_Int, "Points per GP", "300");
+	Fields.emplace_back(Gui_Double, "Truncate at rho = ", "0.001");
 	Fields.emplace_back(Gui_Toggle, "Save GPs", "0");
 	Fields.emplace_back(Gui_Int, "Dest. group number", "2");
 	Fields.emplace_back(Gui_Toggle, "Cap gradient bundle", "1");

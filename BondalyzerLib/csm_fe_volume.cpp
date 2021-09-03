@@ -3290,3 +3290,88 @@ double Domain_c::WeightFunc(vector<int> const & t) const
 }
 
 
+bool GetSphereOriginRadius(int SphereZoneNum, vec3 & Origin, double & Radius) {
+	vector<int> XYZVarNums(3);
+	TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
+
+	vec3 maxXYZ, minXYZ;
+
+	for (int i = 0; i < 3; ++i){
+		TecUtilDataValueGetMinMaxByZoneVar(SphereZoneNum, XYZVarNums[i], &minXYZ[i], &maxXYZ[i]);
+	}
+
+	Origin = (minXYZ + maxXYZ) * 0.5;
+	Radius = norm((maxXYZ - minXYZ) * 0.5);
+
+	return true;
+}
+
+
+void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadius) {
+
+	vector<EntIndex_t> XYZVarNums(3);
+	TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
+
+	int z = ZoneNum;
+
+	char* ZoneNameCStr;
+	TecUtilZoneGetName(z, &ZoneNameCStr);
+	string SelectedSphereName = ZoneNameCStr;
+	TecUtilStringDealloc(&ZoneNameCStr);
+
+	vec3 Origin;
+	double OldRadius;
+	GetSphereOriginRadius(z, Origin, OldRadius);
+	// 			string CPZoneNumStr, CPNumStr;
+	// 			if (AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceZoneNum, CPZoneNumStr) && AuxDataZoneGetItem(z, CSMAuxData.GBA.SphereCPNum, CPNumStr)){
+	// 				int SourceCPZoneNum = stoi(CPZoneNumStr),
+	// 					SourceCPNum = stoi(CPNumStr);
+	// 				for (int i = 0; i < 3; ++i){
+	// 					Origin[i] = TecUtilDataValueGetByZoneVar(SourceCPZoneNum, XYZVarNums[i], SourceCPNum);
+	// 				}
+	// 			}
+	// 			else{
+	// 				TecUtilDialogErrMsg(string("Couldn't get source CP coordinates for sphere zone " + to_string(z)).c_str());
+	// 				continue;
+	// 			}
+
+				// Get list of basin zone numbers
+	string SphereName = AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceNucleusName);
+	vector<int> ZoneNums;
+	for (int zi = z + 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
+		if ((AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin)
+			|| AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin)
+			|| AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeTopoCageWedge))
+			&& AuxDataZoneItemMatches(zi, CSMAuxData.GBA.SourceNucleusName, SphereName))
+		{
+			ZoneNums.push_back(zi);
+		}
+	}
+
+	double NewRadius = SizeFactor;
+	if (!AbsoluteRadius ) {
+		NewRadius *= OldRadius;
+	}
+
+	for (auto zi : ZoneNums) {
+		FieldVecPointer_c XYZPtr;
+		TecUtilDataLoadBegin();
+		XYZPtr.InitializeWritePtr(zi, XYZVarNums);
+		int NumNodes = XYZPtr.Size();
+
+		for (int i = 0; i < NumNodes; ++i) {
+			XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * NewRadius * 1.01);
+		}
+		TecUtilDataLoadEnd();
+	}
+
+	FieldVecPointer_c XYZPtr;
+	TecUtilDataLoadBegin();
+	XYZPtr.InitializeWritePtr(z, XYZVarNums);
+	int NumNodes = XYZPtr.Size();
+
+	for (int i = 0; i < NumNodes; ++i) {
+		XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * NewRadius);
+	}
+	TecUtilDataLoadEnd();
+}

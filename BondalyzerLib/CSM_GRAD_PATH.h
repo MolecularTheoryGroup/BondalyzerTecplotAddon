@@ -15,14 +15,14 @@ using namespace arma;
 
 using std::vector;
 
-#define GP_NumPointsBufferFactor	2
+#define GP_NumPointsBufferFactor	10
 #define GP_StallPointCount			20
 #define GP_StallNumPointsToCheck	10
-#define GP_StallPointDistTol		1e-6
-#define GP_MaxNumPoints				10000
+#define GP_StallPointDistTol		1e-8
+#define GP_MaxNumPoints				30000
 #define GP_PlaneCPStallCount		30
 #define GP_PlaneCPMaxIter			100
-#define GP_MaxStepSize				2e-3
+#define GP_MaxStepSize				5e-3
 
 static double const GP_DeviationAngleMaxCutoff = 170. / 180. * PI;
 
@@ -183,6 +183,7 @@ public:
 	double ComputeAverageCurvature() const;
 	double ComputeTotalTorsion(bool ScaleByCurvature = false) const;
 	double ComputeAverageTorsion(bool ScaleByCurvature = false) const;
+	vector<mat33> ComputeOptimizedFrenetFrame() const;
 
 	vec3 ClosestMaxCurvaturePoint(vec3 const & CheckPt) const { int i; return ClosestMaxCurvaturePoint(CheckPt, i); }
 	vec3 ClosestMaxCurvaturePoint(vec3 const & CheckPt, int & PtInd) const; 

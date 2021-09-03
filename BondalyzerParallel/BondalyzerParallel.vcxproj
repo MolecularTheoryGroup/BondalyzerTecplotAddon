@@ -112,7 +112,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig;$(SolutionDir)MechGenCPP_Sphere_lib\lib\2d_sphere;$(SolutionDir)MechGenCPP_Sphere_lib\lib</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11;ARMA_NO_DEBUG;ARMA_USE_CXX11</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
@@ -168,7 +168,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig;$(SolutionDir)MechGenCPP_Sphere_lib\lib\2d_sphere;$(SolutionDir)MechGenCPP_Sphere_lib\lib</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11;ARMA_NO_DEBUG;ARMA_USE_CXX11</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
@@ -226,7 +226,7 @@
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig;$(SolutionDir)MechGenCPP_Sphere_lib\lib\2d_sphere;$(SolutionDir)MechGenCPP_Sphere_lib\lib</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11;ARMA_NO_DEBUG;ARMA_USE_CXX11</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
@@ -290,7 +290,7 @@
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\Build\$(Platform)\include;$(TEC_360_2013R1)\Include;..\tecint\include;$(SolutionDir)..\SCM_KFReader\SCM_KFReader;E:\3rdPartyLibs\claypack\3.2.1\build\win64-vs2005\release\include;$(SolutionDir)BondalyzerLib;$(SolutionDir)..\gsl-1.16;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig;$(SolutionDir)MechGenCPP_Sphere_lib\lib\2d_sphere;$(SolutionDir)MechGenCPP_Sphere_lib\lib</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>ARMA_NO_DEBUG;ARMA_USE_LAPACK;ARMA_USE_BLAS;%(PreprocessorDefinitions);ARMA_USE_CXX11;ARMA_NO_DEBUG;ARMA_USE_CXX11</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
@@ -376,6 +376,9 @@
     </ProjectReference>
     <ProjectReference Include="..\heffnormFromCraig\heffnormFromCraig.vcxproj">
       <Project>{60f40e44-dc16-4d19-a0f7-2427dc1da8d9}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\MechGenCPP_Sphere_lib\MechGenCPP_Sphere.vcxproj">
+      <Project>{2e435a33-3cf7-45f8-80f7-a9fbf37c941c}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

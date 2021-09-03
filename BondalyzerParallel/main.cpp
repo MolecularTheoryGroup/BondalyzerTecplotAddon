@@ -723,6 +723,42 @@ static void STDCALL DrawEigenvectorArrowsCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL DrawRepresentationQuadricsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		CSMGUILock();
+
+		DrawRepresentationQuadricsGetUserInfo();
+
+		CSMGUIUnlock();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL ResizeSpheresCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		CSMGUILock();
+
+		ResizeSpheresGetUserInfo();
+
+		CSMGUIUnlock();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL TestFunctionCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -925,6 +961,16 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Connect CPs with lines").c_str(),
 		'\0',
 		ConnectCPsCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Draw representation quadrics at critical points").c_str(),
+		'\0',
+		DrawRepresentationQuadricsCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Resize sphere zones").c_str(),
+		'\0',
+		ResizeSpheresCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		string("Draw arrows to indicate eigenvectors").c_str(),
