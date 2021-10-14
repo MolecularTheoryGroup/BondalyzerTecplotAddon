@@ -888,11 +888,703 @@ $!PAGE
 $!FRAMELAYOUT 
   SHOWHEADER = NO
   BACKGROUNDCOLOR = CUSTOM26
+  HEADERCOLOR = CYAN
+  XYPOS
+    {
+    X = -0.50119
+    Y = 0.55391
+    }
+  WIDTH = 10.737
+  HEIGHT = 7.4622
+$!THREEDAXIS 
+  ASPECTRATIOLIMIT = 25
+  BOXASPECTRATIOLIMIT = 25
+$!FRAMENAME  = 'TABPAGE=T ID=1 POS=1 TITLE="Setup"'
+$!GLOBALTIME 
+  SOLUTIONTIME = 0
+$!SKETCHAXIS 
+  DEPXTOYRATIO = 1
+$!SKETCHAXIS 
+  XDETAIL
+    {
+    RANGEMIN = 0.26641953329272361
+    RANGEMAX = 1.4766469269097451
+    GRSPACING = 0.2
+    }
+$!SKETCHAXIS 
+  YDETAIL
+    {
+    RANGEMIN = -0.36652052308619443
+    RANGEMAX = 0.47458582474364042
+    GRSPACING = 0.2
+    }
+$!LINKING 
+  BETWEENFRAMES
+    {
+    LINKFRAMESIZEANDPOSITION = YES
+    }
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.48297695602736
+    Y = 6.742174578635895
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=BTNRun Type=PushButton'
+  TEXT = '       Run\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 90.31505344931901
+    Y = 51.66104128099002
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFSTPts Type=TextField '
+  TEXT = 'TF:    '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 68.34500137008894
+    Y = 51.61334013336673
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLSTPts Type=Label '
+  TEXT = '# Gradient path points:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.8054444921883
+    Y = 39.95486355293993
+    }
+  TEXTSHAPE
+    {
+    ISITALIC = YES
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  ANCHOR = RIGHT
+  MACROFUNCTIONCOMMAND = 'VarName=LBLNumTri Type=Label'
+  TEXT = '--> Num Triangles'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 21.03543583187991
+    Y = 33.76696449382953
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFRad Type=TextField '
+  TEXT = 'TF:   '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 2.869443595926679
+    Y = 39.64372314135506
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLRad Type=Label '
+  TEXT = 'Radial sphere approx:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 4.344485137682417
+    Y = 23.02971301606126
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = HOLLOW
+    MARGIN = 55
+    COLOR = WHITE
+    FILLCOLOR = CUSTOM2
+    }
+  LINESPACING = 1.5
+  MACROFUNCTIONCOMMAND = 'VarName=RBRadMode Type=RadioBox '
+  TEXT = '<math>7</math>  Absolute\n<math>7</math>  Fraction of min CP dist.'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 55.69384572022658
+    Y = 51.92981386295175
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFCutoff Type=TextField '
+  TEXT = 'TF:             '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 34.97227348893778
+    Y = 51.73774128069577
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLCutoff Type=Label '
+  TEXT = 'System Rho Cutoff:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 26.46099925817084
+    Y = 62.1233091580234
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLSelVars Type=MultiList'
+  TEXT = 'MLST:                                                                                                                \n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 50.06104691948779
+    Y = 91.47571976515026
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCPrecise Type=Scale SHOWLABEL=F '
+  TEXT = 'SC:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 38.34564004957276
+    Y = 92.46549464897355
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLPreci1 Type=Label'
+  TEXT = 'Precision:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 3.018600401565815
+    Y = 62.2490688851769
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=MLSelCPs Type=MultiList'
+  TEXT = 'MLST:                      \n\n\n\n\n\n\n\n\n\n'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 66.44043378955449
+    Y = 92.24516004498872
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLPrecise Type=Label '
+  TEXT = 'Label'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 3.919793934905337
+    Y = 51.66474387597852
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLsGP Type=Toggle '
+  TEXT = '<math>7</math>   Save GPs'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 19.88325671393332
+    Y = 51.66474387597852
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLsGB Type=Toggle '
+  TEXT = '<math>7</math>   Save GBs'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 29.81306246158569
+    Y = 39.95486355293995
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLLevel Type=Label'
+  TEXT = 'Minimum number of gradient bundles (GB)'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 29.81306246158569
+    Y = 23.64325906466463
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLBPGBa Type=Label'
+  TEXT = 'Number of bond path coincident GBs:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 29.81306246158569
+    Y = 18.20605756857281
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLGBMaxSD Type=Label'
+  TEXT = 'Maximum GB surface gradient path spacing:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 29.81306246158569
+    Y = 29.08046056075646
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLSDtightle Type=Label'
+  TEXT = 'Subdivision tightness around bond/ring features'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 75.92677504880876
+    Y = 91.78136176234179
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLNoSphInt Type=Toggle'
+  TEXT = '<math>7</math>   Radial sphere approx.'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.91586088909793
+    Y = 28.74506648068915
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCSDtight Type=Scale SHOWLABEL=F'
+  TEXT = 'SC:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.91586088909793
+    Y = 23.11334460416322
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCBPGBs Type=Scale SHOWLABEL=F'
+  TEXT = 'SC:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.91586088909793
+    Y = 17.48162272763729
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCEGPDist Type=Scale SHOWLABEL=F'
+  TEXT = 'SC:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 78.07471116264948
+    Y = 29.33159947644074
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLSDtight Type=Label'
+  TEXT = 'Label'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 78.07471116264945
+    Y = 23.76882852250678
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLBPGBs Type=Label'
+  TEXT = 'Label'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 78.07471116264948
+    Y = 18.2060575685728
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLEGPDistType=Label'
+  TEXT = 'Label'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 29.81306246158569
+    Y = 34.51766205684812
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLBPGBi Type=Label'
+  TEXT = 'Maximum GB subdivision level (around bond/ring features):'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 78.07471116264948
+    Y = 34.89437043037472
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBLBPGBInit Type=Label'
+  TEXT = 'Label'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.91586088909793
+    Y = 40.00851023374099
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCMinGBs Type=Scale SHOWLABEL=F'
+  TEXT = 'SC:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 84.91586088909793
+    Y = 34.37678835721508
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 25
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=SCBPGBInit Type=Scale SHOWLABEL=F'
+  TEXT = 'SC:            '
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 3.173639537137964
+    Y = 16.74072026659176
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLSphTest Type=Toggle'
+  TEXT = '<math>7</math> .'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 4.787686879666107
+    Y = 6.977186987736117
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGL_RefE Type=Toggle'
+  TEXT = '<math>7</math>   Enter atomic reference energies'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 2.869443595926675
+    Y = 34.16433968247791
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    MARGIN = 0.2
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=LBL34 Type=Label'
+  TEXT = 'GP seed radius:'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 20.99658067441641
+    Y = 39.00818872077867
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    BOXTYPE = FILLED
+    MARGIN = 45
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TFSdRad Type=TextField'
+  TEXT = 'TF:   '
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 1.809835433959961
+    Y = 14.81575697383878
+    }
+  MACROFUNCTIONCOMMAND = ' Sphere Mesh Parameters '
+  RAWDATA
+95.2987372875 30.7801902294 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 1.809835433959961
+    Y = 48.77761249386817
+    }
+  MACROFUNCTIONCOMMAND = ' System Boundary Parameters '
+  RAWDATA
+95.6077635288 8.70201587677 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 24.76282517905937
+    Y = 60.21608558948497
+    }
+  MACROFUNCTIONCOMMAND = ' Integration Variables '
+  RAWDATA
+72.6731956005 37.2440069914 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 1.354090532868157
+    Y = 60.19386700623923
+    }
+  MACROFUNCTIONCOMMAND = ' Select CP(s) '
+  RAWDATA
+22.2770810127 37.1880352497 
+### Frame Number 2 ###
+$!CREATENEWFRAME 
+$!FRAMELAYOUT 
+  SHOWHEADER = NO
+  BACKGROUNDCOLOR = CUSTOM26
   HEADERCOLOR = PURPLE
   XYPOS
     {
-    X = -0.83484
-    Y = 0.08123
+    X = -0.50119
+    Y = 0.55391
     }
   WIDTH = 10.737
   HEIGHT = 7.4622
@@ -1518,7 +2210,7 @@ $!ATTACHGEOM
   MACROFUNCTIONCOMMAND = ' GB Region '
   RAWDATA
 32.0176810026 18.9415574074 
-### Frame Number 2 ###
+### Frame Number 3 ###
 $!CREATENEWFRAME 
 $!FRAMELAYOUT 
   SHOWHEADER = NO
@@ -1571,663 +2263,6 @@ $!ATTACHTEXT
     }
   MACROFUNCTIONCOMMAND = 'VarName=TAB1 Type=Tab'
   TEXT = 'TAB:Group=1                                                                                                                                                       \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
-### Frame Number 3 ###
-$!CREATENEWFRAME 
-$!FRAMELAYOUT 
-  SHOWHEADER = NO
-  BACKGROUNDCOLOR = CUSTOM26
-  HEADERCOLOR = CYAN
-  XYPOS
-    {
-    X = -0.83484
-    Y = 0.08123
-    }
-  WIDTH = 10.737
-  HEIGHT = 7.4622
-$!THREEDAXIS 
-  ASPECTRATIOLIMIT = 25
-  BOXASPECTRATIOLIMIT = 25
-$!FRAMENAME  = 'TABPAGE=T ID=1 POS=1 TITLE="Setup"'
-$!GLOBALTIME 
-  SOLUTIONTIME = 0
-$!SKETCHAXIS 
-  DEPXTOYRATIO = 1
-$!SKETCHAXIS 
-  XDETAIL
-    {
-    RANGEMIN = 0.26641953329272361
-    RANGEMAX = 1.4766469269097451
-    GRSPACING = 0.2
-    }
-$!SKETCHAXIS 
-  YDETAIL
-    {
-    RANGEMIN = -0.36652052308619443
-    RANGEMAX = 0.47458582474364042
-    GRSPACING = 0.2
-    }
-$!LINKING 
-  BETWEENFRAMES
-    {
-    LINKFRAMESIZEANDPOSITION = YES
-    }
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 84.48297695602736
-    Y = 6.742174578635895
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=BTNRun Type=PushButton'
-  TEXT = '       Run\n'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 90.31505344931901
-    Y = 51.66104128099002
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TFSTPts Type=TextField '
-  TEXT = 'TF:    '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 68.34500137008894
-    Y = 51.61334013336673
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLSTPts Type=Label '
-  TEXT = '# Gradient path points:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 84.8054444921883
-    Y = 39.95486355293993
-    }
-  TEXTSHAPE
-    {
-    ISITALIC = YES
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  ANCHOR = RIGHT
-  MACROFUNCTIONCOMMAND = 'VarName=LBLNumTri Type=Label'
-  TEXT = '--> Num Triangles'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 13.13718324768082
-    Y = 36.5614927851566
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TFRad Type=TextField '
-  TEXT = 'TF:   '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 3.57168427863687
-    Y = 37.22179862220404
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLRad Type=Label '
-  TEXT = 'Radius:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 4.991882890485621
-    Y = 24.52012810476911
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = HOLLOW
-    MARGIN = 55
-    COLOR = WHITE
-    FILLCOLOR = CUSTOM2
-    }
-  LINESPACING = 1.5
-  MACROFUNCTIONCOMMAND = 'VarName=RBRadMode Type=RadioBox '
-  TEXT = '<math>7</math>  Absolute\n<math>7</math>  Fraction of min CP dist.'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 55.69384572022658
-    Y = 51.92981386295175
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TFCutoff Type=TextField '
-  TEXT = 'TF:             '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 34.97227348893778
-    Y = 51.73774128069577
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLCutoff Type=Label '
-  TEXT = 'System Rho Cutoff:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 26.46099925817084
-    Y = 62.1233091580234
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=MLSelVars Type=MultiList'
-  TEXT = 'MLST:                                                                                                                \n\n\n\n\n\n\n\n'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 50.06104691948779
-    Y = 91.47571976515026
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 25
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=SCPrecise Type=Scale SHOWLABEL=F '
-  TEXT = 'SC:            '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 38.34564004957276
-    Y = 92.46549464897355
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLPreci1 Type=Label'
-  TEXT = 'Precision:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 3.018600401565815
-    Y = 62.2490688851769
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=MLSelCPs Type=MultiList'
-  TEXT = 'MLST:                      \n\n\n\n\n\n\n\n\n\n'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 66.44043378955449
-    Y = 92.24516004498872
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLPrecise Type=Label '
-  TEXT = 'Label'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 3.919793934905337
-    Y = 51.66474387597852
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TGLsGP Type=Toggle '
-  TEXT = '<math>7</math>   Save GPs'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 19.88325671393332
-    Y = 51.66474387597852
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TGLsGB Type=Toggle '
-  TEXT = '<math>7</math>   Save GBs'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 26.18763504588777
-    Y = 39.95486355293993
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLLevel Type=Label'
-  TEXT = 'Minimum number of gradient bundles (GB)'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 26.18763504588777
-    Y = 23.64325906466462
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLBPGBa Type=Label'
-  TEXT = 'Number of bond path coincident GBs:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 26.18763504588777
-    Y = 18.2060575685728
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLGBMaxSD Type=Label'
-  TEXT = 'Maximum GB surface gradient path spacing:'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 26.18763504588777
-    Y = 29.08046056075645
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLSDtightle Type=Label'
-  TEXT = 'Subdivision tightness around bond/ring features'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 75.92677504880876
-    Y = 91.78136176234179
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TGLNoSphInt Type=Toggle'
-  TEXT = '<math>7</math>   Radial sphere approx.'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 84.91586088909793
-    Y = 28.74506648068915
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 25
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=SCSDtight Type=Scale SHOWLABEL=F'
-  TEXT = 'SC:            '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 84.91586088909793
-    Y = 23.11334460416322
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 25
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=SCBPGBs Type=Scale SHOWLABEL=F'
-  TEXT = 'SC:            '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 84.91586088909793
-    Y = 17.48162272763729
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 25
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=SCEGPDist Type=Scale SHOWLABEL=F'
-  TEXT = 'SC:            '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 78.07471116264948
-    Y = 29.33159947644074
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLSDtight Type=Label'
-  TEXT = 'Label'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 78.07471116264945
-    Y = 23.76882852250678
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLBPGBs Type=Label'
-  TEXT = 'Label'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 78.07471116264948
-    Y = 18.2060575685728
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLEGPDistType=Label'
-  TEXT = 'Label'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 26.18763504588777
-    Y = 34.51766205684811
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLBPGBi Type=Label'
-  TEXT = 'Maximum GB subdivision level (around bond/ring features):'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 78.07471116264948
-    Y = 34.89437043037472
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBLBPGBInit Type=Label'
-  TEXT = 'Label'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 84.91586088909793
-    Y = 40.00851023374099
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 25
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=SCMinGBs Type=Scale SHOWLABEL=F'
-  TEXT = 'SC:            '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 84.91586088909793
-    Y = 34.37678835721508
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 25
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=SCBPGBInit Type=Scale SHOWLABEL=F'
-  TEXT = 'SC:            '
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 3.821037289941169
-    Y = 18.23113535529959
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TGLSphTest Type=Toggle'
-  TEXT = '<math>7</math> .'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 4.787686879666107
-    Y = 6.977186987736117
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TGL_RefE Type=Toggle'
-  TEXT = '<math>7</math>   Enter atomic reference energies'
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 1.809835433959961
-    Y = 14.81575697383878
-    }
-  MACROFUNCTIONCOMMAND = ' Sphere Mesh Parameters '
-  RAWDATA
-95.2987372875 30.7801902294 
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 1.809835433959961
-    Y = 48.77761249386817
-    }
-  MACROFUNCTIONCOMMAND = ' System Boundary Parameters '
-  RAWDATA
-95.6077635288 8.70201587677 
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 24.76282517905937
-    Y = 60.21608558948497
-    }
-  MACROFUNCTIONCOMMAND = ' Integration Variables '
-  RAWDATA
-72.6731956005 37.2440069914 
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 1.354090532868157
-    Y = 60.19386700623923
-    }
-  MACROFUNCTIONCOMMAND = ' Select CP(s) '
-  RAWDATA
-22.2770810127 37.1880352497 
 $!FRAMECONTROL ACTIVATEBYNUMBER
   FRAME = 3
 $!SETSTYLEBASE CONFIG

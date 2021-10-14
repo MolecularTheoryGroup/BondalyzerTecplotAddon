@@ -615,7 +615,22 @@ static LgIndex_t  TFRad_TF_T1_1_CB(char const *S)
 	TRACE1("Text field (TFRad_TF_T1_1) Value Changed,  New value is: %s\n", S); 
 	double Value;
 	if (!TecGUITextFieldGetDouble(TFRad_TF_T1_1, &Value)){
-		TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(GBADefaultSphereRadius).c_str());
+		TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(GBADefaultRadialSphereApprxRadius).c_str());
+	}
+	TecUtilLockFinish(AddOnID);
+	return (IsOk);
+}
+
+/**
+ */
+static LgIndex_t  TFSdRad_TF_T1_1_CB(const char *S)
+{
+	LgIndex_t IsOk = 1;
+	TecUtilLockStart(AddOnID);
+	TRACE1("Text field (TFSdRad_TF_T1_1) Value Changed,  New value is: %s\n", S);
+	double Value;
+	if (!TecGUITextFieldGetDouble(TFSdRad_TF_T1_1, &Value)) {
+		TecGUITextFieldSetString(TFSdRad_TF_T1_1, to_string(GBADefaultSeedRadius).c_str());
 	}
 	TecUtilLockFinish(AddOnID);
 	return (IsOk);
@@ -858,7 +873,8 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	/*
 	*	Mesh parameters
 	*/
-	TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(GBADefaultSphereRadius).c_str());
+	TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(GBADefaultRadialSphereApprxRadius).c_str());
+	TecGUITextFieldSetString(TFSdRad_TF_T1_1, to_string(GBADefaultSeedRadius).c_str());
 	TecGUIRadioBoxSetToggle(RBRadMode_RADIO_T1_1, 2);
 	TecGUIScaleSetLimits(SCMinGBs_SC_T1_1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel, 0);
 	TecGUIScaleSetValue(SCMinGBs_SC_T1_1, GBADefaultSphereMeshRefinementLevel);
