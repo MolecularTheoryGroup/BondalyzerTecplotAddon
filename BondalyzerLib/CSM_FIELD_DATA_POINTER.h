@@ -15,9 +15,9 @@ public:
 
 	Boolean_t operator==(FieldDataPointer_c const & rhs) const;
 	FieldDataPointer_c & operator=(FieldDataPointer_c const & rhs);
-	double operator[](unsigned int i) const;
+	double operator[](int i) const;
 	double At(vec3 & Pt, VolExtentIndexWeights_s & VolInfo) const;
-	Boolean_t Write(unsigned int i, double const & Val) const;
+	Boolean_t Write(int i, double const & Val) const;
 	Boolean_t InitializeReadPtr(int ZoneNum, int VarNum);
 	Boolean_t InitializeWritePtr(int ZoneNum, int VarNum);
 	Boolean_t InitializeWritePtrFromArmaCube(arma::cube & InCube);
@@ -71,8 +71,8 @@ public:
 
 	Boolean_t operator==(FieldVecPointer_c const & rhs) const;
 	FieldVecPointer_c & operator=(FieldVecPointer_c const & rhs);
-	vec3 operator[](unsigned int i) const;
-	Boolean_t Write(unsigned int i, vec3 const & Vec) const;
+	vec3 operator[](int i) const;
+	Boolean_t Write(int i, vec3 const & Vec) const;
 	Boolean_t InitializeReadPtr(int ZoneNum, vector<int> const & VarNums);
 	Boolean_t InitializeWritePtr(int ZoneNum, vector<int> const & VarNums);
 	void Close();

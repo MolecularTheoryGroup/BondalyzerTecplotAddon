@@ -1485,6 +1485,21 @@ void FESurface_c::GenerateElemConnectivity(int numSharedNodes) {
 	}
 }
 
+void FESurface_c::GenerateNodeToElementList(){
+	m_NodeToElementList.resize(m_NumNodes);
+	for (int ni = 0; ni < m_NumNodes; ++ni){
+		for (int ei = 0; ei < m_NumElems; ++ei) {
+			auto const & e = m_ElemList[ei];
+			for (int ci = 0; ci < 3; ++ci){
+				if (e[ci] == ni){
+					m_NodeToElementList[ni].push_back(ei);
+					break;
+				}
+			}
+		}
+	}
+}
+
 Boolean_t FESurface_c::Setup(int InZoneNum,
 	int VolZoneNum,
 	vector<int> const & InXYZVarNums,
@@ -1492,7 +1507,7 @@ Boolean_t FESurface_c::Setup(int InZoneNum,
 	bool const CopyData)
 {
 	m_FEVolumeMade = (InZoneNum > 0
-		&& VolZoneNum > 0
+		&& (VolZoneNum > 0 || InIntVarNums.empty())
 		&& InZoneNum != VolZoneNum
 		&& TecUtilZoneIsFiniteElement(InZoneNum)
 		&& InXYZVarNums.size() == 3);
@@ -1506,7 +1521,7 @@ Boolean_t FESurface_c::Setup(int InZoneNum,
 			|| (ZoneType == ZoneType_FEQuad && m_NumNodesPerElem == 4));
 	}
 
-	if (m_FEVolumeMade){
+	if (m_FEVolumeMade && !InIntVarNums.empty()){
 		GetVolInfo(VolZoneNum, InXYZVarNums, FALSE, m_VolZoneInfo);
 	}
 
@@ -1522,8 +1537,10 @@ Boolean_t FESurface_c::Setup(int InZoneNum,
 		for (int i = 0; i < 3 && m_FEVolumeMade; ++i)
 			m_FEVolumeMade = m_XYZPtrs[i].InitializeReadPtr(InZoneNum, InXYZVarNums[i]);
 
-		for (int i = 0; i < m_NumIntVars && m_FEVolumeMade; ++i)
-			m_FEVolumeMade = m_IntVarPtrs[i].InitializeReadPtr(VolZoneNum, m_IntVarNums[i]);
+		if (!InIntVarNums.empty()) {
+			for (int i = 0; i < m_NumIntVars && m_FEVolumeMade; ++i)
+				m_FEVolumeMade = m_IntVarPtrs[i].InitializeReadPtr(VolZoneNum, m_IntVarNums[i]);
+		}
 	}
 
 
@@ -3301,18 +3318,32 @@ bool GetSphereOriginRadius(int SphereZoneNum, vec3 & Origin, double & Radius) {
 	}
 
 	Origin = (minXYZ + maxXYZ) * 0.5;
-	Radius = norm((maxXYZ - minXYZ) * 0.5);
+	Radius = (maxXYZ[0] - minXYZ[0]) * 0.5;
 
 	return true;
 }
 
 
-void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadius) {
+void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadius, bool ScaleByVar, int ScaleVarNum, double ScaleFactor, bool LogScale) {
 
 	vector<EntIndex_t> XYZVarNums(3);
 	TecUtilAxisGetVarAssignments(&XYZVarNums[0], &XYZVarNums[1], &XYZVarNums[2]);
 
 	int z = ZoneNum;
+
+	if (TecUtilZoneGetType(z) != ZoneType_FETriangle){
+		return;
+	}
+
+	double SphereVarMin, SphereVarMax, OldMin;
+	bool ShiftVal = false;
+	TecUtilDataValueGetMinMaxByZoneVar(z, ScaleVarNum, &SphereVarMin, &SphereVarMax);
+	if (LogScale && SphereVarMin < 1.0) {
+		SphereVarMax = 1.0 + (SphereVarMax - SphereVarMin);
+		OldMin = SphereVarMin;
+		SphereVarMin = 1.0;
+		ShiftVal = true;
+	}
 
 	char* ZoneNameCStr;
 	TecUtilZoneGetName(z, &ZoneNameCStr);
@@ -3339,7 +3370,8 @@ void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadi
 	string SphereName = AuxDataZoneGetItem(z, CSMAuxData.GBA.SourceNucleusName);
 	vector<int> ZoneNums;
 	for (int zi = z + 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
-		if ((AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin)
+		if (zi != ZoneNum
+			&& (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasin)
 			|| AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasin)
 			|| AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeTopoCageWedge))
 			&& AuxDataZoneItemMatches(zi, CSMAuxData.GBA.SourceNucleusName, SphereName))
@@ -3353,14 +3385,57 @@ void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadi
 		NewRadius *= OldRadius;
 	}
 
+	double rMin, rMax;
+
+	rMin = NewRadius - (NewRadius * ScaleFactor * 0.5);
+	rMax = NewRadius + (NewRadius * ScaleFactor * 0.5);
+
 	for (auto zi : ZoneNums) {
 		FieldVecPointer_c XYZPtr;
 		TecUtilDataLoadBegin();
 		XYZPtr.InitializeWritePtr(zi, XYZVarNums);
 		int NumNodes = XYZPtr.Size();
 
-		for (int i = 0; i < NumNodes; ++i) {
-			XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * NewRadius * 1.01);
+		bool DoScaleByVar = ScaleByVar;
+		FieldDataPointer_c ScaleVal;
+		FESurface_c Sphere;
+		if (DoScaleByVar && ScaleVarNum > 0 && ScaleFactor > 0.0) {
+			ScaleVal.InitializeReadPtr(zi, ScaleVarNum);
+			if (!ScaleVal.IsReady() || ScaleVal.ValueLocation() != ValueLocation_CellCentered){
+				DoScaleByVar = false;
+			}
+			Sphere = FESurface_c(zi, XYZVarNums);
+		}
+
+		if (DoScaleByVar) {
+			Sphere.GenerateNodeToElementList();
+			auto NodeToElemList = Sphere.GetNodeToElementListPtr();
+
+			for (int i = 0; i < NumNodes; ++i){
+				double val = 0.0;
+				if (!NodeToElemList->at(i).empty()) {
+					for (auto const & ei : NodeToElemList->at(i)) {
+						val += ScaleVal[ei];
+					}
+					val /= NodeToElemList->at(i).size();
+				}
+				else{
+					val = (SphereVarMin + SphereVarMax) * 0.5;
+				}
+				double r;
+				if (LogScale){
+					r = rMin + (log(ShiftVal ? 1.0 + (val - OldMin) : val) - log(SphereVarMin)) / (log(SphereVarMax) - log(SphereVarMin)) * (rMax - rMin);
+				}
+				else {
+					r = rMin + (val - SphereVarMin) / (SphereVarMax - SphereVarMin) * (rMax - rMin);
+				}
+				XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * r * 1.01);
+			}
+		}
+		else {
+			for (int i = 0; i < NumNodes; ++i) {
+				XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * NewRadius * 1.01);
+			}
 		}
 		TecUtilDataLoadEnd();
 	}
@@ -3370,8 +3445,46 @@ void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadi
 	XYZPtr.InitializeWritePtr(z, XYZVarNums);
 	int NumNodes = XYZPtr.Size();
 
-	for (int i = 0; i < NumNodes; ++i) {
-		XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * NewRadius);
+	bool DoScaleByVar = ScaleByVar;
+	FieldDataPointer_c ScaleVal;
+	FESurface_c Sphere;
+	if (DoScaleByVar && ScaleVarNum > 0 && ScaleFactor > 0.0) {
+		ScaleVal.InitializeReadPtr(z, ScaleVarNum);
+		if (!ScaleVal.IsReady() || ScaleVal.ValueLocation() != ValueLocation_CellCentered) {
+			DoScaleByVar = false;
+		}
+		Sphere = FESurface_c(z, XYZVarNums);
+	}
+
+	if (DoScaleByVar) {
+		Sphere.GenerateNodeToElementList();
+		auto NodeToElemList = Sphere.GetNodeToElementListPtr();
+
+		for (int i = 0; i < NumNodes; ++i) {
+			double val = 0.0;
+			if (!NodeToElemList->at(i).empty()) {
+				for (auto const & ei : NodeToElemList->at(i)) {
+					val += ScaleVal[ei];
+				}
+				val /= NodeToElemList->at(i).size();
+			}
+			else {
+				val = (SphereVarMin + SphereVarMax) * 0.5;
+			}
+			double r;
+			if (LogScale) {
+				r = rMin + (log(ShiftVal ? 1.0 + (val - OldMin) : val) - log(SphereVarMin)) / (log(SphereVarMax) - log(SphereVarMin)) * (rMax - rMin);
+			}
+			else {
+				r = rMin + (val - SphereVarMin) / (SphereVarMax - SphereVarMin) * (rMax - rMin);
+			}
+			XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * r);
+		}
+	}
+	else {
+		for (int i = 0; i < NumNodes; ++i) {
+			XYZPtr.Write(i, Origin + normalise(XYZPtr[i] - Origin) * NewRadius);
+		}
 	}
 	TecUtilDataLoadEnd();
 }

@@ -110,6 +110,8 @@ public:
 	void GenerateElemMidpoints();
 	void GetNodeConnectivityFromTecplot();
 	void GenerateElemConnectivity(int numSharedNodes = 1);
+	void GenerateNodeToElementList();
+	vector<vector<int> > const * GetNodeToElementListPtr() const { return &m_NodeToElementList; }
 	vector<vector<LgIndex_t> > const * GetNodeConnectivityListPtr() const { return &m_NodeConnectivityList; }
 	vector<vector<LgIndex_t> > const * GetElemConnectivityListPtr() const { return &m_ElemConnectivityList; }
 	vector<vector<int> > const * GetElemListPtr() const { return &m_ElemList; }
@@ -231,7 +233,8 @@ private:
 	vector<double> m_MaxNeighborNodeDistSqr,
 		m_MinNeighborNodeDistSqr;
 	vector<vec3> m_RefinedXYZList;
-	vector<vector<int> > m_ElemList;
+	vector<vector<int> > m_ElemList,
+		m_NodeToElementList;
 
 	vector<FieldDataPointer_c> m_XYZPtrs;
 
@@ -291,4 +294,4 @@ private:
 	FESurface_c *m_Vol = nullptr;
 };
 
-void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadius);
+void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadius, bool ScaleByVar = false, int ScaleVarNum = -1, double ScaleFactor = 1.0, bool LogScale = true);

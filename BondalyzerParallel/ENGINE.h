@@ -219,3 +219,5 @@ void GenerateGUIBondsGetUserInfo();
 void DrawRepresentationQuadricsGetUserInfo();
 
 void ResizeSpheresGetUserInfo();
+
+void FindContourCurvaturePointsGetUserInfo();

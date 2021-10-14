@@ -42,6 +42,7 @@ using std::make_pair;
 using namespace arma;
 using namespace tecplot::toolbox;
 
+bool GBA_REINIT_DIALOG = true;
 
 vector<Text_ID> CPLabelIDs;
 
@@ -688,7 +689,7 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	*/
 	int NumSelected = -1;
 	int *SelectedNums;
-	if (TecGUIListGetItemCount(MLSelCPs_MLST_T1_1) > 0)
+	if (GBA_REINIT_DIALOG && TecGUIListGetItemCount(MLSelCPs_MLST_T1_1) > 0)
 		TecGUIListGetSelectedItems(MLSelCPs_MLST_T1_1, &SelectedNums, &NumSelected);
 	TecGUIListDeleteAllItems(MLSelCPs_MLST_T1_1);
 
@@ -808,7 +809,7 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 
 
 	NumSelected = -1;
-	if (TecGUIListGetItemCount(MLSelVars_MLST_T1_1) > 0)
+	if (GBA_REINIT_DIALOG && TecGUIListGetItemCount(MLSelVars_MLST_T1_1) > 0)
 		TecGUIListGetSelectedItems(MLSelVars_MLST_T1_1, &SelectedNums, &NumSelected);
 
 	TecGUIListDeleteAllItems(MLSelVars_MLST_T1_1);

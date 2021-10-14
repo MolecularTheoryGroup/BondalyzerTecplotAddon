@@ -239,6 +239,20 @@ static void STDCALL SymmetryMirrorCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL FindContourCurvaurePointsCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		FindContourCurvaturePointsGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL TranslationalCopyCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -874,6 +888,10 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		'\0',
 		GradientPathToolCallback);
 
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Find contour curvature max/min/inflection points").c_str(),
+		'\0',
+		FindContourCurvaurePointsCallback);
 	
 
 	TecUtilMenuAddOption("MTG_Utilities",

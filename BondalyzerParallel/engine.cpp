@@ -50,6 +50,11 @@
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multimin.h>
 
+#include <gsl/gsl_bspline.h>
+#include <gsl/gsl_multifit.h>
+#include <gsl/gsl_statistics.h>
+#include <gsl/gsl_rng.h>
+
 #include <gsl/gsl_deriv.h>
 
 #include "CSM_DATA_TYPES.h"
@@ -70,6 +75,7 @@
 #include "ENGINE.h"
 
 #include <armadillo>
+#include "gsl/gsl_vector_double.h"
 using namespace arma;
 using namespace tecplot::toolbox;
 
@@ -4681,6 +4687,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		Path2 = Path1;
 		Path2++;
 		std::deque<vec3> GPMidPtDeque;
+		std::set<int> FoundSaddleCPNums;
 
 
 		DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum], AddOnID, Time1);
@@ -4692,7 +4699,8 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 
 		while (DoContinue && Path2 != GPList.end()) {
-			DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum], AddOnID, Time1);
+			TermRadius = 0.01 * MinCPDist;
+			DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum] + " found " + to_string(FoundSaddleCPNums.size()) + " saddle(s)", AddOnID, Time1);
 			if (Path2->IsSGP);
 			{
 				// It's possible that a bond CP will, against the odds, be found when none of its
@@ -4821,7 +4829,15 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				else {
 					// Path1 and Path2 deviate, so seed a GP at the deviation midpoint and see where it goes.
 
-					GP.GP.SetupGradPath(GPMidPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &SaddleTermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+					// Get closest bond point to deviation point, then use the closest CP distance to that point to adjust the termination radius
+					int CloseCPInd;
+					double CloseCPDist;
+					vec ClosePt = AllCPs.ClosestPoint(GPMidPt, CloseCPInd, CloseCPDist);
+					double TmpMinDist = AllCPs.GetMinCPDist(CloseCPInd);
+					double TmpSaddleTermRadius = TmpMinDist * 0.1;
+					TermRadius = TmpSaddleTermRadius;
+
+					GP.GP.SetupGradPath(GPMidPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 					GP.GP.SetTerminalCPTypeNums(GPTerminalCPTypeNums);
 					GP.GP.SetStartEndCPNum(CurrentCPNum, 0);
 					GP.GP.Seed(false);
@@ -4832,13 +4848,27 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 					GP.CPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
 					GP.CPType = AllCPs.GetTypeFromTotOffset(GP.CPNum);
 
-					// Do distance check to see if path skimmed saddle point (yes, the GP should have terminated at the saddle if this were the case, but here we are)
-// 					for (int jCP = 0; jCP < AllCPs.NumCPs(GPTerminalCPSaddleTypeNum); ++jCP){
-// 						if (Distance(GP.GP.ClosestPoint(AllCPs.GetXYZ(GPTerminalCPSaddleTypeNum, jCP)), AllCPs.GetXYZ(GPTerminalCPSaddleTypeNum, jCP)) <= SaddleTermRadius * 2.0){
-// 							GP.CPNum = AllCPs.GetTotOffsetFromTypeNumOffset(GPTerminalCPSaddleTypeNum, jCP);
-// 							GP.CPType = SaddleCPTermType;
-// 							break;
-// 						}
+ 					// Do distance check to see if path skimmed saddle point
+// 					int ClosePtNum = GP.GP.GetCount() - 1;
+// 					CloseCPInd = -1;
+// 					double ClosePtDist;
+//   					for (int jCP = 0; jCP < AllCPs.NumCPs(GPTerminalCPSaddleTypeNum); ++jCP){
+// 						int TmpClosePtNum;
+// 						auto TmpDist = Distance(GP.GP.ClosestPoint(AllCPs.GetXYZ(GPTerminalCPSaddleTypeNum, jCP), TmpClosePtNum), AllCPs.GetXYZ(GPTerminalCPSaddleTypeNum, jCP));
+// 						if (TmpDist <= TmpSaddleTermRadius) {
+// 							int TmpCPNum = AllCPs.GetTotOffsetFromTypeNumOffset(GPTerminalCPSaddleTypeNum, jCP);
+// 							if (!FoundSaddleCPNums.count(TmpCPNum) && TmpClosePtNum < ClosePtNum) {
+// 								CloseCPInd = TmpCPNum;
+// 								ClosePtNum = TmpClosePtNum;
+// 								ClosePtDist = TmpDist;
+// 							}
+//   						}
+//   					}
+// 					if (CloseCPInd >= 0){
+// 						GP.CPNum = CloseCPInd;
+// 						GP.CPType = SaddleCPTermType;
+// 						GP.GP = GP.GP.SubGP(0, ClosePtNum);
+// 						GP.GP.PointAppend(AllCPs.GetXYZ(CloseCPInd), AllCPs.GetRho(CloseCPInd));
 // 					}
 					
 
@@ -5016,7 +5046,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 						double DistStartToSeed = Distance(GPMidPt, CPPosition),
 							DistSeedToEnd = Distance(GPMidPt, GP.GP[-1]);
 
-						double DistSeedToStartEndRatioCutoff = 0.02; // this is the maximum value allowed of (DistSeedToEnd / DistStartToSeed), so if set to 0.1, then DistStartToSeed must be 10 times larger than DistSeedToEnd, that is, we must be much closer to the terminating saddle than to the originating one.
+						double DistSeedToStartEndRatioCutoff = 0.2; // this is the maximum value allowed of (DistSeedToEnd / DistStartToSeed), so if set to 0.25, then DistStartToSeed must be 4 times larger than DistSeedToEnd, that is, we must be much closer to the terminating saddle than to the originating one.
 
 						double DistSeedToStartEndRatio;
 
@@ -5027,10 +5057,11 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 							DistSeedToStartEndRatio = DistSeedToStartEndRatioCutoff + 1.;
 						}
 
-						if (DistSeedToStartEndRatio > DistSeedToStartEndRatioCutoff) {
+						if (DistSeedToStartEndRatio > DistSeedToStartEndRatioCutoff
+							|| FoundSaddleCPNums.count(GP.CPNum)) {
 							// Cutoff is exeeded, so redo the path so that it won't terminate at the saddle
 							GP.GP.Clear();
-							GP.GP.SetupGradPath(GPMidPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &SaddleTermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+							GP.GP.SetupGradPath(GPMidPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 							GP.GP.SetTerminalCPTypeNum(GPTerminalCPTypeNum);
 							GP.GP.SetStartEndCPNum(CurrentCPNum, 0);
 							GP.GP.Seed(false);
@@ -5053,8 +5084,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 							// Do a binary search on either side of the min to get larger values;
 							// 
 
-
-							GradPath_c GPSaddle(vec3(), GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &SaddleTermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+							GradPath_c GPSaddle(vec3(), GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &TermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 							GPSaddle.SetTerminalCPTypeNum(GPTerminalCPSaddleTypeNum);
 							GPSaddle.SetStartEndCPNum(CurrentCPNum, 0);
 							int Iter = 0, MaxIter = 10;
@@ -5120,6 +5150,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 								// 							GPSaddle.SetTermPoint(CPPosition);
 
 								if (MinLengthGPBetweenPoints(GPSaddle, StartPoints, bMin)) {
+									FoundSaddleCPNums.insert(GP.CPNum);
 									// Minimum length GP found.
 									// Combine with midpoint GP from Path1 and Path2 and put into GPList.
 									vec3 bMinPt = Pts[0] * bMin + Pts[1] * (1.0 - bMin);
@@ -12557,11 +12588,15 @@ void ResizeSpheresReturnUserInfo(bool const GuiSuccess,
 	int fNum = 0;
 
 	auto ZoneNums = Fields[fNum++].GetReturnIntVec();
+	auto ScaleByVar = Fields[fNum++].GetReturnBool();
+	auto ScaleVarNum = Fields[fNum++].GetReturnInt();
+	auto ScaleFactor = Fields[fNum++].GetReturnDouble();
+	auto LogScale = Fields[fNum++].GetReturnBool();
 	auto SizeFactor = Fields[fNum++].GetReturnDouble();
 	auto RelativeSize = Fields[fNum++].GetReturnBool();
 
 	for (auto z : ZoneNums) {
-		ResizeSphere(z, SizeFactor, !RelativeSize);
+		ResizeSphere(z, SizeFactor, !RelativeSize, ScaleByVar, ScaleVarNum, ScaleFactor, LogScale);
 	}
 
 	TecUtilRedrawAll(TRUE);
@@ -12573,9 +12608,490 @@ void ResizeSpheresGetUserInfo() {
 
 	vector<GuiField_c> Fields = {
 		GuiField_c(Gui_ZoneSelectMulti, "Sphere zones", CSMZoneName.FullVolume.substr(0, 10)),
+		GuiField_c(Gui_Toggle, "Scale radius with variable", "0"),
+		GuiField_c(Gui_VarSelect, "Radius scale variable", "INS: Electron Density"),
+		GuiField_c(Gui_Double, "Radius scale factor", "1.0"),
+		GuiField_c(Gui_Toggle, "Log scaling", "1.0"),
 		GuiField_c(Gui_Double, "New sphere size", "1.0"),
 		GuiField_c(Gui_Toggle, "Relative to current size", "0")
 	};
 
 	CSMGui("Resize sphere zones", Fields, ResizeSpheresReturnUserInfo, AddOnID);
+}
+
+
+void FindContourCurvaturePoints(vector<int> ZoneNums, vector<int> const & XYZVarNums, bool UseCurrentContours){
+	if (UseCurrentContours){
+		int OldNumZones = TecUtilDataSetGetNumZones();
+		TecUtilMacroExecuteCommand("$!CREATECONTOURLINEZONES CONTLINECREATEMODE = ONEZONEPERINDEPENDENTPOLYLINE");
+		int NewNumZones = TecUtilDataSetGetNumZones();
+		ZoneNums.clear();
+		ZoneNums.reserve(NewNumZones - OldNumZones - 1);
+		for (int z = OldNumZones + 1; z <= NewNumZones; ++z){
+			ZoneNums.push_back(z);
+		}
+	}
+	vector<vec3> ZGCPoints, MaxCurvaturePoints, MinCurvaturePoints;
+	for (auto const & z : ZoneNums){
+		bool IsOk = TecUtilZoneIsOrdered(z);
+		int IJK[3];
+		TecUtilZoneGetIJK(z, &IJK[0], &IJK[1], &IJK[2]);
+		IsOk = IsOk && IJK[1] == 1 && IJK[2] == 1;
+		FieldVecPointer_c XYZPtr;
+		XYZPtr.InitializeReadPtr(z, XYZVarNums);
+				// these zones are i-ordered and describe a closed path, so the last point and the first point should be the same
+		IsOk = IsOk && approx_equal(XYZPtr[0], XYZPtr[-1], "absdiff", 1e-14);
+
+		if (IsOk){
+
+			vector<vec3> ZGCPointsLocal, MaxCurvaturePointsLocal, MinCurvaturePointsLocal;
+
+			int N = XYZPtr.Size();
+			auto XYZRhoVarNums = XYZVarNums;
+			XYZRhoVarNums.push_back(XYZVarNums[0]);
+			GradPath_c Path(z, XYZRhoVarNums, AddOnID);
+			Path = Path.SubGP(0, -2);
+			Path.Resample((3 * N) / 4, GPResampleMethod_Linear);
+			N = Path.GetCount();
+
+			// first get contour plane defined by three "distant" points
+			vec3 vPlane = cross(Path.XYZAt(N / 3) - Path.XYZAt(0), Path.XYZAt(N * 2 / 3) - Path.XYZAt(0));
+
+			// setup basis spline fit
+// 			const size_t n_buffer = MIN(10, N - 2);
+// 			const size_t k = 4;
+// 			const size_t n = N + 2 * n_buffer;
+// 			const size_t ncoeffs = n / 8;
+// 			const size_t nbreak = ncoeffs - 2;
+// 			size_t i, j;
+// 			gsl_bspline_workspace *bw, *xw, *yw, *zw;
+// 			gsl_vector *B;
+// 			double dy;
+// 			gsl_rng *r;
+// 			gsl_vector *c, *xc, *yc, *zc, *w, *wx, *wy, *wz;
+// 			gsl_vector *arclen, *curvature, *x, *y, *z;
+// 			gsl_matrix *X, *cov, *xcov, *ycov, *zcov;
+// 			gsl_multifit_linear_workspace *mw;
+// 			double chisq, Rsq, dof, tss;
+// 			vector<double> arclencheck(n);
+// 
+// 			gsl_rng_env_setup();
+// 			r = gsl_rng_alloc(gsl_rng_default);
+// 
+// 			/* allocate a cubic bspline workspace */
+// 
+// 			bw = gsl_bspline_alloc(k, nbreak);
+// 			xw = gsl_bspline_alloc(k, nbreak);
+// 			yw = gsl_bspline_alloc(k, nbreak);
+// 			zw = gsl_bspline_alloc(k, nbreak);
+// 			B = gsl_vector_alloc(ncoeffs);
+// 
+// 			arclen = gsl_vector_alloc(n);
+// 			curvature = gsl_vector_alloc(n);
+// 			x = gsl_vector_alloc(n);
+// 			y = gsl_vector_alloc(n);
+// 			z = gsl_vector_alloc(n);
+// 			X = gsl_matrix_alloc(n, ncoeffs);
+// 			c = gsl_vector_alloc(ncoeffs);
+// 			xc = gsl_vector_alloc(ncoeffs);
+// 			yc = gsl_vector_alloc(ncoeffs);
+// 			zc = gsl_vector_alloc(ncoeffs);
+// 			w = gsl_vector_alloc(n);
+// 			wx = gsl_vector_alloc(n);
+// 			wy = gsl_vector_alloc(n);
+// 			wz = gsl_vector_alloc(n);
+// 			cov = gsl_matrix_alloc(ncoeffs, ncoeffs);
+// 			xcov = gsl_matrix_alloc(ncoeffs, ncoeffs);
+// 			ycov = gsl_matrix_alloc(ncoeffs, ncoeffs);
+// 			zcov = gsl_matrix_alloc(ncoeffs, ncoeffs);
+// 			mw = gsl_multifit_linear_alloc(n, ncoeffs);
+
+
+
+			// Now move along the contour checking the sign of curvature. 
+			// Each time the sign flips, add a new point
+			// 
+			int LastSign;
+			bool FirstLoop = true;
+			vector<double> C(N), CSign(N), ArcLen(N);
+			ArcLen[0] = 0.0;
+			double StartArcLength;
+			for (int ni = 0; ni < N; ++ni) {
+				int nj = (ni + 1) % N,
+					nk = (ni + 2) % N;
+
+				vec3 v1 = Path.XYZAt(nj) - Path.XYZAt(ni),
+					v2 = Path.XYZAt(nk) - Path.XYZAt(nj),
+					vNormal = cross(v1, v2);
+				int TmpSign = SIGN(dot(vPlane, vNormal));
+				C[nj] = VectorAngle(v1, v2) / ((norm(v1) + norm(v2)) * 0.5);
+				CSign[nj] = C[nj] * double(TmpSign);
+				if (nj != 0) {
+					ArcLen[nj] = ArcLen[nj - 1] + norm(v1);
+				}
+				else{
+					StartArcLength = ArcLen[N-1] + norm(v1);
+				}
+				// 				if (FirstLoop){
+				// 					LastSign = TmpSign;
+				// 					FirstLoop = false;
+				// 				}
+				// 				else if (TmpSign != LastSign){
+				// 					ZGCPointsLocal.push_back((Path.XYZAt(ni) + Path.XYZAt(nj)) * 0.5);
+				// 					LastSign = TmpSign;
+				// 				}
+			}
+
+			/* this is the data to be fitted */
+
+// 			for (i = 0; i < n; ++i)
+// 			{
+// 				int ii = i - n_buffer;
+// 				if (ii < 0) {
+// 					auto pt = Path.XYZAt(N + ii);
+// 					gsl_vector_set(x, i, pt[0]);
+// 					gsl_vector_set(y, i, pt[1]);
+// 					gsl_vector_set(z, i, pt[2]);
+// 					gsl_vector_set(arclen, i, ArcLen[N + ii] - StartArcLength);
+// 					gsl_vector_set(curvature, i, CSign[N + ii]);
+// 				}
+// 				else if (ii >= N){
+// 					auto pt = Path.XYZAt(ii % N);
+// 					gsl_vector_set(x, i, pt[0]);
+// 					gsl_vector_set(y, i, pt[1]);
+// 					gsl_vector_set(z, i, pt[2]);
+// 					gsl_vector_set(arclen, i, ArcLen[ii % N] + StartArcLength);
+// 					gsl_vector_set(curvature, i, CSign[ii % N]);
+// 				}
+// 				else {
+// 					auto pt = Path.XYZAt(ii);
+// 					gsl_vector_set(x, i, pt[0]);
+// 					gsl_vector_set(y, i, pt[1]);
+// 					gsl_vector_set(z, i, pt[2]);
+// 					gsl_vector_set(arclen, i, ArcLen[ii]);
+// 					gsl_vector_set(curvature, i, CSign[ii]);
+// 
+// 					double sigma = CSign[ii] * 0.1;
+// 					gsl_vector_set(w, i, 1.0 / (sigma * sigma));
+// 					sigma = pt[0] * 0.1;
+// 					gsl_vector_set(wx, i, 1.0 / (sigma * sigma));
+// 					sigma = pt[1] * 0.1;
+// 					gsl_vector_set(wy, i, 1.0 / (sigma * sigma));
+// 					sigma = pt[2] * 0.1;
+// 					gsl_vector_set(wz, i, 1.0 / (sigma * sigma));
+// 				}
+// 				
+// 				arclencheck[i] = gsl_vector_get(arclen, i);
+// 			}
+// 
+// 			/* use uniform breakpoints on [0, 15] */
+// 			gsl_bspline_knots_uniform(ArcLen[N - n_buffer] - StartArcLength, StartArcLength + ArcLen[n_buffer], bw);
+// 			gsl_bspline_knots_uniform(ArcLen[N - n_buffer] - StartArcLength, StartArcLength + ArcLen[n_buffer], xw);
+// 			gsl_bspline_knots_uniform(ArcLen[N - n_buffer] - StartArcLength, StartArcLength + ArcLen[n_buffer], yw);
+// 			gsl_bspline_knots_uniform(ArcLen[N - n_buffer] - StartArcLength, StartArcLength + ArcLen[n_buffer], zw);
+// 
+// 			/* construct the fit matrix X */
+// 			for (i = 0; i < n; ++i)
+// 			{
+// 				double xi = gsl_vector_get(arclen, i);
+// 
+// 				/* compute B_j(xi) for all j */
+// 				gsl_bspline_eval(xi, B, bw);
+// 
+// 				/* fill in row i of X */
+// 				for (j = 0; j < ncoeffs; ++j)
+// 				{
+// 					double Bj = gsl_vector_get(B, j);
+// 					gsl_matrix_set(X, i, j, Bj);
+// 				}
+// 			}
+// 
+// 			/* do the fit */
+// 			gsl_multifit_wlinear(X, w, curvature, c, cov, &chisq, mw);
+// 			gsl_multifit_wlinear(X, wx, x, xc, xcov, &chisq, mw);
+// 			gsl_multifit_wlinear(X, wy, y, yc, ycov, &chisq, mw);
+// 			gsl_multifit_wlinear(X, wz, z, zc, zcov, &chisq, mw);
+// 
+// 			dof = n - ncoeffs;
+// 			tss = gsl_stats_wtss(w->data, 1, curvature->data, 1, curvature->size);
+// 			Rsq = 1.0 - chisq / tss;
+// 
+// 
+// 			// Now generate values of first and second derivative of curvature
+// 			// Where first deriv goes to 0 we have max/min, and where second deriv goes to zero we have inflection points
+// 
+// 			int CheckNumPoints = N * 10;
+// 			vector<double> Csmooth(CheckNumPoints), Csmoothcheck(CheckNumPoints), Csmooth1(CheckNumPoints), Cprime(CheckNumPoints), Cdoubleprime(CheckNumPoints);
+// 			double xStep = (arclencheck.back() - arclencheck.front() - 0.5) / double(CheckNumPoints - 1);
+// 			gsl_matrix *dB;
+// 			dB = gsl_matrix_alloc(nbreak + k - 2, 3);
+// 			gsl_bspline_deriv_workspace *dw;
+// 			dw = gsl_bspline_deriv_alloc(k);
+// 			vector<vec3> outputs(CheckNumPoints);
+// 			for (i = 0; i < CheckNumPoints; ++i){
+// 				double xi = arclencheck.front() + double(i) * xStep, yi, yerr;
+// 				// get smoothed xyz values
+// 				gsl_bspline_eval(xi, B, xw);
+// 				gsl_multifit_linear_est(B, xc, xcov, &outputs[i][0], &yerr);
+// 				gsl_bspline_eval(xi, B, yw);
+// 				gsl_multifit_linear_est(B, yc, ycov, &outputs[i][1], &yerr);
+// 				gsl_bspline_eval(xi, B, zw);
+// 				gsl_multifit_linear_est(B, zc, zcov, &outputs[i][2], &yerr);
+// 
+// 				for (int dir = 0; dir < 3; ++dir){
+// 					if (isnan(outputs[i][dir]) || abs(outputs[i][dir]) > 1e10){
+// 						outputs[i][dir] = 0.0;
+// 					}
+// 				}
+// 				
+// 				// smoothed curvature
+// 				gsl_bspline_eval(xi, B, bw);
+// 				gsl_multifit_linear_est(B, c, cov, &Csmooth[i], &yerr);
+// 
+// 				gsl_bspline_deriv_eval(xi, 2, dB, bw, dw);
+// 				// smoothed curvature again, but from the deriv function as the 0-th derivative (sanity check)
+// 				for (j = 0; j < nbreak + k - 2; ++j) {
+// 					gsl_vector_set(B, j, gsl_matrix_get(dB, j, 0));
+// 				}
+// 				gsl_multifit_linear_est(B, c, cov, &Csmoothcheck[i], &yerr);
+// 
+// 				// smoothed first deriv of curvature
+// 				for (j = 0; j < nbreak + k - 2; ++j) {
+// 					gsl_vector_set(B, j, gsl_matrix_get(dB, j, 1));
+// 				}
+// 				gsl_multifit_linear_est(B, c, cov, &Cprime[i], &yerr);
+// 
+// 				// smoothed second deriv
+// 				for (j = 0; j < nbreak + k - 2; ++j) {
+// 					gsl_vector_set(B, j, gsl_matrix_get(dB, j, 2));
+// 				}
+// 				gsl_multifit_linear_est(B, c, cov, &Cdoubleprime[i], &yerr);
+// 			}
+// 			gsl_bspline_deriv_free(dw);
+// 			gsl_matrix_free(dB);
+// 
+// 			int newzonenum = SaveVec3VecAsScatterZone(outputs, "smoothed curve");
+// 			SetZoneStyle({ newzonenum }, ZoneStyle_Path, Green_C, 0.5);
+
+			// Now find in
+
+// 			fprintf(stderr, "chisq/dof = %e, Rsq = %f\n",
+// 				chisq / dof, Rsq);
+
+// 			printf("\n\n");
+
+			/* output the smoothed curve */
+// 			{
+// 				double xi, yi, yerr;
+// 
+// 				for (xi = 0.0; xi < 15.0; xi += 0.1)
+// 				{
+// 					gsl_bspline_eval(xi, B, bw);
+// 					gsl_multifit_linear_est(B, c, cov, &yi, &yerr);
+// 					printf("%f %f\n", xi, yi);
+// 				}
+// 			}
+// 
+// 			gsl_rng_free(r);
+// 			gsl_bspline_free(bw);
+// 			gsl_bspline_free(xw);
+// 			gsl_bspline_free(yw);
+// 			gsl_bspline_free(zw);
+// 			gsl_vector_free(B);
+// 			gsl_vector_free(arclen);
+// 			gsl_vector_free(curvature);
+// 			gsl_vector_free(x);
+// 			gsl_vector_free(y);
+// 			gsl_vector_free(z);
+// 			gsl_matrix_free(X);
+// 			gsl_vector_free(c);
+// 			gsl_vector_free(w);
+// 			gsl_matrix_free(cov);
+// 			gsl_vector_free(xc);
+// 			gsl_vector_free(wx);
+// 			gsl_matrix_free(xcov);
+// 			gsl_vector_free(yc);
+// 			gsl_vector_free(wy);
+// 			gsl_matrix_free(ycov);
+// 			gsl_vector_free(zc);
+// 			gsl_vector_free(wz);
+// 			gsl_matrix_free(zcov);
+// 			gsl_multifit_linear_free(mw);
+
+			vector<double> AvgLocalCurvature(N, 0.0);
+			int avgCheckPts = 5;
+			for (int ni = 0; ni < N; ++ni) {
+				for (int i = 0; i < avgCheckPts * 2 + 1; ++i){
+					int ii = ni - avgCheckPts + i;
+					if (ii < 0) {
+						ii = N + ii;
+					}
+					else if (ii >= N){
+						ii = ii % N;
+					}
+					AvgLocalCurvature[ni] += CSign[ii];
+				}
+				AvgLocalCurvature[ni] /= 2 * avgCheckPts + 1;
+			}
+
+			// Now get min/max curvature points
+			vector<int> ZGCPointInds;
+			for (int ni = 0; ni < N; ++ni) {
+				bool IsInflect = ABS(AvgLocalCurvature[ni]) < 0.1;
+
+				for (int i = 1; i < 2 && IsInflect; ++i) {
+					int njp = (ni + i) % N;
+					if (njp == 0) njp++;
+
+					int njm = ni - i;
+					if (njm < 0) {
+						njm = N + njm;
+					}
+
+// 					IsInflect = (CSign[njm] > 0.0 && CSign[njp] < 0.0) || (CSign[njm] < 0.0 && CSign[njp] > 0.0);
+					IsInflect = (ABS(AvgLocalCurvature[njm]) > ABS(AvgLocalCurvature[ni]) && ABS(AvgLocalCurvature[njp]) > ABS(AvgLocalCurvature[ni]));
+				}
+				if (IsInflect) {
+					ZGCPointsLocal.push_back(Path.XYZAt(ni));
+					ZGCPointInds.push_back(ni);
+				}
+			}
+
+// 			// combine nearby inflection points separated by flat regions
+// 			for (auto const & i : ZGCPointInds) {
+// 				ZGCPointsLocal.push_back(Path[i]);
+// 			}
+			for (int i = 0; i < ZGCPointInds.size(); ++i){
+				int j = (i + 1) % ZGCPointInds.size(),
+					ni = ZGCPointInds[i],
+					nj = ZGCPointInds[j];
+				if (j == i){
+					break;
+				}
+				double TmpDist = Distance(Path[ni], Path[nj]);
+				if (TmpDist < 0.5){
+					double curvesum = 0.0, tmplength = Distance(Path[MIN(ni, nj)], Path[(MIN(ni, nj) + 1) % N]);
+					if (abs(ni - nj) == 1){
+						ZGCPointsLocal[i] == (Path[ni] + Path[nj]) * 0.5;
+						ZGCPointsLocal.erase(ZGCPointsLocal.begin() + j);
+						ZGCPointInds.erase(ZGCPointInds.begin() + j);
+						i--;
+					}
+					else {
+						for (int ii = MIN(ni, nj) + 1; ii < MAX(ni, nj); ++ii) {
+							curvesum += CSign[ii];
+							tmplength += Distance(Path[ii], Path[(ii + 1) % N]);
+						}
+						if (curvesum < 0.1) {
+							tmplength *= 0.5;
+							int ii = ni;
+							double tmplength2 = 0.0;
+							while (tmplength2 < tmplength) {
+								tmplength2 += Distance(Path[ii], Path[(ii + 1) % N]);
+								ii++;
+							}
+							ZGCPointsLocal[i] = (Path[ii] + Path[ii-1]) * 0.5;
+							ZGCPointInds[i] = ii;
+							ZGCPointsLocal.erase(ZGCPointsLocal.begin() + j);
+							ZGCPointInds.erase(ZGCPointInds.begin() + j);
+							i--;
+						}
+					}
+				}
+			}
+
+			if (ZGCPointsLocal.size() % 2 == 0) {
+				ZGCPoints.insert(ZGCPoints.end(), ZGCPointsLocal.begin(), ZGCPointsLocal.end());
+			}
+			int NumCheckPts = N / 4;
+			vector<vec3> maxLocal, minLocal;
+			double minmaxcheckscale = 1.;
+			for (int ni = 0; ni < N; ++ni){
+
+				bool IsMax = true;
+				for (int i = 1; i < NumCheckPts && IsMax; ++i){
+					int njp = (ni + i) % N;
+
+					int njm = ni - i;
+					if (njm < 0){
+						njm = N + njm;
+					}
+
+					IsMax = (AvgLocalCurvature[njm] < AvgLocalCurvature[ni] * minmaxcheckscale && AvgLocalCurvature[ni] * minmaxcheckscale > AvgLocalCurvature[njp]);
+// 					IsMax = (C[njm] < C[ni] * minmaxcheckscale && C[ni] * minmaxcheckscale > C[njp]);
+				}
+				if (IsMax){
+					maxLocal.push_back(Path.XYZAt(ni));
+				}
+
+				bool IsMin = true;
+				for (int i = 1; i < NumCheckPts && IsMin; ++i) {
+					int njp = (ni + i) % N;
+
+					int njm = ni - i;
+					if (njm < 0) {
+						njm = N + njm;
+					}
+
+					IsMin = (AvgLocalCurvature[njm] * minmaxcheckscale > AvgLocalCurvature[ni] && AvgLocalCurvature[ni] < AvgLocalCurvature[njp] * minmaxcheckscale);
+// 					IsMin = (C[njm] * minmaxcheckscale > C[ni] && C[ni] < C[njp] * minmaxcheckscale);
+				}
+				if (IsMin) {
+					minLocal.push_back(Path.XYZAt(ni));
+				}
+			}
+
+			if (!maxLocal.empty() && !minLocal.empty()){
+				MaxCurvaturePoints.insert(MaxCurvaturePoints.end(), maxLocal.begin(), maxLocal.end());
+				MinCurvaturePoints.insert(MinCurvaturePoints.end(), minLocal.begin(), minLocal.end());
+			}
+
+		}
+	}
+
+	if (!ZGCPoints.empty()){
+		SaveVec3VecAsScatterZone(ZGCPoints, "Curvature inflection points", Purple_C);
+	}
+	if (!MaxCurvaturePoints.empty()) {
+		SaveVec3VecAsScatterZone(MaxCurvaturePoints, "Maximum curvature points", Red_C);
+	}
+	if (!MinCurvaturePoints.empty()) {
+		SaveVec3VecAsScatterZone(MinCurvaturePoints, "Minimum curvature points", Blue_C);
+	}
+
+	if (UseCurrentContours && !ZoneNums.empty()){
+		Set DeleteZones;
+		for(auto const & z : ZoneNums){
+			DeleteZones += z;
+		}
+		TecUtilZoneDelete(DeleteZones.getRef());
+	}
+	TecUtilRedrawAll(TRUE);
+}
+
+void FindContourCurvaturePointsReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields)
+{
+	int fNum = 0;
+	bool UseExistingContours = Fields[fNum++].GetReturnBool();
+	vector<int> ZoneNums = Fields[fNum++].GetReturnIntVec();
+	vector<int> XYZVarNums(3);
+	for (int i = 0; i < 3; ++i) XYZVarNums[i] = i + Fields[fNum].GetReturnInt();
+
+	TecUtilLockStart(AddOnID);
+
+	FindContourCurvaturePoints(ZoneNums, XYZVarNums, UseExistingContours);
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void FindContourCurvaturePointsGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_Toggle, "Use current set of contours"),
+		GuiField_c(Gui_ZoneSelectMulti,  "Or using extracted contours zones:"),
+		GuiField_c(Gui_VarSelect, "X", "X")
+	};
+
+	CSMGui("Find contour curvature max/min/inflection points", Fields, FindContourCurvaturePointsReturnUserInfo, AddOnID);
 }

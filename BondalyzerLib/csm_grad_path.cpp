@@ -1499,8 +1499,6 @@ void GradPathBase_c::PointAppend(vec3 const & Point, double const & Rho){
 
 	m_XYZList.push_back(Point);
 
-	if (m_Length >= 0) m_Length += Distance(m_XYZList[-1], m_XYZList[-2]);
-
 	m_RhoList.push_back(Rho);
 
 	m_NumGPPoints++;

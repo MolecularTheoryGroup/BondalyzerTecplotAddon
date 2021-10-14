@@ -71,9 +71,12 @@ FieldDataPointer_c & FieldDataPointer_c::operator=(FieldDataPointer_c const & rh
 
 	return *this;
 }
-double FieldDataPointer_c::operator[](unsigned int i) const{
+double FieldDataPointer_c::operator[](int i) const{
 	double Val = 0.0;
-	REQUIRE(m_IsReady && i < m_Size && i >= 0);
+	REQUIRE(m_IsReady && abs(i) < m_Size);
+	if (i < 0){
+		i = this->Size() + i;
+	}
 	if (m_IsReadPtr){
 		switch (m_FDType){
 			case FieldDataType_Float:
@@ -142,9 +145,11 @@ double FieldDataPointer_c::At(vec3 & Pt, VolExtentIndexWeights_s & VolInfo) cons
 	}
 }
 
-Boolean_t FieldDataPointer_c::Write(unsigned int i, double const & Val) const{
-	REQUIRE(m_IsReady && !m_IsReadPtr && i < m_Size && i >= 0);
-
+Boolean_t FieldDataPointer_c::Write(int i, double const & Val) const{
+	REQUIRE(m_IsReady && !m_IsReadPtr && abs(i) < m_Size);
+	if (i < 0) {
+		i = this->Size() + i;
+	}
 	switch (m_FDType){
 		case FieldDataType_Float:
 			m_WriteFltPtr[i] = static_cast<float_t>(Val);
@@ -380,13 +385,13 @@ FieldVecPointer_c & FieldVecPointer_c::operator=(FieldVecPointer_c const & rhs){
 
 	return *this;
 }
-vec3 FieldVecPointer_c::operator[](unsigned int i) const{
+vec3 FieldVecPointer_c::operator[](int i) const{
 	vec3 a;
 	for (int d = 0; d < 3; ++d) a[d] = Ptrs[d][i];
 
 	return a;
 }
-Boolean_t FieldVecPointer_c::Write(unsigned int i, vec3 const & Vec) const{
+Boolean_t FieldVecPointer_c::Write(int i, vec3 const & Vec) const{
 	for (int d = 0; d < 3; ++d) if (!Ptrs[d].Write(i, Vec[d])) return FALSE;
 
 	return TRUE;

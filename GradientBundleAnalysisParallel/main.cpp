@@ -107,12 +107,15 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
 // 			TecUtilDialogMessageBox("vars altered", MessageBoxType_Information);
 			break;
 		case StateChange_VarsAdded:       /* set of added variables */
+			GBA_REINIT_DIALOG = true;
 // 			TecUtilDialogMessageBox("vars added", MessageBoxType_Information);
 			break;
 		case StateChange_ZonesDeleted:    /* set of deleted zones */
+			GBA_REINIT_DIALOG = true;
 // 			TecUtilDialogMessageBox("zones deleted", MessageBoxType_Information);
 			break;
 		case StateChange_ZonesAdded:      /* set of added zones */
+			GBA_REINIT_DIALOG = true;
 // 			TecUtilDialogMessageBox("zones added", MessageBoxType_Information);
 			break;
 		case StateChange_NodeMapsAltered: /* set of node maps altered */
@@ -145,6 +148,7 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
 // 			TecUtilDialogMessageBox("aux data deleted", MessageBoxType_Information);
 			break;
 		case StateChange_VarsDeleted:     /* set of deleted variables (zero based set) */
+			GBA_REINIT_DIALOG = true;
 // 			TecUtilDialogMessageBox("vars deleted", MessageBoxType_Information);
 			break;
 		case StateChange_VariableLockOn:  /* Locker name, Variable Num, VarLockMode */
@@ -162,6 +166,7 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
 
 			/* State changes which do not have any supplemental "state" information. */
 		case StateChange_TecplotIsInitialized:/* Tecplot is finished initializing */
+			GBA_REINIT_DIALOG = true;
 // 			TecUtilDialogMessageBox("tecplot initialized", MessageBoxType_Information);
 			break;
 		case StateChange_FrameDeleted:        /* A frame was delete */
@@ -178,12 +183,15 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
 // 			TecUtilDialogMessageBox("geom", MessageBoxType_Information);
 			break;
 		case StateChange_DataSetReset:        /* A new dataset has been loaded */
+			GBA_REINIT_DIALOG = true;
 			// 			TecUtilDialogMessageBox("dataset reset", MessageBoxType_Information);
 			break;
 		case StateChange_NewLayout:           /* The current layout has been cleared and reset */
+			GBA_REINIT_DIALOG = true;
 // 			TecUtilDialogMessageBox("new layout", MessageBoxType_Information);
 			break;
 		case StateChange_CompleteReset:       /* Anything could have happened */
+			GBA_REINIT_DIALOG = true;
 			// 			TecUtilDialogMessageBox("complete reset", MessageBoxType_Information);
 			break;
 		case StateChange_LineMapAssignment:   /* A line mapping definition has been altered (includes zone and axis information) */
@@ -203,9 +211,11 @@ static void STDCALL StateChangeCallback(StateChange_e StateChange)
 // 			TecUtilDialogMessageBox("quit tecplot", MessageBoxType_Information);
 			break;
 		case StateChange_ZoneName:            /* The name of a zone has been altered */
+			GBA_REINIT_DIALOG = true;
 // 			TecUtilDialogMessageBox("zone name", MessageBoxType_Information);
 			break;
 		case StateChange_VarName:             /* The name of a variable has been altered */
+			GBA_REINIT_DIALOG = true;
 // 			TecUtilDialogMessageBox("var name", MessageBoxType_Information);
 			break;
 		case StateChange_LineMapName:           /* The name of an X-Y mapping has been altered */
