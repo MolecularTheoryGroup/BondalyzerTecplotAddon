@@ -2154,6 +2154,7 @@ void NewMainFunction() {
 		 *	GPs in a <edge, vector<int>> map.
 		 */
 		std::map<Edge, vector<int> > EdgeGPMap, RingEdgeGPMap;
+		int NumEdgeGPs = 0;
 
 		// Start the adaptive GBA loop.
 		// This will continue until there are no more gradient bundles that
@@ -2502,6 +2503,7 @@ void NewMainFunction() {
 				}
 			}
 			
+
 
 			if (UserQuit) {
 				TecUtilDataLoadEnd();
@@ -3163,6 +3165,7 @@ void NewMainFunction() {
 					for (int ei = 0; ei < EdgeGPNumListVec.size(); ++ei) {
 						if (!EdgeGPNumListVec[ei].empty()) {
 							EdgeGPMap[EdgeDistList[ei].first] = EdgeGPNumListVec[ei];
+							NumEdgeGPs += EdgeGPNumListVec[ei].size();
 						}
 					}
 
@@ -3464,6 +3467,7 @@ void NewMainFunction() {
 									if (DistSqr(BCP, GP[0]) > DistSqr(BCP, GP[-1]))
 										GP.Reverse();
 									EdgeGPs.emplace(Pt2, Midpt, GP);
+									NumEdgeGPs++;
 									Pt2--;
 									continue;
 								}
@@ -4680,7 +4684,10 @@ void NewMainFunction() {
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereConstrainedNodeIntersectCPNames, IntersectionCPNames.str());
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereConstrainedNodeIntersectCPTotalOffsetNames, IntersectionCPNamesTotalCount.str());
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.NumGBs, to_string(NumElems));
-			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.PointsPerGP, to_string(NumGPPoints));
+			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.NumNodeGPs, to_string(NumNodes));
+			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.NumEdgeGPs, to_string(NumEdgeGPs));
+			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.TotNumGPs, to_string(NumNodes + NumEdgeGPs));
+			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.NumWorkingGPs, to_string(GradPaths.size()));
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SourceZoneNum, to_string(CPNuclearZoneNum));
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SourceNucleusName, NucleusName);
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereSeedRadius, to_string(SeedRadius));

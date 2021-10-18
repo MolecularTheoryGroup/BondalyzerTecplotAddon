@@ -323,30 +323,30 @@ MeshStatus_e meshgen2D_sphere(double Radius,
 	}
 
 	/*
-	 *	Check that no two constrained points share a neighbor
+	 *	Check that no two constrained points share a neighbor (disabled because subdivision around bond points also addresses this)
 	 */
-	bool MeshFail = false;
-	for (int ChkPt : MovedPointNums){
-		for (int ChkNeighbor : Params.AdjList[ChkPt]){
-			for (int ChkPt2 : MovedPointNums){
-				if (ChkPt != ChkPt2){
-					for (int ChkNeighbor2 : Params.AdjList[ChkPt2]){
-						if (!MeshFail) MeshFail = (ChkNeighbor == ChkNeighbor2 && ChkNeighbor >= 0);
-						if (MeshFail)
-							int b = 1;
-					}
-				}
-			}
-		}
-		if (MeshFail) break;
-	}
-	if (MeshFail){
-		Params.AdjList.clear();
-		Params.TriAdjList.clear();
-		Params.AdjListCounts.clear();
-		Params.TriAdjListCounts.clear();
-		return FAIL_NEEDREFINEMENT;
-	}
+// 	bool MeshFail = false;
+// 	for (int ChkPt : MovedPointNums){
+// 		for (int ChkNeighbor : Params.AdjList[ChkPt]){
+// 			for (int ChkPt2 : MovedPointNums){
+// 				if (ChkPt != ChkPt2){
+// 					for (int ChkNeighbor2 : Params.AdjList[ChkPt2]){
+// 						if (!MeshFail) MeshFail = (ChkNeighbor == ChkNeighbor2 && ChkNeighbor >= 0);
+// 						if (MeshFail)
+// 							int b = 1;
+// 					}
+// 				}
+// 			}
+// 		}
+// 		if (MeshFail) break;
+// 	}
+// 	if (MeshFail){
+// 		Params.AdjList.clear();
+// 		Params.TriAdjList.clear();
+// 		Params.AdjListCounts.clear();
+// 		Params.TriAdjListCounts.clear();
+// 		return FAIL_NEEDREFINEMENT;
+// 	}
 
 	
 
