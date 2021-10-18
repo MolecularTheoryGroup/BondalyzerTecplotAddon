@@ -533,7 +533,7 @@ int GradPathBase_c::GetIndAtLength(double const & Length) const{
 
 GradPathBase_c GradPathBase_c::SubGP(int BegPt, int EndPt) const{
 	BegPt = GetInd(BegPt);
-	EndPt = GetInd(EndPt);
+	EndPt = GetInd(EndPt); // output subgp is from [begpt,endpt]
 
 	GradPathBase_c Out = *this;
 	Out.m_XYZList.assign(m_XYZList.begin() + BegPt, m_XYZList.begin() + EndPt + 1);
@@ -4083,7 +4083,7 @@ int GradPathBase_c::GetSphereIntersectionPoint(vec3 const & Center, double const
 		EndDistSqr = DistSqr(Center, this->XYZAt(-1));
 
 	if ((BegDistSqr < RadSqr && EndDistSqr < RadSqr)
-		|| (BegDistSqr >= RadSqr && EndDistSqr >= RadSqr))
+		|| (BegDistSqr > RadSqr && EndDistSqr > RadSqr))
 		return -1;
 
 	/*
@@ -4094,10 +4094,18 @@ int GradPathBase_c::GetSphereIntersectionPoint(vec3 const & Center, double const
 	while (L != R){
 		M = ceil(double(L + R) * 0.5);
 		TmpDistSqr = DistSqr(Center, this->XYZAt(M));
-		if (TmpDistSqr < RadSqr)
-			R = M - 1;
-		else
-			L = M;
+		if (BegDistSqr < EndDistSqr) {
+			if (TmpDistSqr < RadSqr)
+				L = M;
+			else
+				R = M - 1;
+		}
+		else {
+			if (TmpDistSqr < RadSqr)
+				R = M - 1;
+			else
+				L = M;
+		}
 	}
 	/*
 	 *	Now m_XYZList[L] is just inside the radius, so interpolate

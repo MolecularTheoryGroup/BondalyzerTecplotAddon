@@ -1877,7 +1877,7 @@ void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t Ab
 			double NewRadius = SizeFactor;
 			string OldRadStr;
 			double OldRadius;
-			if (!AbsoluteRadius && AuxDataZoneGetItem(z, CSMAuxData.GBA.SphereRadius, OldRadStr)) {
+			if (!AbsoluteRadius && AuxDataZoneGetItem(z, CSMAuxData.GBA.SphereSeedRadius, OldRadStr)) {
 				OldRadius = stof(OldRadStr);
 				NewRadius *= OldRadius;
 			}

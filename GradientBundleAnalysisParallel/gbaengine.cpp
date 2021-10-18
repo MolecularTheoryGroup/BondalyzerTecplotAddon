@@ -470,9 +470,9 @@ void NewMainFunction() {
 
 	RadMode RadiusMode = MINCPDISTRATIO;
 	RadiusMode = (RadMode)TecGUIRadioBoxGetToggle(RBRadMode_RADIO_T1_1);
-	double UserSeedRadius = 0.25, UserRadius = 0.5;
-	TecGUITextFieldGetDouble(TFRad_TF_T1_1, &UserSeedRadius);
-	TecGUITextFieldGetDouble(TFSdRad_TF_T1_1, &UserRadius);
+	double UserSeedRadius = 0.25, UserRadialApprxRadius = 0.5;
+	TecGUITextFieldGetDouble(TFSdRad_TF_T1_1, &UserSeedRadius);
+	TecGUITextFieldGetDouble(TFRad_TF_T1_1, &UserRadialApprxRadius);
 	int Level = TecGUIScaleGetValue(SCMinGBs_SC_T1_1);
 	int MaxSubdivisions = TecGUIScaleGetValue(SCBPGBInit_SC_T1_1);
 	int SubdivisionTightness = TecGUIScaleGetValue(SCSDtight_SC_T1_1);
@@ -568,6 +568,17 @@ void NewMainFunction() {
 			StatusUpdate(1, 1000, TmpString, AddOnID);
 		}
 
+		if (UserRadialApprxRadius >= UserSeedRadius) {
+			UserSeedRadius = UserRadialApprxRadius;
+		}
+
+		bool SameRadii = false;
+		if (abs(UserRadialApprxRadius - UserSeedRadius) < 0.02) {
+			UserSeedRadius = UserRadialApprxRadius;
+			SameRadii = true;
+		}
+
+
 		// Get closest CP if necessary
 		if (RadiusMode == MINCPDISTRATIO) {
 			double MinDistSqr = DBL_MAX;
@@ -577,15 +588,11 @@ void NewMainFunction() {
 				}
 			}
 			SeedRadius = sqrt(MinDistSqr) * UserSeedRadius;
-			RadialApprxRadius = sqrt(MinDistSqr) * UserRadius;
+			RadialApprxRadius = sqrt(MinDistSqr) * UserRadialApprxRadius;
 		}
 		else
 			SeedRadius = UserSeedRadius;
-			RadialApprxRadius = UserRadius;
-
-		if (RadialApprxRadius > SeedRadius){
-			RadialApprxRadius *= 0.9;
-		}
+			RadialApprxRadius = UserRadialApprxRadius;
 
 
 		double GPNCPTermRadius = MAX(0.001, SeedRadius * 0.01);
@@ -4132,7 +4139,9 @@ void NewMainFunction() {
 				NumToDo += int(IntVals[ti][DensityVarNumInIntList] == 0.0);
 			NumCompleted = 0;
 			Time1 = high_resolution_clock::now();
+#ifndef _DEBUG
 	#pragma omp parallel for schedule(dynamic)
+#endif
 			for (int ti = 0; ti < NumElems; ++ti) {
 	#endif
 				if (omp_get_thread_num() == 0) {
@@ -4258,15 +4267,44 @@ void NewMainFunction() {
 					if (RadialSphereApprx) {
 						/* 
 						 * Now do sphere integration if RadialSphereApprx.
-						 * Much simpler as there are no edge GPs
+						 * Much simpler as there are no edge GPs.
+						 * 
+						 * The radial approximation radius is different from the GP seed radius, 
+						 * so we need to break up the inner GPs at the radial approx radius.
 						 */
 
-						vector<const GradPath_c *> InnerGPPtrs(3);
+						vector<GradPath_c> InnerPaths(3), OuterPaths(3);
+
+						vector<const GradPath_c *> InnerGPPtrs(3), OuterGPPtrs(3);
 						for (int tj = 0; tj < 3; ++tj){
 							InnerGPPtrs[tj] = &InnerGradPaths[SphereElems[ti][tj]];
+							if (!SameRadii) {
+								vec3 CutoffPoint;
+								int CutoffPointInd = InnerGPPtrs[tj]->GetSphereIntersectionPoint(CPPos, RadialApprxRadius, CutoffPoint);
+								double CutoffPointRho = RhoPtr.At(CutoffPoint, ThVolInfo[omp_get_thread_num()]);
+								// InnerGradPaths start at the nuclear CP and go outwards.
+								// Want the point immediately before crossing the radius.
+								if (Distance(InnerGPPtrs[tj]->XYZAt(CutoffPointInd), CPPos) > RadialApprxRadius) {
+									CutoffPointInd--;
+								}
+								InnerPaths[tj] = InnerGPPtrs[tj]->SubGP(0, CutoffPointInd);
+								InnerPaths[tj].PointAppend(CutoffPoint, CutoffPointRho);
+
+								OuterPaths[tj] = InnerGPPtrs[tj]->SubGP(CutoffPointInd + 1, -1);
+								OuterPaths[tj].PointPrepend(CutoffPoint, CutoffPointRho);
+
+								InnerGPPtrs[tj] = &InnerPaths[tj];
+								OuterGPPtrs[tj] = &OuterPaths[tj];
+							}
 						}
 
+						// The radial approximation portion
 						NewIntegrateUsingIsosurfaces2(InnerGPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, SphereIntVals[ti], nullptr, &AddOnID);
+
+						if (!SameRadii) {
+							// And the portion to be added to the normal integration values
+							NewIntegrateUsingIsosurfaces2(OuterGPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, IntVals[ti], nullptr, &AddOnID);
+						}
 					}
 				}
 			}
@@ -4645,8 +4683,10 @@ void NewMainFunction() {
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.PointsPerGP, to_string(NumGPPoints));
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SourceZoneNum, to_string(CPNuclearZoneNum));
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SourceNucleusName, NucleusName);
-			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereRadius, to_string(SeedRadius));
-			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereRadiusCPDistRatio, to_string(UserSeedRadius));
+			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereSeedRadius, to_string(SeedRadius));
+			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.RadialApprxRadius, to_string(RadialApprxRadius));
+			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereSeedRadiusCPDistRatio, to_string(UserSeedRadius));
+			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.RadialApprxRadiusCPDistRatio, to_string(UserRadialApprxRadius));
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.RadialSphereApproximation, RadialSphereApprx ? "Yes" : "No");
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereElemSymbol, ElemName);
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.SphereOrigin, string(to_string(CPPos[0]) + "," + to_string(CPPos[1]) + "," + to_string(CPPos[2])));
@@ -6175,7 +6215,7 @@ void FindSphereBasins() {
 			double SphereRadius = -1;
 			if (AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SourceZoneNum, CPZoneNumStr)
 				&& AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereCPNum, CPIndStr)
-				&& AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereRadius, RadStr)) {
+				&& AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereSeedRadius, RadStr)) {
 				vector<int> XYZVarNums = { 1,2,3 };
 				int CPZoneNum = stoi(CPZoneNumStr);
 				int CPInd = stoi(CPIndStr);

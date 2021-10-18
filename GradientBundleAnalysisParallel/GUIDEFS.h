@@ -16,7 +16,7 @@ extern LgIndex_t  BTNRun_BTN_T1_1;
 extern LgIndex_t  TFSTPts_TF_T1_1;
 extern LgIndex_t  LBLSTPts_LBL_T1_1;
 extern LgIndex_t  LBLNumTri_LBL_T1_1;
-extern LgIndex_t  TFRad_TF_T1_1;
+extern LgIndex_t  TFSdRad_TF_T1_1;
 extern LgIndex_t  LBLRad_LBL_T1_1;
 extern LgIndex_t  RBRadMode_RADIO_T1_1;
 extern LgIndex_t  TFCutoff_TF_T1_1;
@@ -46,7 +46,7 @@ extern LgIndex_t  SCBPGBInit_SC_T1_1;
 extern LgIndex_t  TGLSphTest_TOG_T1_1;
 extern LgIndex_t  TGL_TOG_T1_1;
 extern LgIndex_t  LBL34_LBL_T1_1;
-extern LgIndex_t  TFSdRad_TF_T1_1;
+extern LgIndex_t  TFRad_TF_T1_1;
 extern LgIndex_t Tab3_1Manager;
 extern void BuildTab3_1(LgIndex_t  Parent);
 
