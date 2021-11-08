@@ -702,11 +702,16 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	/*
 	*	Prepare CP list
 	*/
-	int NumSelected = -1;
+	int NumSelected = -1, 
+		OldAtomCount = TecGUIListGetItemCount(MLSelCPs_MLST_T1_1), 
+		OldVarCount = TecGUIListGetItemCount(MLSelVars_MLST_T1_1);
 	int *SelectedNums;
-	if (GBA_REINIT_DIALOG && TecGUIListGetItemCount(MLSelCPs_MLST_T1_1) > 0)
-		TecGUIListGetSelectedItems(MLSelCPs_MLST_T1_1, &SelectedNums, &NumSelected);
-	TecGUIListDeleteAllItems(MLSelCPs_MLST_T1_1);
+	if (OldAtomCount > 0) {
+		if (GBA_REINIT_DIALOG) {
+			TecGUIListGetSelectedItems(MLSelCPs_MLST_T1_1, &SelectedNums, &NumSelected);
+		}
+		TecGUIListDeleteAllItems(MLSelCPs_MLST_T1_1);
+	}
 
 	/*
 	 *	Get nuclear CPs according to nuclear name.
@@ -807,8 +812,9 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 // 		}
 // 	}
 
-	if (NumSelected > 0)
+	if (NumSelected > 0 && OldAtomCount == TecGUIListGetItemCount(MLSelCPs_MLST_T1_1)) {
 		TecGUIListSetSelectedItems(MLSelCPs_MLST_T1_1, SelectedNums, NumSelected);
+	}
 
 
 
@@ -827,12 +833,14 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	if (GBA_REINIT_DIALOG && TecGUIListGetItemCount(MLSelVars_MLST_T1_1) > 0)
 		TecGUIListGetSelectedItems(MLSelVars_MLST_T1_1, &SelectedNums, &NumSelected);
 
-	TecGUIListDeleteAllItems(MLSelVars_MLST_T1_1);
+	if (TecGUIListGetItemCount(MLSelVars_MLST_T1_1) > 0) {
+		TecGUIListDeleteAllItems(MLSelVars_MLST_T1_1);
+	}
 	TecGUIToggleSet(TGLsGP_TOG_T1_1, FALSE);
 	TecGUIToggleSet(TGLsGB_TOG_T1_1, FALSE);
 // 	TecGUIToggleSet(TGLVolInt_TOG_T1_1, DefaultVolIntegrate);
 	ListPopulateWithVarNames(MLSelVars_MLST_T1_1, 4);
-	if (NumSelected > 0)
+	if (NumSelected > 0 && OldVarCount == TecGUIListGetItemCount(MLSelVars_MLST_T1_1))
 		TecGUIListSetSelectedItems(MLSelVars_MLST_T1_1, SelectedNums, NumSelected);
 	else{
 		int SelectNums[] = { 1 };
@@ -875,6 +883,7 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	*/
 	TecGUITextFieldSetString(TFRad_TF_T1_1, to_string(GBADefaultRadialSphereApprxRadius).c_str());
 	TecGUITextFieldSetString(TFSdRad_TF_T1_1, to_string(GBADefaultSeedRadius).c_str());
+	TecGUITextFieldSetString(TFHSdR_TF_T1_1, to_string(GBADefaultHSeedRadius).c_str());
 	TecGUIRadioBoxSetToggle(RBRadMode_RADIO_T1_1, 2);
 	TecGUIScaleSetLimits(SCMinGBs_SC_T1_1, GBAMinSphereRefinementLevel, GBAMaxSphereRefinementLevel, 0);
 	TecGUIScaleSetValue(SCMinGBs_SC_T1_1, GBADefaultSphereMeshRefinementLevel);
@@ -1537,6 +1546,17 @@ static void TGL_TOG_T1_1_CB(const LgIndex_t *I)
 	TecUtilLockStart(AddOnID);
 	TRACE1("Toggle (TGL_TOG_T1_1) Value Changed,  New value is: %d\n", *I);
 	TecUtilLockFinish(AddOnID);
+}
+
+/**
+ */
+static LgIndex_t  TFHSdR_TF_T1_1_CB(const char *S)
+{
+	LgIndex_t IsOk = 1;
+	TecUtilLockStart(AddOnID);
+	TRACE1("Text field (TFHSdR_TF_T1_1) Value Changed,  New value is: %s\n", S);
+	TecUtilLockFinish(AddOnID);
+	return (IsOk);
 }
 
 

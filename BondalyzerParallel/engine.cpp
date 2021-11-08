@@ -1579,6 +1579,9 @@ Boolean_t FindCritPoints(int VolZoneNum,
 
 	TecUtilDataLoadEnd();
 
+	StyleValue styleValue;
+	styleValue.set((Boolean_t)1, SV_FIELDLAYERS, SV_SHOWSCATTER);
+
 	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
 
@@ -1867,6 +1870,8 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 
 	TecUtilDataLoadEnd();
 
+	StyleValue styleValue;
+	styleValue.set((Boolean_t)1, SV_FIELDLAYERS, SV_SHOWMESH);
 
 	CSMGUIUnlock();
 	TecUtilLockFinish(AddOnID);
@@ -4725,7 +4730,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				&& Path1->GP.GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOtherGP(Path2->GP, GPDeviationCheckAngleFactor, GPDeviationCheckDistFactor, GPDeviationStartPtLengthFactor, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MinCPDist * 0.05))
 			{
 				// Paths deviate. Need to seed a new GP between them once their
-				// deviation angle is path the check angle.
+				// deviation angle is past the check angle.
 				GPWithInfo GP;
 
 				// DEBUG
@@ -5354,6 +5359,8 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 // 						if (Path1->CPType != CPType_Nuclear && Path2->CPType != CPType_Nuclear) {
 // 							TecUtilDialogMessageBox("iterating between two missing CPs: before forward GP", MessageBoxType_Information);
 // 						}
+// 						
+						TermRadius = 0.01 * MinCPDist;
 						GP.GP.SetTerminalCPTypeNum(GPTerminalCPTypeNum);
 						GP.GP.SetTermPointRadius(TermRadius);
 						GP.GP.Clear();
@@ -12109,11 +12116,21 @@ void ExportGBADataForRegions(
 		IntVarNums.push_back(v.second);
 	}
 	
+	std::map<string, string> RegionNameToSphereName;
+	for (auto & s : SphereNameAndElements) {
+		string sName = s.first;
+		vector<string> sNameParts = SplitString(sName, ":", true, true);
+		if (!SphereNameToVarPtr.count(sName) && sNameParts.size() > 1) {
+			sName = sNameParts[0];
+		}
+		RegionNameToSphereName[s.first] = sName;
+		RegionNameToSphereName[sName] = s.first;
+	}
 
 	// update elements for whole spheres
 	for (auto & s : SphereNameAndElements){
 		if (s.second.empty()) {
-			s.second.resize(SphereNameToVarPtr[s.first].Size());
+			s.second.resize(SphereNameToVarPtr[RegionNameToSphereName[s.first]].Size());
 			for (int ei = 0; ei < s.second.size(); ++ei) {
 				s.second[ei] = ei;
 			}
@@ -12125,7 +12142,7 @@ void ExportGBADataForRegions(
 	std::map<string, vector<double> > SphereNameToValTotals;
 	vector<double> VarTotals(IntVarNums.size(), 0.0), BoundaryVarTotals(IntVarNums.size(), 0.0);
 	for (auto s : SphereNameAndElements){
-		int SphereZoneNum = SphereNameToVarPtr[s.first].ZoneNum();
+		int SphereZoneNum = SphereNameToVarPtr[RegionNameToSphereName[s.first]].ZoneNum();
 		for (int vi = 0; vi < IntVarNums.size(); ++vi) {
 			int v = IntVarNums[vi];
 			FieldDataPointer_c Ptr;
@@ -12135,12 +12152,12 @@ void ExportGBADataForRegions(
 			for (int ei = 0; ei < s.second.size(); ++ei){
 				Vals[ei] = Ptr[s.second[ei]];
 			}
-			SphereNameToAllVals[s.first].push_back(Vals);
+			SphereNameToAllVals[RegionNameToSphereName[s.first]].push_back(Vals);
 			double total = sum(Vals);
 			VarTotals[vi] += total;
-			SphereNameToValTotals[s.first].push_back(total);
+			SphereNameToValTotals[RegionNameToSphereName[s.first]].push_back(total);
 			if (!SphereNameToBoundaryIntTotals.empty()){
-				BoundaryVarTotals[vi] += SphereNameToBoundaryIntTotals[s.first][IntVarNames[vi]];
+				BoundaryVarTotals[vi] += SphereNameToBoundaryIntTotals[RegionNameToSphereName[s.first]][IntVarNames[vi]];
 			}
 		}
 	}
@@ -12192,7 +12209,7 @@ void ExportGBADataForRegions(
 		}
 		// then values for each sphere
 		for (auto const & s : SphereNameToValTotals){
-			OutFile << DatasetName << "," << RegionName << "," << s.first;
+			OutFile << DatasetName << "," << RegionName << "," << RegionNameToSphereName[s.first];
 			for (auto const & val : s.second){
 				OutFile << "," << std::setprecision(8) << val;
 			}
@@ -12228,7 +12245,7 @@ void ExportGBADataForRegions(
 			for (auto const & s : SphereNameAndElements) {
 				auto *SphereElemVals = &SphereNameToAllVals[s.first];
 				for (int ei = 0; ei < s.second.size(); ++ei) {
-					OutFileGBs << DatasetName << "," << RegionName << "," << s.first << "," << s.second[ei];
+					OutFileGBs << DatasetName << "," << RegionName << "," << RegionNameToSphereName[s.first] << "," << s.second[ei];
 					for (int vi = 0; vi < IntVarNums.size(); ++vi){
 						OutFileGBs << "," << std::setprecision(8) << SphereElemVals->at(vi)[ei];
 					}
@@ -12374,7 +12391,7 @@ void ExportGBAData(int PVarNum, int CPZoneNum, vector<int> XYZVarNums, int CPTyp
 				SphereNameAndElements.clear();
 				std::map<string, std::map<string,double> > SphereNameToBoundaryIntTotals;
 				for (auto & cb : sgb.second) {
-					SphereNameAndElements.push_back(std::make_pair(CondensedBasinNameToSphereName[cb], CondensedBasinNameToSphereElems[cb]));
+					SphereNameAndElements.push_back(std::make_pair(cb, CondensedBasinNameToSphereElems[cb]));
 					if (CondensedBasinNameToBoundaryIntVarNamesToIntVals.count(cb)){
 						SphereNameToBoundaryIntTotals[CondensedBasinNameToSphereName[cb]] = CondensedBasinNameToBoundaryIntVarNamesToIntVals[cb];
 					}

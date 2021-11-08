@@ -16,6 +16,7 @@
 #include "CSM_DATA_LOADER_FUNCTIONS.h"
 
 #include "Set.h"
+#include "StyleValue.h"
 
 #include <armadillo>
 using namespace arma;
@@ -388,7 +389,6 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 				}
 			}
 
-			TecUtilSetAddMember(NewZones, ZoneNum, FALSE);
 			NewZoneNums.push_back(ZoneNum);
 
 			Set_pa TempSet = TecUtilSetAlloc(TRUE);
@@ -409,7 +409,10 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 		}
 	}
 
-	if (IsOk){
+	if (!NewZoneNums.empty()){
+		for (int zi : NewZoneNums){
+			TecUtilSetAddMember(NewZones, zi, FALSE);
+		}
 		ArgList_pa ArgList = TecUtilArgListAlloc();
 		TecUtilArgListAppendString(ArgList, SV_P1, SV_FIELDMAP);
 		TecUtilArgListAppendString(ArgList, SV_P2, SV_GROUP);
@@ -422,11 +425,14 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 
 		TecUtilZoneSetActive(NewZones, AssignOp_PlusEquals);
 
-		DrawBondLinesBetweenNuclearPositions(NewZoneNums, { 1,2,3 }, 4.2, -1.0, 0.1, 0.4, false);
+		TecUtilFrameSetPlotType(PlotType_Cartesian3D);
+		DrawBondLinesBetweenNuclearPositions(NewZoneNums, { 1,2,3 }, 3.0, -1.0, 0.1, 0.4, false);
 
 
-		TecUtilSetDealloc(&NewZones);
+		tecplot::toolbox::StyleValue styleValue;
+		styleValue.set((Boolean_t)1, SV_FIELDLAYERS, SV_SHOWSCATTER);
 	}
+	TecUtilSetDealloc(&NewZones);
 
 	return IsOk;
 }

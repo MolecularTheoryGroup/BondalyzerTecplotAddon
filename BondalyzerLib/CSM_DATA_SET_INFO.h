@@ -89,6 +89,7 @@ struct CSMAuxData_s{
 			ZoneTypeGradPath = "GradPath",
 			ZoneTypeIBEdgeZone = "IBEdgeZone",
 			ZoneTypeTopoCageWedge = "TopologicalCageWedge",
+			ZoneTypeTruncIsosurface = "GBATruncatingIsosurface",
 			ZoneTypeCondensedRepulsiveBasin = "CondensedRepulsiveBasin",
 			ZoneTypeCondensedAttractiveBasin = "CondensedAttractiveBasin",
 			ZoneTypeCondensedRepulsiveBasinWedge = "CondensedRepulsiveWedge",

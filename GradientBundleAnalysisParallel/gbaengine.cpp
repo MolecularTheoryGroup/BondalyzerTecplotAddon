@@ -470,8 +470,9 @@ void NewMainFunction() {
 
 	RadMode RadiusMode = MINCPDISTRATIO;
 	RadiusMode = (RadMode)TecGUIRadioBoxGetToggle(RBRadMode_RADIO_T1_1);
-	double UserSeedRadius = 0.25, UserRadialApprxRadius = 0.5;
+	double UserSeedRadius, UserHSeedRadius, UserRadialApprxRadius;
 	TecGUITextFieldGetDouble(TFSdRad_TF_T1_1, &UserSeedRadius);
+	TecGUITextFieldGetDouble(TFHSdR_TF_T1_1, &UserHSeedRadius);
 	TecGUITextFieldGetDouble(TFRad_TF_T1_1, &UserRadialApprxRadius);
 	int Level = TecGUIScaleGetValue(SCMinGBs_SC_T1_1);
 	int MaxSubdivisions = TecGUIScaleGetValue(SCBPGBInit_SC_T1_1);
@@ -526,7 +527,7 @@ void NewMainFunction() {
 
 		int SphereZoneNum = -1;
 
-		double SeedRadius = 0.25, RadialApprxRadius = 0.9;
+		double SeedRadius = 0.7, RadialApprxRadius = 0.2;
 
 		vector<vector<double> > IntVals, SphereIntVals;
 		vector<double> SphereTotalIntVals;
@@ -568,6 +569,10 @@ void NewMainFunction() {
 			StatusUpdate(1, 1000, TmpString, AddOnID);
 		}
 
+		if ((NucleusName.empty() ? CPString : NucleusName).size() > 1 && (NucleusName.empty() ? CPString : NucleusName).substr(0,2) == "H "){
+			UserSeedRadius = UserHSeedRadius;
+		}
+
 		if (UserRadialApprxRadius >= UserSeedRadius) {
 			UserSeedRadius = UserRadialApprxRadius;
 		}
@@ -590,9 +595,10 @@ void NewMainFunction() {
 			SeedRadius = sqrt(MinDistSqr) * UserSeedRadius;
 			RadialApprxRadius = sqrt(MinDistSqr) * UserRadialApprxRadius;
 		}
-		else
+		else {
 			SeedRadius = UserSeedRadius;
 			RadialApprxRadius = UserRadialApprxRadius;
+		}
 
 
 		double GPNCPTermRadius = MAX(0.001, SeedRadius * 0.01);
@@ -606,7 +612,7 @@ void NewMainFunction() {
 		 */
 
 		vector<vec3> IntersectingBondPathPoints;
-		vector<GradPath_c> IntersectingBondPaths;
+		vector<GradPath_c> IntersectingBondPaths, IntersectingBondPathsUntrimmed;
 
 		vector<int> XYZRhoVarNums = XYZVarNums;
 		XYZRhoVarNums.push_back(RhoVarNum);
@@ -620,11 +626,13 @@ void NewMainFunction() {
 				if (RadialSphereApprx && TmpGP.Trim(CPPos, SeedRadius)) {
 					IntersectingBondPaths.push_back(TmpGP);
 					IntersectingBondPathPoints.push_back(TmpGP.XYZAt(-1));
+					IntersectingBondPathsUntrimmed.push_back(GradPath_c(z, XYZRhoVarNums, AddOnID));
 				}
 				// if including the sphere interior
 				else if (!RadialSphereApprx && TmpGP.GetSphereIntersectionPoint(CPPos, SeedRadius, IntPoint) >= 0) {
 					IntersectingBondPathPoints.push_back(IntPoint);
 					IntersectingBondPaths.push_back(TmpGP);
+					IntersectingBondPathsUntrimmed.push_back(TmpGP);
 				}
 
 			}
@@ -1632,11 +1640,12 @@ void NewMainFunction() {
 		 *	with the original sphere.
 		 */
 		vector<int> IntBondPathNodes(IntersectingBondPathPoints.size());
-		std::unordered_map<int, GradPath_c> IntBondPathSegments; // stored according to intersecting node index
+		std::unordered_map<int, GradPath_c> IntBondPathSegments, IntBondPathSegmentsUntrimmed; // stored according to intersecting node index
 		for (int bi = 0; bi < IntersectingBondPathPoints.size(); ++bi) {
 			double ClosestNodeDist;
 			IntBondPathNodes[bi] = Sphere.GetClosestNodeToPoint(IntersectingBondPathPoints[bi], &ClosestNodeDist);
 			IntBondPathSegments[IntBondPathNodes[bi]] = IntersectingBondPaths[bi];
+			IntBondPathSegmentsUntrimmed[IntBondPathNodes[bi]] = IntersectingBondPathsUntrimmed[bi];
 		}
 
 
@@ -2025,64 +2034,71 @@ void NewMainFunction() {
 			// neighbors of those elements.
 
 			vector<int> NewElems;
-			for (int ti = 0; ti < NumElems; ++ti) {
-				for (int ci = 0; ci < 3; ++ci) {
-					if (SphereElems[ti][ci] == bi) {
-						// Check to see if and how many new nodes are necessary
-						// by comparing the angle between element edges to the 
-						// user-specified angle.
+			bool doIter = true;
+			while (doIter) {
+				doIter = false;
+				for (int ti = 0; ti < SphereElems.size(); ++ti) {
+					for (int ci = 0; ci < 3; ++ci) {
+						if (SphereElems[ti][ci] == bi) {
+							// Check to see if and how many new nodes are necessary
+							// by comparing the angle between element edges to the 
+							// user-specified angle.
 
-						Edge FarEdge = MakeEdge(SphereElems[ti][(ci + 1) % 3], SphereElems[ti][(ci + 2) % 3]);
-						double TriAngle = VectorAngle(SphereNodes[FarEdge.first] - SphereNodes[SphereElems[ti][ci]], SphereNodes[FarEdge.second] - SphereNodes[SphereElems[ti][ci]]);
-						int NumNewNodes = floorf(TriAngle / BPNodeCheckAngle);
-						if (NumNewNodes > 0) {
-							// Make new nodes along far edge opposite to bond path node
-							double StepDist = Distance(SphereNodes[FarEdge.first], SphereNodes[FarEdge.second]) / double(NumNewNodes + 1);
-							vec3 StepVec = normalise(SphereNodes[FarEdge.second] - SphereNodes[FarEdge.first]) * StepDist;
-							vector<int> EdgeNodeNums = { FarEdge.first };
-							for (int ni = 1; ni <= NumNewNodes; ++ni) {
-								EdgeNodeNums.push_back(SphereNodes.size());
-								SphereNodes.emplace_back(SphereNodes[FarEdge.first] + StepVec * (double)ni);
-								SphereNodes.back() = CPPos + normalise(SphereNodes.back() - CPPos) * SeedRadius;
-							}
-							EdgeNodeNums.push_back(FarEdge.second);
+							Edge FarEdge = MakeEdge(SphereElems[ti][(ci + 1) % 3], SphereElems[ti][(ci + 2) % 3]);
+							double TriAngle = VectorAngle(SphereNodes[FarEdge.first] - SphereNodes[SphereElems[ti][ci]], SphereNodes[FarEdge.second] - SphereNodes[SphereElems[ti][ci]]);
+							int NumNewNodes = floorf(TriAngle / BPNodeCheckAngle);
+							if (NumNewNodes > 0) {
+								doIter = true;
+								NumNewNodes = 1;
+								// Make new nodes along far edge opposite to bond path node
+								double StepDist = Distance(SphereNodes[FarEdge.first], SphereNodes[FarEdge.second]) / double(NumNewNodes + 1);
+								// 								vec3 StepVec = normalise(SphereNodes[FarEdge.second] - SphereNodes[FarEdge.first]) * StepDist;
+								vec3 StepVec = (SphereNodes[FarEdge.second] - SphereNodes[FarEdge.first]) * 0.5; // place at midpoint
+								vector<int> EdgeNodeNums = { FarEdge.first };
+								for (int ni = 1; ni <= NumNewNodes; ++ni) {
+									EdgeNodeNums.push_back(SphereNodes.size());
+									SphereNodes.emplace_back(SphereNodes[FarEdge.first] + StepVec * (double)ni);
+									SphereNodes.back() = CPPos + normalise(SphereNodes.back() - CPPos) * SeedRadius;
+								}
+								EdgeNodeNums.push_back(FarEdge.second);
 
-							ElemSubdivisionLevel[ti] += NumNewNodes;
+								ElemSubdivisionLevel[ti] += NumNewNodes;
 
-							// Split bond path element
-							for (int ni = 2; ni < EdgeNodeNums.size(); ++ni) {
-								NewElems.push_back(SphereElems.size());
-								SphereElems.push_back({ SphereElems[ti][ci], EdgeNodeNums[ni], EdgeNodeNums[ni - 1] });
-								ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[ti]);
-							}
-							SphereElems[ti] = { SphereElems[ti][ci], EdgeNodeNums[1], EdgeNodeNums[0] };
-							NewElems.push_back(ti);
+								// Split bond path element
+								for (int ni = 2; ni < EdgeNodeNums.size(); ++ni) {
+									NewElems.push_back(SphereElems.size());
+									SphereElems.push_back({ SphereElems[ti][ci], EdgeNodeNums[ni], EdgeNodeNums[ni - 1] });
+									ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[ti]);
+								}
+								SphereElems[ti] = { SphereElems[ti][ci], EdgeNodeNums[1], EdgeNodeNums[0] };
+								NewElems.push_back(ti);
 
-							// Now find element that shares the edge that was split
-							// and split that element along the same new nodes.
-							bool NeighborFound = false;
-							for (int tj = 0; tj < NumElems && !NeighborFound; ++tj) {
-								if (tj != ti) {
-									for (int cj = 0; cj < 3; ++cj) {
-										if (MakeEdge(SphereElems[tj][cj], SphereElems[tj][(cj + 1) % 3]) == FarEdge) {
-											// Split neighbor element
-											ElemSubdivisionLevel[tj] += NumNewNodes;
-											int FarCorner = (cj + 2) % 3;
-											for (int ni = 2; ni < EdgeNodeNums.size(); ++ni) {
-												NewElems.push_back(SphereElems.size());
-												SphereElems.push_back({ SphereElems[tj][FarCorner], EdgeNodeNums[ni], EdgeNodeNums[ni - 1] });
-												ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[tj]);
+								// Now find element that shares the edge that was split
+								// and split that element along the same new nodes.
+								bool NeighborFound = false;
+								for (int tj = 0; tj < SphereElems.size() && !NeighborFound; ++tj) {
+									if (tj != ti) {
+										for (int cj = 0; cj < 3; ++cj) {
+											if (MakeEdge(SphereElems[tj][cj], SphereElems[tj][(cj + 1) % 3]) == FarEdge) {
+												// Split neighbor element
+												ElemSubdivisionLevel[tj] += NumNewNodes;
+												int FarCorner = (cj + 2) % 3;
+												for (int ni = 2; ni < EdgeNodeNums.size(); ++ni) {
+													NewElems.push_back(SphereElems.size());
+													SphereElems.push_back({ SphereElems[tj][FarCorner], EdgeNodeNums[ni], EdgeNodeNums[ni - 1] });
+													ElemSubdivisionLevel.push_back(ElemSubdivisionLevel[tj]);
+												}
+												SphereElems[tj] = { SphereElems[tj][FarCorner], EdgeNodeNums[1], EdgeNodeNums[0] };
+												NewElems.push_back(tj);
+												NeighborFound = true;
+												break;
 											}
-											SphereElems[tj] = { SphereElems[tj][FarCorner], EdgeNodeNums[1], EdgeNodeNums[0] };
-											NewElems.push_back(tj);
-											NeighborFound = true;
-											break;
 										}
 									}
 								}
 							}
+							break;
 						}
-						break;
 					}
 				}
 			}
@@ -2111,7 +2127,7 @@ void NewMainFunction() {
 		for (int ni = 0; ni < NumNodes; ++ni) {
 			if (NodeTypes[ni] > NETypeC) {
 				NodeIsConstrained[ni] = true;
-				if (MaxSubdivisions > 0 && NodeTypes[ni] >= NETypeB) {
+				if (NodeTypes[ni] >= NETypeB) {
 					for (int nj : NodeConnectivity[ni])
 						NodeIsConstrained[nj] = true;
 				}
@@ -2322,7 +2338,11 @@ void NewMainFunction() {
  			vector<bool> NodeIsConstrained(NumNodes, false);
  			for (int ni = 0; ni < NumNodes; ++ni) {
  				if (NodeTypes[ni] > NETypeC){
- 					NodeIsConstrained[ni] = true;
+					NodeIsConstrained[ni] = true;
+					if (NodeTypes[ni] >= NETypeB) {
+						for (int nj : NodeConnectivity[ni])
+							NodeIsConstrained[nj] = true;
+					}
  				}
  			}
  
@@ -3111,6 +3131,9 @@ void NewMainFunction() {
 												GPNumPointsList.push_back(-1);
 											}
 
+											if (GPList.empty()){
+												continue;
+											}
 											GP = ConcatenateResample(GPList, NumGPPoints, {}, ResampleMethod);
 											GP.MakeRhoValuesMonotonic(&VolInfo, &RhoPtr);
 											EdgeGPs.emplace(Pt2, EdgeMidpt, GP);
@@ -4341,6 +4364,20 @@ void NewMainFunction() {
 			}
 
 			if (RadialSphereApprx) {
+
+
+				// relocate sphere nodes based on nodal GPs
+				if (!SameRadii) {
+					for (int ni = 0; ni < SphereNodes.size(); ++ni) {
+						if (NodeTypes[ni] == NETypeB) {
+							IntBondPathSegmentsUntrimmed[ni].GetSphereIntersectionPoint(CPPos, RadialApprxRadius, SphereNodes[ni]);
+						}
+						else {
+							InnerGradPaths[ni].GetSphereIntersectionPoint(CPPos, RadialApprxRadius, SphereNodes[ni]);
+						}
+					}
+				}
+
 				Sphere = FESurface_c(SphereNodes, SphereElems);
 				vec SphereTriangleAreas(Sphere.TriSphereElemSolidAngles());
 				double TotalArea = sum(SphereTriangleAreas);
@@ -4470,6 +4507,7 @@ void NewMainFunction() {
 			IntVarNameList.emplace_back("Deformation volume");
 			IntVarNameList.emplace_back("Deformation positive volume");
 			IntVarNameList.emplace_back("Deformation negative volume");
+			IntVarNameList.emplace_back("Volume Bader charge");
 		}
 
 		/*
@@ -4597,6 +4635,7 @@ void NewMainFunction() {
 				}
 			}
 		}
+
 
 		Sphere = FESurface_c(SphereNodes, SphereElems);
 		SphereZoneNum = Sphere.SaveAsTriFEZone(!NucleusName.empty() ? NucleusName + " Sphere" : "Sphere (" + CPString + ")", DataTypes, DataLocs, XYZVarNums);
@@ -4744,7 +4783,7 @@ void NewMainFunction() {
 
 		for (int i = 0; i < NumElems; ++i) {
 			IntVals[i].push_back(SphereTriangleAreaFactors[i]); // Solid angle (area on unit sphere)
-			IntVals[i].push_back(IntVals[i][VolumeNumInVarList] / MAX(TotalVolume, 1e-100));  // Volume fraction
+			IntVals[i].push_back(IntVals[i][VolumeNumInVarList] / MAX(TotalVolume, 1e-16));  // Volume fraction
 		}
 
 		int VolumeFractionNumInVarList = IntVals[0].size() - 1;
@@ -4765,7 +4804,7 @@ void NewMainFunction() {
 				IntVals[i].push_back(IntVals[i][DensityVarNumInIntList] - (CoreElectronCount * SphereTriangleAreaFactors[i])); // Valence charge
 				IntVals[i].push_back((ValenceElectronCount * SphereTriangleAreaFactors[i]) - IntVals[i].back()); // Valence Bader charge
 				if (TeNumInVarList >= 0) {
-					IntVals[i].push_back(IntVals[i][TeNumInVarList] / MAX(IntVals[i][IntVals[i].size() - 2], 1e-100)); // Te per valence electron
+					IntVals[i].push_back(IntVals[i][TeNumInVarList] / MAX(IntVals[i][IntVals[i].size() - 2], 1e-16)); // Te per valence electron
 				}
 				double TmpVal = IntVals[i][DensityVarNumInIntList] - (TotalDensity * SphereTriangleAreaFactors[i]);
 				IntVals[i].push_back(TmpVal); // Bond charge
@@ -4882,6 +4921,11 @@ void NewMainFunction() {
 			AuxDataZoneSetItem(SphereZoneNum, CSMAuxData.GBA.IntVarSphereInteriorRanges, VectorToString(SphereRanges, ","));
 		}
 
+		// set small amount of translucency to prevent artifacts (that just became a problem as of oct 2021)
+		Set objectSet(SphereZoneNum);
+		styleValue.set((Boolean_t)1, objectSet, SV_FIELDMAP, SV_EFFECTS, SV_USETRANSLUCENCY);
+		styleValue.set((SmInteger_t)1, objectSet, SV_FIELDMAP, SV_EFFECTS, SV_SURFACETRANSLUCENCY);
+		styleValue.set((Boolean_t)1, SV_FIELDLAYERS, SV_USETRANSLUCENCY);
 
 
 		vector<FieldDataPointer_c> Ptrs(IntVals[0].size());
@@ -4897,6 +4941,40 @@ void NewMainFunction() {
 		}
 		for (auto & i : Ptrs)
 			i.Close();
+		
+		// apply default smoothing of INS values
+		for (int i = 0; i < GBADefaultNumINSSmoothing; ++i) {
+			for (int vi = 0; vi < NewVarNames.size(); ++vi) {
+				if (NewVarNames[vi].find("INS:") != string::npos) {
+					string MacroCmd = "$!SMOOTH ZONE = "
+						+ to_string(SphereZoneNum)
+						+ " VAR = " + to_string(NewVarNums[vi])
+						+ " NUMSMOOTHPASSES = " + to_string(5)
+						+ " SMOOTHWEIGHT = " + to_string(0.5)
+						+ " SMOOTHBNDRYCOND = FIXED";
+
+					TecUtilMacroExecuteCommand(MacroCmd.c_str());
+				}
+			}
+		}
+
+		// Additional smoothing of INS values for H atoms
+		if (NucleusName.size() >= 2 && NucleusName.substr(0,2) == "H "){
+			for (int i = 0; i < (GBADefaultNumINSSmoothingHAtoms - GBADefaultNumINSSmoothing); ++i) {
+				for (int vi = 0; vi < NewVarNames.size(); ++vi) {
+					if (NewVarNames[vi].find("INS:") != string::npos) {
+						string MacroCmd = "$!SMOOTH ZONE = "
+							+ to_string(SphereZoneNum)
+							+ " VAR = " + to_string(NewVarNums[vi])
+							+ " NUMSMOOTHPASSES = " + to_string(5)
+							+ " SMOOTHWEIGHT = " + to_string(0.5)
+							+ " SMOOTHBNDRYCOND = FIXED";
+
+						TecUtilMacroExecuteCommand(MacroCmd.c_str());
+					}
+				}
+			}
+		}
 
 		vector<bool> SaveGP;
 
@@ -5445,6 +5523,33 @@ void NewMainFunction() {
 		TecUtilDataSetDeleteVar(DelVars.getRef());
 	}
 
+	// make isosurface zone showing where the dGBs were cutoff
+	if (NumSelectedCPs > 0){
+		StyleValue styleValue;
+		styleValue.set((Boolean_t)1, SV_ISOSURFACELAYERS, SV_SHOW);
+		styleValue.set((double)0.001, 1, SV_ISOSURFACEATTRIBUTES, SV_ISOVALUE1);
+		Set_pa active_zones;
+		TecUtilZoneGetActive(&active_zones);
+		TecUtilZoneSetActive(Set(VolZoneNum).getRef(), AssignOp_Equals);
+		int numZones = TecUtilDataSetGetNumZones();
+		TecUtilCreateIsoZones();
+		if (TecUtilDataSetGetNumZones() > numZones){
+			Set isoZone(TecUtilDataSetGetNumZones());
+			SetZoneStyle({ TecUtilDataSetGetNumZones() }, ZoneStyle_Surface, Black_C);
+			TecUtilZoneSetMesh(SV_SHOW, isoZone.getRef(), 0.0, FALSE);
+			TecUtilZoneSetScatter(SV_SHOW, isoZone.getRef(), 0.0, FALSE);
+			TecUtilZoneSetContour(SV_SHOW, isoZone.getRef(), 0.0, FALSE);
+			TecUtilZoneSetShade(SV_SHOW, isoZone.getRef(), 0.0, TRUE);
+			TecUtilZoneSetEdgeLayer(SV_SHOW, isoZone.getRef(), 0.0, TRUE);
+			styleValue.set((Boolean_t)1, isoZone, SV_FIELDMAP, SV_EFFECTS, SV_USETRANSLUCENCY);
+			styleValue.set((SmInteger_t)80, isoZone, SV_FIELDMAP, SV_EFFECTS, SV_SURFACETRANSLUCENCY);
+			TecUtilZoneRename(TecUtilDataSetGetNumZones(), string("GBA " + to_string(CutoffVal) + " isosurface").c_str());
+			styleValue.set((ColorIndex_t)9, isoZone, SV_FIELDMAP, SV_SHADE, SV_COLOR);
+			AuxDataZoneSetItem(TecUtilDataSetGetNumZones(), CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeTruncIsosurface);
+		}
+		TecUtilZoneSetActive(active_zones, AssignOp_Equals);
+	}
+
 	TecUtilDataLoadEnd();
 	StatusDrop(AddOnID);
 	return;
@@ -5794,7 +5899,7 @@ void GetSphereBasinIntegrations(FESurface_c const & Sphere,
 	 *	Limit to MaxNumSmoothing rounds of smoothing.
 	 */
 	int MaxNumSmoothing = 20;
-	int NumConvergedIter = 3;
+	int NumConvergedIter = 5;
 	vector<int> NumMinMax(2,-1), OldNumMinMax(2,INT_MAX);
 	MinMaxIndices.resize(2);
 	vector<vector<int> > OldMinMaxIndices(2);
@@ -6549,18 +6654,21 @@ void FindSphereBasins() {
 						if (CondensedBasinToConstrainedNodeNums[i][b].first >= 0) {
 							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereConstrainedNodeNames[CondensedBasinToConstrainedNodeNums[i][b].first]);
 							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinIsSpecialGradientBundle, "true");
+							TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, GBABondWedgeColor);
 						}
 						else {
 							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereName + ": " + MinMax[i] + " basin (node " + to_string(MinMaxIndices[i][b]) + ")");
+							TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, GBALoneWedgeColor);
 						}
 						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinInfo, SphereName + ": " + MinMax[i] + " (node " + to_string(MinMaxIndices[i][b]) + ")");
-
+						StyleValue styleValue;
+						styleValue.set((Boolean_t)1, Set(ZoneNum), SV_FIELDMAP, SV_EFFECTS, SV_USETRANSLUCENCY);
+						styleValue.set((SmInteger_t)60, Set(ZoneNum), SV_FIELDMAP, SV_EFFECTS, SV_SURFACETRANSLUCENCY);
 						Set TmpSet(ZoneNum);
-						TecUtilZoneSetMesh(SV_SHOW, TmpSet.getRef(), 0.0, TRUE);
+						TecUtilZoneSetMesh(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
 						TecUtilZoneSetMesh(SV_COLOR, TmpSet.getRef(), 0.0, ColorIndex_t((b % 7) + 1));
 						TecUtilZoneSetMesh(SV_LINEPATTERN, TmpSet.getRef(), 0.0, (i == 0 ? LinePattern_Dotted : LinePattern_Solid));
-						TecUtilZoneSetShade(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
-						TecUtilZoneSetShade(SV_COLOR, TmpSet.getRef(), 0.0, ColorIndex_t((b % 7) + 1));
+						TecUtilZoneSetShade(SV_SHOW, TmpSet.getRef(), 0.0, TRUE);
 						TecUtilZoneSetContour(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
 						TecUtilZoneSetEdgeLayer(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
 
@@ -6584,18 +6692,22 @@ void FindSphereBasins() {
   							if (CondensedBasinToConstrainedNodeNums[i][b].first >= 0) {
   								AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereConstrainedNodeNames[CondensedBasinToConstrainedNodeNums[i][b].first]);
 								AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinIsSpecialGradientBundle, "true");
+								TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, GBABondWedgeColor);
   							}
   							else {
-  								AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereName + ": " + MinMax[i] + " wedge (node " + to_string(MinMaxIndices[i][b]) + ")");
+								AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereName + ": " + MinMax[i] + " wedge (node " + to_string(MinMaxIndices[i][b]) + ")");
+								TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, GBALoneWedgeColor);
   							}
-  							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinInfo, SphereName + ": " + MinMax[i] + " (node " + to_string(MinMaxIndices[i][b]) + ")");
+							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinInfo, SphereName + ": " + MinMax[i] + " (node " + to_string(MinMaxIndices[i][b]) + ")");
+							StyleValue styleValue;
+							styleValue.set((Boolean_t)1, Set(ZoneNum), SV_FIELDMAP, SV_EFFECTS, SV_USETRANSLUCENCY);
+							styleValue.set((SmInteger_t)60, Set(ZoneNum), SV_FIELDMAP, SV_EFFECTS, SV_SURFACETRANSLUCENCY);
   
   							Set TmpSet(ZoneNum);
   							TecUtilZoneSetMesh(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
   							TecUtilZoneSetMesh(SV_COLOR, TmpSet.getRef(), 0.0, ColorIndex_t((b % 7) + 1));
   							TecUtilZoneSetMesh(SV_LINEPATTERN, TmpSet.getRef(), 0.0, (i == 0 ? LinePattern_Dotted : LinePattern_Solid));
   							TecUtilZoneSetShade(SV_SHOW, TmpSet.getRef(), 0.0, TRUE);
-  							TecUtilZoneSetShade(SV_COLOR, TmpSet.getRef(), 0.0, ColorIndex_t((b % 7) + 1));
   							TecUtilZoneSetContour(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
   							TecUtilZoneSetEdgeLayer(SV_SHOW, TmpSet.getRef(), 0.0, TRUE);
   						}

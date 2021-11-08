@@ -14,7 +14,8 @@ int const DefaultCP = 1;
 string const DefaultIntVarStr = "Electron Density";
 // double const DefaultRhoCutoff = 0.001;
 double const GBADefaultRadialSphereApprxRadius = 0.2;
-double const GBADefaultSeedRadius = 0.5;
+double const GBADefaultSeedRadius = 0.6;
+double const GBADefaultHSeedRadius = 0.2;
 int const GBADefaultSphereMeshRefinementLevel = 4;
 int const GBAMinSphereRefinementLevel = 2;
 int const GBAMaxSphereRefinementLevel = 7;
@@ -26,7 +27,7 @@ int const DefaultNumGPPts = 300;
 double const DefaultIBDist = 0.05;
 double const DefaultIBAng = 20;
 int const GBADefaultGBPerE = 200;
-int const GBADefaultBPAngularGBs = 1;
+int const GBADefaultBPAngularGBs = 12;
 int const GBADefaultMaxBPAngularGBs = 60;
 int const GBADefaultMaxGBSubdivisionLevel = 0;
 int const GBAMaxMaxSubdivisionLevel = 7;
@@ -35,6 +36,11 @@ int const GBADefaultMaxNumElems = 100000;
 double const GBADefaultMinEdgeGPSpacing = 0.1;
 double const GBADefaultMaxEdgeGPSpacing = 2.0;
 double const GBADefaultEdgeGPSpacing = 0.5;
+int const GBADefaultNumINSSmoothing = 1;
+int const GBADefaultNumINSSmoothingHAtoms = 4;
+
+ColorIndex_t const GBABondWedgeColor = Red_C;
+ColorIndex_t const GBALoneWedgeColor = Blue_C;
 
 
 extern std::map<string, int> NuclearNameToCPNum;

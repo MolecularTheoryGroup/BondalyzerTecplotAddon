@@ -1525,7 +1525,7 @@ int LoadADFTape41ASCIIData(char* FileNameCStr)
 
 	TecUtilFrameSetPlotType(PlotType_Cartesian3D);
 
-	TecUtilZoneSetActive(NewZones, AssignOp_Equals);
+	TecUtilZoneSetActive(NewZones, AssignOp_PlusEquals);
 
 	TecUtilSetDealloc(&NewZones);
 
@@ -2528,7 +2528,7 @@ void LoadADFTape41Data(){
 
 			TecUtilFrameSetPlotType(PlotType_Cartesian3D);
 
-			TecUtilZoneSetActive(NewZones, AssignOp_Equals);
+			TecUtilZoneSetActive(NewZones, AssignOp_PlusEquals);
 
 			TecUtilSetDealloc(&NewZones);
 
@@ -4301,7 +4301,7 @@ Boolean_t LoadADFTape21(){
 			TecUtilSetDealloc(&TempSet);
 		}
 
-		TecUtilZoneSetActive(ZoneSet, AssignOp_Equals);
+		TecUtilZoneSetActive(ZoneSet, AssignOp_PlusEquals);
 		TecUtilStateChanged(StateChange_ZonesAdded, reinterpret_cast<ArbParam_t>(ZoneSet));
 		TecUtilSetDealloc(&ZoneSet);
 

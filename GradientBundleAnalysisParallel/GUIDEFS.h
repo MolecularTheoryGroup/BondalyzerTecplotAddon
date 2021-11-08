@@ -47,6 +47,8 @@ extern LgIndex_t  TGLSphTest_TOG_T1_1;
 extern LgIndex_t  TGL_TOG_T1_1;
 extern LgIndex_t  LBL34_LBL_T1_1;
 extern LgIndex_t  TFRad_TF_T1_1;
+extern LgIndex_t  LBL36_LBL_T1_1;
+extern LgIndex_t  TFHSdR_TF_T1_1;
 extern LgIndex_t Tab3_1Manager;
 extern void BuildTab3_1(LgIndex_t  Parent);
 
