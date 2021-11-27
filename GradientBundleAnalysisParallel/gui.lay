@@ -1088,8 +1088,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 26.46099925817086
-    Y = 53.18939333337829
+    X = 26.20686820808745
+    Y = 53.60776681961579
     }
   TEXTSHAPE
     {
@@ -1102,12 +1102,12 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=MLSelVars Type=MultiList'
-  TEXT = 'MLST:                                                                                                                \n\n\n\n\n\n\n\n\n\n\n'
+  TEXT = 'MLST:                                                                                                                \n\n\n\n\n\n\n\n\n\n'
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 38.09975513522409
-    Y = 91.47571976515026
+    X = 38.0997551352241
+    Y = 89.4646066931204
     }
   TEXTSHAPE
     {
@@ -1125,7 +1125,7 @@ $!ATTACHTEXT
   ANCHORPOS
     {
     X = 26.38434826530905
-    Y = 92.46549464897356
+    Y = 90.45438157694369
     }
   TEXTSHAPE
     {
@@ -1160,7 +1160,7 @@ $!ATTACHTEXT
   ANCHORPOS
     {
     X = 54.47914200529079
-    Y = 92.24516004498875
+    Y = 90.59970389514606
     }
   TEXTSHAPE
     {
@@ -1484,7 +1484,7 @@ $!ATTACHTEXT
   ANCHORPOS
     {
     X = 65.6049591912046
-    Y = 92.63064467518235
+    Y = 90.98518852533968
     }
   TEXTSHAPE
     {
@@ -1656,7 +1656,7 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=SLSelSphere Type=SingleList'
-  TEXT = 'SLST:              \n\n\n\n\n\n\n'
+  TEXT = 'SLST:              .     \n\n\n\n\n\n\n'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -1708,12 +1708,12 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=SLSelVar Type=SingleList'
-  TEXT = 'SLST:                                   \n\n\n\n\n\n\n\n'
+  TEXT = 'SLST:                                          \n\n\n\n\n\n\n\n'
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 36.34181026349449
-    Y = 39.01805775782419
+    X = 39.26431733945391
+    Y = 27.28899845272423
     }
   TEXTSHAPE
     {
@@ -1726,7 +1726,7 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=MLSelGB Type=MultiList'
-  TEXT = 'MLST:                                            \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+  TEXT = 'MLST:                                        \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -1766,8 +1766,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 4.119887262821841
-    Y = 6.637249631224296
+    X = 50.24467285296399
+    Y = 15.96150114699928
     }
   TEXTSHAPE
     {
@@ -1784,8 +1784,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 16.68672527349138
-    Y = 7.136925123108573
+    X = 62.81151086363352
+    Y = 17.00966202216444
     }
   TEXTSHAPE
     {
@@ -1801,8 +1801,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 39.44088167150841
-    Y = 3.512943405262758
+    X = 85.5656672616507
+    Y = 13.38568030431864
     }
   TEXTSHAPE
     {
@@ -1821,8 +1821,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 74.72102866563533
-    Y = 9.898448499134405
+    X = 73.70450446530165
+    Y = 10.62976234350889
     }
   TEXTSHAPE
     {
@@ -1842,8 +1842,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 50.32650415218755
-    Y = 7.388539467810551
+    X = 49.30997995185386
+    Y = 8.119853312184999
     }
   TEXTSHAPE
     {
@@ -1859,8 +1859,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 84.47883847101426
-    Y = 7.388539467810484
+    X = 83.46231427068067
+    Y = 8.119853312184944
     }
   TEXTSHAPE
     {
@@ -1873,40 +1873,6 @@ $!ATTACHTEXT
     }
   MACROFUNCTIONCOMMAND = 'VarName=LBL13 Type=Label'
   TEXT = 'sphere(s)'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 71.86420440101166
-    Y = 16.46588954255944
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    BOXTYPE = FILLED
-    MARGIN = 45
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=BTNExport Type=PushButton'
-  TEXT = 'Export to CSV'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
-    X = 69.78026940083714
-    Y = 26.64934138981634
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=TGLExGBs Type=Toggle'
-  TEXT = '<math>7</math>   Include ALL individual GBs'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -1926,8 +1892,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 51.60527349206251
-    Y = 17.1023448745887
+    X = 76.63718192528033
+    Y = 28.25488100130008
     }
   TEXTSHAPE
     {
@@ -1944,8 +1910,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 43.72987631083091
-    Y = 17.1023448745887
+    X = 85.28030299947143
+    Y = 35.38519098395161
     }
   TEXTSHAPE
     {
@@ -1962,8 +1928,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 35.38663375249643
-    Y = 17.10234487458869
+    X = 71.85443943946839
+    Y = 35.38519098395161
     }
   TEXTSHAPE
     {
@@ -1979,8 +1945,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 35.38663375249643
-    Y = 25.23151572340147
+    X = 70.45671866400953
+    Y = 42.12912947700836
     }
   TEXTSHAPE
     {
@@ -1992,7 +1958,7 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=LBL21 Type=Label'
-  TEXT = '1. Activate boundary w/ toggle mode\n2. Select GB within boundary'
+  TEXT = '1. Activate boundary with\n    toggle mode\n2. Select GB element \n     within boundary'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -2014,8 +1980,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 23.20678808639362
-    Y = 15.07252689433644
+    X = 7.323597456179392
+    Y = 4.651304611999496
     }
   TEXTSHAPE
     {
@@ -2028,12 +1994,12 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=BTNSmooth Type=PushButton'
-  TEXT = 'Smooth'
+  TEXT = 'Smooth selected variable'
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 4.811427158287511
-    Y = 14.77455176043251
+    X = 4.30316505812065
+    Y = 9.472526388717117
     }
   TEXTSHAPE
     {
@@ -2044,7 +2010,7 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=TGLSmoothAll Type=Toggle'
-  TEXT = '<math>7</math>   All spheres'
+  TEXT = '<math>7</math>   Smooth all atoms'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -2132,23 +2098,6 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 70.08041831124258
-    Y = 22.59849222278298
-    }
-  TEXTSHAPE
-    {
-    HEIGHT = 16
-    }
-  BOX
-    {
-    MARGIN = 0.2
-    FILLCOLOR = CUSTOM2
-    }
-  MACROFUNCTIONCOMMAND = 'VarName=LBL29 Type=Label'
-  TEXT = 'Uncheck to only include active.'
-$!ATTACHTEXT 
-  ANCHORPOS
-    {
     X = 70.51165643158923
     Y = 62.61000378753281
     }
@@ -2179,6 +2128,22 @@ $!ATTACHTEXT
     }
   MACROFUNCTIONCOMMAND = 'VarName=LBL31 Type=Label'
   TEXT = 'Save special gradient\nbundle surfaces'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 4.30316505812065
+    Y = 15.07976393111675
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLINSV Type=Toggle'
+  TEXT = '<math>7</math>   Only show normalized, scaled variables'
 $!ATTACHGEOM 
   GEOMTYPE = RECTANGLE
   POSITIONCOORDSYS = FRAME
@@ -2189,51 +2154,51 @@ $!ATTACHGEOM
     }
   MACROFUNCTIONCOMMAND = ' CP Sphere '
   RAWDATA
-30.1075130701 39.745503664 
+34.0465456247 39.745503664 
 $!ATTACHGEOM 
   GEOMTYPE = RECTANGLE
   POSITIONCOORDSYS = FRAME
   ANCHORPOS
     {
     X = 3.713533631481177
-    Y = 12.85001058379847
+    Y = 2.611616762555191
     }
   MACROFUNCTIONCOMMAND = 'Properties'
   RAWDATA
-29.6240866184 38.2241487503 
+33.563119173 48.4625428915 
 $!ATTACHGEOM 
   GEOMTYPE = RECTANGLE
   POSITIONCOORDSYS = FRAME
   ANCHORPOS
     {
-    X = 34.76936542362758
-    Y = 34.98479902395303
+    X = 37.81893802462872
+    Y = 24.74640520270977
     }
   MACROFUNCTIONCOMMAND = 'Gradient Bundles'
   RAWDATA
-60.9716534615 58.3016574383 
+57.9220831394 68.5400485992 
 $!ATTACHGEOM 
   GEOMTYPE = RECTANGLE
   POSITIONCOORDSYS = FRAME
   ANCHORPOS
     {
-    X = 68.14816272034659
-    Y = 13.19469684012289
-    }
-  MACROFUNCTIONCOMMAND = ' Export '
-  RAWDATA
-27.6511251926 19.0537512302 
-$!ATTACHGEOM 
-  GEOMTYPE = RECTANGLE
-  POSITIONCOORDSYS = FRAME
-  ANCHORPOS
-    {
-    X = 34.79256759136268
-    Y = 13.19469684012292
+    X = 69.98971802791749
+    Y = 25.80986065558331
     }
   MACROFUNCTIONCOMMAND = ' GB Region '
   RAWDATA
-32.0176810026 18.9415574074 
+24.6478810906 31.3738942146 
+$!ATTACHGEOM 
+  GEOMTYPE = RECTANGLE
+  POSITIONCOORDSYS = FRAME
+  ANCHORPOS
+    {
+    X = 38.34188012937996
+    Y = 2.329270824389917
+    }
+  MACROFUNCTIONCOMMAND = 'Sphere contours'
+  RAWDATA
+57.7829062939 20.2464595437 
 ### Frame Number 3 ###
 $!CREATENEWFRAME 
 $!FRAMELAYOUT 

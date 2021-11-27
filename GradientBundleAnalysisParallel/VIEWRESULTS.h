@@ -33,3 +33,5 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
 void ExportGBAData();
 bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin);
 void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t AbsoluteRadius);
+
+void ResultsVarListReload();

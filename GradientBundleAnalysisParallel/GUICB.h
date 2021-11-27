@@ -10,4 +10,4 @@ void GBAProcessSystemDeleteCPLabels();
 
 void PrepareIntegration(Boolean_t IntegratingFromIntTab);
 
-void GBAReloadDialog();
+void GBAReloadDialog(); 

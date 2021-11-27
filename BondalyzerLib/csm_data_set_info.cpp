@@ -412,10 +412,18 @@ vector<string> AuxDataZoneGetList(int ZoneNum, string const & AuxDataName, strin
 
 Boolean_t AuxDataZoneSetItem(int ZoneNum, string const & AuxDataName, string const & AuxDataValue)
 {
-	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	Boolean_t IsOk = (TempAuxData != nullptr);
-	if (IsOk){
-		IsOk = TecUtilAuxDataSetStrItem(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str(), AuxDataValue.c_str(), TRUE);
+	Boolean_t IsOk = FALSE;
+	for (int i = 0; i < 10 && !IsOk; ++i) {
+		try {
+			AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
+			IsOk = (TempAuxData != nullptr);
+			if (IsOk) {
+				IsOk = TecUtilAuxDataSetStrItem(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str(), AuxDataValue.c_str(), TRUE);
+			}
+		}
+		catch (...) {
+			IsOk = FALSE;
+		}
 	}
 	return IsOk;
 }
@@ -426,6 +434,8 @@ Boolean_t AuxDataZoneDeleteItemByName(int ZoneNum, string const & AuxDataName)
 	Boolean_t IsOk = (TempAuxData != nullptr);
 	if (IsOk){
 		IsOk = TecUtilAuxDataDeleteItemByName(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str());
+
+// 		IsOk = TecUtilMacroExecuteCommand(string("$!EXTENDEDCOMMAND COMMANDPROCESSORID = 'Aux Data Editor' COMMAND = 'Delete Name=" + AuxDataMakeStringValidName(AuxDataName) + " Location=Zone LocationIndex=" + to_string(ZoneNum) + "'").c_str());
 	}
 	return IsOk;
 }

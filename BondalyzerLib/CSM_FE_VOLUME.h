@@ -73,7 +73,7 @@ public:
 	vector<double> GetIntResults() const;
 	int GetZoneNum() const { return m_ZoneNum; }
 	vector<vector<double> > GetTriSphereIntValsByElem(vector<double> * SphereTriangleAreas = nullptr) const { return TriSphereIntValsByElem(SphereTriangleAreas); }
-	vector<double> TriSphereElemSolidAngles() const;
+	vector<double> TriSphereElemSolidAngles(double * TotalAreaIn = nullptr) const;
 	int GetNumElems() const {return m_ElemList.size(); }
 	int GetNumNodes() const {return m_XYZList.size(); }
 
@@ -99,6 +99,10 @@ public:
 		vector<vec> const & stuW2 = vector<vec>());
 // 	Boolean_t DoIntegration(int ResolutionScale, Boolean_t IntegrateVolume);
 	Boolean_t DoIntegrationNew(int ResolutionScale, Boolean_t IntegrateVolume);
+	void EdgeMidpointSubdivide(vector<int> const & ElemsToDo, vector<vector<double> > & ElemVals, vec3 * CPPos = nullptr, double * SphereRadius = nullptr);
+	void EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVals, vec3 * CPPos = nullptr, double * SphereRadius = nullptr);
+	vector<vector<double> > CellCenteredToNodalVals(vector<vector<double> > & ElemVals);
+	vector<vector<double> > NodalToCellCenteredVals(vector<vector<double> > & NodeVals);
 
 	Boolean_t GQIntegration(int NumGQPts, vector<FieldDataPointer_c> const & InIntFDPtrs, Boolean_t IntegrateVolume);
 
@@ -295,3 +299,6 @@ private:
 };
 
 void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadius, bool ScaleByVar = false, int ScaleVarNum = -1, double ScaleFactor = 1.0, bool LogScale = true);
+
+
+void GetClosedIsoSurface(int IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums, AddOn_pa AddOnID);

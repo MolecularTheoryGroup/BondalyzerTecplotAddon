@@ -773,6 +773,24 @@ static void STDCALL ResizeSpheresCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL SubdivideSpheresCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		CSMGUILock();
+
+		SubdivideSpheresGetUserInfo();
+
+		CSMGUIUnlock();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL TestFunctionCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -872,6 +890,11 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Export gradient bundle integration data").c_str(),
 		'\0',
 		ExportGBADataCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Subdivide sphere zones").c_str(),
+		'\0',
+		SubdivideSpheresCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		string("Calculate variables").c_str(),

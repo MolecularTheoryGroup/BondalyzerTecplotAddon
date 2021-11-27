@@ -2511,17 +2511,19 @@ void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 	int NumElems = ElemListPtr->size();
 	ElemConnectivity.resize(NumElems);
 	int NumNeighbors = (NumSharedCorners == 1 ? 12 : 3);
-	for (auto & i : ElemConnectivity) i.reserve(NumNeighbors); // A triangle can have as many as 12 neighbors if NumSharedCorners == 1, else 3
+	for (auto & i : ElemConnectivity) i.reserve(NumNeighbors); // A triangle can have as many as (in the normal case) 12 neighbors if NumSharedCorners == 1, else 3
 
 // #ifndef _DEBUG
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic, 32)
 // #endif
 	for (int i = 0; i < NumElems - 1; ++i) {
 		for (int j = i + 1; j < NumElems; ++j) {
 			int NumMatches = 0;
-			for (int ci = 0; ci < 3 && NumMatches < NumSharedCorners; ++ci) for (int cj = 0; cj < 3 && NumMatches < NumSharedCorners; ++cj) {
-				if (ElemListPtr->at(i).at(ci) == ElemListPtr->at(j).at(cj)) {
-					NumMatches++;
+			for (int ci = 0; ci < 3 && NumMatches < NumSharedCorners; ++ci) {
+				for (int cj = 0; cj < 3 && NumMatches < NumSharedCorners; ++cj) {
+					if (ElemListPtr->at(i).at(ci) == ElemListPtr->at(j).at(cj)) {
+						NumMatches++;
+					}
 				}
 			}
 			if (NumMatches >= NumSharedCorners) {

@@ -42,6 +42,9 @@ using std::endl;
 using namespace arma;
 
 
+vector<vector<int> > const ElemSubdivisionNewElemIndices = { {0,3,5},{1,4,3},{2,5,4},{3,4,5} }; //counterclockwise
+// vector<vector<int> > const ElemSubdivisionNewElemIndices = { {0,5,3},{1,3,4},{2,4,5},{3,5,4} }; //clockwise
+
 /*
 *	Public member functions
 */
@@ -1468,12 +1471,17 @@ void FESurface_c::GeneratePointElementDistanceCheckData() {
 void FESurface_c::GenerateElemMidpoints(){
 	if (m_ElemMidPoints.size() != m_ElemList.size()) {
 		m_ElemMidPoints.clear();
-		m_ElemMidPoints.reserve(m_ElemList.size());
-		for (auto const & e : m_ElemList) {
+		m_ElemMidPoints.resize(m_ElemList.size());
+		int NumElems = m_ElemList.size();
+#pragma omp parallel for
+		for (int ei = 0; ei < NumElems; ++ei) {
+			auto & e = m_ElemList[ei];
 			if (e.size() > 1) {
-				m_ElemMidPoints.push_back(m_XYZList[e[0]]);
-				for (int i = 1; i < e.size(); ++i) m_ElemMidPoints.back() += m_XYZList[e[i]];
-				m_ElemMidPoints.back() /= e.size();
+				m_ElemMidPoints[ei] = m_XYZList[e[0]];
+				for (int i = 1; i < e.size(); ++i) {
+					m_ElemMidPoints[ei] += m_XYZList[e[i]];
+				}
+				m_ElemMidPoints[ei] /= e.size();
 			}
 		}
 	}
@@ -1486,7 +1494,14 @@ void FESurface_c::GenerateElemConnectivity(int numSharedNodes) {
 }
 
 void FESurface_c::GenerateNodeToElementList(){
-	m_NodeToElementList.resize(m_NumNodes);
+	if (m_NodeToElementList.size() == m_NumNodes && (!m_NodeToElementList.empty() && m_NodeToElementList[0].size() >= 5)) {
+		return;
+	}
+	m_NodeToElementList = vector<vector<int> >(m_NumNodes);
+	for (int ni = 0; ni < m_NumNodes; ++ni) {
+		m_NodeToElementList[ni].reserve(6);
+	}
+#pragma omp parallel for
 	for (int ni = 0; ni < m_NumNodes; ++ni){
 		for (int ei = 0; ei < m_NumElems; ++ei) {
 			auto const & e = m_ElemList[ei];
@@ -2740,7 +2755,7 @@ int FESurface_c::TriangleIntersect(vec3 const & T_P0,
 		return 0;
 }
 
-vector<double> FESurface_c::TriSphereElemSolidAngles() const
+vector<double> FESurface_c::TriSphereElemSolidAngles(double * TotalAreaIn) const
 {
 	Boolean_t IsOk = TRUE;
 
@@ -2789,6 +2804,9 @@ vector<double> FESurface_c::TriSphereElemSolidAngles() const
 #pragma omp parallel for
 		for (int ElemNum = 0; ElemNum < m_NumElems; ++ElemNum) {
 			SolidAngles[ElemNum] /= TotalArea;
+		}
+		if (TotalAreaIn != nullptr){
+			*TotalAreaIn = TotalArea;
 		}
 	}
 
@@ -3487,4 +3505,496 @@ void ResizeSphere(int ZoneNum, double const & SizeFactor, Boolean_t AbsoluteRadi
 		}
 	}
 	TecUtilDataLoadEnd();
+}
+
+
+
+bool const FEZoneDFS(int NodeNum,
+	NodeMap_pa const & NodeMap,
+	NodeToElemMap_pa const & NodeToElemMap,
+	int NumNodesPerElem,
+	vector<bool> & IsVisited) {
+	bool IsOk = true;
+	IsVisited[NodeNum] = true;
+	int NumElems = TecUtilDataNodeToElemMapGetNumElems(NodeToElemMap, NodeNum + 1);
+	for (int e = 1; e <= NumElems && IsOk; ++e) {
+		int ei = TecUtilDataNodeToElemMapGetElem(NodeToElemMap, NodeNum + 1, e);
+		for (int n = 0; n < NumNodesPerElem && IsOk; ++n) {
+			int ni = TecUtilDataNodeGetByRef(NodeMap, ei, n + 1) - 1;
+			if (!IsVisited[ni]) {
+				IsOk = FEZoneDFS(ni, NodeMap, NodeToElemMap, NumNodesPerElem, IsVisited);
+			}
+		}
+	}
+
+	return IsOk;
+}
+
+void FEZoneBFS(int NodeNum,
+	NodeMap_pa const & NodeMap,
+	NodeToElemMap_pa const & NodeToElemMap,
+	int NumNodesPerElem,
+	vector<bool> & IsVisited)
+{
+	std::queue<int> q;
+	q.push(NodeNum);
+	IsVisited[NodeNum] = true;
+
+	while (!q.empty()) {
+		NodeNum = q.front();
+		q.pop();
+		int NumElems = TecUtilDataNodeToElemMapGetNumElems(NodeToElemMap, NodeNum + 1);
+		for (int e = 1; e <= NumElems; ++e) {
+			int ei = TecUtilDataNodeToElemMapGetElem(NodeToElemMap, NodeNum + 1, e);
+			for (int n = 0; n < NumNodesPerElem; ++n) {
+				int ni = TecUtilDataNodeGetByRef(NodeMap, ei, n + 1) - 1;
+				if (!IsVisited[ni]) {
+					q.push(ni);
+					IsVisited[ni] = true;
+				}
+			}
+		}
+	}
+}
+
+// void FEZoneDFS(int NodeNum, vector<vector<int> > const & Elems, vector<bool> & IsVisited){
+// 	IsVisited[NodeNum] = true;
+// 	for ()
+// }
+
+void GetClosedIsoSurface(int IsoZoneNum, vector<FieldDataPointer_c> const & IsoReadPtrs, vector<int> & NodeNums, AddOn_pa AddOnID) {
+
+	int IsoIJK[3];
+	TecUtilZoneGetIJK(IsoZoneNum, &IsoIJK[0], &IsoIJK[1], &IsoIJK[2]); // {NumNodes, NumElems, NumNodesPerElem}
+
+	ZoneType_e IsoZoneType = TecUtilZoneGetType(IsoZoneNum);
+
+	char *IsoZoneName;
+	TecUtilZoneGetName(IsoZoneNum, &IsoZoneName);
+
+	Set_pa ZoneSet = TecUtilSetAlloc(TRUE);
+
+	string StatusStr = "Generating isosurface subzone";
+	StatusLaunch(StatusStr, AddOnID, FALSE);
+	int PtNum = 1;
+
+	NodeMap_pa NodeMap = TecUtilDataNodeGetReadableRef(IsoZoneNum);
+	NodeToElemMap_pa NodeToElemMap = TecUtilDataNodeToElemMapGetReadableRef(IsoZoneNum);
+
+	if (NodeNums.size() == 0) {
+		NodeNums.resize(IsoIJK[0]);
+		for (int n = 0; n < IsoIJK[0]; ++n) NodeNums[n] = n;
+	}
+
+	// 	 Construct internal representation of the IsoSurface.
+	// 	 Only need the connectivity information.
+	// 	 NodeConnectivity will be a list of connected nodes for each node
+	vector<vector<int> > Elems(IsoIJK[1]);
+	for (auto & e : Elems) e.reserve(IsoIJK[2]);
+
+	int NodesPerElem = TecUtilDataNodeGetNodesPerElem(NodeMap);
+	if (NodesPerElem != IsoIJK[2]) TecUtilDialogErrMsg("Number of nodes per element doesn't match!"); //sanity check
+
+	// Get the full list of elements, each element a list of node numbers.
+	// Everything is being stored in base-0.
+	for (int e = 0; e < IsoIJK[1]; ++e) for (int n = 0; n < IsoIJK[2]; ++n) Elems[e].push_back(TecUtilDataNodeGetByRef(NodeMap, e + 1, n + 1) - 1);
+
+	vector<bool> TotalNodeVisited(IsoIJK[0], false);
+
+	int SubZoneNum = 1;
+
+	for (int NodeNum : NodeNums) {
+		if (TotalNodeVisited[NodeNum]) continue;
+		if (!StatusUpdate(0, 1, StatusStr + ": " + to_string(PtNum++) + (NodeNums.size() != IsoIJK[0] ? " of " + to_string(NodeNums.size()) : ""), AddOnID)) {
+			StatusDrop(AddOnID);
+			return;
+		}
+
+
+		/*
+		 * Now run a depth first search through the isosurface to get the connected component
+		 * of the minimum distance node.
+		 */
+		vector<bool> NodeVisited(IsoIJK[0], false);
+
+		if (!VALID_REF(NodeMap)) {
+			TecUtilDialogErrMsg("Isosurface node pointer(s) invalid. Quitting.");
+			return;
+		}
+
+		// 		FEZoneDFS(NodeNum, NodeMap, NodeToElemMap, IsoIJK[2], NodeVisited);
+		FEZoneBFS(NodeNum, NodeMap, NodeToElemMap, IsoIJK[2], NodeVisited);
+
+		for (int n = 0; n < NodeVisited.size(); ++n) {
+			TotalNodeVisited[n] = (TotalNodeVisited[n] || NodeVisited[n]);
+		}
+
+		/*
+		 * Collect nodes/elements of single found connected component
+		 */
+
+		int NumNewNodes = 0;
+		for (auto const & i : NodeVisited) NumNewNodes += (int)i;
+
+		if (NumNewNodes <= 0) {
+			continue;
+		}
+
+		vector<int> NodeNumsNewToOld(NumNewNodes);
+		vector<int> NodeNumsOldToNew(IsoIJK[0]);
+
+		int NodeNumElems;
+		int NewNodeNum = -1;
+
+		for (int n = 0; n < IsoIJK[0]; ++n) {
+			if (NodeVisited[n]) {
+				NodeNumsNewToOld[++NewNodeNum] = n;
+				NodeNumsOldToNew[n] = NewNodeNum;
+			}
+		}
+
+		vector<FieldDataPointer_c> IsoWritePtrs(IsoReadPtrs.size());
+
+		vector<vector<int> > NewElems;
+		NewElems.reserve(IsoIJK[1]);
+		vector<bool> ElemAdded(IsoIJK[1], false);
+
+		for (int e = 0; e < IsoIJK[1]; ++e) {
+			if (!ElemAdded[e]) {
+				for (auto const & n : Elems[e]) {
+					if (NodeVisited[n])
+					{
+						ElemAdded[e] = true;
+						NewElems.push_back(Elems[e]);
+						for (auto & ne : NewElems.back()) {
+							ne = NodeNumsOldToNew[ne];
+						}
+						break;
+					}
+				}
+			}
+		}
+
+		/*
+		 * Make new zone with single connected component
+		 */
+
+		if (!TecUtilDataSetAddZone(string(IsoZoneName + string(": Subzone ") + to_string(SubZoneNum++)).c_str(), NumNewNodes, NewElems.size(), IsoIJK[2], IsoZoneType, nullptr)) {
+			TecUtilDialogErrMsg("Failed to make new iso zone. Quitting.");
+			return;
+		}
+
+		int NewZoneNum = TecUtilDataSetGetNumZones();
+
+		for (int i = 0; i < IsoReadPtrs.size(); ++i) {
+			if (!IsoWritePtrs[i].InitializeWritePtr(NewZoneNum, i + 1)) {
+				TecUtilDialogErrMsg("Failed to get write pointer(s) for new iso zone. Quitting.");
+				return;
+			}
+		}
+
+		vector<int> NewZoneIJK(3);
+		TecUtilZoneGetIJK(NewZoneNum, &NewZoneIJK[0], &NewZoneIJK[1], &NewZoneIJK[2]);
+
+		// 		for (int n = 0; n < NumNewNodes; ++n) for (int i = 0; i < IsoWritePtrs.size(); ++i) IsoWritePtrs[i].Write(n, IsoReadPtrs[i][NodeNumsNewToOld[n]]);
+		for (int i = 0; i < IsoWritePtrs.size(); ++i) {
+			if (IsoWritePtrs[i].FDType() != FieldDataType_Bit) {
+				for (int n = 0; n < NumNewNodes; ++n) {
+					IsoWritePtrs[i].Write(n, IsoReadPtrs[i][NodeNumsNewToOld[n]]);
+				}
+			}
+		}
+
+		NodeMap_pa NewNodeMap = TecUtilDataNodeGetWritableRef(NewZoneNum);
+		if (!VALID_REF(NewNodeMap)) {
+			TecUtilDialogErrMsg("Failed to get node map pointer for new iso zone. Quitting.");
+			return;
+		}
+
+		for (int e = 0; e < NewElems.size(); ++e) {
+			int e1 = e + 1;
+			for (int ei = 0; ei < IsoIJK[2]; ++ei) {
+				int ei1 = ei + 1;
+				int n = NewElems[e][ei % NewElems[e].size()] + 1;
+				TecUtilDataNodeSetByZone((EntIndex_t)NewZoneNum, (LgIndex_t)e1, (LgIndex_t)ei1, (NodeMap_t)n);
+				// 				TecUtilDataNodeSetByRef(NewNodeMap, e1, ei1, n);
+			}
+		}
+
+		TecUtilSetAddMember(ZoneSet, NewZoneNum, TRUE);
+
+	}
+
+	if (TecUtilSetGetMemberCount(ZoneSet) > 0) {
+		TecUtilZoneSetMesh(SV_SHOW, ZoneSet, 0.0, FALSE);
+		TecUtilZoneSetScatter(SV_SHOW, ZoneSet, 0.0, FALSE);
+		TecUtilZoneSetShade(SV_SHOW, ZoneSet, 0.0, FALSE);
+		TecUtilZoneSetContour(SV_SHOW, ZoneSet, 0.0, TRUE);
+		TecUtilZoneSetActive(ZoneSet, AssignOp_PlusEquals);
+	}
+
+	TecUtilStringDealloc(&IsoZoneName);
+	TecUtilSetDealloc(&ZoneSet);
+	StatusDrop(AddOnID);
+}
+
+
+vector<vector<double> > FESurface_c::CellCenteredToNodalVals(vector<vector<double> > & ElemVals) {
+	// get nodal values of variables.
+	// interpolate from cell-centered values using element area and reciprocal distance between node and cell center
+	vector<vector<double> > NodeVals;
+	if (!ElemVals.empty()) {
+		NodeVals.resize(m_XYZList.size(), vector<double>(ElemVals[0].size(), 0.));
+
+		this->GenerateNodeToElementList();
+		this->GenerateElemMidpoints();
+
+		int NumNodes = m_XYZList.size();
+#pragma omp parallel for
+		for (int ni = 0; ni < NumNodes; ++ni) {
+			// get element weights using normalized reciprocal distances to cell centers
+			vec ReciprocalDists(m_NodeToElementList[ni].size()),
+				TriWeights(m_NodeToElementList[ni].size());
+			for (int ei = 0; ei < m_NodeToElementList[ni].size(); ++ei) {
+				ReciprocalDists[ei] = 1. / Distance(m_XYZList[ni], m_ElemMidPoints[m_NodeToElementList[ni][ei]]);
+			}
+			ReciprocalDists = normalise(ReciprocalDists);
+			for (int ei = 0; ei < m_NodeToElementList[ni].size(); ++ei) {
+				TriWeights[ei] = ReciprocalDists[ei];
+			}
+			TriWeights = normalise(TriWeights);
+
+			// compute new values as linear combinations
+			for (int vi = 0; vi < ElemVals[0].size(); ++vi) {
+				for (int ei = 0; ei < m_NodeToElementList[ni].size(); ++ei) {
+					NodeVals[ni][vi] += ElemVals[m_NodeToElementList[ni][ei]][vi] * TriWeights[ei] * TriWeights[ei];
+				}
+			}
+		}
+	}
+
+	return NodeVals;
+}
+
+vector<vector<double> > FESurface_c::NodalToCellCenteredVals(vector<vector<double> > & NodeVals) {
+	// get cell-centered values of variables.
+	// interpolate from nodal values using ~~element area~~ and reciprocal distance between node and cell center
+	vector<vector<double> > ElemVals;
+	if (!NodeVals.empty()) {
+		ElemVals.resize(m_ElemList.size(), vector<double>(NodeVals[0].size(), 0.));
+
+		this->GenerateElemMidpoints();
+
+		int NumElems = m_ElemList.size();
+
+#pragma omp parallel for
+		for (int ei = 0; ei < NumElems; ++ei) {
+			vec ReciprocalDists(3),
+				NodeWeights(3);
+			// get element weights using normalized areas and reciprocal distances to cell centers
+			for (int ni = 0; ni < 3; ++ni) {
+				ReciprocalDists[ni] = 1. / Distance(m_XYZList[m_ElemList[ei][ni]], m_ElemMidPoints[ei]);
+			}
+			ReciprocalDists = normalise(ReciprocalDists);
+			for (int ni = 0; ni < 3; ++ni) {
+				NodeWeights[ni] =  ReciprocalDists[ni];
+			}
+			NodeWeights = normalise(NodeWeights);
+
+			// compute new values as linear combinations
+			for (int vi = 0; vi < NodeVals[0].size(); ++vi) {
+				for (int ni = 0; ni < 3; ++ni) {
+					ElemVals[ei][vi] += NodeVals[m_ElemList[ei][ni]][vi] * NodeWeights[ni] * NodeWeights[ni];
+				}
+			}
+		}
+	}
+
+	return ElemVals;
+}
+
+
+void FESurface_c::EdgeMidpointSubdivide(vector<int> const & ElemsToDo, vector<vector<double> > & ElemVals, vec3 * CPPosIn, double * SphereRadiusIn) {
+	// check that ElemVals has the right shape
+	if (!ElemVals.empty() && ElemVals.size() != m_ElemList.size()) {
+		return;
+	}
+	if (ElemsToDo.empty()){
+		this->EdgeMidpointSubdivideParallel(ElemVals, CPPosIn, SphereRadiusIn);
+		return;
+	}
+
+	vector<vector<double> > NodeVals;
+	if (!ElemVals.empty()) {
+		NodeVals = this->CellCenteredToNodalVals(ElemVals);
+	}
+
+	vec3 CPPos;
+	double SphereRadius = -1;
+	if (CPPosIn != nullptr && SphereRadiusIn != nullptr) {
+		CPPos = *CPPosIn;
+		SphereRadius = *SphereRadiusIn;
+	}
+
+	std::queue<int> ElemsToSubdivide;
+	for (int const & ei : ElemsToDo) {
+		ElemsToSubdivide.push(ei);
+	}
+
+	m_ElemList.reserve(m_ElemList.size() + ElemsToDo.size() * 3);
+	m_XYZList.reserve(m_XYZList.size() + ElemsToDo.size() * 3);
+
+	std::map<Edge, int> NewEdgeNodes;
+
+	while (!ElemsToSubdivide.empty()) {
+		int ti = ElemsToSubdivide.front();
+		auto oldElem = m_ElemList[ti];
+
+		// Premake edge objects for element
+		vector<Edge> ElemEdges(3);
+		for (int ci = 0; ci < 3; ++ci)
+			ElemEdges[ci] = MakeEdge(oldElem[ci], oldElem[(ci + 1) % 3]);
+
+		// Make new nodes at midpoints of edges, using existing nodes if present.
+		// Also add new node types.
+		for (int ci = 0; ci < 3; ++ci) {
+			if (!NewEdgeNodes.count(ElemEdges[ci])) {
+				int NewNodeNum = m_XYZList.size();
+				oldElem.push_back(NewNodeNum);
+				NewEdgeNodes[ElemEdges[ci]] = NewNodeNum;
+				m_XYZList.emplace_back((m_XYZList[ElemEdges[ci].first] + m_XYZList[ElemEdges[ci].second]) * 0.5);
+				if (SphereRadius > 0) {
+					m_XYZList.back() = CPPos + normalise(m_XYZList.back() - CPPos) * SphereRadius;
+				}
+				// Get new values
+				if (!ElemVals.empty()) {
+					NodeVals.push_back(vector<double>(ElemVals[0].size()));
+					for (int vi = 0; vi < ElemVals[0].size(); ++vi) {
+						NodeVals.back()[vi] = (NodeVals[ElemEdges[ci].first][vi] + NodeVals[ElemEdges[ci].second][vi]) * 0.5;
+					}
+				}
+			}
+			else {
+				oldElem.push_back(NewEdgeNodes[ElemEdges[ci]]);
+			}
+		}
+
+		// Make new elements
+		vector<int> newElems(4);
+		for (int ei = 0; ei < 3; ++ei) {
+			m_ElemList.push_back({
+				oldElem[ElemSubdivisionNewElemIndices[ei][0]],
+				oldElem[ElemSubdivisionNewElemIndices[ei][1]],
+				oldElem[ElemSubdivisionNewElemIndices[ei][2]]
+				});
+		}
+		m_ElemList[ti] = {
+				oldElem[ElemSubdivisionNewElemIndices[3][0]],
+				oldElem[ElemSubdivisionNewElemIndices[3][1]],
+				oldElem[ElemSubdivisionNewElemIndices[3][2]]
+		};
+
+		ElemsToSubdivide.pop();
+	}
+
+	m_NumElems = m_ElemList.size();
+	m_NumNodes = m_XYZList.size();
+
+	ElemVals = this->NodalToCellCenteredVals(NodeVals);
+}
+
+void FESurface_c::EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVals, vec3 * CPPosIn, double * SphereRadiusIn) {
+	// check that ElemVals has the right shape
+	if (!ElemVals.empty() && ElemVals.size() != m_ElemList.size()) {
+		return;
+	}
+
+	vector<vector<double> > NodeVals;
+	if (!ElemVals.empty()) {
+		NodeVals = this->CellCenteredToNodalVals(ElemVals);
+	}
+
+	vec3 CPPos;
+	double SphereRadius = -1;
+	if (CPPosIn != nullptr && SphereRadiusIn != nullptr) {
+		CPPos = *CPPosIn;
+		SphereRadius = *SphereRadiusIn;
+	}
+
+	// Get list of new logical edges and nodes pointing to the indices of their nodes and the reverse map
+	std::map<Edge, int> EdgeToNodeIndMap;
+	std::map<int, Edge> NodeIndToEdgeMap;
+	int NodeInd = m_XYZList.size() - 1;
+	for (auto const & elem : m_ElemList){
+		for (int ci = 0; ci < 3; ++ci) {
+			int cj = (ci + 1) % 3;
+			Edge TmpEdge = MakeEdge(elem[ci], elem[cj]);
+			if (!EdgeToNodeIndMap.count(TmpEdge)){
+				EdgeToNodeIndMap[TmpEdge] = ++NodeInd;
+				NodeIndToEdgeMap[NodeInd] = TmpEdge;
+			}
+		}
+	}
+
+	// resize m_XYZList and m_ElemList non-destructively; we'll populate it in parallel
+	int OldNumNodes = m_XYZList.size();
+	m_XYZList.resize(NodeInd+1);
+	int OldNumElems = m_ElemList.size();
+	m_ElemList.resize(m_ElemList.size() * 4, vector<int>(3));
+	NodeVals.resize(NodeInd + 1, vector<double>(NodeVals[0].size(), 0.));
+
+	m_NumElems = m_ElemList.size();
+	m_NumNodes = m_XYZList.size();
+
+	// calculate new nodes and node vals in parallal
+#pragma omp parallel for
+	for (int ni = OldNumNodes; ni <= NodeInd; ++ni){
+		auto const & TmpEdge = NodeIndToEdgeMap.at(ni);
+		m_XYZList[ni] = (m_XYZList[TmpEdge.first] + m_XYZList[TmpEdge.second]) * 0.5;
+		if (SphereRadius > 0) {
+			m_XYZList[ni] = CPPos + normalise(m_XYZList[ni] - CPPos) * SphereRadius;
+		}
+		for (int vi = 0; vi < ElemVals[0].size(); ++vi) {
+			NodeVals[ni][vi] = (NodeVals[TmpEdge.first][vi] + NodeVals[TmpEdge.second][vi]) * 0.5;
+		}
+	}
+
+	// get the new NodeToElementList as we alter elements, store as sets then copy after
+	// (generating the NodeToElementList is expensive for large meshes)
+	vector<std::set<int> > NodeToElementSetListNew(m_NumNodes);
+
+	// then split the elements
+#pragma omp parallel for
+	for (int ti = 0; ti < OldNumElems; ++ti){
+		int ej = OldNumElems + (3 * ti);
+		int NodeNums[6];
+		for (int ci = 0; ci < 3; ++ci) {
+			int cj = (ci + 1) % 3;
+			Edge TmpEdge = MakeEdge(m_ElemList[ti][ci], m_ElemList[ti][cj]);
+			NodeNums[ci] = m_ElemList[ti][ci];
+			NodeNums[ci + 3] = EdgeToNodeIndMap.at(TmpEdge);
+		}
+		// the three new elements
+		for (int ei = 0; ei < 3; ++ei){
+			for (int ci = 0; ci < 3; ++ci){
+				m_ElemList[ej][ci] = NodeNums[ElemSubdivisionNewElemIndices[ei][ci]];
+				NodeToElementSetListNew[NodeNums[ElemSubdivisionNewElemIndices[ei][ci]]].insert(ej);
+			}
+			ej++;
+		}
+		// redo the original element
+		for (int ci = 0; ci < 3; ++ci) {
+			m_ElemList[ti][ci] = NodeNums[ElemSubdivisionNewElemIndices[3][ci]];
+			NodeToElementSetListNew[NodeNums[ElemSubdivisionNewElemIndices[3][ci]]].insert(ti);
+		}
+	}
+
+	// save NodeToElementSetListNew
+	m_NodeToElementList.resize(m_NumNodes);
+	for (int ni = 0; ni < m_NumNodes; ++ni){
+		m_NodeToElementList[ni] = vector<int>(NodeToElementSetListNew[ni].cbegin(), NodeToElementSetListNew[ni].cend());
+	}
+
+
+	ElemVals = this->NodalToCellCenteredVals(NodeVals);
 }

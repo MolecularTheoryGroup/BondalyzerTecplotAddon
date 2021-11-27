@@ -59,7 +59,6 @@ void GetAllClosedIsoSurfaces();
 void ConnectCPsGetUserInfo();
 void DrawEigenvectorArrowsGetUserInfo();
 class FieldDataPointer_c;
-void GetClosedIsoSurface(int IsoZoneNum, const std::vector<FieldDataPointer_c> & IsoReadPtrs, std::vector<int> & NodeNums);
 void MakeSurfaceFromPathZonesGetUserInfo();
 void MakeSliceFromPointSelectionGetUserInfo();
 
@@ -219,5 +218,6 @@ void GenerateGUIBondsGetUserInfo();
 void DrawRepresentationQuadricsGetUserInfo();
 
 void ResizeSpheresGetUserInfo();
+void SubdivideSpheresGetUserInfo();
 
 void FindContourCurvaturePointsGetUserInfo();

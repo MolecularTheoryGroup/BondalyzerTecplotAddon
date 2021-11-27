@@ -21,6 +21,7 @@
 #include <armadillo>
 
 #include "Set.h"
+#include "StyleValue.h"
 #include "CSM_DATA_SET_INFO.h"
 #include "CSM_DATA_TYPES.h"
 #include "CSM_FE_VOLUME.h"
@@ -118,44 +119,7 @@ void GBAResultViewerSelectSphere(){
 	if (IsOk)
 		TecGUIToggleSet(TGLSphereVis_TOG_T3_1, TecUtilZoneIsActive(SphereZoneNum));
 
-
-	int SelectedVarNum = 1;
-	if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0)
-		SelectedVarNum = TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1);
-
-	TecGUIListDeleteAllItems(SLSelVar_SLST_T3_1);
-
-	if (TecGUIToggleGet(TGLSphereVis_TOG_T3_1)) {
-		/*
-		 *	Get list of integrated variables for the selected sphere
-		 */
-
-		vector<string> IntVarNames;
-		vector<string> IntCheckStrs = { "I: ", "IN: ", "INS: ", " Integration" };
-		for (int i = 1; i <= TecUtilDataSetGetNumVars(); ++i) {
-			char *VarName, *CheckStr;
-			if (TecUtilVarGetName(i, &VarName)) {
-				for (string const & Str : IntCheckStrs) {
-					CheckStr = std::strstr(VarName, Str.c_str());
-					if (CheckStr != nullptr) {
-						// Integration variable found. Now make sure it's not bit type for sphere zone.
-						if (TecUtilDataValueGetType(SphereZoneNum, i) != FieldDataType_Bit) {
-							IntVarNames.push_back(VarName);
-							break;
-						}
-					}
-				}
-				TecUtilStringDealloc(&VarName);
-			}
-		}
-
-		if (IntVarNames.size() > 0) {
-			for (string const & i : IntVarNames)
-				TecGUIListAppendItem(SLSelVar_SLST_T3_1, i.c_str());
-			TecGUIListSetSelectedItem(SLSelVar_SLST_T3_1, SelectedVarNum);
-		}
-
-	}
+	ResultsVarListReload();
 
 	return;
 }
@@ -174,12 +138,29 @@ void GBAResultViewerSelectIntVar(){
 	int NumContours = stoi(TecGUITextFieldGetString(TFNumContours_TF_T3_1));
 	bool LogSpaceContours = (TecGUIRadioBoxGetToggle(RBLogLin_RADIO_T3_1) == 1);
 	bool UseSelectedSphere = (TecGUIRadioBoxGetToggle(RBCntSrc_RADIO_T3_1) == 1);
+	bool INSOnly = TecGUIToggleGet(TGLINSV_TOG_T3_1);
 	vec ContourLevelsVec;
 	string SphereNameStr;
 	if (NumSelected > 0){
 		char *IntVarNameCStr = TecGUIListGetString(SLSelVar_SLST_T3_1, TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1));
 		string IntVarNameStr = IntVarNameCStr;
 		TecUtilStringDealloc(&IntVarNameCStr);
+
+		bool HasINS = false;
+		for (auto & s : { "I: ","IN: ", "INS: " }){
+			if (IntVarNameStr.find(s) != string::npos){
+				HasINS = true;
+				break;
+			}
+		}
+		if (!HasINS){
+			if (IntVarNameStr.find("Average ") == string::npos) {
+				IntVarNameStr = "INS: " + IntVarNameStr;
+			}
+			else{
+				IntVarNameStr = "I: " + IntVarNameStr;
+			}
+		}
 
 		char* SphereNameCStr = TecGUIListGetString(SLSelSphere_SLST_T3_1, TecGUIListGetSelectedItem(SLSelSphere_SLST_T3_1));
 		SphereNameStr = SphereNameCStr;
@@ -224,6 +205,20 @@ void GBAResultViewerSelectIntVar(){
 			return;
 		}
 
+		StyleValue styleValue;
+		styleValue.set((Boolean_t)0, SV_GLOBALLINKING, SV_LINKCOLORMAPS);
+
+
+		styleValue.set(8, VarNum, SV_GLOBALCONTOUR, SV_COLORMAPFILTER, SV_GROUP);
+
+		if (VarMin >= 0. || VarMax <= 0.) {
+			styleValue.set(28, 8, SV_GLOBALCOLORMAP, SV_CONTOURCOLORMAP);
+			styleValue.set((Boolean_t)1, 8, SV_GLOBALCONTOUR, SV_COLORMAPFILTER, SV_REVERSECOLORMAP);
+		}
+		else {
+			styleValue.set(8, 8, SV_GLOBALCOLORMAP, SV_CONTOURCOLORMAP);
+			styleValue.set((Boolean_t)0, 8, SV_GLOBALCONTOUR, SV_COLORMAPFILTER, SV_REVERSECOLORMAP);
+		}
 
 		if (LogSpaceContours){
 			if (VarMin <= 0.0){
@@ -247,7 +242,7 @@ void GBAResultViewerSelectIntVar(){
 						for (double const & Val : TmpVals){
 							if (Val < 0.0 && Val > NegCloseToZero)
 								NegCloseToZero = Val;
-							else if (Val > 0 && Val < PosCloseToZero)
+							else if (Val > 0.0 && Val < PosCloseToZero)
 								PosCloseToZero = Val;
 						}
 					}
@@ -257,16 +252,27 @@ void GBAResultViewerSelectIntVar(){
 				if (PosCloseToZero == DBL_MAX)
 					PosCloseToZero = 1e-3;
 
-				if (VarMax <= 0){
-					ContourLevelsVec = LogSpace(-VarMax, -VarMin, NumContours) * -1.0;
+				if (VarMax <= 0.){
+					if (VarMax == 0.){
+						ContourLevelsVec = join_cols(LogSpace(-0.95 * VarMin, -1e-2 * VarMin, NumContours - 1) * -1.0, vec({ 0. }));
+					}
+					else {
+						ContourLevelsVec = LogSpace(-VarMax, -VarMin, NumContours) * -1.0;
+					}
 				}
-				else if (VarMin >= 0.0){
-					ContourLevelsVec = LogSpace(VarMin, VarMax, NumContours);
+				else if (VarMin >= 0.){
+					if (VarMin == 0.){
+						ContourLevelsVec = join_cols(vec({ 0. }), LogSpace(VarMax * 1e-5, VarMax, NumContours - 1));
+					}
+					else {
+						ContourLevelsVec = LogSpace(VarMin, VarMax, NumContours);
+					}
 				}
 				else{
 					int NumNegContours = int(double(NumContours) * (-VarMin) / (VarMax - VarMin));
 
-					ContourLevelsVec = join_cols(flipud(LogSpace(-NegCloseToZero, -VarMin, NumNegContours) * -1.0), LogSpace(PosCloseToZero, VarMax, NumContours - NumNegContours));
+					ContourLevelsVec = join_cols(join_cols(flipud(LogSpace(-VarMin, -NegCloseToZero, 3) * -1.0), vec({ 0. })), flipud(LogSpace(VarMax, PosCloseToZero, 3)));
+					NumContours = 7;
 				}
 			}
 			else{
@@ -274,8 +280,18 @@ void GBAResultViewerSelectIntVar(){
 			}
 		}
 		else{
-			ContourLevelsVec = linspace(VarMin, VarMax, NumContours);
+			if (VarMin >= 0. || VarMax <= 0.) {
+				ContourLevelsVec = linspace(VarMin, VarMax, NumContours);
+			}
+			else {
+				ContourLevelsVec = join_cols(join_cols(flipud(linspace(-VarMin * 0.2, -VarMin * 0.8, 3) * -1.0), vec({ 0.0 })), linspace(VarMax * 0.2, VarMax * 0.8, 3));
+				NumContours = 7;
+			}
 		}
+
+
+
+
 
 		
 	}
@@ -292,6 +308,7 @@ void GBAResultViewerSelectIntVar(){
 		TecUtilArgListAppendInt(TempArgList, SV_CONTOURGROUP, 8);
 		TecUtilContourLabelX(TempArgList);
 		TecUtilArgListClear(TempArgList);
+
 
 		TecUtilArgListAppendInt(TempArgList, SV_CONTOURLEVELACTION, ContourLevelAction_New);
 		TecUtilArgListAppendInt(TempArgList, SV_CONTOURGROUP, 8);
@@ -415,11 +432,9 @@ void GBAResultViewerSelectCondensedGBs() {
 			TecUtilZoneSetActive(DeactivateSet.getRef(), AssignOp_MinusEquals);
 		}
 		// turn on truncating isosurface if present
-		for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
-			if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeTruncIsosurface)) {
-				TecUtilZoneSetActive(Set(zi).getRef(), AssignOp_PlusEquals);
-				break;
-			}
+		int isoZone = ZoneNumByName("gba-truncating-isosurface_", false, true);
+		if (isoZone > 0) {
+			TecUtilZoneSetActive(Set(isoZone).getRef(), AssignOp_PlusEquals);
 		}
 
 		// 		TecUtilDataLoadEnd();
@@ -1365,7 +1380,7 @@ void STDCALL SelectGBsInRegionProbeCB(Boolean_t WasSuccessful,
  *	* Integration totals for for each condensed maximum/minimum basin for each sphere
  */
 void ExportGBAData(){
-	if ((TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0 && TecGUIToggleGet(TGLExGBs_TOG_T3_1)) || TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
+	if (TecGUIListGetItemCount(SLSelSphere_SLST_T3_1) > 0 || TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
 		char* FolderNameCStr;
 		vector<int> IntVarNums;
 		vector<string> IntVarNames;
@@ -1374,7 +1389,7 @@ void ExportGBAData(){
 			TecUtilStringDealloc(&FolderNameCStr);
 			if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
 				if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
-					Boolean_t IncludeAllGBs = !TecGUIToggleGet(TGLExGBs_TOG_T3_1);
+					Boolean_t IncludeAllGBs = FALSE; // !TecGUIToggleGet(TGLExGBs_TOG_T3_1);
 					vector<string> IntCheckStrs = { "I: ", "IN: ", "INS: ", " Integration" };
 					for (int VarNum = 1; VarNum <= TecUtilDataSetGetNumVars(); ++VarNum) {
 						char *VarName, *CheckStr;
@@ -1776,7 +1791,7 @@ bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin) {
 		string OriginString;
 		if (AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereOrigin, OriginString)) {
 			vector<double> OriginVec = SplitStringDbl(OriginString);
-			if (OriginString.size() == 3) {
+			if (OriginVec.size() == 3) {
 				for (int i = 0; i < 3; ++i) {
 					Origin[i] = OriginVec[i];
 				}
@@ -1793,8 +1808,12 @@ bool GetSphereOrigin(int SphereZoneNum, vec3 & Origin) {
 		// now see if origin CP zone is present and use that
 		string CPZoneNumStr, CPNumStr;
 		if (AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SourceZoneNum, CPZoneNumStr) && AuxDataZoneGetItem(SphereZoneNum, CSMAuxData.GBA.SphereCPNum, CPNumStr)) {
+			int VolZoneNum = ZoneNumByName("Full Volume", false, true);
 			int SourceCPZoneNum = stoi(CPZoneNumStr),
 				SourceCPNum = stoi(CPNumStr);
+			if (VolZoneNum <= 0){
+				SourceCPZoneNum -= 1;
+			}
 			if (AuxDataZoneItemMatches(SourceCPZoneNum, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.CPSubTypes[0])) {
 				for (int i = 0; i < 3; ++i) {
 					Origin[i] = TecUtilDataValueGetByZoneVar(SourceCPZoneNum, XYZVarNums[i], SourceCPNum);
@@ -1924,4 +1943,66 @@ void ResizeSpheres(double const & SizeFactor, Boolean_t AllSpheres, Boolean_t Ab
 	}
 
 	CSMGUIUnlock();
+}
+
+
+void ResultsVarListReload() {
+	bool INSOnly = TecGUIToggleGet(TGLINSV_TOG_T3_1);
+	string CurVal = "", CurValShort;
+	if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
+		int CurSel = TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1);
+		CurVal = TecGUIListGetString(SLSelVar_SLST_T3_1, CurSel);
+		for (auto & s : { "I: ","IN: ","INS: " }) {
+			CurValShort = StringRemoveSubString(CurVal, s);
+		}
+	}
+	if (CurVal.find("Average ") == string::npos) {
+		CurVal = "INS: " + CurValShort;
+	}
+	else{
+		CurVal = "I: " + CurValShort;
+	}
+
+	TecGUIListDeleteAllItems(SLSelVar_SLST_T3_1);
+
+	vector<string> SearchList;
+	if (INSOnly) {
+		SearchList = { "INS: " };
+	}
+	else {
+		SearchList = { "I: ", "IN: ", "INS: " };
+	}
+	int SelVar = 1;
+	for (int vi = 1; vi <= TecUtilDataSetGetNumVars(); ++vi) {
+		bool IsMatch = false;
+		char * TmpCStr;
+		TecUtilVarGetName(vi, &TmpCStr);
+		string VName = TmpCStr;
+		string VNameShort;
+		TecUtilStringDealloc(&TmpCStr);
+		for (auto & s : SearchList) {
+			if (VName.find(s) != string::npos) {
+				IsMatch = true;
+				VNameShort = StringRemoveSubString(VName, s);
+			}
+		}
+		if (IsMatch) {
+			if (INSOnly) {
+				TecGUIListAppendItem(SLSelVar_SLST_T3_1, VNameShort.c_str());
+				if (VNameShort == CurValShort) {
+					SelVar = TecGUIListGetItemCount(SLSelVar_SLST_T3_1);
+				}
+			}
+			else {
+				TecGUIListAppendItem(SLSelVar_SLST_T3_1, VName.c_str());
+				if (VName == CurVal) {
+					SelVar = TecGUIListGetItemCount(SLSelVar_SLST_T3_1);
+				}
+			}
+		}
+	}
+
+	if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
+		TecGUIListSetSelectedItem(SLSelVar_SLST_T3_1, SelVar);
+	}
 }

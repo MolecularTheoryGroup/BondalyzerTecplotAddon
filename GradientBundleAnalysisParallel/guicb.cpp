@@ -48,12 +48,12 @@ vector<Text_ID> CPLabelIDs;
 
 LgIndex_t GBATabNumber = 1;
 bool GBAIsOpen = false;
-string GBAOldNumContours = "30";
+string GBAOldNumContours = "15";
 int const GBAMaxNumContours = 1000;
 int const GBAMinNumContours = 5;
 
 int GBALogLin = 1;
-int GBACntSrc = 1;
+int GBACntSrc = 2;
 int GBAResultViewerSelectIntVarNum = 1;
 int GBAResultViewerSelectSphereNum = 1;
 
@@ -274,6 +274,10 @@ void SmoothGBAIntResults()
 		char *IntVarNameCStr = TecGUIListGetString(SLSelVar_SLST_T3_1, TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1));
 		string IntVarNameStr = IntVarNameCStr;
 		TecUtilStringDealloc(&IntVarNameCStr);
+
+		if (TecGUIToggleGet(TGLINSV_TOG_T3_1)){
+			IntVarNameStr = "INS: " + IntVarNameStr;
+		}
 
 		char* SphereNameCStr = TecGUIListGetString(SLSelSphere_SLST_T3_1, TecGUIListGetSelectedItem(SLSelSphere_SLST_T3_1));
 		string SphereNameStr = SphereNameCStr;
@@ -904,8 +908,24 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	TecGUITextFieldSetString(TFNumContours_TF_T3_1, GBAOldNumContours.c_str());
 	TecGUIRadioBoxSetToggle(RBLogLin_RADIO_T3_1, GBALogLin);
 	TecGUIRadioBoxSetToggle(RBCntSrc_RADIO_T3_1, GBACntSrc);
-	TecGUIToggleSet(TGLExGBs_TOG_T3_1, FALSE);
 	TecGUIToggleSet(TGLShowMesh_TOG_T3_1, FALSE);
+	if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
+		string itemStr = TecGUIListGetString(SLSelVar_SLST_T3_1, TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1));
+		bool IsFound = false;
+		for (auto & s : { "I: ", "IN: ", "INS: " }) {
+			if (itemStr.find(s) != string::npos) {
+				TecGUIToggleSet(TGLINSV_TOG_T3_1, FALSE);
+				IsFound = true;
+				break;
+			}
+		}
+		if (!IsFound) {
+			TecGUIToggleSet(TGLINSV_TOG_T3_1, TRUE);
+		}
+	}
+	else {
+		TecGUIToggleSet(TGLINSV_TOG_T3_1, TRUE);
+	}
 
 	return TRUE;
 }
@@ -1293,6 +1313,25 @@ void GBAResultViewerPrepareGUI(){
 		}
 	}
 
+	if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0){
+		string itemStr = TecGUIListGetString(SLSelVar_SLST_T3_1, TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1));
+		bool IsFound = false;
+		for (auto & s : { "I: ", "IN: ", "INS: " }){
+			if (itemStr.find(s) != string::npos){
+				TecGUIToggleSet(TGLINSV_TOG_T3_1, FALSE);
+				IsFound = true;
+				break;
+			}
+		}
+		if (!IsFound){
+			TecGUIToggleSet(TGLINSV_TOG_T3_1, TRUE);
+		}
+	}
+	else {
+		TecGUIToggleSet(TGLINSV_TOG_T3_1, TRUE);
+	}
+	ResultsVarListReload();
+
 	TecGUIScaleSetLimits(SCRad_SC_T3_1, 1, 50, 1);
 	TecGUIScaleSetValue(SCRad_SC_T3_1, 10);
 	TecGUIToggleSet(TGLRadAbs_TOG_T3_1, FALSE);
@@ -1559,5 +1598,14 @@ static LgIndex_t  TFHSdR_TF_T1_1_CB(const char *S)
 	return (IsOk);
 }
 
+/**
+ */
+static void TGLINSV_TOG_T3_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Toggle (TGLINSV_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
+	ResultsVarListReload();
+	TecUtilLockFinish(AddOnID);
+}
 
 #include "guibld.cpp"
