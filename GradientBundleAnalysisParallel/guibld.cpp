@@ -19,68 +19,68 @@ void BuildTab1_1(LgIndex_t  Parent)
   Tab1_1Manager = TecGUITabAddPage(Parent,
                                "Setup");
   TecGUIFrameAdd(Tab1_1Manager,
-             186,
-             1529,
-             9966,
-             1071,
+             184,
+             1530,
+             10169,
+             1075,
                     "Gradient bundle parameters");
 
   TecGUIFrameAdd(Tab1_1Manager,
-             2591,
-             78,
-             7601,
-             1378,
+             2651,
+             77,
+             7748,
+             1384,
                     " Integration Variables ");
 
   TecGUIFrameAdd(Tab1_1Manager,
-             146,
-             78,
-             2325,
-             1378,
+             138,
+             77,
+             2375,
+             1375,
                     " Select CP(s) ");
 
   BTNRun_BTN_T1_1 = TecGUIButtonAdd(Tab1_1Manager,
-                                  8743,
-                                  2651,
-                                  1023,
-                                  234,
+                                  8924,
+                                  2653,
+                                  1014,
+                                  232,
                     "       Run\n",
                     BTNRun_BTN_T1_1_CB);
 
   TFSTPts_TF_T1_1 = TecGUITextFieldAdd(Tab1_1Manager,
-                                     9275,
-                                     1579,
-                                     770,
+                                     9477,
+                                     1578,
+                                     760,
                                      145,
                        TFSTPts_TF_T1_1_CB);
 
   LBLSTPts_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                   7149,
-                                   1601,
+                                   7286,
+                                   1598,
                     "# Gradient path points:");
 
   LBLNumTri_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                    7029,
-                                    1785,
+                                    7217,
+                                    1782,
                     "--> Num Triangles");
 
   TFSdRad_TF_T1_1 = TecGUITextFieldAdd(Tab1_1Manager,
-                                     2099,
-                                     1925,
-                                     717,
+                                     2144,
+                                     1927,
+                                     714,
                                      145,
                        TFSdRad_TF_T1_1_CB);
 
   LBLRad_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                 332,
-                                 1797,
+                                 345,
+                                 1791,
                     "Radial sphere approx:");
 
   RBRadMode_RADIO_T1_1 = TecGUIRadioBoxAdd(Tab1_1Manager,
-                                         332,
-                                         2254,
-                                         2870,
-                                         295,
+                                         345,
+                                         2256,
+                                         2882,
+                                         300,
                                  "Absolute",
                                  "Fraction of min CP dist.",
                                  (char *)NULL,
@@ -89,29 +89,29 @@ void BuildTab1_1(LgIndex_t  Parent)
                                  RBRadMode_RADIO_T1_1_CB);
 
   TFCutoff_TF_T1_1 = TecGUITextFieldAdd(Tab1_1Manager,
-                                      5660,
-                                      1579,
-                                      1302,
+                                      5764,
+                                      1578,
+                                      1291,
                                       145,
                        TFCutoff_TF_T1_1_CB);
 
   LBLCutoff_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                    3654,
-                                    1596,
+                                    3735,
+                                    1598,
                     "System Rho Cutoff:");
 
   MLSelVars_MLST_T1_1 = TecGUIListAdd(Tab1_1Manager,
-                                    2644,
-                                    401,
-                                    7428,
-                                    1054,
+                                    2697,
+                                    406,
+                                    7425,
+                                    1055,
                        1,
                        MLSelVars_MLST_T1_1_CB);
 
   SCPrecise_SC_T1_1 = TecGUIScaleAdd(Tab1_1Manager,
-                                   3933,
-                                   234,
-                                   1195,
+                                   4012,
+                                   232,
+                                   1199,
                                    106,
                     0,
                     100,
@@ -123,71 +123,71 @@ void BuildTab1_1(LgIndex_t  Parent)
   TecGUIScaleShowNumericDisplay(SCPrecise_SC_T1_1,FALSE);
 
   LBLPreci1_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                    2764,
-                                    228,
+                                    2813,
+                                    232,
                     "Precision:");
 
   MLSelCPs_MLST_T1_1 = TecGUIListAdd(Tab1_1Manager,
-                                   212,
-                                   139,
-                                   2152,
-                                   1322,
+                                   230,
+                                   145,
+                                   2167,
+                                   1326,
                        1,
                        MLSelCPs_MLST_T1_1_CB);
 
   LBLPrecise_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                     5700,
-                                     223,
+                                     5811,
+                                     222,
                     "Label");
 
   TGLsGP_TOG_T1_1 = TecGUIToggleAdd(Tab1_1Manager,
-                                  4810,
-                                  2757,
-                                  1674,
-                                  117,
+                                  4911,
+                                  2750,
+                                  1683,
+                                  116,
                                "Save GPs",
                                TGLsGP_TOG_T1_1_CB);
 
   TGLsGB_TOG_T1_1 = TecGUIToggleAdd(Tab1_1Manager,
-                                  6272,
-                                  2757,
-                                  1687,
-                                  117,
+                                  6410,
+                                  2750,
+                                  1706,
+                                  116,
                                "Save GBs",
                                TGLsGB_TOG_T1_1_CB);
 
   LBLLevel_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                   3122,
-                                   1785,
+                                   3182,
+                                   1782,
                     "Minimum number of gradient bundles (GB)");
 
   LBLBPGBa_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                   3122,
-                                   2282,
+                                   3182,
+                                   2285,
                     "Number of bond path coincident GBs:");
 
   LBLGBMaxSD_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                     3122,
+                                     3182,
                                      2450,
                     "Maximum GB surface gradient path spacing:");
 
   LBLSDtightle_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                       3122,
-                                       2115,
+                                       3182,
+                                       2121,
                     "Subdivision tightness around bond/ring features");
 
   TGLNoSphInt_TOG_T1_1 = TecGUIToggleAdd(Tab1_1Manager,
-                                       385,
-                                       1612,
-                                       2936,
-                                       117,
+                                       392,
+                                       1607,
+                                       2951,
+                                       116,
                                "Radial sphere approx.",
                                TGLNoSphInt_TOG_T1_1_CB);
 
   SCSDtight_SC_T1_1 = TecGUIScaleAdd(Tab1_1Manager,
-                                   8823,
-                                   2104,
-                                   1195,
+                                   9016,
+                                   2101,
+                                   1199,
                                    106,
                     0,
                     100,
@@ -199,9 +199,9 @@ void BuildTab1_1(LgIndex_t  Parent)
   TecGUIScaleShowNumericDisplay(SCSDtight_SC_T1_1,FALSE);
 
   SCBPGBs_SC_T1_1 = TecGUIScaleAdd(Tab1_1Manager,
-                                 8823,
-                                 2277,
-                                 1195,
+                                 9016,
+                                 2275,
+                                 1199,
                                  106,
                     0,
                     100,
@@ -213,9 +213,9 @@ void BuildTab1_1(LgIndex_t  Parent)
   TecGUIScaleShowNumericDisplay(SCBPGBs_SC_T1_1,FALSE);
 
   SCEGPDist_SC_T1_1 = TecGUIScaleAdd(Tab1_1Manager,
-                                   8823,
+                                   9016,
                                    2450,
-                                   1195,
+                                   1199,
                                    106,
                     0,
                     100,
@@ -227,34 +227,34 @@ void BuildTab1_1(LgIndex_t  Parent)
   TecGUIScaleShowNumericDisplay(SCEGPDist_SC_T1_1,FALSE);
 
   LBLSDtight_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                     8159,
-                                     2109,
+                                     8324,
+                                     2111,
                     "Label");
 
   LBLBPGBs_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                   8159,
-                                   2282,
+                                   8324,
+                                   2275,
                     "Label");
 
   LBLEGPDistTy_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                       8159,
+                                       8324,
                                        2450,
                     "Label");
 
   LBLBPGBi_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                   3122,
-                                   1953,
+                                   3182,
+                                   1956,
                     "Maximum GB subdivision level (around bond/ring features):");
 
   LBLBPGBInit_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                      8159,
-                                      1942,
+                                      8324,
+                                      1937,
                     "Label");
 
   SCMinGBs_SC_T1_1 = TecGUIScaleAdd(Tab1_1Manager,
-                                  8823,
-                                  1763,
-                                  1195,
+                                  9016,
+                                  1762,
+                                  1199,
                                   106,
                     0,
                     100,
@@ -266,9 +266,9 @@ void BuildTab1_1(LgIndex_t  Parent)
   TecGUIScaleShowNumericDisplay(SCMinGBs_SC_T1_1,FALSE);
 
   SCBPGBInit_SC_T1_1 = TecGUIScaleAdd(Tab1_1Manager,
-                                    8823,
-                                    1931,
-                                    1195,
+                                    9016,
+                                    1937,
+                                    1199,
                                     106,
                     0,
                     100,
@@ -280,42 +280,42 @@ void BuildTab1_1(LgIndex_t  Parent)
   TecGUIScaleShowNumericDisplay(SCBPGBInit_SC_T1_1,FALSE);
 
   TGLSphTest_TOG_T1_1 = TecGUIToggleAdd(Tab1_1Manager,
-                                      159,
-                                      2902,
-                                      611,
-                                      117,
+                                      161,
+                                      2905,
+                                      622,
+                                      116,
                                ".",
                                TGLSphTest_TOG_T1_1_CB);
 
   TGL_TOG_T1_1 = TecGUIToggleAdd(Tab1_1Manager,
-                               6856,
+                               7010,
                                184,
-                               3973,
-                               117,
+                               3989,
+                               116,
                                "Enter atomic reference energies",
                                TGL_TOG_T1_1_CB);
 
   LBL34_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                332,
-                                1947,
+                                345,
+                                1946,
                     "GP seed radius:");
 
   TFRad_TF_T1_1 = TecGUITextFieldAdd(Tab1_1Manager,
-                                   2099,
-                                   1769,
-                                   717,
+                                   2144,
+                                   1762,
+                                   714,
                                    145,
                        TFRad_TF_T1_1_CB);
 
   LBL36_LBL_T1_1 = TecGUILabelAdd(Tab1_1Manager,
-                                332,
-                                2098,
+                                345,
+                                2101,
                     "H atom seed radius:");
 
   TFHSdR_TF_T1_1 = TecGUITextFieldAdd(Tab1_1Manager,
-                                    2099,
-                                    2087,
-                                    717,
+                                    2144,
+                                    2091,
+                                    714,
                                     145,
                        TFHSdR_TF_T1_1_CB);
 
@@ -331,113 +331,113 @@ void BuildTab3_1(LgIndex_t  Parent)
   Tab3_1Manager = TecGUITabAddPage(Parent,
                                "Results");
   TecGUIFrameAdd(Tab3_1Manager,
-             345,
-             212,
-             3561,
-             1211,
+             46,
+             77,
+             3758,
+             1346,
                     " CP Sphere ");
 
   TecGUIFrameAdd(Tab3_1Manager,
-             385,
-             1495,
-             3508,
-             1479,
+             46,
+             1510,
+             3758,
+             1501,
                     "Properties");
 
   TecGUIFrameAdd(Tab3_1Manager,
-             3960,
-             206,
-             6059,
-             2092,
+             3874,
+             77,
+             6525,
+             2198,
                     "Gradient Bundles");
 
   TecGUIFrameAdd(Tab3_1Manager,
-             7322,
-             1306,
-             2578,
-             959,
-                    " GB Region ");
+             7402,
+             1326,
+             2628,
+             929,
+                    "User-defined GB");
 
   TecGUIFrameAdd(Tab3_1Manager,
-             4013,
-             2360,
-             6046,
+             3897,
+             2372,
+             6479,
              619,
                     "Sphere contours");
 
   SLSelSphere_SLST_T3_1 = TecGUIListAdd(Tab3_1Manager,
-                                      1767,
-                                      251,
-                                      1993,
-                                      781,
+                                      1752,
+                                      154,
+                                      2006,
+                                      871,
                        0,
                        SLSelSphere_SLST_T3_1_CB);
 
   TGLSphereVis_TOG_T3_1 = TecGUIToggleAdd(Tab3_1Manager,
-                                        398,
-                                        362,
-                                        1368,
-                                        117,
+                                        345,
+                                        271,
+                                        1383,
+                                        116,
                                "Visible",
                                TGLSphereVis_TOG_T3_1_CB);
 
   BTNSphereDel_BTN_T3_1 = TecGUIButtonAdd(Tab3_1Manager,
-                                        411,
-                                        742,
-                                        850,
+                                        368,
+                                        639,
+                                        853,
                                         145,
                     "Delete",
                     BTNSphereDel_BTN_T3_1_CB);
 
   SLSelVar_SLST_T3_1 = TecGUIListAdd(Tab3_1Manager,
-                                   465,
-                                   1585,
-                                   3282,
-                                   870,
+                                   322,
+                                   1607,
+                                   3297,
+                                   871,
                        0,
                        SLSelVar_SLST_T3_1_CB);
 
   MLSelGB_MLST_T3_1 = TecGUIListAdd(Tab3_1Manager,
-                                  4013,
-                                  301,
-                                  3215,
-                                  1964,
+                                  3943,
+                                  164,
+                                  3205,
+                                  2053,
                        1,
                        MLSelGB_MLST_T3_1_CB);
 
   BTNAllGB_BTN_T3_1 = TecGUIButtonAdd(Tab3_1Manager,
-                                    7308,
-                                    792,
-                                    1886,
+                                    8877,
+                                    978,
+                                    1337,
                                     145,
-                    "         Activate All",
+                    "Activate all",
                     BTNAllGB_BTN_T3_1_CB);
 
   BTNTogMode_BTN_T3_1 = TecGUIButtonAdd(Tab3_1Manager,
-                                      7322,
-                                      597,
-                                      1886,
+                                      7263,
+                                      978,
+                                      1545,
                                       145,
-                    "      Toggle Mode",
+                    "Toggle mode",
                     BTNTogMode_BTN_T3_1_CB);
 
   TFNumContours_TF_T3_1 = TecGUITextFieldAdd(Tab3_1Manager,
-                                           5156,
-                                           2461,
-                                           1235,
+                                           5188,
+                                           2469,
+                                           1245,
                                            145,
                        TFNumContours_TF_T3_1_CB);
 
   LBL9_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
-                               6564,
-                               2472,
+                               6641,
+                               2479,
                     "Number of contours");
 
   RBLogLin_RADIO_T3_1 = TecGUIRadioBoxAdd(Tab3_1Manager,
-                                        8823,
-                                        2394,
-                                        1036,
-                                        295,
+                                        8947,
+                                        2401,
+                                        1037,
+                                        300,
                                  "log",
                                  "linear",
                                  (char *)NULL,
@@ -446,10 +446,10 @@ void BuildTab3_1(LgIndex_t  Parent)
                                  RBLogLin_RADIO_T3_1_CB);
 
   RBCntSrc_RADIO_T3_1 = TecGUIRadioBoxAdd(Tab3_1Manager,
-                                        7587,
-                                        2678,
-                                        1328,
-                                        295,
+                                        7678,
+                                        2673,
+                                        1314,
+                                        300,
                                  "selected",
                                  "all",
                                  (char *)NULL,
@@ -458,76 +458,76 @@ void BuildTab3_1(LgIndex_t  Parent)
                                  RBCntSrc_RADIO_T3_1_CB);
 
   LBLCntSrc_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
-                                    5156,
+                                    5188,
                                     2740,
                     "Make contour values from");
 
   LBL13_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
-                                8730,
+                                8831,
                                 2740,
                     "sphere(s)");
 
   TGLShowMesh_TOG_T3_1 = TecGUIToggleAdd(Tab3_1Manager,
-                                       398,
-                                       535,
-                                       1873,
-                                       117,
+                                       345,
+                                       435,
+                                       1890,
+                                       116,
                                "Show Mesh",
                                TGLShowMesh_TOG_T3_1_CB);
 
   BTNSelGB_BTN_T3_1 = TecGUIButtonAdd(Tab3_1Manager,
-                                    7920,
-                                    2087,
+                                    8001,
+                                    2082,
                                     1222,
                                     145,
                     "Select GB",
                     BTNSelGB_BTN_T3_1_CB);
 
   TFGrpNum_TF_T3_1 = TecGUITextFieldAdd(Tab3_1Manager,
-                                      8823,
-                                      1869,
-                                      717,
+                                      8924,
+                                      1898,
+                                      714,
                                       145,
                        TFGrpNum_TF_T3_1_CB);
 
   LBL20_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
-                                7508,
-                                1908,
+                                7586,
+                                1937,
                     "Group #");
 
   LBL21_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
-                                7361,
-                                1434,
+                                7632,
+                                1423,
                     "1. Activate boundary with\n    toggle mode\n2. Select GB element \n     within boundary");
 
   BTNFndBas_BTN_T3_1 = TecGUIButtonAdd(Tab3_1Manager,
-                                     7295,
-                                     312,
-                                     1993,
-                                     234,
-                    "Find Special \nGradient Bundles",
+                                     7540,
+                                     145,
+                                     2352,
+                                     232,
+                    "Find special gradient\nbundles",
                     BTNFndBas_BTN_T3_1_CB);
 
   BTNSmooth_BTN_T3_1 = TecGUIButtonAdd(Tab3_1Manager,
-                                     664,
-                                     2807,
-                                     2803,
+                                     622,
+                                     2837,
+                                     2813,
                                      145,
                     "Smooth selected variable",
                     BTNSmooth_BTN_T3_1_CB);
 
   TGLSmoothAll_TOG_T3_1 = TecGUIToggleAdd(Tab3_1Manager,
-                                        451,
-                                        2673,
-                                        2471,
-                                        117,
+                                        276,
+                                        2702,
+                                        2490,
+                                        116,
                                "Smooth all atoms",
                                TGLSmoothAll_TOG_T3_1_CB);
 
   SCRad_SC_T3_1 = TecGUIScaleAdd(Tab3_1Manager,
-                               451,
-                               1255,
-                               2591,
+                               415,
+                               1259,
+                               2605,
                                106,
                     0,
                     100,
@@ -539,51 +539,63 @@ void BuildTab3_1(LgIndex_t  Parent)
   TecGUIScaleShowNumericDisplay(SCRad_SC_T3_1,FALSE);
 
   TGLRadAll_TOG_T3_1 = TecGUIToggleAdd(Tab3_1Manager,
-                                     478,
-                                     1088,
-                                     1860,
-                                     117,
+                                     438,
+                                     1084,
+                                     1867,
+                                     116,
                                "All Spheres",
                                TGLRadAll_TOG_T3_1_CB);
 
   TGLRadAbs_TOG_T3_1 = TecGUIToggleAdd(Tab3_1Manager,
-                                     1886,
-                                     1088,
-                                     1594,
-                                     117,
+                                     1867,
+                                     1084,
+                                     1614,
+                                     116,
                                "Absolute",
                                TGLRadAbs_TOG_T3_1_CB);
 
   LBL27_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
-                                478,
-                                915,
+                                438,
+                                823,
                     "Radius:");
 
   LBLRadLab_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
-                                    3096,
-                                    1250,
+                                    3113,
+                                    1249,
                     "Label");
 
   TGL_TOG_T3_1 = TecGUIToggleAdd(Tab3_1Manager,
-                               7375,
-                               1049,
-                               558,
-                               117,
+                               7402,
+                               745,
+                               576,
+                               116,
                                ".",
                                TGL_TOG_T3_1_CB);
 
   LBL31_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
-                                7640,
-                                993,
+                                7932,
+                                687,
                     "Save special gradient\nbundle surfaces");
 
   TGLINSV_TOG_T3_1 = TecGUIToggleAdd(Tab3_1Manager,
-                                   451,
-                                   2500,
-                                   4757,
-                                   117,
+                                   276,
+                                   2527,
+                                   4773,
+                                   116,
                                "Only show normalized, scaled variables",
                                TGLINSV_TOG_T3_1_CB);
+
+  TFGBSub_TF_T3_1 = TecGUITextFieldAdd(Tab3_1Manager,
+                                     9200,
+                                     464,
+                                     530,
+                                     145,
+                       TFGBSub_TF_T3_1_CB);
+
+  LBL32_LBL_T3_1 = TecGUILabelAdd(Tab3_1Manager,
+                                7356,
+                                493,
+                    "Boundary refinement");
 
 }
 
@@ -602,10 +614,10 @@ void BuildDialog1(LgIndex_t  ParentDialog)
                                              Dialog1CloseButton_CB,
                                              NULL)
 ;  TAB1_TB_D1 = TecGUITabAdd(Dialog1Manager,
-                          39,
+                          46,
                           184,
-                          10458,
-                          3052,
+                          10469,
+                          3050,
                     TAB1_TBA_D1_CB,
                     TAB1_TBD_D1_CB);
 

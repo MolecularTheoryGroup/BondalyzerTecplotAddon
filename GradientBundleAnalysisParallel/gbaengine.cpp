@@ -2430,11 +2430,11 @@ void NewMainFunction() {
 #endif
 
 	#ifdef SUPERDEBUG
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic, 128)
 			for (int nii = 0; nii < NodesTodoVec.size(); ++nii) {
 				int ni = NodesTodoVec[nii];
 	#else
-	 #pragma omp parallel for schedule(dynamic)
+	 #pragma omp parallel for schedule(dynamic, 128)
  			for (int ni = 0; ni < NumNodes; ++ni) {
 	#endif
 				int ThNum = omp_get_thread_num();
@@ -2786,7 +2786,7 @@ void NewMainFunction() {
 					NumToDo = EdgeDistList.size();
 					NumCompleted = 0;
 #ifdef SUPERDEBUG
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic, 128)
 #endif
 					for (int ei = 0; ei < NumToDo; ++ei) {
 						int ThNum = omp_get_thread_num();
@@ -3561,7 +3561,7 @@ void NewMainFunction() {
 			vector<GradPath_c> TmpGPs(NumGPs);
 			vector<int> BadPtNums(NumGPs);
 
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic, 128)
 			for (int ni = 0; ni < NumGPs; ++ni){
 				if (GradPaths[ni].IsMade()) {
 					GradPaths[ni].MakeRhoValuesMonotonic(&ThVolInfo[omp_get_thread_num()]);
@@ -3695,7 +3695,7 @@ void NewMainFunction() {
 			NumGPs = GradPaths.size();
 			
 #ifndef _DEBUG
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic, 64)
 #endif
 			for (int gi = 0; gi < NumGPs; ++gi) {
 				if (GradPaths[gi].IsMade()) {
@@ -4167,7 +4167,7 @@ void NewMainFunction() {
 			NumCompleted = 0;
 			Time1 = high_resolution_clock::now();
 #ifndef _DEBUG
-	#pragma omp parallel for schedule(dynamic)
+	#pragma omp parallel for schedule(dynamic, 64)
 #endif
 			for (int ti = 0; ti < NumElems; ++ti) {
 	#endif
@@ -4642,6 +4642,7 @@ void NewMainFunction() {
 
 		Set TmpSet(SphereZoneNum);
 		TecUtilZoneSetMesh(SV_SHOW, TmpSet.getRef(), 0.0, FALSE);
+		TecUtilZoneSetMesh(SV_LINEPATTERN, TmpSet.getRef(), 0.0, LinePattern_Dotted);
 		TecUtilZoneSetContour(SV_SHOW, TmpSet.getRef(), 0.0, TRUE);
 		StyleValue styleValue;
 		styleValue.set((Boolean_t)1, SV_FIELDLAYERS, SV_SHOWCONTOUR);
@@ -5810,12 +5811,13 @@ void ElemWiseGradPath(int StartingElem,
 						vector<vector<int> > const & ElemConnectivity,
 						vector<vector<double> > const & ElemIntVals, 
 						int BasinVarNum, 
-						vector<vector<int> > & TerminalMinMaxIndices)
+						vector<vector<int> > & TerminalMinMaxIndices,
+						vector<vec3> const & ElemMidpoints,
+						vec3 const & SphereOrigin)
 {
 	int CurrentElem = StartingElem;
 	int NextElem = CurrentElem;
-	vector<int> IntermediateElems;
-	IntermediateElems.reserve(ElemConnectivity.size() / 20);
+	std::set<int> IntermediateElems;
 	/*
 	 *	Starting at StartingElem, find the neighboring element NextElem with the least or greatest value
 	 *	(depending on the value of DirNum), then step to that element.
@@ -5827,30 +5829,38 @@ void ElemWiseGradPath(int StartingElem,
 	 */
 	int iter = 0;
 	while (iter < ElemConnectivity.size()) {
-		IntermediateElems.push_back(CurrentElem);
+		IntermediateElems.insert(CurrentElem);
 		/*
-		 *	Check the neighboring elements' values and update NextElem when the lower (or higher) value is found,
-		 *	which will change the comparison for the next iteration because NextElem is used to lookup the "old" value.
+		 * Find neighboring element with maximum value, weighted by the reciprocal distance between elements.
+		 * Then if the neighbor with the max weighted value's value is greater than the current element, move to it.
 		 */
+
+		std::map<double, int> WeightedValToElemInd;
 		for (int i = 0; i < ElemConnectivity[CurrentElem].size(); ++i) {
-			if ((DirNum == 0 && ElemIntVals[BasinVarNum][ElemConnectivity[CurrentElem][i]] < ElemIntVals[BasinVarNum][NextElem])
-				|| (DirNum == 1 && ElemIntVals[BasinVarNum][ElemConnectivity[CurrentElem][i]] > ElemIntVals[BasinVarNum][NextElem]))
-			{
-				NextElem = ElemConnectivity[CurrentElem][i];
-			}
+			double ReciprocalDistance = 1. / SphericalDistance(ElemMidpoints[CurrentElem], ElemMidpoints[ElemConnectivity[CurrentElem][i]], SphereOrigin);
+			WeightedValToElemInd[(ElemIntVals[BasinVarNum][ElemConnectivity[CurrentElem][i]] - ElemIntVals[BasinVarNum][NextElem]) * ReciprocalDistance] = ElemConnectivity[CurrentElem][i];
 		}
-		if (NextElem == CurrentElem) 
+		if (DirNum == 0 && WeightedValToElemInd.cbegin()->first <= 0.) {
+			NextElem = WeightedValToElemInd.cbegin()->second;
+		}
+		else if (DirNum == 1 && WeightedValToElemInd.crbegin()->first >= 0.){
+			NextElem = WeightedValToElemInd.crbegin()->second;
+		}
+
+		if (IntermediateElems.count(NextElem) > 0) {
 			break;
+		}
 		else if (TerminalMinMaxIndices[NextElem][DirNum] >= 0) {
-			IntermediateElems.push_back(TerminalMinMaxIndices[NextElem][DirNum]);
+			NextElem = TerminalMinMaxIndices[NextElem][DirNum];
 			break;
 		}
-		else 
+		else {
 			CurrentElem = NextElem;
+		}
 
 		iter++;
 	}
-	for (int const & i : IntermediateElems) TerminalMinMaxIndices[i][DirNum] = IntermediateElems.back();
+	for (int const & i : IntermediateElems) TerminalMinMaxIndices[i][DirNum] = NextElem;
 
 	REQUIRE(iter < ElemConnectivity.size());
 
@@ -5858,9 +5868,61 @@ void ElemWiseGradPath(int StartingElem,
 }
 
 
+void NodeWiseGradPath(int StartingNode,
+	int DirNum, // 0 for downhill, 1 for uphill
+	vector<vector<int> > const & NodeConnectivity,
+	vector<vector<double> > const & NodeIntVals,
+	int BasinVarNum,
+	vector<vector<int> > & TerminalMinMaxIndices)
+{
+	int CurrentNode = StartingNode;
+	int NextNode = CurrentNode;
+	std::set<int> IntermediateNodes;
+	/*
+	 *	Starting at StartingElem, find the neighboring element NextElem with the least or greatest value
+	 *	(depending on the value of DirNum), then step to that element.
+	 *	If NextElem is CurrentElem then we've arrived at the critical element,
+	 *	or if TerminalMinMaxIndices[DirNum][CurrentElem] >= 0 then we've reach an element that has already
+	 *	been checked, hence the rest of the path has already been found and recorded.
+	 *	We save all the intermediate elements' indices, so the last index recorded is the index of the
+	 *	min or max.
+	 */
+	int iter = 0;
+	while (iter < NodeConnectivity.size()) {
+		IntermediateNodes.insert(CurrentNode);
+		/*
+		 *	Check the neighboring elements' values and update NextElem when the lower (or higher) value is found,
+		 *	which will change the comparison for the next iteration because NextElem is used to lookup the "old" value.
+		 */
+		for (int i = 0; i < NodeConnectivity[CurrentNode].size(); ++i) {
+			if ((DirNum == 0 && NodeIntVals[BasinVarNum][NodeConnectivity[CurrentNode][i]] <= NodeIntVals[BasinVarNum][NextNode])
+				|| (DirNum == 1 && NodeIntVals[BasinVarNum][NodeConnectivity[CurrentNode][i]] >= NodeIntVals[BasinVarNum][NextNode]))
+			{
+				NextNode = NodeConnectivity[CurrentNode][i];
+			}
+		}
+		if (NextNode == CurrentNode)
+			break;
+		else if (TerminalMinMaxIndices[NextNode][DirNum] >= 0) {
+			NextNode = TerminalMinMaxIndices[NextNode][DirNum];
+			IntermediateNodes.insert(NextNode);
+			break;
+		}
+		else
+			CurrentNode = NextNode;
 
-void GetSphereBasinIntegrations(FESurface_c & Sphere,
-									vector<vector<double> > & ElemIntVals,
+		iter++;
+	}
+	for (int const & i : IntermediateNodes) TerminalMinMaxIndices[i][DirNum] = NextNode;
+
+	REQUIRE(iter < NodeConnectivity.size());
+
+	return;
+}
+
+
+void GetSphereBasinIntegrations(FESurface_c const & Sphere,
+									vector<vector<double> > const & ElemIntVals,
 									int BasinVarNum,
 									vector<vector<int> > & MinMaxIndices,
 									vector<vector<vector<double> > > & BasinIntVals,
@@ -5898,8 +5960,9 @@ void GetSphereBasinIntegrations(FESurface_c & Sphere,
 	REQUIRE(BasinVarNum >= 0 && BasinVarNum < NumIntVars);
 	REQUIRE(ElemIntVals[0].size() == NumElems);
 
-	vector<vector<int> > ElemConnectivity;
-	GetTriElementConnectivityList(ElemListPtr, ElemConnectivity, 1);
+	auto const ElemConnectivity = Sphere.GetElemConnectivityListPtr();
+	vector<vector<int> > ElemConnectivity2;
+	GetTriElementConnectivityList(Sphere.GetElemListPtr(), ElemConnectivity2, 2);
 
 	/*
 	 *	Now I can start doing element-wise gradient paths to find all the local minima and maxima.
@@ -5920,16 +5983,17 @@ void GetSphereBasinIntegrations(FESurface_c & Sphere,
 	 *	smoothing) because they're less altered.
 	 *	Limit to MaxNumSmoothing rounds of smoothing.
 	 */
-	int MaxNumSmoothing = 1;
-	int NumConvergedIter = 1;
+	int MaxNumSmoothing = 20;
+	int NumConvergedIter = 5;
 	vector<int> NumMinMax(2,-1), OldNumMinMax(2,INT_MAX);
+	MinMaxIndices.clear();
 	MinMaxIndices.resize(2);
 	vector<vector<int> > OldMinMaxIndices(2);
 	vector<vector<int> > TerminalMinMaxIndices, OldTerminalMinMaxIndices;
 	vector<vector<double> > SmoothElemIntVals, TmpSmoothElemIntVals;
 	SmoothElemIntVals.push_back(ElemIntVals[BasinVarNum]);
 
-	TerminalMinMaxIndices.assign(ElemConnectivity.size(), vector<int>(2, -1));
+	TerminalMinMaxIndices.assign(ElemConnectivity->size(), vector<int>(2, -1));
 	OldTerminalMinMaxIndices = TerminalMinMaxIndices;
 	MinMaxIndices.assign(2, vector<int>());
 
@@ -5940,12 +6004,12 @@ void GetSphereBasinIntegrations(FESurface_c & Sphere,
 			if (ConvegedIter[Dir] <= 1) {
 				OldNumMinMax[Dir] = NumMinMax[Dir];
 				OldMinMaxIndices[Dir] = MinMaxIndices[Dir];
-				for (int i = 0; i < ElemConnectivity.size(); ++i)
+				for (int i = 0; i < ElemConnectivity->size(); ++i)
 					OldTerminalMinMaxIndices[i][Dir] = TerminalMinMaxIndices[i][Dir];
 			}
 		}
 		MinMaxIndices.assign(2, vector<int>());
-		TerminalMinMaxIndices.assign(ElemConnectivity.size(), vector<int>(2, -1));
+		TerminalMinMaxIndices.assign(ElemConnectivity->size(), vector<int>(2, -1));
 
 		// start element grad paths descending (ascending) order for maxima (minima) to avoid spurious regions
 		// get sorted list of elements by value
@@ -5959,18 +6023,19 @@ void GetSphereBasinIntegrations(FESurface_c & Sphere,
 				if (Dir == 0){
 #pragma omp parallel for schedule(dynamic, 128)
 					for (int ei = 0; ei < NumElems; ++ei) {
-						ElemWiseGradPath(ElemValInds[ei].second, Dir, ElemConnectivity, SmoothElemIntVals, 0, TerminalMinMaxIndices);
+						ElemWiseGradPath(ElemValInds[ei].second, Dir, *ElemConnectivity, SmoothElemIntVals, 0, TerminalMinMaxIndices, *(Sphere.GetElemMidpointsPtr()), SphereOrigin);
 					}
 				}
 				else {
 #pragma omp parallel for schedule(dynamic, 128)
 					for (int ei = NumElems - 1; ei >= 0; --ei) {
-						ElemWiseGradPath(ElemValInds[ei].second, Dir, ElemConnectivity, SmoothElemIntVals, 0, TerminalMinMaxIndices);
+						ElemWiseGradPath(ElemValInds[ei].second, Dir, *ElemConnectivity, SmoothElemIntVals, 0, TerminalMinMaxIndices, *(Sphere.GetElemMidpointsPtr()), SphereOrigin);
 					}
 				}
 				
 			}
 		}
+
 
 		/*
 		 *	Now all the terminal elements have been identified.
@@ -6019,6 +6084,68 @@ void GetSphereBasinIntegrations(FESurface_c & Sphere,
 						}
 					}
 				}
+
+
+				/*
+				 * Postprocessing step to get rid of elements that are mostly surrounded by elements of another basin
+				 */
+				bool DoIter = true;
+				while (DoIter) {
+					DoIter = false;
+					int NumElems = ElemConnectivity->size();
+#pragma omp parallel for schedule(dynamic, 128)
+					for (int ei = 0; ei < NumElems; ++ei) {
+						// an element surrounded by edge neighbors of a different basin will be switched to that basin
+						// 
+						bool ElemChanged = false;
+						std::map<int, int> NeighborBasinCount2;
+						for (int const & ej : ElemConnectivity2.at(ei)) {
+							if (TerminalMinMaxIndices[ej][Dir] != TerminalMinMaxIndices[ei][Dir]) {
+								if (NeighborBasinCount2.count(TerminalMinMaxIndices[ej][Dir]) > 0) {
+									NeighborBasinCount2[TerminalMinMaxIndices[ej][Dir]]++;
+								}
+								else {
+									NeighborBasinCount2[TerminalMinMaxIndices[ej][Dir]] = 1;
+								}
+							}
+						}
+						for (auto const & nb : NeighborBasinCount2) {
+							if (nb.second >= 3) {
+								TerminalMinMaxIndices[ei][Dir] = nb.first;
+								ElemChanged = true;
+								DoIter = true;
+								break;
+							}
+						}
+
+						if (!ElemChanged) {
+							// an element with (num neighbors minus 2) or more neighbors from the same other basin will be moved to that basin
+							// (or num neighbors minus 4 if two of the elements edge neighbors are from that same, other basin)
+							// 
+							std::map<int, int> NeighborBasinCount;
+							for (int const & ej : ElemConnectivity->at(ei)) {
+								if (TerminalMinMaxIndices[ej][Dir] != TerminalMinMaxIndices[ei][Dir]) {
+									if (NeighborBasinCount.count(TerminalMinMaxIndices[ej][Dir]) > 0) {
+										NeighborBasinCount[TerminalMinMaxIndices[ej][Dir]]++;
+									}
+									else {
+										NeighborBasinCount[TerminalMinMaxIndices[ej][Dir]] = 1;
+									}
+								}
+							}
+							for (auto const & nb : NeighborBasinCount) {
+								if (nb.second >= ElemConnectivity->at(ei).size() - 3
+									|| (NeighborBasinCount2.count(nb.first) > 0 && NeighborBasinCount2[nb.first] == 2 && nb.second >= ElemConnectivity->at(ei).size() - 4)) {
+									TerminalMinMaxIndices[ei][Dir] = nb.first;
+									ElemChanged = true;
+									DoIter = true;
+									break;
+								}
+							}
+						}
+					}
+				}
+
 				MinMaxIndices[Dir] = vector<int>();
 				for (auto const & i : TerminalMinMaxIndices) {
 					if (std::find(MinMaxIndices[Dir].begin(), MinMaxIndices[Dir].end(), i[Dir]) == MinMaxIndices[Dir].end())
@@ -6039,15 +6166,15 @@ void GetSphereBasinIntegrations(FESurface_c & Sphere,
 			SmoothElemIntVals = vector<vector<double> >(TmpSmoothElemIntVals.size(), vector<double>(TmpSmoothElemIntVals[0].size(), 0.));
 #pragma omp parallel for schedule(dynamic, 128)
 			for (int i = 0; i < NumElems; ++i) {
-				vec ReciprocalDistances(ElemConnectivity[i].size());
-				for (int j = 0; j < ElemConnectivity[i].size(); ++j){
-					ReciprocalDistances[j] = 1. / Distance(Sphere.GetElemMidpointsPtr()->at(i), Sphere.GetElemMidpointsPtr()->at(ElemConnectivity[i][j]));
+				vec ReciprocalDistances(ElemConnectivity->at(i).size());
+				for (int j = 0; j < ElemConnectivity->at(i).size(); ++j){
+					ReciprocalDistances[j] = 1. / Distance(Sphere.GetElemMidpointsPtr()->at(i), Sphere.GetElemMidpointsPtr()->at(ElemConnectivity->at(i)[j]));
 				}
 				ReciprocalDistances = normalise(ReciprocalDistances);
-				for (int j = 0; j < ElemConnectivity[i].size(); ++j) {
-					SmoothElemIntVals[0][i] += TmpSmoothElemIntVals[0][ElemConnectivity[i][j]] * ReciprocalDistances[j] * ReciprocalDistances[j];
+				for (int j = 0; j < ElemConnectivity->at(i).size(); ++j) {
+					SmoothElemIntVals[0][i] += TmpSmoothElemIntVals[0][ElemConnectivity->at(i)[j]] * ReciprocalDistances[j] * ReciprocalDistances[j];
 				}
-				int NumNeighbors = ElemConnectivity[i].size();
+				int NumNeighbors = ElemConnectivity->at(i).size();
 				SmoothElemIntVals[0][i] = double(NumNeighbors - 1) / double(NumNeighbors) * SmoothElemIntVals[0][i] + 1. / double(NumNeighbors) * TmpSmoothElemIntVals[0][i];
 			}
 
@@ -6070,6 +6197,11 @@ void GetSphereBasinIntegrations(FESurface_c & Sphere,
 	 *	number of integration variables.
 	 *	Also save lists of nodes and elements for each min/max.
 	 */
+	BasinIntVals.clear();
+	BasinNodes.clear();
+	BasinElems.clear();
+	SphereElemNums.clear();
+	SphereNodeNums.clear();
 	BasinIntVals.resize(2);
 	BasinNodes.resize(2);
 	BasinElems.resize(2);
@@ -6114,6 +6246,270 @@ void GetSphereBasinIntegrations(FESurface_c & Sphere,
 	return;
 }
 
+
+void GetSphereBasinIntegrationsNodeWise(FESurface_c const & Sphere,
+	vector<vector<double> > const & NodeIntVals,
+	int BasinVarNum,
+	vector<vector<int> > & MinMaxNodeIndices,
+	vector<vector<vector<double> > > & BasinIntVals,
+	vector<vector<vector<vec3> > > & BasinNodes,
+	vector<vector<vector<vector<int> > > > & BasinElems,
+	vector<vector<vector<int> > > & SphereNodeNums,
+	vector<vector<vector<int> > > & SphereElemNums)
+{
+	REQUIRE(Sphere.IsMade());
+
+	/*
+		First, use the node connectivity list already inside the Sphere object
+		to generate an element connectivity list.
+		Two elements are neighbors if they share an edge.
+	*/
+	auto * NodeToElemListPtr = Sphere.GetNodeToElementListPtr();
+	auto * XYZListPtr = Sphere.GetXYZListPtr();
+
+	vec3 SphereOrigin;
+	if (!GetSphereOrigin(Sphere.GetZoneNum(), SphereOrigin)) {
+		TecUtilDialogErrMsg("Failed to get sphere origin");
+		return;
+	}
+	double CPMergeCutoffAngle = PI / 32.;
+
+	REQUIRE(NodeToElemListPtr != nullptr && XYZListPtr != nullptr);
+
+	int NumNodes = NodeToElemListPtr->size();
+
+	/*
+	 *	ElemIntVals is here number of integrated variables X number of sphere elements,
+	 *	which is the transpose of its shape when returned from Sphere.GetTriSphereIntValsByElem()
+	 */
+	int NumIntVars = NodeIntVals.size();
+	REQUIRE(BasinVarNum >= 0 && BasinVarNum < NumIntVars);
+	REQUIRE(NodeIntVals[0].size() == NumNodes);
+
+	auto const NodeConnectivity = Sphere.GetNodeConnectivityListPtr();
+
+	/*
+	 *	Now I can start doing element-wise gradient paths to find all the local minima and maxima.
+	 *	For each element I'll store the indices of the elements you terminate at by
+	 *	going "uphill" or "downhill" through whatever values are selected (e.g. condensed charge density).
+	 *	Initialize the whole to -1 and do this in parallel.
+	 *	While tracing a gradient path, keep track of all the elements you traversed to get to the
+	 *	terminal element, then set the terminal index for all the intermediate elements too.
+	 */
+
+	 /*
+	  *	There can be noise that results in spurious local min/max elements.
+	  *	We'll loop, applying smoothing to the integration values used to find the basins,
+	  *	and when the number of min/max elems found converges, assume that's correct
+	  *	(the actual min/max elem numbers might change due to the smoothing, so only use
+	  *	number of min/max elems found to determine convergence.
+	  *	When convergence in achieved, use the older results (with one less round of
+	  *	smoothing) because they're less altered.
+	  *	Limit to MaxNumSmoothing rounds of smoothing.
+	  */
+	int MaxNumSmoothing = 1;
+	int NumConvergedIter = 1;
+	vector<int> NumMinMax(2, -1), OldNumMinMax(2, INT_MAX);
+	MinMaxNodeIndices.clear();
+	MinMaxNodeIndices.resize(2);
+	vector<vector<int> > OldMinMaxIndices(2);
+	vector<vector<int> > TerminalMinMaxNodeIndices, OldTerminalMinMaxIndices;
+	vector<vector<double> > SmoothNodesIntVals, TmpSmoothNodeIntVals;
+	SmoothNodesIntVals.push_back(NodeIntVals[BasinVarNum]);
+
+	TerminalMinMaxNodeIndices.assign(NodeConnectivity->size(), vector<int>(2, -1));
+	OldTerminalMinMaxIndices = TerminalMinMaxNodeIndices;
+	MinMaxNodeIndices.assign(2, vector<int>());
+
+	int Iter = 0, ConvegedIter[] = { 0,0 };
+	while (Iter < MaxNumSmoothing && (ConvegedIter[0] < NumConvergedIter || ConvegedIter[1] < NumConvergedIter)) {
+		Iter++;
+		for (int Dir = 0; Dir < 2; ++Dir) {
+			if (ConvegedIter[Dir] <= 1) {
+				OldNumMinMax[Dir] = NumMinMax[Dir];
+				OldMinMaxIndices[Dir] = MinMaxNodeIndices[Dir];
+				for (int i = 0; i < NodeConnectivity->size(); ++i)
+					OldTerminalMinMaxIndices[i][Dir] = TerminalMinMaxNodeIndices[i][Dir];
+			}
+		}
+		MinMaxNodeIndices.assign(2, vector<int>());
+		TerminalMinMaxNodeIndices.assign(NodeConnectivity->size(), vector<int>(2, -1));
+
+		// start element grad paths descending (ascending) order for maxima (minima) to avoid spurious regions
+		// get sorted list of elements by value
+		vector<std::pair<double, int> > NodeValInds(NumNodes);
+		for (int i = 0; i < NumNodes; ++i) {
+			NodeValInds[i] = std::make_pair(SmoothNodesIntVals[0][i], i);
+		}
+		sort(NodeValInds.begin(), NodeValInds.end());
+		for (int Dir = 0; Dir < 2; ++Dir) {
+			if (ConvegedIter[Dir] < NumConvergedIter) {
+				if (Dir == 0) {
+					// #pragma omp parallel for schedule(dynamic, 128)
+					for (int ei = 0; ei < NumNodes; ++ei) {
+						NodeWiseGradPath(NodeValInds[ei].second, Dir, *NodeConnectivity, SmoothNodesIntVals, 0, TerminalMinMaxNodeIndices);
+					}
+				}
+				else {
+					// #pragma omp parallel for schedule(dynamic, 128)
+					for (int ei = NumNodes - 1; ei >= 0; --ei) {
+						NodeWiseGradPath(NodeValInds[ei].second, Dir, *NodeConnectivity, SmoothNodesIntVals, 0, TerminalMinMaxNodeIndices);
+					}
+				}
+
+			}
+		}
+
+		/*
+		 *	Now all the terminal elements have been identified.
+		 *	Get a list of the unique min and max element indices.
+		 */
+		for (int Dir = 0; Dir < 2; ++Dir) {
+			if (ConvegedIter[Dir] < NumConvergedIter) {
+				for (auto const & i : TerminalMinMaxNodeIndices) {
+					if (std::find(MinMaxNodeIndices[Dir].begin(), MinMaxNodeIndices[Dir].end(), i[Dir]) == MinMaxNodeIndices[Dir].end())
+						MinMaxNodeIndices[Dir].push_back(i[Dir]);
+				}
+				/*
+				 *	Sort the min and max indices by index number
+				 *	(though it may make more sense to sort by value of
+				 *	each terminal element's BasinVarNum)
+				 */
+				std::sort(MinMaxNodeIndices[Dir].begin(), MinMaxNodeIndices[Dir].end());
+				NumMinMax[Dir] = MinMaxNodeIndices[Dir].size();
+
+				/*
+				 *	Combine maxima/minima that are very close to each other.
+				 *	This is for the case where a real maximum appears as two,
+				 *	so there are two basins whose foci are right at their boundaries
+				 *	and when those foci are combined it becomes central to the basin
+				 *	(might want to actually confirm that a merge results in a basin whose
+				 *	focus is more central than were the two foci that were merged to their
+				 *	basins.
+				 */
+				for (int i = 0; i < NumMinMax[Dir] - 1; ++i) {
+					vec3 u = XYZListPtr->at(MinMaxNodeIndices[Dir][i]) - SphereOrigin;
+					for (int j = i + 1; j < NumMinMax[Dir]; ++j) {
+						if (MinMaxNodeIndices[Dir][j] == MinMaxNodeIndices[Dir][i]) {
+							continue;
+						}
+						// check difference in angle between max i and j relative to the sphere origin
+						vec3 v = XYZListPtr->at(MinMaxNodeIndices[Dir][j]) - SphereOrigin;
+						double a = VectorAngle(u, v);
+						if (a < CPMergeCutoffAngle) {
+							// point all of j's elements to i
+							for (auto & ni : TerminalMinMaxNodeIndices) {
+								if (ni[Dir] == MinMaxNodeIndices[Dir][j]) {
+									ni[Dir] = MinMaxNodeIndices[Dir][i];
+								}
+							}
+							MinMaxNodeIndices[Dir][j] = MinMaxNodeIndices[Dir][i];
+						}
+					}
+				}
+				MinMaxNodeIndices[Dir] = vector<int>();
+				for (auto const & i : TerminalMinMaxNodeIndices) {
+					if (std::find(MinMaxNodeIndices[Dir].begin(), MinMaxNodeIndices[Dir].end(), i[Dir]) == MinMaxNodeIndices[Dir].end())
+						MinMaxNodeIndices[Dir].push_back(i[Dir]);
+				}
+				std::sort(MinMaxNodeIndices[Dir].begin(), MinMaxNodeIndices[Dir].end());
+				NumMinMax[Dir] = MinMaxNodeIndices[Dir].size();
+			}
+		}
+		for (int Dir = 0; Dir < 2; ++Dir) {
+			if (NumMinMax[Dir] == OldNumMinMax[Dir]) ConvegedIter[Dir]++;
+		}
+		if (Iter < MaxNumSmoothing && (NumMinMax[0] != OldNumMinMax[0] || NumMinMax[1] != OldNumMinMax[1])) {
+			/*
+			 *	Do a simple smoothing on the ElemIntVals based on average neighborhood value
+			 */
+			TmpSmoothNodeIntVals = SmoothNodesIntVals;
+			SmoothNodesIntVals = vector<vector<double> >(TmpSmoothNodeIntVals.size(), vector<double>(TmpSmoothNodeIntVals[0].size(), 0.));
+#pragma omp parallel for schedule(dynamic, 128)
+			for (int i = 0; i < NumNodes; ++i) {
+				vec ReciprocalDistances(NodeConnectivity->at(i).size());
+				for (int j = 0; j < NodeConnectivity->at(i).size(); ++j) {
+					ReciprocalDistances[j] = 1. / Distance(XYZListPtr->at(i), XYZListPtr->at(NodeConnectivity->at(i)[j]));
+				}
+				ReciprocalDistances = normalise(ReciprocalDistances);
+				for (int j = 0; j < NodeConnectivity->at(i).size(); ++j) {
+					SmoothNodesIntVals[0][i] += TmpSmoothNodeIntVals[0][NodeConnectivity->at(i)[j]] * ReciprocalDistances[j] * ReciprocalDistances[j];
+				}
+				int NumNeighbors = NodeConnectivity->at(i).size();
+				SmoothNodesIntVals[0][i] = double(NumNeighbors - 1) / double(NumNeighbors) * SmoothNodesIntVals[0][i] + 1. / double(NumNeighbors) * TmpSmoothNodeIntVals[0][i];
+			}
+
+			if (NumMinMax[0] != OldNumMinMax[0])
+				ConvegedIter[0] = 0;
+			else if (NumMinMax[1] != OldNumMinMax[1])
+				ConvegedIter[1] = 0;
+		}
+	}
+	if (Iter > 1) {
+		TerminalMinMaxNodeIndices = OldTerminalMinMaxIndices;
+		MinMaxNodeIndices = OldMinMaxIndices;
+	}
+
+	/* Get boundary edges (those whose nodes have different terminal nodes)
+
+	/*
+	 *	Now get the integrals of all the variables for the basins found.
+	 *	These are stored in a 3d irregular vector whose first dimension is
+	 *	of length 2 (min and max), second dimension is of length the number
+	 *	of mins and maxes respectively, and the third dimension is of length
+	 *	number of integration variables.
+	 *	Also save lists of nodes and elements for each min/max.
+	 */
+	BasinIntVals.clear();
+	BasinNodes.clear();
+	BasinElems.clear();
+	SphereElemNums.clear();
+	SphereNodeNums.clear();
+	BasinIntVals.resize(2);
+	BasinNodes.resize(2);
+	BasinElems.resize(2);
+	SphereElemNums.resize(2);
+	SphereNodeNums.resize(2);
+	int NumElems = Sphere.GetNumElems();
+	for (int i = 0; i < 2; ++i) {
+		BasinIntVals[i] = vector<vector<double> >(MinMaxNodeIndices[i].size(), vector<double>(NumIntVars, 0));
+		BasinNodes[i] = vector<vector<vec3> >(MinMaxNodeIndices[i].size());
+		BasinElems[i] = vector<vector<vector<int> > >(MinMaxNodeIndices[i].size());
+		SphereElemNums[i] = vector<vector<int> >(MinMaxNodeIndices[i].size());
+		for (auto & j : SphereElemNums[i]) j.reserve(int(double(NumElems) / double(MinMaxNodeIndices[i].size())));
+		SphereNodeNums[i] = vector<vector<int> >(MinMaxNodeIndices[i].size());
+		for (auto & j : SphereNodeNums[i]) j.reserve(int(double(NumNodes) / double(MinMaxNodeIndices[i].size())));
+	}
+
+	for (int Dir = 0; Dir < 2; ++Dir) {
+		for (int te = 0; te < MinMaxNodeIndices[Dir].size(); ++te) {
+			vector<int> NewNodeNums(XYZListPtr->size(), -1);
+			for (int e = 0; e < NumElems; ++e) {
+				if (TerminalMinMaxNodeIndices[e][Dir] == MinMaxNodeIndices[Dir][te]) {
+					for (int v = 0; v < NumIntVars; ++v) {
+						BasinIntVals[Dir][te][v] += NodeIntVals[v][e];
+					}
+					BasinElems[Dir][te].push_back(vector<int>());
+					BasinElems[Dir][te].back().reserve(3);
+					for (int ei : NodeToElemListPtr->at(e)) {
+						if (NewNodeNums[ei] < 0) {
+							NewNodeNums[ei] = BasinNodes[Dir][te].size();
+							BasinNodes[Dir][te].push_back(XYZListPtr->at(ei));
+
+							if (std::find(SphereNodeNums[Dir][te].begin(), SphereNodeNums[Dir][te].end(), ei) == SphereNodeNums[Dir][te].end())
+								SphereNodeNums[Dir][te].push_back(ei);
+						}
+						BasinElems[Dir][te].back().push_back(NewNodeNums[ei]);
+					}
+					SphereElemNums[Dir][te].push_back(e);
+				}
+			}
+		}
+	}
+
+	return;
+}
+
 void FindSphereBasins() {
 	/*
 	 *	Get the selected Sphere and integration variable
@@ -6121,7 +6517,7 @@ void FindSphereBasins() {
 
 	int SphereZoneNum, NumIntVars = 0, IntNum = TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1);
 	string SphereName;
-	vector<int> IntVarNums;
+	vector<int> IntVarNums, IntIVarNums;
 	vector<string> IntVarNames;
 	for (int vi = 1; vi <= TecUtilDataSetGetNumVars(); ++vi){
 		char* TmpCStr;
@@ -6132,7 +6528,10 @@ void FindSphereBasins() {
 		for (auto & s : { "I: ","IN: ","INS: " }){
 			IsMatch |= (VarName.find(s) != string::npos);
 		}
-		if (IsMatch){
+		if (IsMatch) {
+			if (VarName.find("I: ") != string::npos && VarName.find("I: Te per electron") == string::npos) {
+				IntIVarNums.push_back(IntVarNums.size());
+			}
 			IntVarNums.push_back(vi);
 			IntVarNames.push_back(VarName);
 		}
@@ -6173,6 +6572,18 @@ void FindSphereBasins() {
 	}
 
 	bool SaveSurfaces = TecGUIToggleGet(TGL_TOG_T3_1);
+
+	LgIndex_t NumSubdivisions;
+	TecGUITextFieldGetLgIndex(TFGBSub_TF_T3_1, &NumSubdivisions);
+	NumSubdivisions = MAX(0, NumSubdivisions);
+
+	if (SaveSurfaces){
+		NumSubdivisions = MIN(1, NumSubdivisions);
+	}
+
+	int NumSpheres = SphereZoneNames.size();
+	int NumIter = NumSpheres * NumSubdivisions;
+	int CurIter = 0;
 
  	/*
  	 *	Delete any preexisting zones that would be created here
@@ -6261,7 +6672,7 @@ void FindSphereBasins() {
 		for (int z = 0; z < SphereZoneNums.size(); ++z) {
 // 			z = 1;
 			SphereName = (NuclearNames[z] != "" ? NuclearNames[z] : SphereZoneNames[z]);
-			StatusUpdate(z, SphereZoneNums.size(), "Finding gradient bundles for " + SphereZoneNames[z] + " (" + to_string(z + 1) + " of " + to_string(SphereZoneNums.size()) + " )", AddOnID, startTime);
+			StatusUpdate(CurIter, NumIter, "Finding gradient bundles for " + SphereZoneNames[z] + " (" + to_string(z + 1) + " of " + to_string(SphereZoneNums.size()) + " )", AddOnID, startTime, false);
 			SphereZoneNum = SphereZoneNums[z];
 			REQUIRE(SphereZoneNum > 0 && TecUtilZoneGetType(SphereZoneNum) == ZoneType_FETriangle);
 			FESurface_c Sphere(SphereZoneNum, { 1,2,3 });
@@ -6322,18 +6733,123 @@ void FindSphereBasins() {
 // 				SphereFine.EdgeMidpointSubdivide(ElemVals, &CPPos, &SphereRadius);
 // 			}
 // 
-// 			for (int vi = 0; vi < IntVarNums.size(); ++vi){
-// 				ElemIntVals[vi] = vector<double>(ElemVals.size());
-// 				for (int ei = 0; ei < ElemVals.size(); ++ei){
-// 					ElemIntVals[vi][ei] = ElemVals[ei][vi];
-// 				}
-// 			}
 // 
 // 			SphereFine.GenerateElemMidpoints();
 // 			
-			Sphere.GenerateElemMidpoints();
+// 			
+			FESurface_c OldSphere = Sphere;
 
-			GetSphereBasinIntegrations(Sphere, ElemIntVals, IntNum, MinMaxIndices, BasinIntVals, BasinNodes, BasinElems, SphereNodeNums, SphereElemNums);
+			vec3 SphereOrigin;
+			if (!GetSphereOrigin(Sphere.GetZoneNum(), SphereOrigin)) return;
+			
+			for (int sdi = 0; sdi <= NumSubdivisions; ++sdi) {
+				StatusUpdate(CurIter++, NumIter, "Finding gradient bundles for " + SphereZoneNames[z] + " (" + to_string(z + 1) + " of " + to_string(SphereZoneNums.size()) + " ): refinement level " + to_string(sdi) + " of " + to_string(NumSubdivisions), AddOnID, startTime, false);
+
+				Sphere.GenerateElemMidpoints();
+				Sphere.GenerateElemConnectivity(1);
+
+				GetSphereBasinIntegrations(Sphere, ElemIntVals, IntNum, MinMaxIndices, BasinIntVals, BasinNodes, BasinElems, SphereNodeNums, SphereElemNums);
+
+				if (sdi >= NumSubdivisions){
+					break;
+				}
+
+				// subdivide elements at the boundaries between max/min basins
+				std::set<int> ElemsToSubdivide;
+				int NumBasins = 0;
+				for (int i = 0; i < 2; ++i) {
+					NumBasins += MinMaxIndices[i].size();
+				}
+				
+// #pragma omp parallel for schedule(dynamic)
+				for (int b = 0; b < NumBasins; ++b) {
+					int i, j;
+					if (b < MinMaxIndices[0].size()) {
+						i = 0;
+						j = b;
+					}
+					else {
+						i = 1;
+						j = b - MinMaxIndices[0].size();
+					}
+					vector<vec3> SeedPts;
+					vector<vector<int> > BasinPerimeterEdges;
+					GetSortedPerimeterEdgeMidpoints(BasinElems[i][j], BasinNodes[i][j], SeedPts, BasinPerimeterEdges);
+						
+					for (int ti = 0; ti < BasinElems[i][j].size(); ++ti) {
+						bool IsFound = (ElemsToSubdivide.count(SphereElemNums[i][j][ti]) > 0);
+						for (int ei = 0; ei < BasinPerimeterEdges.size() && !IsFound; ++ei) {
+							auto & e = BasinPerimeterEdges[ei];
+							for (int ci = 0; ci < 3 && !IsFound; ++ci) {
+								if (e[0] == BasinElems[i][j][ti][ci] || e[1] == BasinElems[i][j][ti][ci]){
+// #pragma omp critical
+									{
+									ElemsToSubdivide.insert(SphereElemNums[i][j][ti]);
+										for (auto const & ej : Sphere.GetElemConnectivityListPtr()->at(SphereElemNums[i][j][ti])){
+											ElemsToSubdivide.insert(ej);
+										}
+									}
+									IsFound = true;
+								}
+							}
+						}
+					}
+				}
+				if (!ElemsToSubdivide.empty()) {
+					std::queue<int> ElemsToSubdivideQueue;
+					for (auto const & ei : ElemsToSubdivide) {
+						ElemsToSubdivideQueue.push(ei);
+					}
+					auto TmpSphere = Sphere;
+					vector<vector<int> > OldElemsToNewElems;
+					auto OldElemVals = ElemVals;
+					Sphere.EdgeMidpointSubdivide(ElemsToSubdivideQueue, ElemVals, &CPPos, &SphereRadius, &OldElemsToNewElems);
+#pragma omp parallel for schedule(dynamic,32)
+					for (int ei = 0; ei < OldElemsToNewElems.size(); ++ei) {
+						if (!OldElemsToNewElems[ei].empty()) {
+							auto & oe = OldElemVals[ei];
+							for (auto const & vi : IntIVarNums) {
+								// get total for new elements and scale to match value of old element
+								double NewTotal = 0.;
+								for (auto const &ej : OldElemsToNewElems[ei]){
+									NewTotal += ElemVals[ej][vi];
+								}
+								double ScaleFactor = (NewTotal == 0. ? 1 : oe[vi] / NewTotal);
+								for (auto const &ej : OldElemsToNewElems[ei]) {
+									ElemVals[ej][vi] *= ScaleFactor;
+								}
+							}
+						}
+					}
+#pragma omp parallel for
+					for (int i = 0; i < IntIVarNums.size(); ++i) {
+						int vi = IntIVarNums[i];
+						double OldTotal = 0., NewTotal = 0.;
+						for (auto const & e : OldElemVals) {
+							OldTotal += e[vi];
+						}
+						for (auto const & e : ElemVals) {
+							NewTotal += e[vi];
+						}
+						double ScaleFactor = OldTotal / NewTotal;
+						for (auto & e : ElemVals) {
+							e[vi] *= ScaleFactor;
+						}
+					}
+
+					for (int vi = 0; vi < IntVarNums.size(); ++vi) {
+						ElemIntVals[vi] = vector<double>(ElemVals.size());
+						for (int ei = 0; ei < ElemVals.size(); ++ei) {
+							ElemIntVals[vi][ei] = ElemVals[ei][vi];
+						}
+					}
+				}
+				else{
+					break;
+				}
+			}
+
+			
 
 			BasinBoundaryIntVals.resize(BasinIntVals.size());
 			for (int i = 0; i < BasinIntVals.size(); ++i){
@@ -6408,7 +6924,97 @@ void FindSphereBasins() {
 				TecUtilDialogErrMsg("Failed to get constrained node numbers");
 			}
 
+			// save new sphere
+			if (NumSubdivisions > 0) {
+				vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars(), FieldDataType_Float);
+				vector<ValueLocation_e> ValLocs(TecUtilDataSetGetNumVars(), ValueLocation_Nodal);
+				for (int vi = 0; vi < IntVarNums.size(); ++vi) {
+					ValLocs[IntVarNums[vi] - 1] = ValueLocation_CellCentered;
+				}
 
+				char *TmpCStr;
+				TecUtilZoneGetName(OldSphere.GetZoneNum(), &TmpCStr);
+				string SphereName = TmpCStr;
+				TecUtilStringDealloc(&TmpCStr);
+
+				int ZoneNum = OldSphere.GetZoneNum();
+				int NewZoneNum = Sphere.SaveAsTriFEZone(SphereName, DataTypes, ValLocs, { 1,2,3 });
+				for (int vi = 0; vi < IntVarNums.size(); ++vi) {
+					VarPtrs[vi].InitializeWritePtr(NewZoneNum, IntVarNums[vi]);
+				}
+				for (int ei = 0; ei < Sphere.GetNumElems(); ++ei) {
+					for (int vi = 0; vi < IntVarNums.size(); ++vi) {
+						VarPtrs[vi].Write(ei, ElemVals[ei][vi]);
+					}
+				}
+
+				// copy aux data from initial sphere (based on everything set at end of gba newmainfunction)
+				vector<string> AuxDataList = {
+					CSMAuxData.GBA.SphereCPName,
+					CSMAuxData.GBA.ZoneType,
+					CSMAuxData.GBA.SphereCPNum,
+					CSMAuxData.GBA.SphereConstrainedNodeNums,
+					CSMAuxData.GBA.SphereConstrainedNodeIntersectCPTypes,
+					CSMAuxData.GBA.SphereConstrainedNodeIntersectCPNames,
+					CSMAuxData.GBA.SphereConstrainedNodeIntersectCPTotalOffsetNames,
+					CSMAuxData.GBA.NumGBs,
+					CSMAuxData.GBA.NumNodeGPs,
+					CSMAuxData.GBA.NumEdgeGPs,
+					CSMAuxData.GBA.TotNumGPs,
+					CSMAuxData.GBA.NumWorkingGPs,
+					CSMAuxData.GBA.SourceZoneNum,
+					CSMAuxData.GBA.SourceNucleusName,
+					CSMAuxData.GBA.SphereSeedRadius,
+					CSMAuxData.GBA.RadialApprxRadius,
+					CSMAuxData.GBA.SphereSeedRadiusCPDistRatio,
+					CSMAuxData.GBA.RadialApprxRadiusCPDistRatio,
+					CSMAuxData.GBA.RadialSphereApproximation,
+					CSMAuxData.GBA.SphereElemSymbol,
+					CSMAuxData.GBA.SphereOrigin,
+					CSMAuxData.GBA.SphereAtomicNumber,
+					CSMAuxData.GBA.SphereAtomicCoreECount,
+					CSMAuxData.GBA.AtomicBasinIntegrationVariables,
+					CSMAuxData.GBA.AtomicBasinIntegrationValues,
+					CSMAuxData.GBA.GPRhoCutoff,
+					CSMAuxData.GBA.SphereMinNumGPs,
+					CSMAuxData.GBA.SphereSubdivisionLevel,
+					CSMAuxData.GBA.SphereSubdivisionTightness,
+					CSMAuxData.GBA.SphereNumBondPathCoincidentGBs,
+					CSMAuxData.GBA.GBSurfaceGPMaxSpacing,
+					CSMAuxData.GBA.IntVarSphereInteriorVals,
+					CSMAuxData.GBA.IntVarSphereInteriorMaxes,
+					CSMAuxData.GBA.IntVarSphereInteriorMins,
+					CSMAuxData.GBA.IntVarSphereInteriorMeans,
+					CSMAuxData.GBA.IntVarSphereInteriorStdDevs,
+					CSMAuxData.GBA.IntVarSphereInteriorRanges
+				};
+				for (auto const & s : AuxDataList) {
+					string val;
+					if (AuxDataZoneGetItem(ZoneNum, s, val)) {
+						AuxDataZoneSetItem(NewZoneNum, s, val);
+					}
+				}
+
+				// set small amount of translucency to prevent artifacts (that just became a problem as of oct 2021)
+				StyleValue styleValue;
+				Set objectSet(NewZoneNum);
+				styleValue.set((Boolean_t)1, objectSet, SV_FIELDMAP, SV_EFFECTS, SV_USETRANSLUCENCY);
+				styleValue.set((SmInteger_t)1, objectSet, SV_FIELDMAP, SV_EFFECTS, SV_SURFACETRANSLUCENCY);
+				styleValue.set((Boolean_t)1, SV_FIELDLAYERS, SV_USETRANSLUCENCY);
+
+				TecUtilZoneSetContour(SV_SHOW, objectSet.getRef(), 0.0, TRUE);
+				TecUtilZoneSetContour(SV_LINECONTOURGROUP, objectSet.getRef(), 0.0, ContourColoring_Group8);
+				TecUtilZoneSetContour(SV_CONTOURTYPE, objectSet.getRef(), 0.0, (ContourType_e)2);
+				TecUtilZoneSetContour(SV_FLOODCOLORING, objectSet.getRef(), 0.0, ContourColoring_Group8);
+
+				TecUtilZoneSetMesh(SV_SHOW, objectSet.getRef(), 0.0, FALSE);
+				TecUtilZoneSetContour(SV_SHOW, objectSet.getRef(), 0.0, TRUE);
+				TecUtilZoneSetActive(objectSet.getRef(), AssignOp_PlusEquals);
+				styleValue.set((Boolean_t)1, SV_FIELDLAYERS, SV_SHOWCONTOUR);
+
+				TecUtilZoneDelete(Set(ZoneNum).getRef());
+				SetZoneNum(TecUtilDataSetGetNumZones(), ZoneNum);
+			}
 
 			vector<FieldDataPointer_c> GradRawPtrs(3);
 			FieldDataPointer_c RhoRawPtr;
@@ -6755,7 +7361,7 @@ void FindSphereBasins() {
 
 // 					This is now taken care of in a much more robust way above.
 
-					int ZoneNum = Basin.SaveAsTriFEZone({ 1,2,3 }, SphereName + ": " + MinMax[i] + " basin (node " + to_string(MinMaxIndices[i][b]) + ") " + BasinDefineVarName);
+					int ZoneNum = Basin.SaveAsTriFEZone({ 1,2,3 }, SphereName + ": " + MinMax[i] + " basin (elem " + to_string(MinMaxIndices[i][b] + 1) + ") " + BasinDefineVarName);
 					if (ZoneNum > 0) {
 						if (i == 1) ZoneSet += ZoneNum;
 						/*
@@ -6776,13 +7382,13 @@ void FindSphereBasins() {
 						if (CondensedBasinToConstrainedNodeNums[i][b].first >= 0) {
 							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereConstrainedNodeNames[CondensedBasinToConstrainedNodeNums[i][b].first]);
 							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinIsSpecialGradientBundle, "true");
-							TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, GBABondWedgeColor);
+							TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, ColorIndex_t((b % 7) + 1));
 						}
 						else {
-							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereName + ": " + MinMax[i] + " basin (node " + to_string(MinMaxIndices[i][b]) + ")");
-							TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, GBALoneWedgeColor);
+							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereName + ": " + MinMax[i] + " basin (elem " + to_string(MinMaxIndices[i][b] + 1) + ")");
+							TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, ColorIndex_t((b % 7) + 1));
 						}
-						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinInfo, SphereName + ": " + MinMax[i] + " (node " + to_string(MinMaxIndices[i][b]) + ")");
+						AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinInfo, SphereName + ": " + MinMax[i] + " (elem " + to_string(MinMaxIndices[i][b] + 1) + ")");
 						StyleValue styleValue;
 						styleValue.set((Boolean_t)1, Set(ZoneNum), SV_FIELDMAP, SV_EFFECTS, SV_USETRANSLUCENCY);
 						styleValue.set((SmInteger_t)60, Set(ZoneNum), SV_FIELDMAP, SV_EFFECTS, SV_SURFACETRANSLUCENCY);
@@ -6798,7 +7404,7 @@ void FindSphereBasins() {
 					}
 
   					if (SaveSurfaces && WedgeSurfaces[i][b].IsMade()) {
-  						ZoneNum = WedgeSurfaces[i][b].SaveAsTriFEZone({ 1,2,3 }, SphereName + ": " + MinMax[i] + " wedge (node " + to_string(MinMaxIndices[i][b]) + ") " + BasinDefineVarName);
+  						ZoneNum = WedgeSurfaces[i][b].SaveAsTriFEZone({ 1,2,3 }, SphereName + ": " + MinMax[i] + " wedge (elem " + to_string(MinMaxIndices[i][b] + 1) + ") " + BasinDefineVarName);
   						if (ZoneNum > 0) {
   							if (i == 1) ZoneSet += ZoneNum;
   							/*
@@ -6817,10 +7423,10 @@ void FindSphereBasins() {
 								TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, GBABondWedgeColor);
   							}
   							else {
-								AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereName + ": " + MinMax[i] + " wedge (node " + to_string(MinMaxIndices[i][b]) + ")");
+								AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinName, SphereName + ": " + MinMax[i] + " wedge (elem " + to_string(MinMaxIndices[i][b] + 1) + ")");
 								TecUtilZoneSetShade(SV_COLOR, Set(ZoneNum).getRef(), 0.0, GBALoneWedgeColor);
   							}
-							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinInfo, SphereName + ": " + MinMax[i] + " (node " + to_string(MinMaxIndices[i][b]) + ")");
+							AuxDataZoneSetItem(ZoneNum, CSMAuxData.GBA.CondensedBasinInfo, SphereName + ": " + MinMax[i] + " (elem " + to_string(MinMaxIndices[i][b] + 1) + ")");
 							StyleValue styleValue;
 							styleValue.set((Boolean_t)1, Set(ZoneNum), SV_FIELDMAP, SV_EFFECTS, SV_USETRANSLUCENCY);
 							styleValue.set((SmInteger_t)60, Set(ZoneNum), SV_FIELDMAP, SV_EFFECTS, SV_SURFACETRANSLUCENCY);

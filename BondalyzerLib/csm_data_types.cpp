@@ -56,6 +56,14 @@ double Distance(vec const & A, vec const & B) {
 	return norm(A - B); 
 }
 
+double SphericalDistance(vec3 const & A, vec3 const & B, vec3 const & O) { // i.e. great circle distance
+	// d = r * a, where a is the central angle (angle between the two points relative to sphere origin)
+	double a = VectorAngle(A - O, B - O);
+	double r = Distance(A, O);
+	double d = a * r;
+	return d;
+}
+
 double VectorAngle(vec3 const & A, vec3 const & B){
 	double denom = (norm(A) * norm(B));
 	if (!isnan(denom) && denom > 0.0) {

@@ -4137,7 +4137,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		// 		return TRUE;
 
 // #ifndef _DEBUG
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic, 16)
 // #endif
 		for (int gpNum = 0; gpNum < NumCircleCheckGPs; ++gpNum) {
 			GPs[gpNum].Seed(false);
@@ -4179,7 +4179,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		// Reseed GPs with smaller temrinal radius
 
 // #ifndef _DEBUG
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic, 16)
 // #endif
 		for (int gpNum = 0; gpNum < NumCircleCheckGPs; ++gpNum) {
 			if (GPEndCPTypes[gpNum] != SaddleCPTermType) {
@@ -4451,6 +4451,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		CheckDist = 0.2 * MinCPDist;
 
 		Path1 = GPList.begin();
+		GPList.push_back(*Path1);
 		Path2 = Path1;
 		Path3 = Path2;
 
@@ -4478,7 +4479,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 
 		while (DoContinue && Path2 != GPList.end()) {
-			TermRadius = 0.01 * MinCPDist;
+			TermRadius = 0.025 * MinCPDist;
 			DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum] + " found " + to_string(FoundSaddleCPNums.size()) + " saddle(s)", AddOnID, Time1);
 			if (Path2->IsSGP);
 			{
@@ -4490,18 +4491,58 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				if (Path2->SaddleEndGPs.size() == 2 && Path2->SaddleEndGPs[0].IsMade() && Path2->SaddleEndGPs[1].IsMade()) {
 					Path3 = Path2;
 					Path3++;
-					if (DistSqr(Path2->SaddleEndGPs[0][-1], Path3->GP[-1]) < DistSqr(Path2->SaddleEndGPs[1][-1], Path1->GP[-1])){
+					if (DistSqr(Path2->SaddleEndGPs[0][-1], Path3->GP[-1]) < DistSqr(Path2->SaddleEndGPs[1][-1], Path3->GP[-1])){
 						Path2->SaddleEndGPs = { Path2->SaddleEndGPs[1], Path2->SaddleEndGPs[0] };
 					}
 				}
 
 			}
-			if (((!Path1->IsSGP && !Path2->IsSGP)
-				|| (Path1->IsSGP && Path1->SaddleEndGPs[1].GetStartEndCPNum(1) != Path2->CPNum)
-				|| (Path2->IsSGP && Path2->SaddleEndGPs[0].GetStartEndCPNum(1) != Path1->CPNum))
-				&& ((Path1->CPNum >= 0 && Path2->CPNum >= 0 && Path1->CPNum != Path2->CPNum)
-					|| (Path1->GP.GetMaxSeparationMidpointFromOtherGP(Path2->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist) && MaxDist > CheckDist))
-				&& Path1->GP.GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOtherGP(Path2->GP, GPDeviationCheckAngleFactor, GPDeviationCheckDistFactor, GPDeviationStartPtLengthFactor, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MinCPDist * 0.05))
+
+			GradPath_c OldGP1, OldGP2;
+
+			bool NeitherAreSGPs = (!Path1->IsSGP && !Path2->IsSGP);
+			bool Path1SaddleNotPointToPath2Terminus = (Path1->IsSGP && Path1->SaddleEndGPs[1].GetStartEndCPNum(1) != Path2->CPNum);
+			bool Path2SaddleNotPointToPath1Terminus = (Path2->IsSGP && Path2->SaddleEndGPs[0].GetStartEndCPNum(1) != Path1->CPNum);
+			bool PathCPNumsAreLocalAndDifferent = (Path1->CPNum >= 0 && Path2->CPNum >= 0 && Path1->CPNum != Path2->CPNum);
+			bool PathsDeviate = false;
+			bool PathsSeparateBeyondThreshold = (Path1->GP.GetMaxSeparationMidpointFromOtherGP(Path2->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist) && MaxDist > CheckDist);
+			if (PathsSeparateBeyondThreshold || PathCPNumsAreLocalAndDifferent) {
+				if (!NeitherAreSGPs && PathCPNumsAreLocalAndDifferent){
+					PathsDeviate = true;
+					if (Path1->IsSGP){
+// 						auto TmpGP = Path1->GP.SubGP(0, Path1->GP.GetIndAtLength(Path1->GP.GetLength() * 0.96));
+// 						TmpGP.GetMaxSeparationMidpointFromOtherGPRhoBased(Path2->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist);
+						OldGP1 = Path1->GP;
+						double Len1 = Path1->GP.GetLength();
+						Path1->GP = ConcatenateResample({ Path1->GP, Path1->SaddleEndGPs[1] }, NumGPPts);
+						if (DistSqr(Path1->GP[-1], Path2->GP[0]) < DistSqr(Path1->GP[0], Path2->GP[0])) {
+							Path1->GP.Reverse();
+						}
+						double Len2 = Path1->GP.GetLength();
+						DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(Path1->GP, XYZVarNums, RhoVarNum, "Temp concatenated saddle path", PassNum, SubPassNum, 1);
+						PathsDeviate = Path1->GP.GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOtherGP(Path2->GP, GPDeviationCheckAngleFactor, GPDeviationCheckDistFactor, (Len1 + 0.05 * (Len2 - Len1)) / Len2, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MinCPDist * 0.05);
+					}
+					else {
+// 						auto TmpGP = Path2->GP.SubGP(0, Path2->GP.GetIndAtLength(Path2->GP.GetLength() * 0.96));
+// 						TmpGP.GetMaxSeparationMidpointFromOtherGPRhoBased(Path1->GP, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MaxDist);
+						OldGP2 = Path2->GP;
+						double Len1 = Path2->GP.GetLength();
+						Path2->GP = ConcatenateResample({ Path2->GP, Path2->SaddleEndGPs[0] }, NumGPPts);
+						if (DistSqr(Path2->GP[-1], Path1->GP[0]) < DistSqr(Path2->GP[0], Path1->GP[0])){
+							Path2->GP.Reverse();
+						}
+						double Len2 = Path2->GP.GetLength();
+						DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(Path2->GP, XYZVarNums, RhoVarNum, "Temp concatenated saddle path", PassNum, SubPassNum, 1);
+						PathsDeviate = Path1->GP.GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOtherGP(Path2->GP, GPDeviationCheckAngleFactor, GPDeviationCheckDistFactor, (Len1 + 0.05 * (Len2 - Len1)) / Len2, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MinCPDist * 0.05);
+// 						PathsDeviate = Path2->GP.GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOtherGP(Path1->GP, GPDeviationCheckAngleFactor, GPDeviationCheckDistFactor, (Len1 + 0.05 * (Len2 - Len1)) / Len2, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MinCPDist * 0.05);
+					}
+				}
+				else{
+					PathsDeviate = Path1->GP.GetDeviationMidpointAsTerminalAngleAndDistanceFactorFromOtherGP(Path2->GP, GPDeviationCheckAngleFactor, GPDeviationCheckDistFactor, GPDeviationStartPtLengthFactor, GPMidPt, Path1Ind, Path2Ind, Path2Pt, MinCPDist * 0.05);
+				}
+			}
+			if ((NeitherAreSGPs || Path1SaddleNotPointToPath2Terminus || Path2SaddleNotPointToPath1Terminus)
+				&& (PathCPNumsAreLocalAndDifferent || PathsDeviate))
 			{
 				// Paths deviate. Need to seed a new GP between them once their
 				// deviation angle is past the check angle.
@@ -4589,6 +4630,12 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 // 						GP.GP.Reverse();
 // 					}
 
+					if (OldGP1.IsMade()){
+						Path1->GP = OldGP1;
+					}
+					if (OldGP2.IsMade()){
+						Path2->GP = OldGP2;
+					}
 
 					GPList.insert(Path2, GP);
 
@@ -4740,6 +4787,13 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 // 						if ((CPType == CPType_Ring && GPSaddle.RhoAt(0) > GPSaddle.RhoAt(-1)) || (CPType == CPType_Bond && GPSaddle.RhoAt(0) < GPSaddle.RhoAt(-1)))
 // 							GPSaddle.Reverse();
 						GP.GP = GPSaddle;
+
+						if (OldGP1.IsMade()) {
+							Path1->GP = OldGP1;
+						}
+						if (OldGP2.IsMade()) {
+							Path2->GP = OldGP2;
+						}
 
 						GPList.insert(Path2, GP);
 						Path1 = Path2;
@@ -5082,6 +5136,13 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 									// 									GP.GP.Reverse();
 									// 								}
 
+									if (OldGP1.IsMade()) {
+										Path1->GP = OldGP1;
+									}
+									if (OldGP2.IsMade()) {
+										Path2->GP = OldGP2;
+									}
+
 									GPList.insert(Path2, GP);
 
 									// Update the GPList iterators to continue the search
@@ -5158,6 +5219,13 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 // 							TecUtilDialogMessageBox("iterating between two missing CPs: before treating GP", MessageBoxType_Information);
 // 						}
 
+						if (OldGP1.IsMade()) {
+							Path1->GP = OldGP1;
+						}
+						if (OldGP2.IsMade()) {
+							Path2->GP = OldGP2;
+						}
+
 						GP.Identifier = (Path1->Identifier + Path2->Identifier) * 0.5;
 						GP.GP.Resample(NumGPPts + 5);
 						GP.GP.RemoveKinks();
@@ -5184,10 +5252,21 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 // 			if (DebugMode) {
 // 				TecUtilDialogMessageBox("Finding Saddle-saddle paths: not deviating", MessageBoxType_Information);
 // 			}
+// 			
+
+				if (OldGP1.IsMade()) {
+					Path1->GP = OldGP1;
+				}
+				if (OldGP2.IsMade()) {
+					Path2->GP = OldGP2;
+				}
+
 				Path1++;
 				Path2++;
 			}
 		}
+
+		GPList.pop_back();
 
 // 		if (DebugMode) {
 // 			TecUtilDialogMessageBox("Finished with saddle-saddle paths", MessageBoxType_Information);
@@ -5260,8 +5339,9 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 
 				// Make new GP from saddle path and the left end GP and copy relevant info
 				GPWithInfo GP;
-				GP.GP = Path1->GP;
-				GP.GP.ConcatenateResample(Path1->SaddleEndGPs[0], NumGPPts, GPResampleMethod_Linear);
+				GP.GP = ConcatenateResample({ Path1->GP, Path1->SaddleEndGPs[0] }, NumGPPts / NumGPPtsWorkingFactor, {}, GPResampleMethod_Linear);
+// 				GP.GP = Path1->GP;
+// 				GP.GP.ConcatenateResample(Path1->SaddleEndGPs[0], NumGPPts, GPResampleMethod_Linear);
 				// 				TmpGP.GP = Path1->GP + Path1->SaddleEndGPs[0];
 				GP.CPNum = Path2->CPNum;
 				GP.SaddleCPNum = Path1->SaddleCPNum;
@@ -5287,8 +5367,9 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				Path2 = Path1;
 				Path2++;
 				// Update TmpGP for the right end GP
-				GP.GP = Path1->GP;
-				GP.GP.ConcatenateResample(Path1->SaddleEndGPs[1], NumGPPts, GPResampleMethod_Linear);
+				GP.GP = ConcatenateResample({ Path1->GP, Path1->SaddleEndGPs[1] }, NumGPPts / NumGPPtsWorkingFactor, {}, GPResampleMethod_Linear);
+// 				GP.GP = Path1->GP;
+// 				GP.GP.ConcatenateResample(Path1->SaddleEndGPs[1], NumGPPts, GPResampleMethod_Linear);
 				// 				TmpGP.GP = Path1->GP + Path1->SaddleEndGPs[1];
 				GP.CPNum = Path2->CPNum;
 				GP.CPType = Path2->CPType;
@@ -6103,6 +6184,9 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		// Now resample GPs to user-specified number of points
 		NumGPPts /= NumGPPtsWorkingFactor;
 		for (auto & GP : GPList){
+			if (GP.SaddleCPNum >= 0){
+				continue;
+			}
 			GP.GP.Resample(NumGPPts, GP.IsSGP ? GPResampleMethod_Linear : GPResampleMethod_Adaptive);
 		}
 
@@ -10506,7 +10590,7 @@ void TestFunction() {
 
 	vec3 CPPos = vec(SplitStringDbl(AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.SphereOrigin)));
 	double SphereRadius = atof(AuxDataZoneGetItem(ZoneNum, CSMAuxData.GBA.RadialApprxRadius).c_str());
-	Sphere.EdgeMidpointSubdivide(ElemVals, &CPPos, &SphereRadius);
+	Sphere.EdgeMidpointSubdivide(std::queue<int>(), ElemVals, &CPPos, &SphereRadius);
 
 	vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars(), FieldDataType_Float);
 	vector<ValueLocation_e> ValLocs(TecUtilDataSetGetNumVars(), ValueLocation_Nodal);
@@ -12262,7 +12346,6 @@ void SubdivideSpheresReturnUserInfo(bool const GuiSuccess,
 	auto SubdivisionLevel = Fields[fNum++].GetReturnInt();
 
 	vector<int> IntVarNums, IntIVarNums;
-	int ScaleVarNum = -1;
 	for (int vi = 1; vi <= TecUtilDataSetGetNumVars(); ++vi) {
 		char *TmpCStr;
 		TecUtilVarGetName(vi, &TmpCStr);
@@ -12274,11 +12357,8 @@ void SubdivideSpheresReturnUserInfo(bool const GuiSuccess,
 		}
 		if (IsMatch) {
 			IntVarNums.push_back(vi);
-			if (VarName.find("I: ") != string::npos){
+			if (VarName.find("I: ") != string::npos && VarName.find("I: Te per electron") == string::npos) {
 				IntIVarNums.push_back(IntVarNums.size() - 1);
-			}
-			if (VarName.find("I: Electron Density") != string::npos) {
-				ScaleVarNum = IntVarNums.size() - 1;
 			}
 		}
 	}
@@ -12296,14 +12376,10 @@ void SubdivideSpheresReturnUserInfo(bool const GuiSuccess,
 			VarPtrs[vi].InitializeWritePtr(ZoneNum, IntVarNums[vi]);
 		}
 
-		double TotalScaleVarRef = 0.;
-
 		for (int ei = 0; ei < Sphere.GetNumElems(); ++ei) {
 			for (int vi = 0; vi < IntVarNums.size(); ++vi) {
 				ElemVals[ei][vi] = VarPtrs[vi][ei];
 			}
-			if (ScaleVarNum >= 0)
-				TotalScaleVarRef += ElemVals[ei][ScaleVarNum];
 		}
 		for (auto & p : VarPtrs) {
 			p.Close();
@@ -12314,41 +12390,50 @@ void SubdivideSpheresReturnUserInfo(bool const GuiSuccess,
 
 		auto OutSphere = Sphere;
 
+		vector<vector<int> > OldElemsToNewElems;
+
 		for (int si = 0; si < SubdivisionLevel; ++si) {
 			KeepGoing = StatusUpdate(zi++, ZoneNums.size() * SubdivisionLevel, "Sphere " + to_string(zi / SubdivisionLevel + 1) + ": subdivision level " + to_string(si + 1), AddOnID, Time1);
 			if (!KeepGoing){
 				break;
 			}
-			OutSphere.EdgeMidpointSubdivideParallel(ElemVals, &CPPos, &SphereRadius);
+			auto OldElemVals = ElemVals;
+			OutSphere.EdgeMidpointSubdivideParallel(ElemVals, &CPPos, &SphereRadius, &OldElemsToNewElems);
 
-			int NumElems = ElemVals.size();
 #pragma omp parallel for
-			for (int ei = 0; ei < NumElems; ++ei) {
-				auto & e = ElemVals[ei];
+			for (int ei = 0; ei < OldElemsToNewElems.size(); ++ei) {
+				auto & oe = OldElemVals[ei];
 				for (auto const & vi : IntIVarNums) {
-					e[vi] *= 0.25;
+					// get total for new elements and scale to match value of old element
+					double NewTotal = 0.;
+					for (auto const &ej : OldElemsToNewElems[ei]) {
+						NewTotal += ElemVals[ej][vi];
+					}
+					double ScaleFactor = (NewTotal == 0. ? 1 : oe[vi] / NewTotal);
+					for (auto const &ej : OldElemsToNewElems[ei]) {
+						ElemVals[ej][vi] *= ScaleFactor;
+					}
 				}
 			}
-		}
-		KeepGoing &= StatusUpdate(zi, ZoneNums.size() * SubdivisionLevel, "Sphere " + to_string(zi / SubdivisionLevel + 1) + ": Saving", AddOnID, Time1);
-		if (!KeepGoing) {
-			break;
-		}
-
-		if (ScaleVarNum >= 0) {
-			double TotalScaleVarAfter = 0.;
-			for (int ei = 0; ei < OutSphere.GetNumElems(); ++ei) {
-				TotalScaleVarAfter += ElemVals[ei][ScaleVarNum];
-			}
-			double ScaleFactor = TotalScaleVarRef / TotalScaleVarAfter;
-			int NumElems = ElemVals.size();
 #pragma omp parallel for
-			for (int ei = 0; ei < NumElems; ++ei) {
-				auto & e = ElemVals[ei];
-				for (auto const & vi : IntIVarNums) {
+			for (int i = 0; i < IntIVarNums.size(); ++i) {
+				int vi = IntIVarNums[i];
+				double OldTotal = 0., NewTotal = 0.;
+				for (auto const & e : OldElemVals) {
+					OldTotal += e[vi];
+				}
+				for (auto const & e : ElemVals) {
+					NewTotal += e[vi];
+				}
+				double ScaleFactor = OldTotal / NewTotal;
+				for (auto & e : ElemVals) {
 					e[vi] *= ScaleFactor;
 				}
 			}
+		}
+		KeepGoing = KeepGoing && StatusUpdate(zi, ZoneNums.size() * SubdivisionLevel, "Sphere " + to_string(zi / SubdivisionLevel + 1) + ": Saving", AddOnID, Time1);
+		if (!KeepGoing) {
+			break;
 		}
 
 		vector<FieldDataType_e> DataTypes(TecUtilDataSetGetNumVars(), FieldDataType_Float);

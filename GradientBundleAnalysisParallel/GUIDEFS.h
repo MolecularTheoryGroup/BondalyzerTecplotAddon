@@ -81,6 +81,8 @@ extern LgIndex_t  LBLRadLab_LBL_T3_1;
 extern LgIndex_t  TGL_TOG_T3_1;
 extern LgIndex_t  LBL31_LBL_T3_1;
 extern LgIndex_t  TGLINSV_TOG_T3_1;
+extern LgIndex_t  TFGBSub_TF_T3_1;
+extern LgIndex_t  LBL32_LBL_T3_1;
 extern LgIndex_t Dialog1Manager;
 extern void BuildDialog1(LgIndex_t  ParentDialog);
 

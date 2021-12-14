@@ -121,6 +121,8 @@ double TriArea(vec3 const & p1, vec3 const & p2, vec3 const & p3);
 double TriPerimeter(vec3 const & p1, vec3 const & p2, vec3 const & p3);
 double TriBadness(vec3 const & p1, vec3 const & p2, vec3 const & p3);
 
+double SphericalTriangleArea(vec3 const & p1, vec3 const & p2, vec3 const & p3, vec3 const & o);
+
 void RemoveDupicateNodesFromMesh(vector<vec3> & NodeList, vector<vector<int> > & ElemList, vector<int> * OldToNewNodes = nullptr);
 void RemoveDuplicatePointsFromVec3Vec(vector<vec3> & Points, double tol = 1e-8, vector<int> * PtNumsOldToNew = nullptr);
 

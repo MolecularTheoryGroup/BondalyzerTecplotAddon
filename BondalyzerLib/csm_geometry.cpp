@@ -2517,7 +2517,8 @@ void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 #pragma omp parallel for schedule(dynamic, 32)
 // #endif
 	for (int i = 0; i < NumElems - 1; ++i) {
-		for (int j = i + 1; j < NumElems; ++j) {
+		int NumNeighborsFound = 0;
+		for (int j = i + 1; j < NumElems && (NumSharedCorners == 1 || NumNeighborsFound < 3); ++j) {
 			int NumMatches = 0;
 			for (int ci = 0; ci < 3 && NumMatches < NumSharedCorners; ++ci) {
 				for (int cj = 0; cj < 3 && NumMatches < NumSharedCorners; ++cj) {
@@ -2527,6 +2528,7 @@ void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 				}
 			}
 			if (NumMatches >= NumSharedCorners) {
+				NumNeighborsFound++;
 #pragma omp critical
 				{
 					ElemConnectivity[i].push_back(j);
@@ -3610,6 +3612,35 @@ double TriArea(vec3 const & p1, vec3 const & p2, vec3 const & p3){
 		+ p3[1] * (p1[0] - p2[0]);
 
 	return 0.5 * norm(ABC);
+}
+
+double SphericalTriangleArea(vec3 const & p1, vec3 const & p2, vec3 const & p3, vec3 const & o){
+	vector<vec3> p = { p1,p2,p3 };
+	vector<double> a(3);
+	for (int i = 0; i < 3; ++i){
+		int j = (i + 1) % 3;
+		int k = (i + 2) % 3;
+		vec3 po = p[i] - o;
+
+		vec3 v1 = p[j] - p[i];
+		vec3 vtmp = cross(po, v1);
+		v1 = normalise(cross(vtmp, po));
+// 		if (DistSqr(p[i] + v1, p[j]) > DistSqr(p[i] - v1, p[j])){
+// 			v1 = -v1;
+// 		}
+
+		vec3 v2 = p[k] - p[i];
+		vtmp = cross(po, v2);
+		v2 = normalise(cross(vtmp, po));
+// 		if (DistSqr(p[i] + v2, p[k]) > DistSqr(p[i] - v2, p[k])) {
+// 			v2 = -v2;
+// 		}
+		a[i] = VectorAngle(v1, v2);
+	}
+	double r = Distance(p1, o);
+	double e = (a[0] + a[1] + a[2] - PI);
+	double area = r * r * e;
+	return area;
 }
 
 double TriPerimeter(vec3 const & p1, vec3 const & p2, vec3 const & p3){

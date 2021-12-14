@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <queue>
 
 #include "CSM_GRAD_PATH.h"
 #include "CSM_GEOMETRY.h"
@@ -73,7 +74,7 @@ public:
 	vector<double> GetIntResults() const;
 	int GetZoneNum() const { return m_ZoneNum; }
 	vector<vector<double> > GetTriSphereIntValsByElem(vector<double> * SphereTriangleAreas = nullptr) const { return TriSphereIntValsByElem(SphereTriangleAreas); }
-	vector<double> TriSphereElemSolidAngles(double * TotalAreaIn = nullptr) const;
+	vector<double> TriSphereElemSolidAngles(double * TotalAreaIn = nullptr, vec3 * Origin = nullptr) const;
 	int GetNumElems() const {return m_ElemList.size(); }
 	int GetNumNodes() const {return m_XYZList.size(); }
 
@@ -99,10 +100,10 @@ public:
 		vector<vec> const & stuW2 = vector<vec>());
 // 	Boolean_t DoIntegration(int ResolutionScale, Boolean_t IntegrateVolume);
 	Boolean_t DoIntegrationNew(int ResolutionScale, Boolean_t IntegrateVolume);
-	void EdgeMidpointSubdivide(vector<int> const & ElemsToDo, vector<vector<double> > & ElemVals, vec3 * CPPos = nullptr, double * SphereRadius = nullptr);
-	void EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVals, vec3 * CPPos = nullptr, double * SphereRadius = nullptr);
-	vector<vector<double> > CellCenteredToNodalVals(vector<vector<double> > & ElemVals);
-	vector<vector<double> > NodalToCellCenteredVals(vector<vector<double> > & NodeVals);
+	void EdgeMidpointSubdivide(std::queue<int> & ElemsToDo, vector<vector<double> > & ElemVals, vec3 * CPPos = nullptr, double * SphereRadius = nullptr, vector<vector<int> > * OldElemsToNewElems = nullptr);
+	void EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVals, vec3 * CPPos = nullptr, double * SphereRadius = nullptr, vector<vector<int> > * OldElemsToNewElems = nullptr);
+	vector<vector<double> > CellCenteredToNodalVals(vector<vector<double> > & ElemVals, vec3 * SphereOrigin = nullptr);
+	vector<vector<double> > NodalToCellCenteredVals(vector<vector<double> > & NodeVals, vec3 * SphereOrigin = nullptr);
 
 	Boolean_t GQIntegration(int NumGQPts, vector<FieldDataPointer_c> const & InIntFDPtrs, Boolean_t IntegrateVolume);
 

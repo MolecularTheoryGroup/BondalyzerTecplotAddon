@@ -538,20 +538,30 @@ void CSMGuiMultiListSelectAllButtonCallBack(){
 }
 
 void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID){
-	if (CSMGuiPointLabelIDs.size() > 0){
+// 	if (CSMGuiPointLabelIDs.size() > 0){
 // 		CSMGuiDeleteLabelsRunning = true;
 		if (AddOnID == nullptr) AddOnID = &CSMGuiAddOnID;
 		TecUtilLockStart(*AddOnID);
 		MouseButtonMode_e MouseMode = TecUtilMouseGetCurrentMode();
 		TecUtilDrawGraphics(FALSE);
-		for (int i = 0; i < 2; ++i){
-			TecUtilPickDeselectAll();
-			for (auto const & l : CSMGuiPointLabelIDs) if (TecUtilTextIsValid(l)) TecUtilPickText(l);
 
-			if (TecUtilPickListGetCount() > 0){
-				TecUtilPickClear();
-			}
+		Text_ID Text;
+
+		Text = TecUtilTextGetBase();
+		while (Text != TECUTILBADID)
+		{
+			TecUtilTextDelete(Text);
+			Text = TecUtilTextGetBase();
 		}
+
+// 		for (int i = 0; i < 2; ++i){
+// 			TecUtilPickDeselectAll();
+// 			for (auto const & l : CSMGuiPointLabelIDs) if (TecUtilTextIsValid(l)) TecUtilPickText(l);
+// 
+// 			if (TecUtilPickListGetCount() > 0){
+// 				TecUtilPickClear();
+// 			}
+// 		}
 // 		if (TecUtilPickListGetCount() > 0){
 // 			CSMGuiPointLabelIDs.clear();
 // 		}
@@ -561,7 +571,7 @@ void CSMGUIDeleteCPLabels(AddOn_pa *AddOnID){
 			TecUtilMouseSetMode(MouseMode);
 		TecUtilLockFinish(*AddOnID);
 // 		CSMGuiDeleteLabelsRunning = false;
-	}
+// 	}
 }
 
 void DialogCloseButtonCB(){

@@ -3309,9 +3309,9 @@ void CalcVars(CalcVarsOptions_s & Opt)
 
 						high_resolution_clock::time_point Time1;
 						Time1 = high_resolution_clock::now();
-#ifndef _DEBUG
+// #ifndef _DEBUG
 #pragma omp parallel for
-#endif
+// #endif
 						for (int ii = 1; ii <= MaxIJK[0]; ++ii){
 							int ThreadNum = omp_get_thread_num();
 

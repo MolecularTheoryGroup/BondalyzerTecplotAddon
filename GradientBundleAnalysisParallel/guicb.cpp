@@ -908,6 +908,7 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 	TecGUITextFieldSetString(TFNumContours_TF_T3_1, GBAOldNumContours.c_str());
 	TecGUIRadioBoxSetToggle(RBLogLin_RADIO_T3_1, GBALogLin);
 	TecGUIRadioBoxSetToggle(RBCntSrc_RADIO_T3_1, GBACntSrc);
+	TecGUITextFieldSetString(TFGBSub_TF_T3_1, "3");
 	TecGUIToggleSet(TGLShowMesh_TOG_T3_1, FALSE);
 	if (TecGUIListGetItemCount(SLSelVar_SLST_T3_1) > 0) {
 		string itemStr = TecGUIListGetString(SLSelVar_SLST_T3_1, TecGUIListGetSelectedItem(SLSelVar_SLST_T3_1));
@@ -1005,14 +1006,24 @@ void GBAProcessSystemLabelSelectedCPs(){
 
 void GBAProcessSystemDeleteCPLabels(){
 	MouseButtonMode_e MouseMode = TecUtilMouseGetCurrentMode();
-	if (CPLabelIDs.size() > 0){
-		TecUtilPickDeselectAll();
-		for (int i = 0; i < CPLabelIDs.size(); ++i){
-			TecUtilPickText(CPLabelIDs[i]);
-		}
-		TecUtilPickClear();
-		CPLabelIDs.clear();
+
+	Text_ID Text;
+
+	Text = TecUtilTextGetBase();
+	while (Text != TECUTILBADID)
+	{
+		TecUtilTextDelete(Text);
+		Text = TecUtilTextGetBase();
 	}
+
+// 	if (CPLabelIDs.size() > 0){
+// 		TecUtilPickDeselectAll();
+// 		for (int i = 0; i < CPLabelIDs.size(); ++i){
+// 			TecUtilPickText(CPLabelIDs[i]);
+// 		}
+// 		TecUtilPickClear();
+// 		CPLabelIDs.clear();
+// 	}
 	if (TecUtilMouseIsValidMode(MouseMode))
 		TecUtilMouseSetMode(MouseMode);
 }
@@ -1606,6 +1617,17 @@ static void TGLINSV_TOG_T3_1_CB(const LgIndex_t *I)
 	TRACE1("Toggle (TGLINSV_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
 	ResultsVarListReload();
 	TecUtilLockFinish(AddOnID);
+}
+
+/**
+ */
+static LgIndex_t  TFGBSub_TF_T3_1_CB(const char *S)
+{
+	LgIndex_t IsOk = 1;
+	TecUtilLockStart(AddOnID);
+	TRACE1("Text field (TFGBSub_TF_T3_1) Value Changed,  New value is: %s\n", S);
+	TecUtilLockFinish(AddOnID);
+	return (IsOk);
 }
 
 #include "guibld.cpp"

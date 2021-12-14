@@ -1488,7 +1488,7 @@ void FESurface_c::GenerateElemMidpoints(){
 }
 
 void FESurface_c::GenerateElemConnectivity(int numSharedNodes) {
-	if (m_ElemMidPoints.size() != m_ElemList.size()) {
+	if (m_ElemConnectivityList.size() != m_ElemList.size()) {
 		GetTriElementConnectivityList(&m_ElemList, m_ElemConnectivityList, numSharedNodes);
 	}
 }
@@ -2755,7 +2755,7 @@ int FESurface_c::TriangleIntersect(vec3 const & T_P0,
 		return 0;
 }
 
-vector<double> FESurface_c::TriSphereElemSolidAngles(double * TotalAreaIn) const
+vector<double> FESurface_c::TriSphereElemSolidAngles(double * TotalAreaIn, vec3 * Origin) const
 {
 	Boolean_t IsOk = TRUE;
 
@@ -2797,7 +2797,13 @@ vector<double> FESurface_c::TriSphereElemSolidAngles(double * TotalAreaIn) const
 // 				+ T[2][1] * (T[0][0] - T[1][0]);
 
 // 			SolidAngles[ElemNum] = 0.5 * sqrt(A * A + B * B + C * C);
-			SolidAngles[ElemNum] = TriArea(m_XYZList[m_ElemList[ElemNum][0]], m_XYZList[m_ElemList[ElemNum][1]], m_XYZList[m_ElemList[ElemNum][2]]);
+
+			if (Origin == nullptr){
+				SolidAngles[ElemNum] = TriArea(m_XYZList[m_ElemList[ElemNum][0]], m_XYZList[m_ElemList[ElemNum][1]], m_XYZList[m_ElemList[ElemNum][2]]);
+			}
+			else {
+				SolidAngles[ElemNum] = SphericalTriangleArea(m_XYZList[m_ElemList[ElemNum][0]], m_XYZList[m_ElemList[ElemNum][1]], m_XYZList[m_ElemList[ElemNum][2]], *Origin);
+			}
 			TotalArea += SolidAngles[ElemNum];
 		}
 
@@ -3739,7 +3745,7 @@ void GetClosedIsoSurface(int IsoZoneNum, vector<FieldDataPointer_c> const & IsoR
 }
 
 
-vector<vector<double> > FESurface_c::CellCenteredToNodalVals(vector<vector<double> > & ElemVals) {
+vector<vector<double> > FESurface_c::CellCenteredToNodalVals(vector<vector<double> > & ElemVals, vec3 * SphereOrigin) {
 	// get nodal values of variables.
 	// interpolate from cell-centered values using element area and reciprocal distance between node and cell center
 	vector<vector<double> > NodeVals;
@@ -3756,7 +3762,12 @@ vector<vector<double> > FESurface_c::CellCenteredToNodalVals(vector<vector<doubl
 			vec ReciprocalDists(m_NodeToElementList[ni].size()),
 				TriWeights(m_NodeToElementList[ni].size());
 			for (int ei = 0; ei < m_NodeToElementList[ni].size(); ++ei) {
-				ReciprocalDists[ei] = 1. / Distance(m_XYZList[ni], m_ElemMidPoints[m_NodeToElementList[ni][ei]]);
+				if (SphereOrigin == nullptr) {
+					ReciprocalDists[ei] = 1. / Distance(m_XYZList[ni], m_ElemMidPoints[m_NodeToElementList[ni][ei]]);
+				}
+				else{
+					ReciprocalDists[ei] = 1. / SphericalDistance(m_XYZList[ni], m_ElemMidPoints[m_NodeToElementList[ni][ei]], *SphereOrigin);
+				}
 			}
 			ReciprocalDists = normalise(ReciprocalDists);
 			for (int ei = 0; ei < m_NodeToElementList[ni].size(); ++ei) {
@@ -3776,7 +3787,7 @@ vector<vector<double> > FESurface_c::CellCenteredToNodalVals(vector<vector<doubl
 	return NodeVals;
 }
 
-vector<vector<double> > FESurface_c::NodalToCellCenteredVals(vector<vector<double> > & NodeVals) {
+vector<vector<double> > FESurface_c::NodalToCellCenteredVals(vector<vector<double> > & NodeVals, vec3 * SphereOrigin) {
 	// get cell-centered values of variables.
 	// interpolate from nodal values using ~~element area~~ and reciprocal distance between node and cell center
 	vector<vector<double> > ElemVals;
@@ -3793,7 +3804,12 @@ vector<vector<double> > FESurface_c::NodalToCellCenteredVals(vector<vector<doubl
 				NodeWeights(3);
 			// get element weights using normalized areas and reciprocal distances to cell centers
 			for (int ni = 0; ni < 3; ++ni) {
-				ReciprocalDists[ni] = 1. / Distance(m_XYZList[m_ElemList[ei][ni]], m_ElemMidPoints[ei]);
+				if (SphereOrigin == nullptr) {
+					ReciprocalDists[ni] = 1. / Distance(m_XYZList[m_ElemList[ei][ni]], m_ElemMidPoints[ei]);
+				}
+				else{
+					ReciprocalDists[ni] = 1. / SphericalDistance(m_XYZList[m_ElemList[ei][ni]], m_ElemMidPoints[ei], *SphereOrigin);
+				}
 			}
 			ReciprocalDists = normalise(ReciprocalDists);
 			for (int ni = 0; ni < 3; ++ni) {
@@ -3814,19 +3830,19 @@ vector<vector<double> > FESurface_c::NodalToCellCenteredVals(vector<vector<doubl
 }
 
 
-void FESurface_c::EdgeMidpointSubdivide(vector<int> const & ElemsToDo, vector<vector<double> > & ElemVals, vec3 * CPPosIn, double * SphereRadiusIn) {
+void FESurface_c::EdgeMidpointSubdivide(std::queue<int> & ElemsToSubdivide, vector<vector<double> > & ElemVals, vec3 * CPPosIn, double * SphereRadiusIn, vector<vector<int> > * OldElemsToNewElems) {
 	// check that ElemVals has the right shape
 	if (!ElemVals.empty() && ElemVals.size() != m_ElemList.size()) {
 		return;
 	}
-	if (ElemsToDo.empty()){
+	if (ElemsToSubdivide.empty()){
 		this->EdgeMidpointSubdivideParallel(ElemVals, CPPosIn, SphereRadiusIn);
 		return;
 	}
 
 	vector<vector<double> > NodeVals;
 	if (!ElemVals.empty()) {
-		NodeVals = this->CellCenteredToNodalVals(ElemVals);
+		NodeVals = this->CellCenteredToNodalVals(ElemVals, CPPosIn);
 	}
 
 	vec3 CPPos;
@@ -3836,15 +3852,19 @@ void FESurface_c::EdgeMidpointSubdivide(vector<int> const & ElemsToDo, vector<ve
 		SphereRadius = *SphereRadiusIn;
 	}
 
-	std::queue<int> ElemsToSubdivide;
-	for (int const & ei : ElemsToDo) {
-		ElemsToSubdivide.push(ei);
-	}
-
-	m_ElemList.reserve(m_ElemList.size() + ElemsToDo.size() * 3);
-	m_XYZList.reserve(m_XYZList.size() + ElemsToDo.size() * 3);
+	m_ElemList.reserve(m_ElemList.size() + ElemsToSubdivide.size() * 3);
+	m_XYZList.reserve(m_XYZList.size() + ElemsToSubdivide.size() * 3);
 
 	std::map<Edge, int> NewEdgeNodes;
+
+	if (OldElemsToNewElems != nullptr && OldElemsToNewElems->size() != m_ElemList.size()) {
+		OldElemsToNewElems->resize(m_ElemList.size());
+	}
+
+	vector<int> NewToOldElemInds;
+	if (OldElemsToNewElems != nullptr) {
+		NewToOldElemInds.resize(m_ElemList.size(), -1);
+	}
 
 	while (!ElemsToSubdivide.empty()) {
 		int ti = ElemsToSubdivide.front();
@@ -3879,9 +3899,17 @@ void FESurface_c::EdgeMidpointSubdivide(vector<int> const & ElemsToDo, vector<ve
 			}
 		}
 
+		if (OldElemsToNewElems != nullptr) {
+			OldElemsToNewElems->at(ti).push_back(ti);
+			NewToOldElemInds[ti] = ti;
+		}
+
 		// Make new elements
-		vector<int> newElems(4);
 		for (int ei = 0; ei < 3; ++ei) {
+			if (OldElemsToNewElems != nullptr) {
+				OldElemsToNewElems->at(ti).push_back(m_ElemList.size());
+				NewToOldElemInds.push_back(ti);
+			}
 			m_ElemList.push_back({
 				oldElem[ElemSubdivisionNewElemIndices[ei][0]],
 				oldElem[ElemSubdivisionNewElemIndices[ei][1]],
@@ -3897,13 +3925,57 @@ void FESurface_c::EdgeMidpointSubdivide(vector<int> const & ElemsToDo, vector<ve
 		ElemsToSubdivide.pop();
 	}
 
+	// Now update triangles that were not subdivided but share an edge with a triangle
+							// that was subdivided. Loop over all elements and check if any of its edges are in
+							// the NewEdgeNodes map. If an edge was split, then split the triangle in two
+							// by creating a new edge to the existing node for the split edge.
+
+	for (int ti = 0; ti < m_ElemList.size(); ++ti) {
+		bool TriSplit = false;
+		for (int ci = 0; ci < 3 && !TriSplit; ++ci) {
+			Edge e = MakeEdge(m_ElemList[ti][ci], m_ElemList[ti][(ci + 1) % 3]);
+			if (NewEdgeNodes.count(e)) {
+				// This edge was already split for the triangle on its other side.
+				// Split the current triangle into two triangles by introducing a new
+				// edge between the node at the center of the current edge and the
+				// opposite corner of the triangle.
+				int EdgeNodeNum = NewEdgeNodes[e];
+				int OppositeCornerNode = m_ElemList[ti][(ci + 2) % 3];
+				if (OldElemsToNewElems != nullptr) {
+					if (NewToOldElemInds[ti] < 0){
+						// splitting new element (implies ti < old m_ElemList.size())
+						OldElemsToNewElems->at(ti).push_back(ti);
+						OldElemsToNewElems->at(ti).push_back(m_ElemList.size());
+						NewToOldElemInds.push_back(ti);
+					}
+					else {
+						int tii = NewToOldElemInds[ti];
+						while (tii >= OldElemsToNewElems->size()) {
+							tii = NewToOldElemInds[tii];
+						}
+						// OldElemsToNewElems->at(tii) can't be empty
+						OldElemsToNewElems->at(tii).push_back(m_ElemList.size());
+						NewToOldElemInds.push_back(tii);
+					}
+				}
+				m_ElemList.push_back({ e.first, OppositeCornerNode, EdgeNodeNum });
+				m_ElemList[ti] = { e.second, EdgeNodeNum, OppositeCornerNode };
+
+				TriSplit = true;
+			}
+		}
+
+		if (TriSplit) // remaining edges on triangle still need to be checked, so repeat this triangle
+			ti--;
+	}
+
 	m_NumElems = m_ElemList.size();
 	m_NumNodes = m_XYZList.size();
 
-	ElemVals = this->NodalToCellCenteredVals(NodeVals);
+	ElemVals = this->NodalToCellCenteredVals(NodeVals, CPPosIn);
 }
 
-void FESurface_c::EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVals, vec3 * CPPosIn, double * SphereRadiusIn) {
+void FESurface_c::EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVals, vec3 * CPPosIn, double * SphereRadiusIn, vector<vector<int> > * OldElemsToNewElems) {
 	// check that ElemVals has the right shape
 	if (!ElemVals.empty() && ElemVals.size() != m_ElemList.size()) {
 		return;
@@ -3911,7 +3983,11 @@ void FESurface_c::EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVa
 
 	vector<vector<double> > NodeVals;
 	if (!ElemVals.empty()) {
-		NodeVals = this->CellCenteredToNodalVals(ElemVals);
+		NodeVals = this->CellCenteredToNodalVals(ElemVals, CPPosIn);
+	}
+
+	if (OldElemsToNewElems != nullptr && OldElemsToNewElems->size() != m_ElemList.size()) {
+		OldElemsToNewElems->resize(m_ElemList.size());
 	}
 
 	vec3 CPPos;
@@ -3968,6 +4044,7 @@ void FESurface_c::EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVa
 	for (int ti = 0; ti < OldNumElems; ++ti){
 		int ej = OldNumElems + (3 * ti);
 		int NodeNums[6];
+		double ElemArea;
 		for (int ci = 0; ci < 3; ++ci) {
 			int cj = (ci + 1) % 3;
 			Edge TmpEdge = MakeEdge(m_ElemList[ti][ci], m_ElemList[ti][cj]);
@@ -3980,12 +4057,18 @@ void FESurface_c::EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVa
 				m_ElemList[ej][ci] = NodeNums[ElemSubdivisionNewElemIndices[ei][ci]];
 				NodeToElementSetListNew[NodeNums[ElemSubdivisionNewElemIndices[ei][ci]]].insert(ej);
 			}
+			if (OldElemsToNewElems != nullptr) {
+				OldElemsToNewElems->at(ti).push_back(ej);
+			}
 			ej++;
 		}
 		// redo the original element
 		for (int ci = 0; ci < 3; ++ci) {
 			m_ElemList[ti][ci] = NodeNums[ElemSubdivisionNewElemIndices[3][ci]];
 			NodeToElementSetListNew[NodeNums[ElemSubdivisionNewElemIndices[3][ci]]].insert(ti);
+		}
+		if (OldElemsToNewElems != nullptr) {
+			OldElemsToNewElems->at(ti).push_back(ti);
 		}
 	}
 
@@ -3996,5 +4079,5 @@ void FESurface_c::EdgeMidpointSubdivideParallel(vector<vector<double> > & ElemVa
 	}
 
 
-	ElemVals = this->NodalToCellCenteredVals(NodeVals);
+	ElemVals = this->NodalToCellCenteredVals(NodeVals, CPPosIn);
 }

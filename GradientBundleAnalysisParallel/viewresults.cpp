@@ -330,9 +330,10 @@ void GBAResultViewerSelectIntVar(){
 		Set_pa ZoneSet = TecUtilSetAlloc(FALSE);
 
 		for (int ZoneNum = 1; ZoneNum <= TecUtilDataSetGetNumZones(); ++ZoneNum){
-			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
-				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr)
-				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)){
+// 			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SphereCPName, SphereNameStr)
+// 				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.SourceNucleusName, SphereNameStr)
+// 				|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)) {
+			if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)) {
 				TecUtilSetAddMember(ZoneSet, ZoneNum, FALSE);
 			}
 		}
@@ -383,6 +384,7 @@ void GBAResultViewerSelectCondensedGBs() {
 
 		EntIndex_t NumZones = TecUtilDataSetGetNumZones();
 
+		bool SurfacePresent = false;
 		string ChkNameStr;
 
 		for (int i = 0; i < NumSelected && IsOk; ++i) {
@@ -415,6 +417,10 @@ void GBAResultViewerSelectCondensedGBs() {
 						|| (!useInfo && AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.CondensedBasinName, ChkNameStr))
 						&& (strVec.size() < 2 || AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.CondensedBasinDefiningVariable, intVar))) {
 						ActivateSetSet.insert(ZoneNum);
+						if (AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedAttractiveBasinWedge)
+							|| AuxDataZoneItemMatches(ZoneNum, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeCondensedRepulsiveBasinWedge)){
+							SurfacePresent = true;
+						}
 					}
 					else
 						DeactivateSetSet.insert(ZoneNum);
@@ -432,9 +438,11 @@ void GBAResultViewerSelectCondensedGBs() {
 			TecUtilZoneSetActive(DeactivateSet.getRef(), AssignOp_MinusEquals);
 		}
 		// turn on truncating isosurface if present
-		int isoZone = ZoneNumByName("gba-truncating-isosurface_", false, true);
-		if (isoZone > 0) {
-			TecUtilZoneSetActive(Set(isoZone).getRef(), AssignOp_PlusEquals);
+		if (SurfacePresent) {
+			int isoZone = ZoneNumByName("gba-truncating-isosurface_", false, true);
+			if (isoZone > 0) {
+				TecUtilZoneSetActive(Set(isoZone).getRef(), AssignOp_PlusEquals);
+			}
 		}
 
 		// 		TecUtilDataLoadEnd();
@@ -459,10 +467,9 @@ void GBAResultViewerSelectCondensedGBs() {
 		}
 
 		// turn off truncating isosurface if present
-		for (int zi = 1; zi <= TecUtilDataSetGetNumZones(); ++zi) {
-			if (AuxDataZoneItemMatches(zi, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeTruncIsosurface)) {
-				TecUtilZoneSetActive(Set(zi).getRef(), AssignOp_MinusEquals);
-			}
+		int isoZone = ZoneNumByName("gba-truncating-isosurface_", false, true);
+		if (isoZone > 0) {
+			TecUtilZoneSetActive(Set(isoZone).getRef(), AssignOp_MinusEquals);
 		}
 
 		// 		TecUtilDataLoadEnd();
