@@ -6571,13 +6571,14 @@ void FindSphereBasins() {
 		}
 	}
 
-	bool SaveSurfaces = TecGUIToggleGet(TGL_TOG_T3_1);
+	bool SaveBondSurfaces = TecGUIToggleGet(TGL_TOG_T3_1);
+	bool SaveRingCageSurfaces = TecGUIToggleGet(TGLRCSf_TOG_T3_1);
 
 	LgIndex_t NumSubdivisions;
 	TecGUITextFieldGetLgIndex(TFGBSub_TF_T3_1, &NumSubdivisions);
 	NumSubdivisions = MAX(0, NumSubdivisions);
 
-	if (SaveSurfaces){
+	if (SaveBondSurfaces || SaveRingCageSurfaces){
 		NumSubdivisions = MIN(1, NumSubdivisions);
 	}
 
@@ -6626,13 +6627,13 @@ void FindSphereBasins() {
 	}
 
 	vector<VolExtentIndexWeights_s> VolInfo(omp_get_num_procs());
-	if (SaveSurfaces) {
+	if (SaveBondSurfaces || SaveRingCageSurfaces) {
 		GetVolInfo(VolZoneNum, { 1,2,3 }, FALSE, VolInfo[0]);
 		for (int i = 1; i < VolInfo.size(); ++i) VolInfo[i] = VolInfo[0];
 	}
 
 	bool DeleteGradVars = false;
-	if (SaveSurfaces && GradVarNums.empty() && VolInfo[0].NumPts() < 600000000) {
+	if ((SaveBondSurfaces || SaveRingCageSurfaces) && GradVarNums.empty() && VolInfo[0].NumPts() < 600000000) {
 		CalcVarsOptions_s opt;
 		opt.AddOnID = AddOnID;
 		opt.CalcForAllZones = FALSE;
@@ -7218,8 +7219,8 @@ void FindSphereBasins() {
 					}
 
 
-
-					if (SaveSurfaces) {
+					bool SaveSurf = (SaveBondSurfaces && i == 1) || (SaveRingCageSurfaces && i == 0);
+					if (SaveSurf) {
 
 						int NumSeedPts = SeedPts.size();
 						/*
@@ -7403,7 +7404,8 @@ void FindSphereBasins() {
 
 					}
 
-  					if (SaveSurfaces && WedgeSurfaces[i][b].IsMade()) {
+					bool SaveSurf = (SaveBondSurfaces && i == 1) || (SaveRingCageSurfaces && i == 0);
+  					if (SaveSurf && WedgeSurfaces[i][b].IsMade()) {
   						ZoneNum = WedgeSurfaces[i][b].SaveAsTriFEZone({ 1,2,3 }, SphereName + ": " + MinMax[i] + " wedge (elem " + to_string(MinMaxIndices[i][b] + 1) + ") " + BasinDefineVarName);
   						if (ZoneNum > 0) {
   							if (i == 1) ZoneSet += ZoneNum;

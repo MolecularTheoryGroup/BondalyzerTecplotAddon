@@ -2098,8 +2098,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 69.40915254044258
-    Y = 72.62001537768515
+    X = 92.43499508095717
+    Y = 74.49832767698038
     }
   TEXTSHAPE
     {
@@ -2114,8 +2114,8 @@ $!ATTACHTEXT
 $!ATTACHTEXT 
   ANCHORPOS
     {
-    X = 74.28963717202561
-    Y = 72.58709154614816
+    X = 68.99003849206545
+    Y = 72.02409256083652
     }
   TEXTSHAPE
     {
@@ -2127,7 +2127,7 @@ $!ATTACHTEXT
     FILLCOLOR = CUSTOM2
     }
   MACROFUNCTIONCOMMAND = 'VarName=LBL31 Type=Label'
-  TEXT = 'Save special gradient\nbundle surfaces'
+  TEXT = 'Save        Bond bundles\nsurfaces:  Ring/cage bundles'
 $!ATTACHTEXT 
   ANCHORPOS
     {
@@ -2179,6 +2179,22 @@ $!ATTACHTEXT
     }
   MACROFUNCTIONCOMMAND = 'VarName=LBL32 Type=Label'
   TEXT = 'Boundary refinement'
+$!ATTACHTEXT 
+  ANCHORPOS
+    {
+    X = 92.39678943967763
+    Y = 70.66143529224775
+    }
+  TEXTSHAPE
+    {
+    HEIGHT = 16
+    }
+  BOX
+    {
+    FILLCOLOR = CUSTOM2
+    }
+  MACROFUNCTIONCOMMAND = 'VarName=TGLRCSf Type=Toggle'
+  TEXT = '<math>7</math>.'
 $!ATTACHGEOM 
   GEOMTYPE = RECTANGLE
   POSITIONCOORDSYS = FRAME

@@ -1630,4 +1630,13 @@ static LgIndex_t  TFGBSub_TF_T3_1_CB(const char *S)
 	return (IsOk);
 }
 
+/**
+ */
+static void TGLRCSf_TOG_T3_1_CB(const LgIndex_t *I)
+{
+	TecUtilLockStart(AddOnID);
+	TRACE1("Toggle (TGLRCSf_TOG_T3_1) Value Changed,  New value is: %d\n", *I);
+	TecUtilLockFinish(AddOnID);
+}
+
 #include "guibld.cpp"
