@@ -975,11 +975,11 @@ void GBAProcessSystemLabelSelectedCPs(){
 	LgIndex_t NumSelected;
 	TecGUIListGetSelectedItems(MLSelCPs_MLST_T1_1, &SelectedCPs, &NumSelected);
 	if (NumSelected > 0){
-		TecUtilPickDeselectAll();
-		for (int i = 0; i < CPLabelIDs.size(); ++i){
-			TecUtilPickText(CPLabelIDs[i]);
-		}
-		TecUtilPickClear();
+// 		TecUtilPickDeselectAll();
+// 		for (int i = 0; i < CPLabelIDs.size(); ++i){
+// 			TecUtilPickText(CPLabelIDs[i]);
+// 		}
+// 		TecUtilPickClear();
 		CPLabelIDs.clear();
 
 		double TextOffset = 0.1;

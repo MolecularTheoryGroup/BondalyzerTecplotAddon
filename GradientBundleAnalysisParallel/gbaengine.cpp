@@ -339,52 +339,55 @@ void NewMainFunction() {
 
 
 
+	bool TestRun = TecGUIToggleGet(TGLSphTest_TOG_T1_1);
 
-	vector<int> GradVarNums, HessVarNums;
-	GradVarNums.push_back(VarNumByName("X Density", true));
-	if (GradVarNums.back() > 0) {
-		for (int i = 1; i < 3; ++i)
-			GradVarNums.push_back(GradVarNums[0] + i);
-	}
-	else {
-		GradVarNums.clear();
-	}
-
-	HessVarNums.push_back(VarNumByName("XX Density", true));
-	if (HessVarNums.back() > 0) {
-		for (int i = 1; i < 6; ++i)
-			HessVarNums.push_back(HessVarNums[0] + i);
-	}
-	else
-		HessVarNums.clear();
-
-	// Grad and Hess needed, so calculate them if they werent already present
 	bool DeleteGradVars = false, DeleteHessVars = false;
-	if (GradVarNums.empty()){// || HessVarNums.empty()){
-		CalcVarsOptions_s opt;
-		opt.AddOnID = AddOnID;
-		opt.CalcForAllZones = FALSE;
-		opt.CalcZoneNum = VolZoneNum;
-		opt.RhoVarNum = RhoVarNum;
-		opt.HasGrad = (!GradVarNums.empty());
-		if (opt.HasGrad) {
-			opt.GradVarNums = GradVarNums;
-		}
-		else{
-			DeleteGradVars = true;
-			opt.CalcVarList = { CalcGradientVectors };
-		}
-		opt.IsPeriodic = FALSE;
-
-		CalcVars(opt);
-
-		if (GradVarNums.empty()){
-			GradVarNums.push_back(VarNumByName("X Density", true));
+	vector<int> GradVarNums, HessVarNums;
+	if (!TestRun){
+		GradVarNums.push_back(VarNumByName("X Density", true));
+		if (GradVarNums.back() > 0) {
 			for (int i = 1; i < 3; ++i)
 				GradVarNums.push_back(GradVarNums[0] + i);
+		}
+		else {
+			GradVarNums.clear();
+		}
 
-			if (GradVarNums.empty())
-				return;
+		HessVarNums.push_back(VarNumByName("XX Density", true));
+		if (HessVarNums.back() > 0) {
+			for (int i = 1; i < 6; ++i)
+				HessVarNums.push_back(HessVarNums[0] + i);
+		}
+		else
+			HessVarNums.clear();
+
+		// Grad and Hess needed, so calculate them if they werent already present
+		if (GradVarNums.empty()) {// || HessVarNums.empty()){
+			CalcVarsOptions_s opt;
+			opt.AddOnID = AddOnID;
+			opt.CalcForAllZones = FALSE;
+			opt.CalcZoneNum = VolZoneNum;
+			opt.RhoVarNum = RhoVarNum;
+			opt.HasGrad = (!GradVarNums.empty());
+			if (opt.HasGrad) {
+				opt.GradVarNums = GradVarNums;
+			}
+			else {
+				DeleteGradVars = true;
+				opt.CalcVarList = { CalcGradientVectors };
+			}
+			opt.IsPeriodic = FALSE;
+
+			CalcVars(opt);
+
+			if (GradVarNums.empty()) {
+				GradVarNums.push_back(VarNumByName("X Density", true));
+				for (int i = 1; i < 3; ++i)
+					GradVarNums.push_back(GradVarNums[0] + i);
+
+				if (GradVarNums.empty())
+					return;
+			}
 		}
 	}
 
@@ -396,7 +399,6 @@ void NewMainFunction() {
 	int MaxEdgeGPs = 300;
 	bool MinEdgeGPs = false;
 
-	bool TestRun = TecGUIToggleGet(TGLSphTest_TOG_T1_1);
 
 #ifdef _DEBUG
 // 	MaxEdgeGPs = -1;
@@ -449,6 +451,8 @@ void NewMainFunction() {
 	MR.GradPtrs = &GradPtrs;
 	MR.HessPtrs = &HessPtrs;
 	MR.BasisVectors = &VolInfo.BasisVectors;
+
+	double GBIntegrationPointSpacing = norm(VolInfo.PointSpacingV123) * 0.3;
 
 	CritPoints_c CPs(CPZoneNum, XYZVarNums, CPTypeVarNum, RhoVarNum, &MR);
 	/*
@@ -724,18 +728,21 @@ void NewMainFunction() {
 		 *	I'll do this by looping over triangles, which will double count every
 		 *	edge so the average should still be valid.
 		 */
-		std::set<Edge> EdgeList;
-		for (auto const & t : PreElems){
-			for (int ci = 0; ci < 3; ++ci){
-				EdgeList.insert(MakeEdge(t[ci], t[(ci + 1) % 3]));
-			}
-		}
 		double SphereEdgeLenMean = 0.0;
+		{
 
-		for (auto const & e : EdgeList){
-			SphereEdgeLenMean += (PreNodes[e.first] - PreNodes[e.second]).getNorm();
+			std::set<Edge> EdgeList;
+			for (auto const & t : PreElems) {
+				for (int ci = 0; ci < 3; ++ci) {
+					EdgeList.insert(MakeEdge(t[ci], t[(ci + 1) % 3]));
+				}
+			}
+
+			for (auto const & e : EdgeList) {
+				SphereEdgeLenMean += (PreNodes[e.first] - PreNodes[e.second]).getNorm();
+			}
+			SphereEdgeLenMean /= (double)EdgeList.size();
 		}
-		SphereEdgeLenMean /= (double)EdgeList.size();
 
 		double CoincidentCheckEpsilon = SphereEdgeLenMean * 0.2;
 		double CoincidentCheckEpsilonSqr = CoincidentCheckEpsilon * CoincidentCheckEpsilon;
@@ -1679,6 +1686,7 @@ void NewMainFunction() {
 			}
 		}
 
+
 		/*
 		*	Now we need to seed the gradient paths from the nodes and along the
 		*	edges of the triangular mesh.
@@ -1805,7 +1813,7 @@ void NewMainFunction() {
 			double SphereArea = pow(SeedRadius, 2.0) * 4.0 * PI;
 			double MinElementArea = 1.0 / double(NumElems) * SphereArea / pow(4.0,MaxSubdivisions-1);
 			double d_r_c = 0.3;
-			double w_b = 0.2;
+			double w_b = 0.5;
 
 			// Outer loop MaxSubdivisions times
 			for (int si = 0; si < MaxSubdivisions; ++si) {
@@ -2020,7 +2028,7 @@ void NewMainFunction() {
 								}
 							}
 						}
-						for (int i = 0; i < 10 && TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, SeedRadius) > SphereJiggleMeshMaxMovedNodeDistTol; ++i) {}
+// 						for (int i = 0; i < 10 && TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, SeedRadius) > SphereJiggleMeshMaxMovedNodeDistTol; ++i) {}
 					}
 				}
 				
@@ -2113,10 +2121,423 @@ void NewMainFunction() {
 					ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[ni]);
 		}
 
-		
 
+		OutConstrainedSegmentIndices.resize(NumNodes, -1);
+		NodeIntSurfNums.resize(NumNodes, -1);
+
+		if (TestRun) {
+			auto TmpSphere = FESurface_c(SphereNodes, SphereElems);
+			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after bond path intersection element subdivision before edge flipping");
+			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_PlusEquals);
+// 			continue;
+		}
+
+
+		vector<int> ElemTodo;
+		
+		bool DoOuterIter = true;
+		while (DoOuterIter) {
+			DoOuterIter = false;
+
+			/*
+			 * Perform edge flipping to achieve better triangle aspect ratios.
+			 * Can't flip ring surface intersection edges, of course.
+			 */
+			{
+				bool DoIter = true;
+				while (DoIter) {
+					DoIter = false;
+					std::map<Edge, vector<int>> EdgeToTriMap;
+					for (int ti = 0; ti < SphereElems.size(); ++ti) {
+						auto const & t = SphereElems[ti];
+						for (int ci = 0; ci < 3; ++ci) {
+							auto e = MakeEdge(t[ci], t[(ci + 1) % 3]);
+							if (EdgeToTriMap.count(e)) {
+								EdgeToTriMap[e].push_back(ti);
+							}
+							else {
+								EdgeToTriMap[e] = { ti };
+							}
+						}
+					}
+
+					for (auto const & et : EdgeToTriMap) {
+						if (NodeTypes[et.first.first] >= NETypeB || NodeTypes[et.first.second] >= NETypeB) {
+							continue;
+						}
+						vector<int> vi = { et.first.first, et.first.second };
+						for (auto const & t : et.second) {
+							for (auto const & c : SphereElems[t]) {
+								if (c != et.first.first && c != et.first.second) {
+									vi.push_back(c);
+									break;
+								}
+							}
+						}
+						vector<vec3> v;
+						v.reserve(4);
+						for (auto const & i : vi) {
+							v.push_back(SphereNodes[i]);
+						}
+
+						if (QuadIsConvex(v[0], v[1], v[2], v[3])) {
+							// Now construct the reciprocal triangle pair made by flipping the edge
+							vector<int> t1 = { vi[0], vi[3], vi[2] },
+								t2 = { vi[1], vi[2], vi[3] };
+							double ar0, ar1, ar2, ar3;
+
+							{
+								auto const & t = SphereElems[et.second.front()];
+								ar0 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
+							}
+							{
+								auto const & t = SphereElems[et.second.back()];
+								ar1 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
+							}
+							{
+								auto const & t = t1;
+								ar2 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
+							}
+							{
+								auto const & t = t2;
+								ar3 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
+							}
+
+							if (MAX(ar0, ar1) > MAX(ar2, ar3)) {
+								if (!EdgeIntSurfNums.count(et.first)) {
+									// Aspect ratio will be lowered with flipped edges
+									SphereElems[et.second.front()] = t1;
+									SphereElems[et.second.back()] = t2;
+#ifdef SUPERDEBUG
+									ElemTodo.push_back(et.second.front());
+									ElemTodo.push_back(et.second.back());
+#endif
+									DoIter = true;
+									break;
+								}
+								else {
+									// Aspect ratio will be lowered with flipped edges, but can't flip because this is a constrained edge.
+									// Instead add new node along current edge where new edge would have crossed.
+									vec3 NewNode = ProjectPointToLine((v[2] + v[3]) * 0.5, v[0], v[1]);
+									NewNode = CPPos + normalise(NewNode - CPPos) * SeedRadius;
+									int NewNodeNum = SphereNodes.size();
+									SphereNodes.push_back(NewNode);
+									SphereElems.push_back({ vi[1], vi[2], NewNodeNum });
+									SphereElems.push_back({ vi[1], NewNodeNum, vi[3] });
+									SphereElems[et.second.front()] = { vi[0], NewNodeNum, vi[2] };
+									SphereElems[et.second.back()] = { vi[0], vi[3], NewNodeNum };
+#ifdef SUPERDEBUG
+									ElemTodo.push_back(et.second.front());
+									ElemTodo.push_back(et.second.back());
+									ElemTodo.push_back(int(SphereElems.size()) - 2);
+									ElemTodo.push_back(int(SphereElems.size()) - 1);
+#endif
+									NodeIntSurfNums.push_back(EdgeIntSurfNums[et.first]);
+									EdgeIntSurfNums[MakeEdge(vi[0], NewNodeNum)] = EdgeIntSurfNums[et.first];
+									EdgeIntSurfNums[MakeEdge(vi[1], NewNodeNum)] = EdgeIntSurfNums[et.first];
+									EdgeIntSurfNums.erase(et.first);
+									NodeTypes.push_back(NETypeR);
+									ElemTypes.insert(ElemTypes.end(), 2, NETypeR);
+									for (auto const & ti : vector<int>({ et.second.front(), et.second.back(), int(SphereElems.size()) - 2, int(SphereElems.size()) - 1 })) {
+										for (auto const & c : SphereElems[ti]) {
+											ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[c]);
+										}
+									}
+									NumNodes++;
+									NumElems += 2;
+									DoIter = true;
+									DoOuterIter = true;
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+
+
+			/*
+			 * Edge collapsing.  Highly acute triangles can have their short edge collapsed to a single node, removing the edge, one node, and two triangles from the mesh.
+			 * If neither (or both) of the nodes of a removing edge are constrained, the remaining node is moved to the edge midpoint.
+			 * If only one node is constrained, it remains.
+			 */
+
+			FESurface_c Sphere(SphereNodes, SphereElems);
+			Sphere.GenerateNodeToElementList();
+			Sphere.GenerateNodeConnectivity();
+			auto NodeToElemList = Sphere.GetNodeToElementListPtr();
+			auto NodeConnectivity = Sphere.GetNodeConnectivityListPtr();
+			std::map<int, std::set<int> > NodeToElemMap(NodeToElemList->begin(), NodeToElemList->end());
+
+			bool DoIter = true;
+			while (DoIter){
+				DoIter = false;
+
+				std::map<Edge, vector<int>> EdgeToTriMap;
+				for (int ti = 0; ti < SphereElems.size(); ++ti) {
+					auto const & t = SphereElems[ti];
+					for (int ci = 0; ci < 3; ++ci) {
+						auto e = MakeEdge(t[ci], t[(ci + 1) % 3]);
+						if (EdgeToTriMap.count(e)) {
+							EdgeToTriMap[e].push_back(ti);
+						}
+						else {
+							EdgeToTriMap[e] = { ti };
+						}
+					}
+				}
+
+				double CutoffAngle = 30. * PI / 180.;
+
+				vector<bool> ElemRemoved(SphereElems.size(), false);
+				vector<int> NodeNumsReplacements(SphereNodes.size());
+				std::map<Edge, int> RemovedEdges;
+
+				for (int ni = 0; ni < SphereNodes.size(); ++ni){
+					NodeNumsReplacements[ni] = ni;
+				}
+
+				for (int ti = 0; ti	< SphereElems.size(); ++ti){
+					if (!ElemRemoved[ti]) {
+						auto & t = SphereElems[ti];
+						for (int c1 = 0; c1 < 3; ++c1){
+							int c2 = (c1 + 1) % 3;
+							int c3 = (c1 + 2) % 3;
+							auto FarEdge = MakeEdge(t[c2], t[c3]);
+							// Check that neither of the other corners have neighbor nodes that were removed
+							bool CheckCorner = NodeTypes[FarEdge.first] <= NETypeR && NodeTypes[FarEdge.second] <= NETypeR;
+							CheckCorner = CheckCorner && (
+								(NodeIntSurfNums[FarEdge.first] < 0 && NodeIntSurfNums[FarEdge.second] < 0)
+								|| (NodeIntSurfNums[FarEdge.first] < 0 && NodeIntSurfNums[FarEdge.second] >= 0)
+								|| (NodeIntSurfNums[FarEdge.first] >= 0 && NodeIntSurfNums[FarEdge.second] < 0)
+								|| NodeIntSurfNums[FarEdge.first] == NodeIntSurfNums[FarEdge.second]
+							);
+							if (!CheckCorner) {
+								continue;
+							}
+							for (const int & ni : { t[c2], t[c3] }) {
+								for (int const & nj : NodeConnectivity->at(ni)) {
+									if (NodeNumsReplacements[nj] != nj) {
+										CheckCorner = false;
+										break;
+									}
+								}
+							}
+							if (!CheckCorner){
+								continue;
+							}
+
+							vec3 v1 = SphereNodes[t[c2]] - SphereNodes[t[c1]],
+								v2 = SphereNodes[t[c3]] - SphereNodes[t[c2]];
+							
+							if (VectorAngle(v1, v2) < CutoffAngle){
+								// Triangle is too acute at corner c1, so collapse the c2-c3 edge
+								int RemainingNode, RemovedNode, IntSurfNum = -1;
+
+								// conditional to keep a single constraint node or to create a new edge midpoint node
+								if ((NodeIntSurfNums[FarEdge.first] < 0 && NodeIntSurfNums[FarEdge.second] < 0) || (NodeIntSurfNums[FarEdge.first] >= 0 && NodeIntSurfNums[FarEdge.second] >= 0)){
+									SphereNodes[FarEdge.first] = (SphereNodes[t[c2]] + SphereNodes[t[c3]]) * 0.5;
+									RemainingNode = FarEdge.first;
+									RemovedNode = FarEdge.second;
+									if (EdgeIntSurfNums.count(FarEdge)){
+										IntSurfNum = EdgeIntSurfNums[FarEdge];
+									}
+								}
+								else if (NodeIntSurfNums[FarEdge.first] < 0 && NodeIntSurfNums[FarEdge.second] >= 0){
+									RemainingNode = FarEdge.second;
+									RemovedNode = FarEdge.first;
+								}
+								else{// if (NodeIntSurfNums[FarEdge.first] >= 0 && NodeIntSurfNums[FarEdge.second] < 0) {
+									RemainingNode = FarEdge.first;
+									RemovedNode = FarEdge.second;
+								}
+
+								// record removed objects
+								RemovedEdges[FarEdge] = RemovedNode;
+								NodeNumsReplacements[RemovedNode] = RemainingNode;
+								for (int const & tj : EdgeToTriMap[FarEdge]){
+									ElemRemoved[tj] = true;
+								}
+
+
+								// collapse edge  after main loop
+								
+							}
+						}
+					}
+				}
+
+				if (!RemovedEdges.empty()) {
+					DoOuterIter = true;
+					// apply changes
+// 					// update node list 
+// 					vector<int> NodeNumsNewToOld, NodeNumsOldToNew(SphereNodes.size());
+// 					NodeNumsNewToOld.reserve(NodeNumsReplacements.size());
+// 					for (int ni = 0; ni < SphereNodes.size(); ++ni) {
+// 						if (NodeNumsReplacements[ni] == ni) {
+// 							NodeNumsNewToOld.push_back(ni);
+// 							NodeNumsOldToNew[ni] = ni;
+// 						}
+// 						else {
+// 							NodeNumsOldToNew[ni] = NodeNumsReplacements[ni];
+// 						}
+// 					}
+// 					// update elements that contain removed nodes and other node lists
+// 					vector<int> NodeIntSurfNumsNew(NodeNumsNewToOld.size());
+// 					vector<vec3> SphereNodesNew(NodeNumsNewToOld.size());
+// 					auto NodeTypesNew = NodeTypes;
+// 					NodeTypesNew.resize(NodeNumsNewToOld.size());
+// 					for (int ni_new = 0; ni_new < NodeNumsNewToOld.size(); ++ni_new) {
+// 						auto const & ni_old = NodeNumsNewToOld[ni_new];
+// 						SphereNodesNew[ni_new] = SphereNodes[ni_old];
+// 						NodeTypesNew[ni_new] = NodeTypes[ni_old];
+// 						NodeIntSurfNumsNew[ni_new] = NodeIntSurfNums[ni_old];
+// 						if (ni_new != ni_old) {
+// 							for (int const & tj : NodeToElemList->at(ni_old)) {
+// 								for (int ci = 0; ci < 3; ++ci) {
+// 									auto & c = SphereElems[tj][ci];
+// 									if (c == ni_old) {
+// 										c = ni_new;
+// 										break;
+// 									}
+// 								}
+// 							}
+// 						}
+// 					}
+// 					SphereNodes.assign(SphereNodesNew.begin(), SphereNodesNew.end());
+// 					NodeTypes.assign(NodeTypesNew.begin(), NodeTypesNew.end());
+// 					NodeIntSurfNums.assign(NodeIntSurfNumsNew.begin(), NodeIntSurfNumsNew.end());
+
+// 
+// 					// update element list
+// 					vector<int> ElemNumsNewToOld;
+// 					ElemNumsNewToOld.reserve(SphereElems.size());
+// 					for (int ti = 0; ti < SphereElems.size(); ++ti) {
+// 						if (!ElemRemoved[ti]) {
+// 							ElemNumsNewToOld.push_back(ti);
+// 						}
+// 					}
+// 					vector<vector<int> > SphereElemsNew;
+// 					auto ElemTypesNew = ElemTypes;
+// 					ElemTypesNew.resize(ElemNumsNewToOld.size());
+// 					for (int ti = 0; ti < ElemNumsNewToOld.size(); ++ti) {
+// 						SphereElemsNew.push_back(SphereElems[ElemNumsNewToOld[ti]]);
+// 						ElemTypesNew[ti] = ElemTypes[ElemNumsNewToOld[ti]];
+// 					}
+// 					SphereElems.assign(SphereElemsNew.begin(), SphereElemsNew.end());
+// 					ElemTypes.assign(ElemTypesNew.begin(), ElemTypesNew.end());
+
+
+					// update edge int surf map
+// 					for (auto const & removed_edge : RemovedEdges) {
+// 						if (EdgeIntSurfNums.count(removed_edge.first)) {
+// 							std::set<Edge> RemovedIntEdges;
+// 							std::map<Edge, int> NewEdgeIntSurfNums;
+// 							int RemovedNode = removed_edge.second;
+// 							int RemainingNode = (RemovedNode == removed_edge.first.first ? removed_edge.first.first : removed_edge.first.second);
+// 							for (auto & es : EdgeIntSurfNums) {
+// 								if (es.first.first == RemovedNode) {
+// 									RemovedIntEdges.insert(es.first);
+// 									NewEdgeIntSurfNums[MakeEdge(RemainingNode, es.first.second)] = es.second;
+// 								}
+// 								else if (es.first.second == RemovedNode) {
+// 									RemovedIntEdges.insert(es.first);
+// 									NewEdgeIntSurfNums[MakeEdge(RemainingNode, es.first.first)] = es.second;
+// 								}
+// 							}
+// 							for (auto & e : RemovedIntEdges) {
+// 								EdgeIntSurfNums.erase(e);
+// 							}
+// 							EdgeIntSurfNums.insert(NewEdgeIntSurfNums.begin(), NewEdgeIntSurfNums.end());
+// 						}
+// 					}
+				}
+			}
+		}
+
+// 		NumNodes = SphereNodes.size();
+// 		NumElems = SphereElems.size();
+// 		NodeTypes.resize(NumNodes, NETypeC);
+// 		ElemTypes = vector<GBATriangulatedSphereNodeElemType_e>(NumElems, NETypeInvalid);
+// 		for (int ti = 0; ti < NumElems; ++ti)
+// 			for (int ni : SphereElems[ti])
+// 				ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[ni]);
+
+// 		if (TestRun) {
+// 			auto TmpSphere = FESurface_c(SphereNodes, SphereElems);
+// 			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after edge flipping before bad triangle splitting");
+// 			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_PlusEquals);
+// 			// 			continue;
+// 		}
+
+		
+// 		NumNodes = SphereNodes.size();
+// 		NumElems = SphereElems.size();
+// 		NodeTypes.resize(NumNodes, NETypeR);
+// 		ElemTypes = vector<GBATriangulatedSphereNodeElemType_e>(NumElems, NETypeInvalid);
+// 		for (int ti = 0; ti < NumElems; ++ti)
+// 			for (int ni : SphereElems[ti])
+// 				ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[ni]);
+
+
+		/*
+		 * Another pass to split triangles that are both "bad" (have a large interior angle)
+		 * and the bad node is closer to the center of the opposite edge than the opposite edge midpoint is
+		 * to either of the opposite edge nodes.
+		 */
+
+//  		std::set<int> AddedElems;
+//  		for (int ti = 0; ti < SphereElems.size(); ++ti) {
+//  		  	if (!AddedElems.count(ti)) {
+//  		  		for (int c1 = 0; c1 < 3; ++c1) {
+//  		  			int c2 = (c1 + 1) % 3;
+//  		  			int c3 = (c1 + 2) % 3;
+//  		  			vec3 MidPt = (SphereNodes[SphereElems[ti][c2]] + SphereNodes[SphereElems[ti][c3]]) * 0.5;
+//  		  			double dc = Distance(SphereNodes[SphereElems[ti][c1]], MidPt);
+//  		  			double dl = Distance(SphereNodes[SphereElems[ti][c2]], SphereNodes[SphereElems[ti][c1]]);
+//  		  			double dr = Distance(SphereNodes[SphereElems[ti][c3]], SphereNodes[SphereElems[ti][c1]]);
+//  		  			if (dc < dl * 0.9 && dc < dr * 0.9 && VectorAngle((SphereNodes[SphereElems[ti][c2]] - SphereNodes[SphereElems[ti][c1]]), (SphereNodes[SphereElems[ti][c3]] - SphereNodes[SphereElems[ti][c1]])) > 100. / DEGPERRADIANS) {
+//  		  				// Node is close to opposite midpoint, so make new edge splitting triangle that way
+//  		  				AddedElems.insert(ti);
+//  		  				AddedElems.insert(SphereElems.size());
+//  		  				int EdgeNodeNum = SphereNodes.size();
+//  		  				auto FarEdge = MakeEdge(SphereElems[ti][c2], SphereElems[ti][c3]);
+//  		  				SphereNodes.push_back(MidPt);
+//  		  				SphereElems.push_back({ SphereElems[ti][c1], SphereElems[ti][c2], EdgeNodeNum });
+//  		  				SphereElems[ti] = { EdgeNodeNum, SphereElems[ti][c3], SphereElems[ti][c1] };
+//  		  				// Now find element that shares the edge that was split
+//  	// and split that element along the same new nodes.
+//  		  				bool NeighborFound = false;
+//  		  				for (int tj = 0; tj < SphereElems.size() && !NeighborFound; ++tj) {
+//  		  					if (tj != ti) {
+//  		  						for (int cj = 0; cj < 3; ++cj) {
+//  		  							if (MakeEdge(SphereElems[tj][cj], SphereElems[tj][(cj + 1) % 3]) == FarEdge) {
+//  		  								// Split neighbor element
+//  		  								int FarCorner = (cj + 2) % 3;
+//  		  								AddedElems.insert(tj);
+//  		  								AddedElems.insert(SphereElems.size());
+//  		  								SphereElems.push_back({ SphereElems[tj][FarCorner], SphereElems[tj][cj], EdgeNodeNum });
+//  		  								SphereElems[tj] = { SphereElems[tj][FarCorner], EdgeNodeNum, SphereElems[tj][(cj + 1) % 3] };
+//  		  								NeighborFound = true;
+//  		  								break;
+//  		  							}
+//  		  						}
+//  		  					}
+//  		  				}
+//  		  			}
+//  		  		}
+//  		  	}
+//  		}
+// 
 		NumNodes = SphereNodes.size();
 		NumElems = SphereElems.size();
+		NodeTypes.resize(NumNodes, NETypeC);
+		ElemTypes = vector<GBATriangulatedSphereNodeElemType_e>(NumElems, NETypeInvalid);
+		for (int ti = 0; ti < NumElems; ++ti)
+			for (int ni : SphereElems[ti])
+				ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[ni]);
+
+		
 		OutConstrainedSegmentIndices.resize(NumNodes, -1);
 		NodeIntSurfNums.resize(NumNodes, -1);
 
@@ -2135,12 +2556,17 @@ void NewMainFunction() {
 		}
 
 // 		while (TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, Radius) > SphereJiggleMeshMaxMovedNodeDistTol) {}
-		for (int i = 0; i < 10 && TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, SeedRadius) > SphereJiggleMeshMaxMovedNodeDistTol; ++i) {}
+// 		for (int i = 0; i < 10 && TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, SeedRadius) > SphereJiggleMeshMaxMovedNodeDistTol; ++i) {}
 
 		if (TestRun) {
 			auto TmpSphere = FESurface_c(SphereNodes, SphereElems);
 			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after bond path intersection element subdivision");
 			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_PlusEquals);
+			for (auto const & e : EdgeIntSurfNums){
+				SaveVec3VecAsScatterZone({ SphereNodes[e.first.first], SphereNodes[e.first.second] }, "constrained edge");
+				SetZoneStyle({}, ZoneStyle_Path, Green_C, 0.5);
+				TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_PlusEquals);
+			}
 			continue;
 		}
 
@@ -2188,7 +2614,6 @@ void NewMainFunction() {
 		double TotalDensity = 0.0;
 		int NumElementsToSubdivide = -1;
 
-		vector<int> ElemTodo;
 
 		do
 		{
@@ -2198,8 +2623,15 @@ void NewMainFunction() {
 
 #ifdef SUPERDEBUG
 // 			ElemTodo = { 196 }; // base 0 (tecplot is base 1)
-  			ElemTodo = { 0 };
-
+// 			ElemTodo.clear();
+// 			for (int ti = 0; ti < SphereElems.size(); ++ti) {
+// 				if (ElemTypes[ti] >= NETypeR) {
+// 					ElemTodo.push_back(ti);
+// 				}
+// 			}
+// 			
+			std::set<int> TmpElems(ElemTodo.begin(), ElemTodo.end());
+			ElemTodo = vector<int>(TmpElems.begin(), TmpElems.end());
 #endif
 
 			// This sizes GradPaths for the first iteration and 
@@ -2346,7 +2778,7 @@ void NewMainFunction() {
  				}
  			}
  
-			for (int i = 0; i < 10 && TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, SeedRadius) > SphereJiggleMeshMaxMovedNodeDistTol; ++i) {}
+// 			for (int i = 0; i < 10 && TriangulatedSphereJiggleMesh(SphereNodes, NodeConnectivity, NodeIsConstrained, CPPos, SeedRadius) > SphereJiggleMeshMaxMovedNodeDistTol; ++i) {}
 
 
 #ifdef DEBUG_SAVEZONES
@@ -2430,7 +2862,7 @@ void NewMainFunction() {
 #endif
 
 	#ifdef SUPERDEBUG
-#pragma omp parallel for schedule(dynamic, 128)
+// #pragma omp parallel for schedule(dynamic, 128)
 			for (int nii = 0; nii < NodesTodoVec.size(); ++nii) {
 				int ni = NodesTodoVec[nii];
 	#else
@@ -3158,6 +3590,14 @@ void NewMainFunction() {
 									// to the deviation point.
 								}
 							}
+
+#ifdef SUPERDEBUG
+							if (Iter >= 100){
+								SaveVec3VecAsScatterZone({ SphereNodes[en.first], SphereNodes[en.second] }, "100+ edge gps");
+								SetZoneStyle({}, ZoneStyle_Path, Red_C, 0.5);
+								TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_PlusEquals);
+							}
+#endif
 
 							if (UserQuit)
 								break;
@@ -4195,7 +4635,10 @@ void NewMainFunction() {
 
 					vector<GradPath_c const *> GPPtrs;
 
+					vector<int> CornerGPNums(3);
+
 					for (int tj = 0; tj < 3; ++tj) {
+						CornerGPNums[tj] = GPPtrs.size();
 						int ni = SphereElems[ti][tj];
 						if (NodeTypes[ni] == NETypeR)
 							ni = SphereElemGPInds[ti][tj];
@@ -4274,20 +4717,7 @@ void NewMainFunction() {
 						GPPtrList[ti] = GPPtrs;
 
 					if (GBIsValid[ti]) {
-						if (ElemTypes[ti] >= NETypeB) {
-							vec3 BondCPPos;
-							for (int ni : SphereElems[ti]) {
-								if (NodeTypes[ni] >= NETypeB) {
-									BondCPPos = IntBondPathSegments[ni].RhoAt(0) > IntBondPathSegments[ni].RhoAt(-1) ? IntBondPathSegments[ni].XYZAt(0) : IntBondPathSegments[ni].XYZAt(-1);
-								}
-
-							}
-  							NewIntegrateUsingIsosurfaces2(GPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, IntVals[ti], &BondCPPos, &AddOnID);
-						}
-						else {
-  							NewIntegrateUsingIsosurfaces2(GPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, IntVals[ti], nullptr, &AddOnID);
-						}
-
+  						NewIntegrateUsingIsosurfaces3(GPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, IntVals[ti], CornerGPNums, GBIntegrationPointSpacing, &AddOnID);
 					}
 
 
@@ -4301,7 +4731,6 @@ void NewMainFunction() {
 						 */
 
 						vector<GradPath_c> InnerPaths(3), OuterPaths(3);
-
 						vector<const GradPath_c *> InnerGPPtrs(3), OuterGPPtrs(3);
 						for (int tj = 0; tj < 3; ++tj){
 							InnerGPPtrs[tj] = &InnerGradPaths[SphereElems[ti][tj]];
@@ -4326,11 +4755,11 @@ void NewMainFunction() {
 						}
 
 						// The radial approximation portion
-						NewIntegrateUsingIsosurfaces2(InnerGPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, SphereIntVals[ti], nullptr, &AddOnID);
+						NewIntegrateUsingIsosurfaces2(InnerGPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, SphereIntVals[ti], &AddOnID);
 
 						if (!SameRadii) {
 							// And the portion to be added to the normal integration values
-							NewIntegrateUsingIsosurfaces2(OuterGPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, IntVals[ti], nullptr, &AddOnID);
+							NewIntegrateUsingIsosurfaces2(OuterGPPtrs, IntResolution, ThVolInfo[omp_get_thread_num()], IntVarPtrs, IntVals[ti], &AddOnID);
 						}
 					}
 				}
@@ -4370,10 +4799,20 @@ void NewMainFunction() {
 				if (!SameRadii) {
 					for (int ni = 0; ni < SphereNodes.size(); ++ni) {
 						if (NodeTypes[ni] == NETypeB) {
-							IntBondPathSegmentsUntrimmed[ni].GetSphereIntersectionPoint(CPPos, RadialApprxRadius, SphereNodes[ni]);
+							if (!IntBondPathSegmentsUntrimmed[ni].IsMade()) {
+								SphereNodes[ni] = CPPos + normalise(SphereNodes[ni] - CPPos) * RadialApprxRadius;
+							}
+							else {
+								IntBondPathSegmentsUntrimmed[ni].GetSphereIntersectionPoint(CPPos, RadialApprxRadius, SphereNodes[ni]);
+							}
 						}
 						else {
-							InnerGradPaths[ni].GetSphereIntersectionPoint(CPPos, RadialApprxRadius, SphereNodes[ni]);
+							if (!InnerGradPaths[ni].IsMade()){
+								SphereNodes[ni] = CPPos + normalise(SphereNodes[ni] - CPPos) * RadialApprxRadius;
+							}
+							else {
+								InnerGradPaths[ni].GetSphereIntersectionPoint(CPPos, RadialApprxRadius, SphereNodes[ni]);
+							}
 						}
 					}
 				}

@@ -62,7 +62,15 @@ void NewIntegrateUsingIsosurfaces2(vector<GradPath_c const *> const & GPsIn,
 	VolExtentIndexWeights_s & VolInfo,
 	vector<FieldDataPointer_c> const & VarPtrs,
 	vector<double> & IntVals,
-	vec3 const * BondCPPos,
+	AddOn_pa * AddOnID);
+
+void NewIntegrateUsingIsosurfaces3(vector<GradPath_c const *> const & GPsIn,
+	int nPts,
+	VolExtentIndexWeights_s & VolInfo,
+	vector<FieldDataPointer_c> const & VarPtrs,
+	vector<double> & IntVals,
+	vector<int> CornerGPNums,
+	double PointSpacing,
 	AddOn_pa * AddOnID);
 
 bool GetSortedPerimeterEdgeMidpoints(vector<vector<int> > const & TriElems,
@@ -77,6 +85,7 @@ void GetTriElementConnectivityList(vector<vector<int> > const * ElemListPtr,
 string GetEdgeString(int ei, int ej);
 
 Boolean_t Vec3PathResample(vector<vec3> const & OldXYZList, int NumPoints, vector<vec3> & NewXYZList);
+double Vec3PathGetLength(vector<vec3> const & v);
 
 bool ProjectedPointToTriangleIsInterior(vec3 const & P0, vec3 & TP, vec3 const & T1, vec3 const & T2, vec3 const & T3);
 double PointDistanceToTriangleSquared(vec3 const & P, vec3 & ClosestPoint, vec3 const & T1, vec3 const & T2, vec3 const & T3, bool RecordPoint = true);
@@ -120,6 +129,10 @@ void GetMeshNodeConnectivity(vector<vector<int> > const & Elems,
 double TriArea(vec3 const & p1, vec3 const & p2, vec3 const & p3);
 double TriPerimeter(vec3 const & p1, vec3 const & p2, vec3 const & p3);
 double TriBadness(vec3 const & p1, vec3 const & p2, vec3 const & p3);
+double TriAspectRatio(double a, double b, double c);
+double TriAspectRatio(vec3 const & A, vec3 const & B, vec3 const & C);
+void Barycentric(vec3 const & p, vec3 const & a, vec3 const & b, vec3 const & c, double & u, double & v, double & w);
+bool QuadIsConvex(vec3 const & a, vec3 const & b, vec3 const & c, vec3 const & d);
 
 double SphericalTriangleArea(vec3 const & p1, vec3 const & p2, vec3 const & p3, vec3 const & o);
 

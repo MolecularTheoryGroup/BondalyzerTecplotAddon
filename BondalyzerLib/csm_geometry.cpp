@@ -2248,7 +2248,6 @@ void NewIntegrateUsingIsosurfaces2(vector<GradPath_c const *> const & GPsIn,
 	VolExtentIndexWeights_s & VolInfo,
 	vector<FieldDataPointer_c> const & VarPtrs,
 	vector<double> & IntVals,
-	vec3 const * BondCPPos,
 	AddOn_pa * AddOnID)
 {
 #ifdef _GBADEBUG
@@ -2298,7 +2297,6 @@ void NewIntegrateUsingIsosurfaces2(vector<GradPath_c const *> const & GPsIn,
 
 	vector<vector<int> > T;
 
-	bool ContainsBondPath = (BondCPPos != nullptr);
 
 // 	if (!TermAtPoint){
 // 		vector<vec3> V;
@@ -2315,12 +2313,10 @@ void NewIntegrateUsingIsosurfaces2(vector<GradPath_c const *> const & GPsIn,
 	vector<vector<unsigned int> > TmpIndLists(TmpCount, vector<unsigned int>(GPs.size(), 0));
 	vector<vector<vec3> > ThVertices(omp_get_num_procs(), vector<vec3>(GPs.size()));
 	int StartInd = 0, EndInd = TmpCount;
-	if (ContainsBondPath){
-		vec3 ClosestPoint = GPs[0]->ClosestPoint(*BondCPPos, StartInd);
-		if (TmpCount - StartInd > 30) {
-			StartInd += 5;
-		}
-	}if (TmpCount - StartInd > 30) {
+	if (TmpCount - StartInd > 30) {
+		StartInd += 5;
+	}
+	if (TmpCount - StartInd > 30) {
 		EndInd -= 5;
 	}
 //#pragma omp parallel for
@@ -2474,6 +2470,224 @@ void NewIntegrateUsingIsosurfaces2(vector<GradPath_c const *> const & GPsIn,
 #endif
 			Vptr.clear();
 			for (auto i : tri){
+				Vptr.push_back(&Planes.front()[i]);
+				Vptr.push_back(&Planes.back()[i]);
+			}
+
+			IntTrigonalPrism(Vptr, nPts, VarPtrs, VolInfo, IntVals);
+		}
+
+		NotTerminated = false;
+		for (int gpi = 0; gpi < NumGPs && !NotTerminated; ++gpi) {
+			NotTerminated = IndLists[1][gpi] < GPs[gpi]->GetCount() - 1;
+		}
+
+		IndLists.pop_front();
+		Planes.pop_front();
+
+#ifdef _GBADEBUG
+		PtInd++;
+		// 		if (Iter > 20) break;
+#endif
+	}
+
+#ifdef _GBADEBUG
+	DebugLog.close();
+#endif
+
+	return;
+}
+
+
+void NewIntegrateUsingIsosurfaces3(vector<GradPath_c const *> const & GPsIn,
+	int nPts,
+	VolExtentIndexWeights_s & VolInfo,
+	vector<FieldDataPointer_c> const & VarPtrs,
+	vector<double> & IntVals,
+	vector<int> CornerGPNums,
+	double PointSpacing,
+	AddOn_pa * AddOnID)
+{
+#ifdef _GBADEBUG
+	std::ofstream DebugLog("C:\\Users\\Haiiro\\Documents\\Tecplot Addons\\debuglog.csv", std::ofstream::app);
+	DebugLog << "\n\nNew run:\n\n";
+#endif
+
+	auto GPs = GPsIn;
+	ENSURE(GPs.size() >= 3);
+	for (auto const * p : GPs) {
+		ENSURE(p->IsMade() && p->GetCount() > 3);
+	}
+
+	if (IntVals.size() != VarPtrs.size() + 1)
+		IntVals.resize(VarPtrs.size() + 1, 0);
+
+	/*
+	*	We're stepping down the GPs according to values of rho.
+	*	We'll assume that they all either terminate at the same rho value or critical point.
+	*	Even if they don't terminate at the same rho value, we'll assume that the termination of any GP will be at a sufficiently low rho value
+	*		such that most properties of interest have converged.
+	*	Also assuming that GPs go "downhill" from a GBA sphere around a nuclear CP.
+	*	At end of each loop, confirm that there is at least one more point in each grad path, otherwise exit.
+	*/
+	bool NotTerminated = true;
+
+	// Used in avoiding very small volume polyhedra.
+	double NewStepCutoffRatio = 0.7;
+
+	unsigned int NumGPs = GPs.size();
+
+	/*
+	 * Need to resample points for each polyhedron to avoid nearly identical points.
+	 * Do this using the provided cutoff spacing.
+	 * The same triangulation needs to be used for each pair of polygons,
+	 * but it's OK for a polygon to have one triangulation for its pairing with its
+	 * neighbor "below" and another with its neighbor "above".
+	 * Here, we're just checking, at each rho point along the GB, how many
+	 * points each (of the three) paths needs to be resampled into.
+	 * Then, as we go through the main loop, we'll resample each polygon pair
+	 * according to the lower (coarser) resampling of the two.
+	 */
+
+	int TmpCount = GPs[0]->GetCount();
+	vector<vector<vec3> > ThVertices(omp_get_num_procs(), vector<vec3>(GPs.size()));
+
+
+	double ChkDistSqr, TmpDistSqr;
+
+#ifdef _GBADEBUG
+	vector<vector<double> > IntValList;
+	high_resolution_clock::time_point Time1;
+	bool UserQuit;
+	if (AddOnID != nullptr) {
+		Time1 = high_resolution_clock::now();
+		UserQuit = !StatusUpdate(0, GPs[0]->GetCount(), "Integrating GB", *AddOnID, Time1);
+	}
+#endif
+
+	/*
+	*	Main loop
+	*/
+	int PtInd = 0;
+	std::deque<vector<vec3> > Planes;
+	Planes.push_back(vector<vec3>());
+	std::deque<vector<int> > IndLists;
+	IndLists.push_back(vector<int>(NumGPs, PtInd));
+	vector<int> PathSegLengthsOld(3);
+
+	// prepare the first polygon
+	Planes.back().reserve(NumGPs);
+	for (int ti = 0; ti < 3; ++ti) {
+		int ibeg = CornerGPNums[ti];
+		int iend;
+		if (ti < 2) {
+			iend = CornerGPNums[ti + 1] + 1;
+		}
+		else {
+			iend = NumGPs;
+		}
+		vector<vec3> TmpPath(iend - ibeg);
+		for (int i = 0; i < TmpPath.size(); ++i) {
+			TmpPath[i] = GPs[i + ibeg]->XYZAt(IndLists.back()[i]);
+		}
+		int NumPathPoints = Vec3PathGetLength(TmpPath) / PointSpacing;
+		NumPathPoints = CLAMP(NumPathPoints, 2, TmpPath.size());
+		vector<vec3> TmpPath2;
+		Vec3PathResample(TmpPath, NumPathPoints, TmpPath2);
+		PathSegLengthsOld[ti] = TmpPath2.size();
+		for (int i = 0; i < TmpPath2.size() - 1; ++i) {
+			Planes.back().push_back(TmpPath2[i]);
+		}
+	}
+
+	vector<vec3 const*> Vptr;
+	Vptr.reserve(6);
+	vector<vector<int> > Tets;
+	vector<bool> IsDegenerate;
+	vector<int> DegenerateParent;
+	while (NotTerminated) {
+		IndLists.push_back(IndLists.back());
+		for (int gpi = 0; gpi < NumGPs; ++gpi) {
+			if (IndLists.back()[gpi] < GPs[gpi]->GetCount() - 1)
+				IndLists.back()[gpi]++;
+		}
+
+		Planes.emplace_back();
+		Planes.back().reserve(Planes.front().size()+3);
+		vector<int> PathSegLengthsCur(3);
+		for (int ti = 0; ti < 3; ++ti){
+			int ibeg = CornerGPNums[ti];
+			int iend;
+			if (ti < 2){
+				iend = CornerGPNums[ti + 1]+1;
+			}
+			else{
+				iend = NumGPs;
+			}
+			vector<vec3> TmpPath(iend - ibeg);
+			for (int i = 0; i < TmpPath.size(); ++i) {
+				TmpPath[i] = GPs[i + ibeg]->XYZAt(IndLists.back()[i]);
+			}
+			int NumPathPoints = Vec3PathGetLength(TmpPath) / PointSpacing;
+			NumPathPoints = CLAMP(NumPathPoints, 2, TmpPath.size());
+			vector<vec3> TmpPath2;
+			Vec3PathResample(TmpPath, NumPathPoints, TmpPath2);
+			PathSegLengthsCur[ti] = TmpPath2.size();
+			for (int i = 0; i < TmpPath2.size() - 1; ++i){
+				Planes.back().push_back(TmpPath2[i]);
+			}
+		}
+
+	    // Current polygon has different resampling than last, so redo last using current resampling
+		if (PathSegLengthsCur != PathSegLengthsOld){
+			PathSegLengthsOld = PathSegLengthsCur;
+			Planes.pop_front();
+			Planes.emplace_front();
+			Planes.front().reserve(Planes.back().size());
+			for (int ti = 0; ti < 3; ++ti) {
+				int ibeg = CornerGPNums[ti];
+				int iend;
+				if (ti < 2) {
+					iend = CornerGPNums[ti + 1] + 1;
+				}
+				else {
+					iend = NumGPs;
+				}
+				vector<vec3> TmpPath(iend - ibeg);
+				for (int i = 0; i < TmpPath.size(); ++i) {
+					TmpPath[i] = GPs[i + ibeg]->XYZAt(IndLists.front()[i]);
+				}
+				vector<vec3> TmpPath2;
+				Vec3PathResample(TmpPath, PathSegLengthsCur[ti], TmpPath2);
+				for (int i = 0; i < TmpPath2.size() - 1; ++i) {
+					Planes.front().push_back(TmpPath2[i]);
+				}
+			}
+		}
+
+#ifdef _GBADEBUG
+		if (AddOnID != nullptr)
+			UserQuit = !StatusUpdate(PtInd, GPs[0]->GetCount(), "Integrating GB", *AddOnID, Time1);
+		// Save each plane as scatter
+		for (int i = 0; i < 2; ++i) {
+			SaveVec3VecAsScatterZone(Planes[i], to_string(PtInd + 1) + " Plane " + to_string(i + 1), ColorIndex_t(i % 7), { 1, 2, 3 });
+		}
+		int tColor = 0;
+#endif
+		// Now generate triangulation based on current plane
+		vector<vector<int> > T = TriangulatePolygon(Planes.back());
+
+
+		for (auto const & tri : T) {
+#ifdef _GBADEBUG
+			// Save triangle as scatter
+			vector<vec3> tv;
+			for (int i = 0; i < 3; ++i) tv.push_back(Planes[1][tri[i]]);
+			SaveVec3VecAsScatterZone(tv, to_string(PtInd + 1) + " Tri " + to_string(tColor), ColorIndex_t(tColor % 7), { 1, 2, 3 });
+			tColor++;
+#endif
+			Vptr.clear();
+			for (auto i : tri) {
 				Vptr.push_back(&Planes.front()[i]);
 				Vptr.push_back(&Planes.back()[i]);
 			}
@@ -2912,6 +3126,19 @@ Boolean_t Vec3PathResample(vector<vec3> const & OldXYZList, int NumPoints, vecto
 	else IsOk = FALSE;
 
 	return IsOk;
+}
+
+
+double Vec3PathGetLength(vector<vec3> const & v) {
+	// 	if (m_GradPathMade && m_Length >= 0)
+	// 		return m_Length;
+
+	double Length = 0.0;
+
+	for (int i = 0; i < v.size() - 1; ++i)
+		Length += Distance(v[i], v[i + 1]);
+
+	return Length;
 }
 
 
@@ -3643,6 +3870,34 @@ double SphericalTriangleArea(vec3 const & p1, vec3 const & p2, vec3 const & p3, 
 	return area;
 }
 
+
+void Barycentric(vec3 const & p, vec3 const & a, vec3 const & b, vec3 const & c, double & u, double & v, double & w){
+	vec3 v0 = b - a, 
+		v1 = c - a, 
+		v2 = p - a;
+	double d00 = dot(v0, v0),
+		d01 = dot(v0, v1),
+		d11 = dot(v1, v1),
+		d20 = dot(v2, v0),
+		d21 = dot(v2, v1);
+	double oneOverDenom = 1. / (d00 * d11 - d01 * d01);
+	v = (d11 * d20 - d01 * d21) * oneOverDenom;
+	w = (d00 * d21 - d01 * d20) * oneOverDenom;
+	u = 1. - v - w;
+}
+
+// based on https://math.stackexchange.com/a/3169372
+bool QuadIsConvex(vec3 const & a, vec3 const & b, vec3 const & c, vec3 const & d){
+	double alpha, beta, gamma;
+	Barycentric(d, a, b, c, alpha, beta, gamma);
+	
+	return (
+		(alpha < 0. && beta > 0. && gamma > 0.)
+		|| (alpha > 0. && beta < 0. && gamma > 0.)
+		|| (alpha > 0. && beta > 0. && gamma < 0.)
+		);
+}
+
 double TriPerimeter(vec3 const & p1, vec3 const & p2, vec3 const & p3){
 	return Distance(p1, p2) + Distance(p2, p3) + Distance(p3, p1);
 }
@@ -3669,6 +3924,17 @@ double TriBadness(vec3 const & p1, vec3 const & p2, vec3 const & p3){
 	AngleDiffSum += abs(TriBadnessCheckAngle - VectorAngle(v3,-v1));
 
 	return AngleDiffSum / MaxTriBadness;
+}
+
+// from https://stackoverflow.com/a/10290011
+double TriAspectRatio(double a, double b, double c){
+	double s = (a + b + c) * 0.5;
+	double ar = (a*b*c) / (8. * (s - a) * (s - b) * (s - c));
+	return ar;
+}
+
+double TriAspectRatio(vec3 const & A, vec3 const & B, vec3 const & C){
+	return TriAspectRatio(Distance(A, B), Distance(B, C), Distance(C, A));
 }
 
 /*
@@ -3777,8 +4043,7 @@ void RemoveDuplicatePointsFromVec3Vec(vector<vec3> & Points, double tol, vector<
 
 	NewPoints.push_back(Points.back());
 
-	Points = NewPoints;
-	Points.shrink_to_fit();
+	Points = vector<vec3>(NewPoints.begin(), NewPoints.end());
 
 	return;
 }

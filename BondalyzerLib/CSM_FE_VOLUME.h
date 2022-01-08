@@ -115,6 +115,7 @@ public:
 	void GenerateElemMidpoints();
 	void GetNodeConnectivityFromTecplot();
 	void GenerateElemConnectivity(int numSharedNodes = 1);
+	void GenerateNodeConnectivity();
 	void GenerateNodeToElementList();
 	vector<vector<int> > const * GetNodeToElementListPtr() const { return &m_NodeToElementList; }
 	vector<vector<LgIndex_t> > const * GetNodeConnectivityListPtr() const { return &m_NodeConnectivityList; }
@@ -235,6 +236,7 @@ private:
 	NodeMap_t* m_ConnectivityListPtr;
 	vector<vector<LgIndex_t> > m_NodeConnectivityList,
 		m_ElemConnectivityList;
+	vector<std::set<int> > m_NodeConnectivitySetList;
 	vector<double> m_MaxNeighborNodeDistSqr,
 		m_MinNeighborNodeDistSqr;
 	vector<vec3> m_RefinedXYZList;

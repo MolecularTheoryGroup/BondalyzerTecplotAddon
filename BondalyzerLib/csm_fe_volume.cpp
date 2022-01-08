@@ -1436,6 +1436,29 @@ void FESurface_c::GetNodeConnectivityFromTecplot(){
 }
 
 
+void FESurface_c::GenerateNodeConnectivity(){
+	REQUIRE(!m_XYZList.empty());
+	if (m_XYZList.size() == m_NodeConnectivityList.size()){
+		return;
+	}
+
+	m_NodeConnectivitySetList.clear();
+	m_NodeConnectivitySetList.resize(m_XYZList.size());
+
+	for (auto const & t : m_ElemList){
+		for (int ci = 0; ci < 3; ++ci){
+			m_NodeConnectivitySetList[t[ci]].insert(t[(ci + 1) % 3]);
+		}
+	}
+
+	m_NodeConnectivityList.resize(m_XYZList.size());
+	for (int ni = 0; ni < m_XYZList.size(); ++ni){
+		auto & n = m_NodeConnectivitySetList[ni];
+		m_NodeConnectivityList[ni].assign(n.begin(), n.end());
+	}
+}
+
+
 void FESurface_c::GeneratePointElementDistanceCheckData() {
  	m_NumElems = m_ElemList.size();
  
