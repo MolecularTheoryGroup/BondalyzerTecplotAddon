@@ -67,7 +67,7 @@ double SphericalDistance(vec3 const & A, vec3 const & B, vec3 const & O) { // i.
 double VectorAngle(vec3 const & A, vec3 const & B){
 	double denom = (norm(A) * norm(B));
 	if (!isnan(denom) && denom > 0.0) {
-		double arg = dot(A, B) / (norm(A) * norm(B));
+		double arg = dot(A, B) / denom;
 		arg = CLAMP(arg, -1.0, 1.0);
 		return acos(arg);
 	}
@@ -80,7 +80,7 @@ double VectorAngle(vec3 const & A, vec3 const & B){
 double VectorAngleMagnitude(vec3 const & A, vec3 const & B) {
 	double denom = (norm(A) * norm(B));
 	if (!isnan(denom) && denom > 0.0) {
-		double arg = abs(dot(A, B)) / (norm(A) * norm(B));
+		double arg = abs(dot(A, B)) / denom;
 		arg = CLAMP(arg, 0.0, 1.0);
 		return acos(arg);
 	}

@@ -466,6 +466,7 @@ string VectorToString(vector<T> const & Items, string const & Delim = " "){
 	else return "";
 }
 string IntVectorToRangeString(vector<int> Items);
+vector<int> RangeStringToIntVector(string const & Str);
 Boolean_t StringIsInt(string const & s);
 Boolean_t StringIsFloat(string const & s);
 string StringReplaceSubString(string const & InStr, string const & OldStr, string const & NewStr);
@@ -485,6 +486,9 @@ Boolean_t AuxDataZoneSetList(int ZoneNum, string const & AuxDataName, vector<T> 
 	AuxDataZoneSetItem(ZoneNum, AuxDataName, VectorToString(AuxDataValueList, ',,'));
 }
 Boolean_t AuxDataZoneDeleteItemByName(int ZoneNum, string const & AuxDataName);
+
+vector<string> AuxDataDisassembleString(string const & Str, int StrLen = 32000);
+string AuxDataAssembleString(vector<string> const & StrVec);
 
 string AuxDataDataSetGetItem(string const & AuxDataName);
 Boolean_t AuxDataDataSetGetItem(string const & AuxDataName, string & Value);

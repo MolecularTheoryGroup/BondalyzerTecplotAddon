@@ -12,6 +12,8 @@
 #include <chrono>
 #include <ctime>
 #include <ratio>
+#include <sstream>
+#include <iomanip>
 
 #include "TECADDON.h"
 #include "Set.h"
@@ -222,6 +224,24 @@ string IntVectorToRangeString(vector<int> Items){
 	return ss.str();
 }
 
+vector<int> RangeStringToIntVector(string const & Str){
+	vector<int> Out;
+
+	for (auto const & s : SplitString(Str, ",", true)){
+		auto rs = SplitString(s, "-");
+		if (rs.size() > 1){
+			for (int i = stoi(rs.front()); i <= stoi(rs.back()); ++i) {
+				Out.push_back(i);
+			}
+		}
+		else{
+			Out.push_back(stoi(rs.back()));
+		}
+	}
+
+	return Out;
+}
+
 
 string StringReplaceSubString(string const & InStr, string const & OldStr, string const & NewStr){
 	string OutStr = InStr;
@@ -295,6 +315,34 @@ string AuxDataMakeStringValidName(string Str){
 	return Str;
 }
 
+/* 
+ * Aux data values are truncated at 32k chars
+ */
+vector<string> AuxDataDisassembleString(string const & Str, int StrLen){
+	vector<string> OutStrs;
+	if (Str.length() <= StrLen){
+		OutStrs.push_back(Str);
+	}
+	else{
+		int ind1 = 0, inum = StrLen;
+		while (ind1 < Str.length()){
+			inum = MIN(Str.length() - ind1, StrLen);
+			OutStrs.push_back(Str.substr(ind1, inum));
+			ind1 += inum;
+		}
+	}
+
+	return OutStrs;
+}
+
+string AuxDataAssembleString(vector<string> const & StrVec){
+	string OutStr;
+	for (auto const & s : StrVec){
+		OutStr += s;
+	}
+	return OutStr;
+}
+
 /*
 	*	Begin aux data wrapper functions
 	*/
@@ -362,26 +410,10 @@ Boolean_t AuxDataZoneItemMatches(int ZoneNum, string const & AuxDataName, string
 	return ZoneOK;
 }
 
-string AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName)
-{
-	Boolean_t ZoneOK = TRUE;
-
-	char* TempCStr = nullptr;
-	string TmpStr = "-1";
-
-	AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
-	ZoneOK = (TempAuxData != nullptr);
-	if (ZoneOK){
-		AuxDataType_e ADTJunk;
-		Boolean_t BJunk;
-		ZoneOK = TecUtilAuxDataGetItemByName(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str(), reinterpret_cast<ArbParam_t*>(&TempCStr), &ADTJunk, &BJunk);
-		if (ZoneOK){
-			TmpStr = TempCStr;
-		}
-		TecUtilStringDealloc(&TempCStr);
-	}
-
-	return TmpStr;
+string IntToPaddedString(int const & i, int const & StrLen){
+	std::stringstream ss;
+	ss << std::setw(StrLen) << std::setfill('0') << i;
+	return ss.str();
 }
 
 Boolean_t AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName, string & Value)
@@ -395,14 +427,39 @@ Boolean_t AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName, string & V
 	if (ZoneOK){
 		AuxDataType_e ADTJunk;
 		Boolean_t BJunk;
+		vector<string> RetStrs;
 		ZoneOK = TecUtilAuxDataGetItemByName(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str(), reinterpret_cast<ArbParam_t*>(&TempCStr), &ADTJunk, &BJunk);
 		if (ZoneOK){
-			Value = TempCStr;
+			RetStrs.emplace_back(TempCStr);
+			TecUtilStringDealloc(&TempCStr);
+			TempCStr = nullptr;
+			int i = 0;
+			while (TecUtilAuxDataGetItemByName(TempAuxData, AuxDataMakeStringValidName(AuxDataName + "___" + IntToPaddedString(i++, 4)).c_str(), reinterpret_cast<ArbParam_t*>(&TempCStr), &ADTJunk, &BJunk)){
+				RetStrs.emplace_back(TempCStr);
+				TecUtilStringDealloc(&TempCStr);
+				TempCStr = nullptr;
+			}
+			Value = AuxDataAssembleString(RetStrs);
 		}
 		TecUtilStringDealloc(&TempCStr);
 	}
 
 	return ZoneOK;
+}
+
+string AuxDataZoneGetItem(int ZoneNum, string const & AuxDataName)
+{
+	Boolean_t ZoneOK = TRUE;
+
+	char* TempCStr = nullptr;
+	string TmpStr = "-1";
+
+	if (AuxDataZoneGetItem(ZoneNum, AuxDataName, TmpStr)) {
+		return TmpStr;
+	}
+	else {
+		return "";
+	}
 }
 
 vector<string> AuxDataZoneGetList(int ZoneNum, string const & AuxDataName, string & Value){
@@ -418,7 +475,12 @@ Boolean_t AuxDataZoneSetItem(int ZoneNum, string const & AuxDataName, string con
 			AuxData_pa TempAuxData = TecUtilAuxDataZoneGetRef(ZoneNum);
 			IsOk = (TempAuxData != nullptr);
 			if (IsOk) {
-				IsOk = TecUtilAuxDataSetStrItem(TempAuxData, AuxDataMakeStringValidName(AuxDataName).c_str(), AuxDataValue.c_str(), TRUE);
+				auto StrVec = AuxDataDisassembleString(AuxDataValue);
+				int i = -1;
+				for (auto const & s : StrVec) {
+					IsOk = TecUtilAuxDataSetStrItem(TempAuxData, AuxDataMakeStringValidName(AuxDataName + (i < 0 ? "" : "___" + IntToPaddedString(i, 4))).c_str(), s.c_str(), TRUE);
+					i++;
+				}
 			}
 		}
 		catch (...) {

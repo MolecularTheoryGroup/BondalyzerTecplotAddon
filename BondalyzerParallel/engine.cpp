@@ -10557,6 +10557,27 @@ void GBAExtractSphereContourPoints(){
 }
 
 void TestFunction() {
+
+	// test splitting and merging of strings for aux data
+	string TestStr = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vitae turpis massa sed elementum tempus egestas sed sed risus. Tempus egestas sed sed risus pretium quam. Quis risus sed vulputate odio ut enim blandit volutpat. Congue nisi vitae suscipit tellus mauris a diam maecenas sed. Pellentesque nec nam aliquam sem. Habitant morbi tristique senectus et netus et malesuada fames. Quis ipsum suspendisse ultrices gravida dictum fusce ut. Neque gravida in fermentum et sollicitudin ac. Velit dignissim sodales ut eu sem. Quisque id diam vel quam elementum pulvinar etiam. Turpis cursus in hac habitasse platea dictumst quisque. Malesuada fames ac turpis egestas. Praesent tristique magna sit amet purus gravida quis blandit turpis. Sed risus ultricies tristique nulla. Nibh sit amet commodo nulla facilisi nullam vehicula ipsum.		At varius vel pharetra vel turpis nunc.Leo vel orci porta non pulvinar neque laoreet.Tempus iaculis urna id volutpat lacus laoreet non.Diam phasellus vestibulum lorem sed.Sit amet dictum sit amet justo.Iaculis eu non diam phasellus vestibulum lorem sed.Ligula ullamcorper malesuada proin libero nunc consequat.Non nisi est sit amet facilisis magna etiam tempor.Lectus vestibulum mattis ullamcorper velit.Convallis tellus id interdum velit laoreet id donec ultrices.Ac odio tempor orci dapibus ultrices in iaculis nunc.At erat pellentesque adipiscing commodo elit at imperdiet dui accumsan.Viverra accumsan in nisl nisi.Nisl purus in mollis nunc.Non diam phasellus vestibulum lorem sed risus ultricies tristique.Integer quis auctor elit sed.Quisque sagittis purus sit amet volutpat consequat mauris nunc.Tortor aliquam nulla facilisi cras fermentum.		Commodo quis imperdiet massa tincidunt nunc pulvinar sapien.Nisl suscipit adipiscing bibendum est ultricies integer quis.Mattis nunc sed blandit libero volutpat.Viverra orci sagittis eu volutpat odio facilisis mauris sit.Eu consequat ac felis donec et odio pellentesque.Elementum curabitur vitae nunc sed velit.Amet nisl purus in mollis nunc sed id.Phasellus faucibus scelerisque eleifend donec pretium vulputate sapien nec sagittis.Viverra ipsum nunc aliquet bibendum.Lorem ipsum dolor sit amet consectetur adipiscing elit ut.Egestas diam in arcu cursus euismod.Condimentum mattis pellentesque id nibh tortor id.Consequat id porta nibh venenatis cras.Sed odio morbi quis commodo odio.Nibh cras pulvinar mattis nunc sed blandit.Neque ornare aenean euismod elementum nisi quis eleifend quam.Eget duis at tellus at urna condimentum mattis pellentesque id.		Scelerisque purus semper eget duis at tellus.Duis convallis convallis tellus id interdum.Porttitor lacus luctus accumsan tortor.Maecenas accumsan lacus vel facilisis volutpat est velit.Cursus in hac habitasse platea dictumst.In fermentum posuere urna nec.Posuere morbi leo urna molestie at elementum.Enim nulla aliquet porttitor lacus luctus accumsan tortor posuere.Fringilla urna porttitor rhoncus dolor.Et magnis dis parturient montes.Est pellentesque elit ullamcorper dignissim cras tincidunt lobortis feugiat.Ultricies tristique nulla aliquet enim tortor.Tellus molestie nunc non blandit massa.Convallis a cras semper auctor neque vitae tempus quam.Nullam vehicula ipsum a arcu cursus vitae congue.Ultricies tristique nulla aliquet enim tortor at auctor urna nunc.Ac tortor dignissim convallis aenean et tortor.Placerat in egestas erat imperdiet sed.Nec nam aliquam sem et tortor consequat id porta.Enim lobortis scelerisque fermentum dui.		Cursus in hac habitasse platea dictumst quisque sagittis purus.Convallis tellus id interdum velit laoreet.Enim facilisis gravida neque convallis a cras semper auctor.Morbi non arcu risus quis varius quam quisque.Amet risus nullam eget felis eget nunc lobortis mattis.Vitae purus faucibus ornare suspendisse sed nisi lacus.Sed vulputate mi sit amet mauris commodo quis.Turpis tincidunt id aliquet risus.Ipsum dolor sit amet consectetur adipiscing elit pellentesque habitant morbi.Integer feugiat scelerisque varius morbi enim nunc.";
+	auto StringParts = AuxDataDisassembleString(TestStr, 20);
+	auto TestStr1 = AuxDataAssembleString(StringParts);
+	bool StrsMatch = (TestStr == TestStr1);
+
+	auto intvec = RangeStringToIntVector("1,4,9,11-17,22-27,32");
+
+	intvec = RangeStringToIntVector("1");
+	// now test aux data splitting
+	TestStr = string(100000, '1');
+	SaveVec3VecAsScatterZone({ vec3() });
+	AuxDataZoneSetItem(TecUtilDataSetGetNumZones(), "tmp.longstring", TestStr);
+
+	TestStr1 = AuxDataZoneGetItem(TecUtilDataSetGetNumZones(), "tmp.longstring");
+
+	StrsMatch = (TestStr == TestStr1);
+
+	return;
+
 	vector<int> IntVarNums;
 	for (int vi = 1; vi <= TecUtilDataSetGetNumVars(); ++vi){
 		char *TmpCStr;
@@ -11537,7 +11558,7 @@ void CollectGradientBundlesByRegionType(int PVarNum,
 			// condensed basin
 			string CondensedBasinName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinInfo) + " from " + AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinDefiningVariable);
 			string SphereName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName);
-			auto ElemList = SplitStringInt(AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinSphereElements)); // 0-based
+			auto ElemList = RangeStringToIntVector(AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinSphereElements)); // 0-based
 			CondensedBasinNameToSphereName[CondensedBasinName] = SphereName;
 			CondensedBasinNameToSphereElems[CondensedBasinName] = ElemList;
 
@@ -11567,7 +11588,7 @@ void CollectGradientBundlesByRegionType(int PVarNum,
 			// condensed basin
 			string CageName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinName);
 			string SphereName = AuxDataZoneGetItem(zi, CSMAuxData.GBA.SourceNucleusName);
-			auto ElemList = SplitStringInt(AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinSphereElements)); // 0-based
+			auto ElemList = RangeStringToIntVector(AuxDataZoneGetItem(zi, CSMAuxData.GBA.CondensedBasinSphereElements)); // 0-based
 			TopoCageNameToSphereNameToElems[CageName][SphereName] = ElemList;
 		}
 	}
