@@ -743,7 +743,7 @@ Boolean_t LoadVASPData(){
 
 
 			if (TecUtilDataSetCreate("CHGCAR", VarNames, TRUE))
-				IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + "CHGCAR").c_str(), TMx, TMy, TMz, ZoneType_Ordered, VarDataTypes.data());
+				IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.FullVolume + "CHGCAR").c_str(), TMx, TMy, TMz, ZoneType_Ordered, VarDataTypes.data());
 
 			if (IsOk)
 				VolZoneNum = TecUtilDataSetGetNumZones();
@@ -1369,8 +1369,8 @@ int LoadADFTape41ASCIIData(char* FileNameCStr)
 	vector<FieldDataType_e> VarDataTypes;
 	VarDataTypes.resize(T41VarList.size(), FieldDataType_Float);
 
-	if (TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE)){
-		TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, VarDataTypes.data());
+	if (TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE)){
+		TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, VarDataTypes.data());
 	}
 	else{
 		TecUtilDialogErrMsg("Failed to create new data set");
@@ -1482,7 +1482,7 @@ int LoadADFTape41ASCIIData(char* FileNameCStr)
 	vector<AtomColor_s> AtomColorList;
 	PopulateAtomColorList(AtomColorList);
 	for (int GroupNum = 0; GroupNum < AtomGroupList.size(); ++GroupNum){
-		TecUtilDataSetAddZone(AtomGroupList[GroupNum].Name.c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, VarDataTypes.data());
+		TecUtilDataSetAddZone(StringMakeValidZoneName(AtomGroupList[GroupNum].Name).c_str(), AtomGroupList[GroupNum].Count, 1, 1, ZoneType_Ordered, VarDataTypes.data());
 
 		ZoneNum = TecUtilDataSetGetNumZones();
 		FieldData_pa VarRef[3] = {
@@ -2242,7 +2242,7 @@ void LoadADFTape41Data(){
 					VarDataTypes.push_back(FieldDataType_Bit);
 			}
 
-			IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+			IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 		}
 		else{
 			if (!TecUtilDataSetIsAvailable()){
@@ -2254,7 +2254,7 @@ void LoadADFTape41Data(){
 						VarDataTypes.push_back(FieldDataType_Bit);
 				}
 
-				IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+				IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 			}
 			else{
 				EntIndex_t NumVars = TecUtilDataSetGetNumVars();
@@ -2276,7 +2276,7 @@ void LoadADFTape41Data(){
 			}
 		}
 		if (IsOk)
-			IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), MaxI, MaxJ, MaxK, ZoneType_Ordered, VarDataTypes.data());
+			IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.FullVolume + DataSetName).c_str(), MaxI, MaxJ, MaxK, ZoneType_Ordered, VarDataTypes.data());
 		if (IsOk)
 			IsOk = AuxDataZoneSetItem(TecUtilDataSetGetNumZones(), DLZoneType, DLZoneTypeVolumeZone);
 	}
@@ -2802,8 +2802,8 @@ void LoadBANDTape41Data(){
 	vector<FieldDataType_e> VarDataTypes;
 	VarDataTypes.resize(SelectedVarNums.size(), FieldDataType_Float);
 
-	if (IsOk && TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE)){
-		IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), TMx, TMy, TMz, ZoneType_Ordered, VarDataTypes.data());
+	if (IsOk && TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE)){
+		IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.FullVolume + DataSetName).c_str(), TMx, TMy, TMz, ZoneType_Ordered, VarDataTypes.data());
 	}
 
 // 	EntIndex_t ZoneNum;
@@ -3932,7 +3932,7 @@ Boolean_t LoadADFTape21(){
 	for (string & i : XYZVarNames) TecUtilStringListAppendString(VarNames, i.c_str());
 
 	if (IsOk)
-		IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+		IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 
 	TecUtilStringListDealloc(&VarNames);
 
@@ -3990,7 +3990,7 @@ Boolean_t LoadADFTape21(){
 					vector<FieldDataType_e> TypeVec(4, FieldDataType_Bit);
 					TypeVec[3] = KF_TP_Types[VarType - 1];
 
-					IsOk = TecUtilDataSetAddZone((T21Prefix + FullName).c_str(), VarLen, 1, 1, ZoneType_Ordered, TypeVec.data());
+					IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(T21Prefix + FullName).c_str(), VarLen, 1, 1, ZoneType_Ordered, TypeVec.data());
 					ZoneNum = TecUtilDataSetGetNumZones();
 
 					FieldData_pa DataRef = nullptr;
@@ -4137,7 +4137,7 @@ Boolean_t LoadADFTape21(){
 		ZoneSet = TecUtilSetAlloc(TRUE);
 
 		for (AtomGroup_s & A : AtomGroupList){
-			IsOk = TecUtilDataSetAddZone(A.Name.c_str(), A.Count, 1, 1, ZoneType_Ordered, TypeVec.data());
+			IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(A.Name).c_str(), A.Count, 1, 1, ZoneType_Ordered, TypeVec.data());
 			FieldData_pa DataRef;
 			if (IsOk){
 				ZoneNum = TecUtilDataSetGetNumZones();
@@ -4245,7 +4245,7 @@ Boolean_t LoadADFTape21(){
 				}
 			}
 
-			IsOk = TecUtilDataSetAddZone(BondStr.c_str(), NumPtsPerBond, 1, 1, ZoneType_Ordered, TypeVec.data());
+			IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(BondStr).c_str(), NumPtsPerBond, 1, 1, ZoneType_Ordered, TypeVec.data());
 			if (IsOk){
 				ZoneNum = TecUtilDataSetGetNumZones();
 				IsOk = TecUtilSetAddMember(ZoneSet, ZoneNum, TRUE);
@@ -4391,7 +4391,7 @@ Boolean_t LoadADFTape21(){
 					A.Count = A.Positions->size();
 
 					if (A.Count > 0){
-						IsOk = TecUtilDataSetAddZone(A.Name.c_str(), A.Count, 1, 1, ZoneType_Ordered, TypeVec.data());
+						IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(A.Name).c_str(), A.Count, 1, 1, ZoneType_Ordered, TypeVec.data());
 						FieldData_pa DataRef;
 						if (IsOk){
 							ZoneNum = TecUtilDataSetGetNumZones();
@@ -5000,12 +5000,12 @@ void LoadGaussianCubeFiles()
 			if (IsOk){
 				if (ReplaceDataSet){
 					VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
-					IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+					IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 				}
 				else{
 					if (!TecUtilDataSetIsAvailable()){
 						VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
-						IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+						IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 					}
 					else{
 						EntIndex_t NumVars = TecUtilDataSetGetNumVars();
@@ -5027,7 +5027,7 @@ void LoadGaussianCubeFiles()
 						VolZoneNum = ZoneNumByName("Full Volume");
 					}
 					if (VolZoneNum <= 0){
-						IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, VarDataTypes.data());
+						IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, VarDataTypes.data());
 						if (IsOk){
 							VolZoneNum = TecUtilDataSetGetNumZones();
 							IsOk = VolZoneNum > 0;
@@ -5598,12 +5598,12 @@ void LoadFLAPWMultiCHARGEFiles() {
 	if (IsOk){
 		if (ReplaceDataSet){
 			VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
-			IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+			IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 		}
 		else{
 			if (!TecUtilDataSetIsAvailable()){
 				VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
-				IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+				IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 			}
 			else{
 				EntIndex_t NumVars = TecUtilDataSetGetNumVars();
@@ -5621,7 +5621,7 @@ void LoadFLAPWMultiCHARGEFiles() {
 			}
 		}
 		//if (VolZoneNum <= 0) {
-			IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), nx, ny, nz, ZoneType_Ordered, VarDataTypes.data());
+			IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.FullVolume + DataSetName).c_str(), nx, ny, nz, ZoneType_Ordered, VarDataTypes.data());
 			if (IsOk) {
 				VolZoneNum = TecUtilDataSetGetNumZones();
 				IsOk = VolZoneNum > 0;
@@ -6030,12 +6030,12 @@ void LoadFLAPWCHARGEFiles() {
 	if (IsOk) {
 		if (ReplaceDataSet) {
 			VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
-			IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+			IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 		}
 		else {
 			if (!TecUtilDataSetIsAvailable()) {
 				VarDataTypes.resize(VarNameStrs.size(), FieldDataType_Float);
-				IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+				IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 			}
 			else {
 				EntIndex_t NumVars = TecUtilDataSetGetNumVars();
@@ -6053,7 +6053,7 @@ void LoadFLAPWCHARGEFiles() {
 			}
 		}
 		//if (VolZoneNum <= 0) {
-		IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), nx, ny, nz, ZoneType_Ordered, VarDataTypes.data());
+		IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.FullVolume + DataSetName).c_str(), nx, ny, nz, ZoneType_Ordered, VarDataTypes.data());
 		if (IsOk) {
 			VolZoneNum = TecUtilDataSetGetNumZones();
 			IsOk = VolZoneNum > 0;
@@ -6643,11 +6643,11 @@ void LoadTurboMoleCubeFiles()
 			EntIndex_t ZoneNum, VolZoneNum = -1;
 			if (IsOk){
 				if (ReplaceDataSet){
-					IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+					IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 				}
 				else{
 					if (!TecUtilDataSetIsAvailable()){
-						IsOk = TecUtilDataSetCreate(DataSetName.c_str(), VarNames, TRUE);
+						IsOk = TecUtilDataSetCreate(StringMakeValidZoneName(DataSetName).c_str(), VarNames, TRUE);
 					}
 // 					else{
 // 						EntIndex_t NumVars = TecUtilDataSetGetNumVars();
@@ -6669,7 +6669,7 @@ void LoadTurboMoleCubeFiles()
 						VolZoneNum = ZoneNumByName("Full Volume");
 					}
 					if (VolZoneNum <= 0){
-						IsOk = TecUtilDataSetAddZone((CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Float).data());
+						IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.FullVolume + DataSetName).c_str(), IJK[0], IJK[1], IJK[2], ZoneType_Ordered, vector<FieldDataType_e>(TecUtilDataSetGetNumVars(), FieldDataType_Float).data());
 						if (IsOk){
 							VolZoneNum = TecUtilDataSetGetNumZones();
 							IsOk = VolZoneNum > 0;

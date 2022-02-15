@@ -1565,8 +1565,8 @@ EntIndex_t GradPathBase_c::SaveAsOrderedZone(string const & ZoneName,
 		if (IsOk){
 
 			if (VarDataTypes.size() == TecUtilDataSetGetNumVars())
-				IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), GetCount(), 1, 1, ZoneType_Ordered, VarDataTypes.data());
-			else IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), GetCount(), 1, 1, ZoneType_Ordered, nullptr);
+				IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(ZoneName).c_str(), GetCount(), 1, 1, ZoneType_Ordered, VarDataTypes.data());
+			else IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(ZoneName).c_str(), GetCount(), 1, 1, ZoneType_Ordered, nullptr);
 
 			if (IsOk){
 				m_ZoneNum = TecUtilDataSetGetNumZones();

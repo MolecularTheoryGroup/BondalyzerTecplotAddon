@@ -715,7 +715,7 @@ vector<int> CritPoints_c::SaveAsOrderedZone(vector<int> const & XYZVarNum, int R
 // 		DataTypes[i] = TecUtilDataValueGetType(1, i + 1);
 // 	DataTypes[CPTypeVarNum - 1] = FieldDataType_Int16;
 
-	if (!TecUtilDataSetAddZone(CSMZoneName.CriticalPoints.c_str(), NumCPs(), 1, 1, ZoneType_Ordered, DataTypes.data())){
+	if (!TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.CriticalPoints).c_str(), NumCPs(), 1, 1, ZoneType_Ordered, DataTypes.data())){
 		TecUtilDialogErrMsg("Failed to create CP zone");
 		return{ -1 };
 	}
@@ -772,7 +772,7 @@ vector<int> CritPoints_c::SaveAsOrderedZone(vector<int> const & XYZVarNum, int R
 		for (int t = 0; t < 6; ++t){
 			if (NumCPs(t) > 0){
 				// 				DataTypes.push_back(FieldDataType_Int16);
-				if (!TecUtilDataSetAddZone(CSMZoneName.CPType[t].c_str(), NumCPs(t), 1, 1, ZoneType_Ordered, DataTypes.data())){
+				if (!TecUtilDataSetAddZone(StringMakeValidZoneName(CSMZoneName.CPType[t]).c_str(), NumCPs(t), 1, 1, ZoneType_Ordered, DataTypes.data())){
 					TecUtilDialogErrMsg("Failed to create CP type zone");
 					return{ -1 };
 				}

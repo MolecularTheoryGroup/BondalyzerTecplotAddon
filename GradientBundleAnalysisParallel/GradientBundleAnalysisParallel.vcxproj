@@ -301,7 +301,7 @@
       <AdditionalIncludeDirectories>$(TEC_360_2013R1)\Include;$(SolutionDir)MechGenCPP_Sphere_lib\lib\2d_sphere;$(SolutionDir)MechGenCPP_Sphere_lib\lib;$(SolutionDir)..\gsl-1.16;$(SolutionDir)BondalyzerLib;%(AdditionalIncludeDirectories);$(SolutionDir)armadillo\include;$(SolutionDir)..\TP_Toolbox_2013r1;$(SolutionDir)heffnormFromCraig;$(SolutionDir)BondalyzerParallel</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OpenMPSupport>true</OpenMPSupport>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>None</DebugInformationFormat>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>

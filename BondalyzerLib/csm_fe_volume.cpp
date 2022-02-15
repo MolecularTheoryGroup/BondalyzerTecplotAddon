@@ -1038,7 +1038,7 @@ int FESurface_c::SaveAsTriFEZone(vector<int> const & XYZVarNums,
 
 	if (m_RefinedXYZList.size() <= 0) m_RefinedXYZList = m_XYZList;
 
-	IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), m_RefinedXYZList.size(), m_ElemList.size(), 0, ZoneType_FETriangle, nullptr);
+	IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(ZoneName).c_str(), m_RefinedXYZList.size(), m_ElemList.size(), 0, ZoneType_FETriangle, nullptr);
 
 	Set_pa TmpSet = TecUtilSetAlloc(FALSE);
 
@@ -1116,7 +1116,7 @@ int FESurface_c::SaveAsTriFEZone(string const & ZoneName,
 
 // 		IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), m_XYZList.size(), m_ElemList.size(), 0, ZoneType_FETriangle, DataTypes.data());
 		tecplot::toolbox::ArgList Args;
-		Args.appendString(SV_NAME, ZoneName);
+		Args.appendString(SV_NAME, StringMakeValidZoneName(ZoneName));
 		Args.appendInt(SV_ZONETYPE, ZoneType_FETriangle);
 		Args.appendInt(SV_IMAX, m_XYZList.size());
 		Args.appendInt(SV_JMAX, m_ElemList.size());
@@ -3708,7 +3708,7 @@ void GetClosedIsoSurface(int IsoZoneNum, vector<FieldDataPointer_c> const & IsoR
 		 * Make new zone with single connected component
 		 */
 
-		if (!TecUtilDataSetAddZone(string(IsoZoneName + string(": Subzone ") + to_string(SubZoneNum++)).c_str(), NumNewNodes, NewElems.size(), IsoIJK[2], IsoZoneType, nullptr)) {
+		if (!TecUtilDataSetAddZone(StringMakeValidZoneName(IsoZoneName + string(": Subzone ") + to_string(SubZoneNum++)).c_str(), NumNewNodes, NewElems.size(), IsoIJK[2], IsoZoneType, nullptr)) {
 			TecUtilDialogErrMsg("Failed to make new iso zone. Quitting.");
 			return;
 		}

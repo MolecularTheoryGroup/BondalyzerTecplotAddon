@@ -866,7 +866,7 @@ int const DeletePointsFromIOrderedZone(int ZoneNum, vector<int> const & DelPoint
 	TecUtilZoneGetName(ZoneNum, &ZoneName);
 	int NewZoneNum = -1;
 
-	if (IJK[0] - DelPointNums.size() > 0 && TecUtilDataSetAddZone(ZoneName, IJK[0] - DelPointNums.size(), IJK[1], IJK[2], ZoneType_Ordered, FDTypes.data())){
+	if (IJK[0] - DelPointNums.size() > 0 && TecUtilDataSetAddZone(StringMakeValidZoneName(ZoneName).c_str(), IJK[0] - DelPointNums.size(), IJK[1], IJK[2], ZoneType_Ordered, FDTypes.data())){
 		NewZoneNum = TecUtilDataSetGetNumZones();
 		for (int v = 0; v < NumVars; ++v){
 			VarWritePtrs[v].InitializeWritePtr(NewZoneNum, v + 1);
@@ -7684,7 +7684,7 @@ void ConnectCPsReturnUserInfo(bool const GuiSuccess,
 
 			vector<vector<int> > StartEndCPTypeAndOffset(2);
 			string ZoneName = "Line " + MakeStringFromCPNums({ CPNums[i]-1, CPNums[j]-1 }, CPs, StartEndCPTypeAndOffset);
-			Boolean_t IsOk = TecUtilDataSetAddZone(ZoneName.c_str(), NumPts, 1, 1, ZoneType_Ordered, nullptr);
+			Boolean_t IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(ZoneName).c_str(), NumPts, 1, 1, ZoneType_Ordered, nullptr);
 			FieldVecPointer_c XYZPtr;
 			IsOk = IsOk && XYZPtr.InitializeWritePtr(TecUtilDataSetGetNumZones(), XYZVarNums);
 			if (IsOk){
@@ -10802,7 +10802,7 @@ int VolumeZoneMirrorPlane(int ZoneNum, int PlaneNum, vec3 Origin, VolExtentIndex
 	}
 
 	int NewZoneNum = -1;
-	if (TecUtilDataSetAddZone(ZoneName.c_str(), NewIJK[0], NewIJK[1], NewIJK[2], ZoneType_Ordered, VarTypes.data())){
+	if (TecUtilDataSetAddZone(StringMakeValidZoneName(ZoneName).c_str(), NewIJK[0], NewIJK[1], NewIJK[2], ZoneType_Ordered, VarTypes.data())){
 		NewZoneNum = TecUtilDataSetGetNumZones();
 	}
 	else{
@@ -11059,7 +11059,7 @@ void TranslationalCopyReturnUserInfo(bool const GuiSuccess,
 	}
 
 	int NewZoneNum = -1;
-	if (TecUtilDataSetAddZone(ZoneName.c_str(), TotIJK[0], TotIJK[1], TotIJK[2], ZoneType_Ordered, VarTypes.data())) {
+	if (TecUtilDataSetAddZone(StringMakeValidZoneName(ZoneName).c_str(), TotIJK[0], TotIJK[1], TotIJK[2], ZoneType_Ordered, VarTypes.data())) {
 		NewZoneNum = TecUtilDataSetGetNumZones();
 	}
 	else {

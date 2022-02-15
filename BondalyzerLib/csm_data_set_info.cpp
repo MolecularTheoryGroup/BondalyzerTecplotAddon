@@ -315,6 +315,11 @@ string AuxDataMakeStringValidName(string Str){
 	return Str;
 }
 
+string StringMakeValidZoneName(string Str){
+	Str = StringReplaceSubString(Str, ",", "-");
+	return Str;
+}
+
 /* 
  * Aux data values are truncated at 32k chars
  */
@@ -1036,7 +1041,7 @@ int SaveVec3VecAsScatterZone(vector<vec3> const & VecVec,
 	int ZoneNum = 0;
 	if (IsOk){
 
-		TecUtilDataSetAddZone(ZoneName.c_str(), VecVec.size(), 1, 1, ZoneType_Ordered, nullptr);
+		TecUtilDataSetAddZone(StringMakeValidZoneName(ZoneName).c_str(), VecVec.size(), 1, 1, ZoneType_Ordered, nullptr);
 // 		for (int i = 0; i < VecVec.size(); ++i){
 // 			for (int dir = 0; dir < 3; ++dir){
 // 				TecUtilDataValueSetByZoneVar(TecUtilDataSetGetNumZones(), XYZVarNums[dir], i + 1, VecVec[i][dir]);
@@ -1087,7 +1092,7 @@ Boolean_t SaveTetVec3VecAsFEZone(vector<vec3> const & Verts,
 	Boolean_t IsOk = Verts.size() == 4;
 	if (IsOk){
 
-		TecUtilDataSetAddZone(ZoneName.c_str(), Verts.size(), 1, 1, ZoneType_FETetra, nullptr);
+		TecUtilDataSetAddZone(StringMakeValidZoneName(ZoneName).c_str(), Verts.size(), 1, 1, ZoneType_FETetra, nullptr);
 		// 		for (int i = 0; i < VecVec.size(); ++i){
 		// 			for (int dir = 0; dir < 3; ++dir){
 		// 				TecUtilDataValueSetByZoneVar(TecUtilDataSetGetNumZones(), XYZVarNums[dir], i + 1, VecVec[i][dir]);

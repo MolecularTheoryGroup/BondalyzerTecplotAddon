@@ -365,7 +365,7 @@ Boolean_t CreateAtomZonesFromAtomGroupList(vector<AtomGroup_s> const & AtomGroup
 	Boolean_t IsOk = (AtomGroupList.size() > 0 && XYZVarNames.size() == 3);
 
 	for (int GroupNum = 0; GroupNum < AtomGroupList.size() && IsOk; ++GroupNum){
-		IsOk = TecUtilDataSetAddZone(string(NuclearPositionsZoneNameBase + AtomGroupList[GroupNum].Name).c_str(), AtomGroupList[GroupNum].Positions[0].size(), 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : nullptr);
+		IsOk = TecUtilDataSetAddZone(StringMakeValidZoneName(NuclearPositionsZoneNameBase + AtomGroupList[GroupNum].Name).c_str(), AtomGroupList[GroupNum].Positions[0].size(), 1, 1, ZoneType_Ordered, VarDataTypes.size() > 0 ? VarDataTypes.data() : nullptr);
 
 		EntIndex_t ZoneNum;
 

@@ -473,6 +473,8 @@ string StringReplaceSubString(string const & InStr, string const & OldStr, strin
 string StringRemoveSubString(string const & InString, string const & SubString);
 string DoubleToString(double const & Val, int Precision = 2);
 
+string StringMakeValidZoneName(string Str);
+
 void AuxDataCopy(int SourceNum, int DestNum, bool IsZone);
 
 Boolean_t AuxDataZoneHasItem(int ZoneNum, string const & AuxDataName);
