@@ -719,6 +719,34 @@ static void STDCALL FindRingSurfacesCallback(void)
 	TecUtilLockFinish(AddOnID);
 }
 
+static void STDCALL VolZoneReverseIndexCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		VolZoneReverseIndexGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
+static void STDCALL DefineBlankingRadiusCallback(void)
+{
+	TecUtilLockStart(AddOnID);
+	if (TecUtilDataSetIsAvailable())
+	{
+		DefineBlankingRadiusGetUserInfo();
+	}
+	else
+	{
+		TecUtilDialogErrMsg("No data set in current frame.");
+	}
+	TecUtilLockFinish(AddOnID);
+}
+
 static void STDCALL DrawEigenvectorArrowsCallback(void)
 {
 	TecUtilLockStart(AddOnID);
@@ -890,6 +918,16 @@ EXPORTFROMADDON void STDCALL InitTecAddOn(void)
 		string("Export gradient bundle integration data").c_str(),
 		'\0',
 		ExportGBADataCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Define blanking radius").c_str(),
+		'\0',
+		DefineBlankingRadiusCallback);
+
+	TecUtilMenuAddOption("MTG_Utilities",
+		string("Flip point index for zone").c_str(),
+		'\0',
+		VolZoneReverseIndexCallback);
 
 	TecUtilMenuAddOption("MTG_Utilities",
 		string("Subdivide sphere zones").c_str(),

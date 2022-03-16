@@ -1318,14 +1318,18 @@ Boolean_t FindCritPoints(int VolZoneNum,
 		if (UserQuit)
 			break;
 
+
+
 		VolCPs += TmpCPs;
 
 		VolCPs.RemoveSpuriousCPs(Spacing);
 
-		if (NumCPs == VolCPs.NumCPs())
+		if (NumCPs == VolCPs.NumCPs()) {
 			NumMatch++;
-		else
+		}
+		else {
 			NumMatch = 0;
+		}
 
 		NumCPs = VolCPs.NumCPs();
 
@@ -10754,6 +10758,51 @@ void GradientPathToolGetUserInfo(){
 	CSMGui("Gradient path tool", Fields, GradientPathToolReturnUserInfo, AddOnID);
 }
 
+// flip the index order of the specified zone for all points (swap each variable)
+void VolZoneReverseIndex(int ZoneNum) {
+	REQUIRE(ZoneNum >= 1 && ZoneNum <= TecUtilDataSetGetNumZones());
+
+	TecUtilLockStart(AddOnID);
+	TecUtilPleaseWait("Working...", TRUE);
+
+	int NumVars = TecUtilDataSetGetNumVars();
+	for (int vi = 1; vi <= NumVars; ++vi) {
+		FieldDataPointer_c Ptr;
+		TecUtilDataLoadBegin();
+		Ptr.InitializeWritePtr(ZoneNum, vi);
+		for (unsigned int i = 0; i < Ptr.Size() / 2; ++i) {
+			auto TmpVal = Ptr[i];
+			Ptr.Write(i, Ptr[-(i + 1)]);
+			Ptr.Write(-(i + 1), TmpVal);
+		}
+		Ptr.Close();
+		TecUtilDataLoadEnd();
+	}
+
+	TecUtilPleaseWait("Working...", FALSE);
+	TecUtilLockFinish(AddOnID);
+}
+
+// flip the index order of the specified zone for all points (swap each variable)
+void VolZoneReverseIndexReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields)
+{
+	if (!GuiSuccess) return;
+
+	int fNum = 0;
+	int ZoneNum = Fields[fNum++].GetReturnInt();
+
+	VolZoneReverseIndex(ZoneNum);
+}
+
+void VolZoneReverseIndexGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_ZoneSelect, "Zones to flip", "Full Volume")
+	};
+	CSMGui("Flip point index", Fields, VolZoneReverseIndexReturnUserInfo, AddOnID);
+}
+
 /*
  *	Duplicates an IJK-ordered volume zone representing a
  *	rectilinear volume by mirroring it across its `PlaneNum`th basis vector
@@ -10779,7 +10828,7 @@ int VolumeZoneMirrorPlane(int ZoneNum, int PlaneNum, vec3 Origin, VolExtentIndex
 	auto NewIJK = VolInfo.MaxIJK, IJK = VolInfo.MaxIJK;
 	vector<int> Offset = { 0,0,0 };
 	NewIJK[PlaneNum] *= 2;
-	if (abs(OriginFraction[PlaneNum]) < 1e-5){
+	if (abs(VolInfo.XYZ_to_Fractional(VolInfo.MinXYZ)[PlaneNum] - OriginFraction[PlaneNum]) < 1e-5){
 		NewIJK[PlaneNum] -= 1;
 		Offset[PlaneNum]++;
 	}
@@ -10927,12 +10976,23 @@ void SymmetryMirrorReturnUserInfo(bool const GuiSuccess,
 	CSMGUILock();
 
 	VolExtentIndexWeights_s VolInfo;
+
+	bool WasFlipped = false;
+
 	for (int i = 0; i < 3; ++i) {
 		if (MirrorXYZ[i]) {
 			GetVolInfo(ZoneNum, XYZVarNums, FALSE, VolInfo);
+			if (i == 0 && DistSqr(Origin, VolInfo.MaxXYZ) < DistSqr(Origin, VolInfo.MinXYZ)){
+				VolZoneReverseIndex(ZoneNum);
+				WasFlipped = true;
+			}
 			DeleteZones += ZoneNum;
 			ZoneNum = VolumeZoneMirrorPlane(ZoneNum, i, Origin, VolInfo, XYZVarNums);
 		}
+	}
+	if (WasFlipped){
+		// unflip
+		VolZoneReverseIndex(ZoneNum);
 	}
 // 	GetVolInfo(ZoneNum, XYZVarNums, FALSE, VolInfo);
 // 	ZoneNum = VolumeZoneMirrorPlane(ZoneNum, 1, Origin, VolInfo, XYZVarNums);
@@ -13041,3 +13101,126 @@ void FindContourCurvaturePointsGetUserInfo() {
 
 	CSMGui("Find contour curvature max/min/inflection points", Fields, FindContourCurvaturePointsReturnUserInfo, AddOnID);
 }
+
+void DefineBlankingRadiusReturnUserInfo(bool const GuiSuccess,
+	vector<GuiField_c> const & Fields,
+	vector<GuiField_c> const PassthroughFields) {
+	if (!GuiSuccess) return;
+
+
+	int fNum = 0;
+	vector<int> XYZVarNums(3);
+	for (int i = 0; i < 3; ++i){
+		XYZVarNums[i] = Fields[fNum].GetReturnInt() + i;
+	}
+	fNum++;
+	bool UsePoints = Fields[fNum++].GetReturnBool();
+	vector<int> CPListNums = Fields[fNum].GetReturnIntVec();
+	vector<string> CPListNames = Fields[fNum].GetReturnStringVec();
+	int ZoneNum = Fields[fNum++].GetReturnInt();
+	bool UseZones = Fields[fNum++].GetReturnBool();
+	vector<int> ZoneNums = Fields[fNum++].GetReturnIntVec();
+	string VarName = Fields[fNum++].GetReturnString();
+
+	if (!UsePoints && !UseZones && !CPListNums.empty()){
+		UsePoints = true;
+	}
+
+	if (!UsePoints && !UseZones && !ZoneNums.empty()) {
+		UseZones = true;
+	}
+
+	if (!UsePoints && !UseZones) {
+		TecUtilDialogMessageBox("Please check a box to specify use of specific points and/or whole zones.", MessageBoxType_Warning);
+		return;
+	}
+
+	TecUtilLockStart(AddOnID);
+	TecUtilPleaseWait("Working...", TRUE);
+
+	int NumZones = TecUtilDataSetGetNumZones();
+
+	// Create new variable
+	TecUtilDataSetAddVar(VarName.c_str(), vector<FieldDataType_e>(NumZones, FieldDataType_Float).data());
+	int BlankVarNum = TecUtilDataSetGetNumVars();
+
+	// Initialize write pointers for all zones
+	TecUtilDataLoadBegin();
+
+	vector<FieldVecPointer_c> XYZPtrs(NumZones);
+	for (int zi = 1; zi <= NumZones; ++zi){
+		XYZPtrs[zi-1].InitializeReadPtr(zi, XYZVarNums);
+	}
+
+	// Accumulate list of points to check to compute blanking variable
+
+	vector<vec3> Points;
+
+	if (UsePoints){
+		Points.reserve(Points.size() + CPListNums.size());
+		for (int const & iCP : CPListNums){
+			Points.push_back(XYZPtrs[ZoneNum][iCP-1]);
+		}
+	}
+	if (UseZones){
+		for (int iZone : ZoneNums){
+			iZone--;
+			Points.reserve(Points.size() + XYZPtrs[iZone].Size());
+			for (int i = 0; i < XYZPtrs[iZone].Size(); ++i) {
+				Points.push_back(XYZPtrs[iZone][i]);
+			}
+		}
+	}
+
+	vector<FieldDataPointer_c> WritePtrs(NumZones);
+	int unsigned long TotalNumPoints = 0, CurPoint = 0;
+	for (int zi = 1; zi <= NumZones; ++zi){
+		WritePtrs[zi-1].InitializeWritePtr(zi, BlankVarNum);
+		TotalNumPoints += WritePtrs[zi-1].Size();
+	}
+
+	TotalNumPoints /= omp_get_num_procs();
+
+	TecUtilPleaseWait("", FALSE);
+
+	// Now loop over every point of every zone to compute it's distance from the selected points, writing as we go
+	StatusLaunch("Computing " + VarName, AddOnID, TRUE, TRUE);
+	for (int zi = 0; zi < XYZPtrs.size(); ++zi) {
+		auto const & ZoneXYZ = XYZPtrs[zi];
+		auto & WritePtr = WritePtrs[zi];
+		int NumPoints = ZoneXYZ.Size();
+		vector<float> BlankVals(NumPoints);
+#pragma omp parallel for
+		for (int i = 0; i < NumPoints; ++i){
+			if (omp_get_thread_num() == 0) {
+				StatusUpdate(++CurPoint, TotalNumPoints, "Computing " + VarName, AddOnID, high_resolution_clock::time_point(), false);
+			}
+			WritePtr.Write(i, PtMinDistFromOtherPts(ZoneXYZ[i], Points));
+		}
+	}
+
+	for (auto & p : WritePtrs){
+		p.Close();
+	}
+
+	StatusDrop(AddOnID);
+
+	TecUtilDataLoadEnd();
+
+	TecUtilDialogMessageBox("Finished!", MessageBoxType_Information);
+
+	TecUtilLockFinish(AddOnID);
+}
+
+void DefineBlankingRadiusGetUserInfo() {
+	vector<GuiField_c> Fields = {
+		GuiField_c(Gui_VarSelect, "X variable", "X"),
+		GuiField_c(Gui_Toggle, "Use specific critical points", "0"),
+		GuiField_c(Gui_ZonePointSelectMulti, "Critical point(s)", CSMZoneName.CriticalPoints),
+		GuiField_c(Gui_Toggle, "Use all points of selected zones", "0"),
+		GuiField_c(Gui_ZoneSelectMulti, "Zones", ""),
+		GuiField_c(Gui_String, "Name of output variable", "Blanking variable")
+	};
+	CSMGui("Define blanking radius from points/zones", Fields, DefineBlankingRadiusReturnUserInfo, AddOnID);
+}
+

@@ -674,7 +674,6 @@ void CSMGuiPointSelectOptionCallback(const int* Val){
 
 	TecUtilLockStart(CSMGuiAddOnID);
 	CSMGuiPointSelectZoneNum = *Val;
-	CSMGUIDeleteCPLabels();
 
 	int IJK[3];
 	TecUtilZoneGetIJK(CSMGuiPointSelectZoneNum, &IJK[0], &IJK[1], &IJK[2]);

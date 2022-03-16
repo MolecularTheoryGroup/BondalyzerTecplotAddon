@@ -2932,7 +2932,7 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 		double tInit = 0.0;
 		double tFinal = DBL_MAX;
 
-		double h = 1e-12;
+		double h = 1e-6;
 
 		double y[3] = { m_StartPoint[0], m_StartPoint[1], m_StartPoint[2] };
 
@@ -3019,12 +3019,14 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 
 			if (Status == GSL_SUCCESS || Status == GSL_EDOM){
 				PtI = y;
+				// shorten too-large of steps
 				if (DistSqr(PtI, PtIm1) > MaxStepSizeSqr){
 					PtI = PtIm1 + normalise(PtI - PtIm1) * GP_MaxStepSize;
 					for (int i = 0; i < 3; ++i){
 						y[i] = PtI[i];
 					}
 				}
+
 
 				if (m_Surface != nullptr && m_Surface->IsMade()) {
 					SurfProjectionIter++;
@@ -3037,8 +3039,33 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 						for (int i = 0; i < 3; ++i) y[i] = PtI[i];
 					}
 				}
-				
+
 				PtI = y;
+
+				// shorten steps that result in the function moving in the wrong direction,
+				// and lower the stepsize h.
+				{
+					double Rho = this->m_ODE_Data.RhoPtr.At(PtI, this->m_ODE_Data.VolZoneInfo);
+					double DeltaRho = Rho - m_RhoList.back();
+					bool ShortenStep = (Direction == StreamDir_Forward && DeltaRho < 0.0)
+						|| (Direction == StreamDir_Reverse && DeltaRho > 0.0);
+					double PointDist = Distance(PtI, PtIm1);
+					while (ShortenStep && PointDist > 1e-7){
+						// cut step in half
+						if (h > 1e-10){
+							h *= 0.5;
+						}
+						PtI = (PtIm1 + PtI) * 0.5;
+						for (int i = 0; i < 3; ++i) y[i] = PtI[i];
+						Rho = this->m_ODE_Data.RhoPtr.At(PtI, this->m_ODE_Data.VolZoneInfo);
+						DeltaRho = Rho - m_RhoList.back();
+						ShortenStep = (Direction == StreamDir_Forward && DeltaRho < 0.0)
+							|| (Direction == StreamDir_Reverse && DeltaRho > 0.0);
+						PointDist = Distance(PtI, PtIm1);
+						continue;
+					}
+				}
+				
 
 				if (m_GPType != GPType_Classic && m_GPType != GPType_Invalid){
 					/*

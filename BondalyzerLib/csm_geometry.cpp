@@ -4139,8 +4139,22 @@ vec3 ClosestPointOnPathToOtherPoint(vector<vec3> const & Path, vec3 const & Chec
 					t = 0.0;
 		} while (t > 1.0 || t < 0.0);
 
+		// return closest point projected along closest segment
 		ClosestPt = Path[PtNum] + AB * t;
 	}
 
 	return ClosestPt;
+}
+
+
+double PtMinDistFromOtherPts(vec3 const & Pt, vector<vec3> const & OtherPts){
+	double MinDistSqr = OtherPts.empty() ? -1 : DBL_MAX;
+	double TmpDistSqr;
+	for (auto const & OtherPt : OtherPts){
+		TmpDistSqr = DistSqr(Pt, OtherPt);
+		if (TmpDistSqr < MinDistSqr){
+			MinDistSqr = TmpDistSqr;
+		}
+	}
+	return sqrt(MinDistSqr);
 }

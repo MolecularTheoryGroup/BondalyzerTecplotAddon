@@ -148,3 +148,5 @@ double PointLineDist(tpcsm::Vec3 const & p, tpcsm::Vec3 const & a, tpcsm::Vec3 c
 double PointLineSegDist(vec3 const & p, vec3 const & a, vec3 const & b);
 
 vec3 ClosestPointOnPathToOtherPoint(vector<vec3> const & Path, vec3 const & CheckPt, int & PtNum);
+
+double PtMinDistFromOtherPts(vec3 const & Pt, vector<vec3> const & OtherPts);

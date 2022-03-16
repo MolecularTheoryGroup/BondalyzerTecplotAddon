@@ -560,6 +560,7 @@ void NewMainFunction() {
 			int junkZoneNum;
 			CPPos = GetCoordsFromListItem(CPNums[SelectCPNum], MLSelCPs_MLST_T1_1, &CPString, &CPName, &CPNum, &junkZoneNum, &IsCP, &NumCPs);
 			NucleusName = GetNucleusNameForCP(CPPos);
+			NucleusName = NucleusName.empty() ? CPString : NucleusName;
 			CPType = CPType_Nuclear;
 			CPNum = NuclearNameToCPNum[CPString];
 			CPPos = CPs.GetXYZ(CPNum);
@@ -2238,7 +2239,7 @@ void NewMainFunction() {
 			{
 				bool DoIter = true;
 				int Iter2 = 0;
-				while (DoIter && Iter2 < 10) {
+				while (DoIter && Iter2 < 100) {
 					DoIter = false;
 					Iter2++;
 					std::map<Edge, vector<int>> EdgeToTriMap;
@@ -2366,7 +2367,7 @@ void NewMainFunction() {
  
  			bool DoIter = true;
 			int Iter2 = 0;
-		 	while (DoIter && Iter2 < 4){
+		 	while (DoIter && Iter2 < 100){
 		 		DoIter = false;
 				Iter2++;
 		
@@ -2806,7 +2807,7 @@ void NewMainFunction() {
 			}
 
 			// Now move neighbor nodes of constrained edges to make the edge elements perfect
-			if (!DoOuterIter && IterIntSurfTri < 4){// only run when other methods have converged
+			if (!DoOuterIter && IterIntSurfTri < 100){// only run when other methods have converged
 				IterIntSurfTri++;
 				DoOuterIter = true;
 				Iter1--;
@@ -2975,7 +2976,7 @@ void NewMainFunction() {
 			{
 			bool DoIter = true;
 			int Iter2 = 0;
-			while (DoIter && Iter2 < 10) {
+			while (DoIter && Iter2 < 100) {
 				DoIter = false;
 				Iter2++;
 				std::map<Edge, vector<int>> EdgeToTriMap;

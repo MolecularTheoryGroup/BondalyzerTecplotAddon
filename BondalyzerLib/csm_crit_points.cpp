@@ -471,6 +471,7 @@ void CritPoints_c::RemoveSpuriousCPs(double const & CheckDist){
 	// with the average (midpoint) values of the duplicates.
 	// 
 	// Do one pass to fix the spurious groups within each CP type
+	m_TotNumCPs = 0;
 	for (int t = 0; t < 6; ++t){
 		if (m_XYZ[t].size() > 0){
 			// First do check within same type, replacing spurious 
@@ -509,26 +510,40 @@ void CritPoints_c::RemoveSpuriousCPs(double const & CheckDist){
 			vector<double> NewRho;
 			for (int i = 0; i < m_XYZ[t].size(); ++i){
 				if (!IsSpurious[i]){
-					NewXYZ.push_back(zeros(3));
-					if (i < m_PrincDir[t].size()) NewPD.push_back(zeros(3));
-					if (i < m_EigVals[t].size()) NewEigVals.push_back(zeros(3));
-					if (i < m_EigVecs[t].size()) NewEigVecs.push_back(zeros(3, 3));
-					if (i < m_Rho[t].size()) NewRho.push_back(0);
-
-					for (int & j : DuplicateNeighbors[i]){
-						NewXYZ.back() += m_XYZ[t][j];
-						if (j < m_PrincDir[t].size()) NewPD.back() += m_PrincDir[t][j];
-						if (j < m_EigVals[t].size()) NewEigVals.back() += m_EigVals[t][j];
-						if (j < m_EigVecs[t].size()) NewEigVecs.back() += m_EigVecs[t][j];
-						if (j < m_Rho[t].size()) NewRho.back() += m_Rho[t][j];
+					if (t == CPTypeNum_Nuclear || t == CPTypeNum_Cage) {
+						vec RhoVals(DuplicateNeighbors[i].size());
+						for (int j = 0; j < DuplicateNeighbors[i].size(); ++j){
+							RhoVals[j] = m_Rho[t][DuplicateNeighbors[i][j]];
+						}
+						int MinMaxIndex = (t == CPTypeNum_Nuclear ? RhoVals.index_max() : RhoVals.index_min());
+						NewXYZ.push_back(m_XYZ[t][DuplicateNeighbors[i][MinMaxIndex]]);
+						if (i < m_PrincDir[t].size()) NewPD.push_back(m_PrincDir[t][DuplicateNeighbors[i][MinMaxIndex]]);
+						if (i < m_EigVals[t].size()) NewEigVals.push_back(m_EigVals[t][DuplicateNeighbors[i][MinMaxIndex]]);
+						if (i < m_EigVecs[t].size()) NewEigVecs.push_back(m_EigVecs[t][DuplicateNeighbors[i][MinMaxIndex]]);
+						if (i < m_Rho[t].size()) NewRho.push_back(m_Rho[t][DuplicateNeighbors[i][MinMaxIndex]]);
 					}
+					else {
+						NewXYZ.push_back(zeros(3));
+						if (i < m_PrincDir[t].size()) NewPD.push_back(zeros(3));
+						if (i < m_EigVals[t].size()) NewEigVals.push_back(zeros(3));
+						if (i < m_EigVecs[t].size()) NewEigVecs.push_back(zeros(3, 3));
+						if (i < m_Rho[t].size()) NewRho.push_back(0);
 
-					if (DuplicateNeighbors[i].size() > 1){
-						NewXYZ.back() /= (double)DuplicateNeighbors[i].size();
-						if (!NewPD.empty()) NewPD.back() /= (double)DuplicateNeighbors[i].size();
-						if (!NewEigVals.empty()) NewEigVals.back() /= (double)DuplicateNeighbors[i].size();
-						if (!NewEigVecs.empty()) NewEigVecs.back() /= (double)DuplicateNeighbors[i].size();
-						if (!NewRho.empty()) NewRho.back() /= (double)DuplicateNeighbors[i].size();
+						for (int & j : DuplicateNeighbors[i]) {
+							NewXYZ.back() += m_XYZ[t][j];
+							if (j < m_PrincDir[t].size()) NewPD.back() += m_PrincDir[t][j];
+							if (j < m_EigVals[t].size()) NewEigVals.back() += m_EigVals[t][j];
+							if (j < m_EigVecs[t].size()) NewEigVecs.back() += m_EigVecs[t][j];
+							if (j < m_Rho[t].size()) NewRho.back() += m_Rho[t][j];
+						}
+
+						if (DuplicateNeighbors[i].size() > 1) {
+							NewXYZ.back() /= (double)DuplicateNeighbors[i].size();
+							if (!NewPD.empty()) NewPD.back() /= (double)DuplicateNeighbors[i].size();
+							if (!NewEigVals.empty()) NewEigVals.back() /= (double)DuplicateNeighbors[i].size();
+							if (!NewEigVecs.empty()) NewEigVecs.back() /= (double)DuplicateNeighbors[i].size();
+							if (!NewRho.empty()) NewRho.back() /= (double)DuplicateNeighbors[i].size();
+						}
 					}
 				}
 			}
@@ -552,10 +567,12 @@ void CritPoints_c::RemoveSpuriousCPs(double const & CheckDist){
 	vector<vector<bool> > IsSpurious(6);
 	for (int t = 0; t < 6; ++t) IsSpurious[t].resize(m_XYZ[t].size(), false);
 
-	for (int ti = 0; ti < 6; ++ti){
+	vector<int> TypeList = { 0,3,1,2,4,5 };
+	for (int tii = 0; tii < 6; ++tii) {
+		int ti = TypeList[tii];
 		if (!m_XYZ[ti].empty()){
-			for (int tj = ti + 1; tj < 6; ++tj){
-
+			for (int tjj = tii + 1; tjj < 6; ++tjj){
+				int tj = TypeList[tjj];
 				for (int i = 0; i < m_XYZ[ti].size(); ++i){
 					if (!IsSpurious[ti][i]){
 						for (int j = 0; j < m_XYZ[tj].size(); ++j){
@@ -1782,13 +1799,81 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 		return IsOk;
 	}
 
-	int NumThreadPts = NumPtsXYZ[2];
-#ifndef _DEBUG
-	NumThreadPts /= NumThreads;
-#endif
-	int ThreadPtNum = 0;
+	double GPSpacingFactor = 20.;
+	double GPSpacing = CellSpacing * GPSpacingFactor;
+	vector<int> NumGPs(3);
+	int GPStepMultiplier = 10;
+	unsigned int TotNumPts = 0;
+	int TotNumGPs = 1;
+	for (int i = 0; i < 3; ++i){
+		NumGPs[i] = VolInfo.BasisExtent[0] / GPSpacing;
+		TotNumGPs *= NumGPs[i];
+	}
+	TotNumPts += TotNumGPs * GPStepMultiplier;
 
-	StatusLaunch((StatusStr + " (Loading data...)").c_str(), VolInfo.AddOnID, TRUE);
+
+	int PtNum = 0;
+
+	StatusLaunch((StatusStr + " (Loading data...)").c_str(), VolInfo.AddOnID);
+
+	/*
+	 * First do search using gradient paths to locate local min and max cps
+	 */
+	mat33 GPLatticeVector = VolInfo.BasisNormalized * GPSpacing;
+#pragma omp parallel for schedule(dynamic)
+	for (int ind = 0; ind < TotNumGPs; ++ind) {
+		int ThreadNum = omp_get_thread_num(); 
+		if (ThreadNum == 0 && !StatusUpdate(PtNum, TotNumPts, StatusStr, VolInfo.AddOnID, high_resolution_clock::now(), false)) {
+			IsOk = FALSE;
+#pragma omp flush (IsOk)
+		}
+#pragma omp flush (IsOk)
+		PtNum += GPStepMultiplier;
+		auto ijk = IJKFromIndex(ind, NumGPs);
+		vec3 iXYZ = { (double)ijk[0] - 0.5, (double)ijk[1] - 0.5, (double)ijk[2] - 0.5 };
+		vec3 StartPtXYZ = VolInfo.MinXYZ + GPLatticeVector * iXYZ;
+		GradPath_c GP(StartPtXYZ,
+			StreamDir_Both,
+			100,
+			GPType_Classic,
+			GPTerminate_AtBoundary,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			*RootParams[ThreadNum].VolInfo,
+			*RootParams[ThreadNum].HessPtrs,
+			*RootParams[ThreadNum].GradPtrs,
+			*RootParams[ThreadNum].RhoPtr);
+
+		GP.Seed(false);
+		if (GP.IsMade()) {
+			for (int s = 0; s < 2; ++s) {
+				double NewRho = GP.RhoAt(s == 0 ? -1 : 0);
+				vec3 CompPt = GP[s == 0 ? -1 : 0];
+
+				vec3 EigVals, PrincDir;
+				mat33 EigVecs;
+				CalcEigenSystemForPoint(CompPt,
+					EigVals,
+					EigVecs,
+					RootParams[ThreadNum]);
+
+				char Type = 0;
+				for (int i = 0; i < 3; ++i) {
+					if (EigVals[i] > 0)
+						Type++;
+					else
+						Type--;
+				}
+				bool IsMinMax = (s == 0 ? Type == CPType_Nuclear : Type == CPType_Cage);
+				if (IsMinMax) {
+					PrincDir = EigVecs.row(Type == CPType_Nuclear ? 0 : 2).t();
+					ThreadCPs[ThreadNum].AddPoint(NewRho, CompPt, PrincDir, Type);
+				}
+			}
+		}
+	}
 
 	mat33 LatticeVector = VolInfo.BasisNormalized * CellSpacing;
 // 	mat33 LatticeInverse = VolInfo.BasisNormalized * CellSpacing;
@@ -1815,11 +1900,12 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 #endif
 	for (int zi = StartPt[2]; zi < EndPt[2]; ++zi){
 		int ThreadNum = omp_get_thread_num();
-		if (ThreadNum == 0 && !StatusUpdate(ThreadPtNum++, NumThreadPts, StatusStr, VolInfo.AddOnID)){
+		if (ThreadNum == 0 && !StatusUpdate(PtNum, TotNumPts, StatusStr, VolInfo.AddOnID, high_resolution_clock::now(), false)){
 			IsOk = FALSE;
 #pragma omp flush (IsOk)
 		}
 #pragma omp flush (IsOk)
+		PtNum++;
 		// 		CellMinXYZ[ThreadNum][2] = VolInfo.MinXYZ[2] + static_cast<double>(zi)* CellSpacing;
 		// 		if (zi < NumPtsXYZ[2] - 1) CellMaxXYZ[ThreadNum][2] = CellMinXYZ[ThreadNum][2] + CellSpacing;
 		// 		else CellMaxXYZ[ThreadNum][2] = VolInfo.MaxXYZ[2];
@@ -1851,174 +1937,143 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 				}
 
 				/*
-				*	Check for local Min/Max
+				*	Check for local Max
 				*/
- 				bool IsMaxMin = false;
+ 				bool IsMax = false;
   				vector<double> Signs = { 1, -1 };
   				// 				double CellRho = RhoPtr.At(CellMinXYZ[ThreadNum], *RootParams[ThreadNum].VolInfo);
   				double CellRho = RhoVals(xi, yi, zi);
-  				for (int s = 0; s < 2; ++s){
-  					IsMaxMin = true;
-  					vec3 CompPt;
-  					for (int xj = xi - 1; xj <= xi + 1 && IsMaxMin; ++xj){
-  						int xk = xj;
-  						if (xk < 0){
-  							if (VolInfo.IsPeriodic) xk = NumPtsXYZ[0] - 1;
+  				IsMax = true;
+  				vec3 CompPt;
+  				for (int xj = xi - 1; xj <= xi + 1 && IsMax; ++xj){
+  					int xk = xj;
+  					if (xk < 0){
+  						if (VolInfo.IsPeriodic) xk = NumPtsXYZ[0] - 1;
+  						else continue;
+  					}
+  					else if (xk >= NumPtsXYZ[0]){
+  						if (VolInfo.IsPeriodic) xk = 0;
+  						else continue;
+  					}
+  					for (int yj = yi - 1; yj <= yi + 1 && IsMax; ++yj){
+  						int yk = yj;
+  						if (yk < 0){
+  							if (VolInfo.IsPeriodic) yk = NumPtsXYZ[1] - 1;
   							else continue;
   						}
-  						else if (xk >= NumPtsXYZ[0]){
-  							if (VolInfo.IsPeriodic) xk = 0;
+  						else if (yk >= NumPtsXYZ[1]){
+  							if (VolInfo.IsPeriodic) yk = 0;
   							else continue;
   						}
-  						for (int yj = yi - 1; yj <= yi + 1 && IsMaxMin; ++yj){
-  							int yk = yj;
-  							if (yk < 0){
-  								if (VolInfo.IsPeriodic) yk = NumPtsXYZ[1] - 1;
+  						for (int zj = zi - 1; zj <= zi + 1 && IsMax; ++zj){
+  							int zk = zj;
+  							if (zk < 0){
+  								if (VolInfo.IsPeriodic) zk = NumPtsXYZ[2] - 1;
   								else continue;
   							}
-  							else if (yk >= NumPtsXYZ[1]){
-  								if (VolInfo.IsPeriodic) yk = 0;
+  							else if (zk >= NumPtsXYZ[2]){
+  								if (VolInfo.IsPeriodic) zk = 0;
   								else continue;
   							}
-  							for (int zj = zi - 1; zj <= zi + 1 && IsMaxMin; ++zj){
-  								int zk = zj;
-  								if (zk < 0){
-  									if (VolInfo.IsPeriodic) zk = NumPtsXYZ[2] - 1;
-  									else continue;
-  								}
-  								else if (zk >= NumPtsXYZ[2]){
-  									if (VolInfo.IsPeriodic) zk = 0;
-  									else continue;
-  								}
-  								if (xi != xk || yi != yk || zi != zk){
-  									// 									iXYZ << xj << yj << zj;
-  									// 									CompPt = VolInfo.MinXYZ + LatticeVector * iXYZ;
-  									// 									double CompVal = RhoPtr.At(CompPt, *RootParams[ThreadNum].VolInfo);
-  									double CompVal = RhoVals(xk, yk, zk);
-  									IsMaxMin = IsMaxMin && (Signs[s] * CellRho >= Signs[s] * CompVal);
-  								}
+  							if (xi != xk || yi != yk || zi != zk){
+  								// 									iXYZ << xj << yj << zj;
+  								// 									CompPt = VolInfo.MinXYZ + LatticeVector * iXYZ;
+  								// 									double CompVal = RhoPtr.At(CompPt, *RootParams[ThreadNum].VolInfo);
+  								double CompVal = RhoVals(xk, yk, zk);
+  								IsMax = (IsMax && CellRho >= CompVal);
   							}
   						}
   					}
-  					if (IsMaxMin){
-  						GradPath_c GP(
-  							CellMinXYZ[ThreadNum],
-  							(StreamDir_e)s,
-  							100,
-  							GPType_Classic,
-  							GPTerminate_AtBoundary,
-  							nullptr,
-  							nullptr,
-  							nullptr,
-  							nullptr,
-  							*RootParams[ThreadNum].VolInfo,
-  							*RootParams[ThreadNum].HessPtrs,
-  							*RootParams[ThreadNum].GradPtrs,
-  							*RootParams[ThreadNum].RhoPtr);
-  
-  						GP.Seed(false);
+  				}
+  				if (IsMax){
+					GradPath_c GP;
 
-						// Seed GPs from all 8 corners of the cell to confirm they converge at the same point
-						vector<vec3> SeedPts = {
-							CellMinXYZ[ThreadNum],
-							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(0), double(0), double(1)}),
-							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(0), double(1), double(0)}),
-							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(0), double(0)}),
-							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(0), double(1), double(1)}),
-							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(0), double(1)}),
-							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(1), double(0)}),
-							CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(1), double(1)}),
-						};
+					// Seed GPs from all 8 corners of the cell to confirm they converge at the same point
+					vector<vec3> SeedPts = {
+						CellMinXYZ[ThreadNum],
+						CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(0), double(0), double(1)}),
+						CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(0), double(1), double(0)}),
+						CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(0), double(0)}),
+						CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(0), double(1), double(1)}),
+						CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(0), double(1)}),
+						CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(1), double(0)}),
+						CellMinXYZ[ThreadNum] + LatticeVector * vec3({double(1), double(1), double(1)}),
+					};
 
-						vector<GradPath_c> GPs(8);
-						vec TermRhoVals(8);
-						vec3 TermMidPoint;
-						for (int iGP = 0; iGP < 8 && IsMaxMin; ++iGP){
-							auto & GP = GPs[iGP];
-							GP.SetupGradPath(SeedPts[iGP],
-								(StreamDir_e)s,
-								100,
-								GPType_Classic,
-								GPTerminate_AtBoundary,
-								nullptr,
-								nullptr,
-								nullptr,
-								nullptr,
-								*RootParams[ThreadNum].VolInfo,
-								*RootParams[ThreadNum].HessPtrs,
-								*RootParams[ThreadNum].GradPtrs,
-								*RootParams[ThreadNum].RhoPtr);
+					vector<GradPath_c> GPs(8);
+					vec TermRhoVals(8);
+					int NumGPs = 0;
+					for (int iGP = 0; iGP < 8 && IsMax; ++iGP){
+						auto & GP = GPs[iGP];
+						GP.SetupGradPath(SeedPts[iGP],
+							StreamDir_Forward,
+							100,
+							GPType_Classic,
+							GPTerminate_AtBoundary,
+							nullptr,
+							nullptr,
+							nullptr,
+							nullptr,
+							*RootParams[ThreadNum].VolInfo,
+							*RootParams[ThreadNum].HessPtrs,
+							*RootParams[ThreadNum].GradPtrs,
+							*RootParams[ThreadNum].RhoPtr);
 
-							GP.Seed(false);
+						GP.Seed(false);
 
-							if (GP.IsMade()){
-								TermRhoVals[iGP] = GP.RhoAt(-1);
-								if (iGP == 0){
-									TermMidPoint = GP[-1];
-								}
-								else{
-									TermMidPoint += GP[-1];
-								}
-							}
-							else{
-								IsMaxMin = false;
-							}
+						if (GP.IsMade()){
+							NumGPs++;
+							TermRhoVals[iGP] = GP.RhoAt(-1);
 						}
+						else{
+							TermRhoVals[iGP] = -1.;
+						}
+					}
 
-						if (IsMaxMin) {
-							TermMidPoint /= 8.0;
-							vec Distances(8);
-							for (int iGP = 0; iGP < 8; ++iGP) {
-								Distances[iGP] = Distance(TermMidPoint, GPs[iGP][-1]);
-							}
+					IsMax = (NumGPs > 0);
 
+					if (IsMax) {
+						// use min/max rho point
 
-							double StdDev = stddev(Distances);
+  						vec3 EigVals, PrincDir;
+  						mat33 EigVecs;
+  						char Type = 0;
 
+  						IsMax = (Type == CPType_Nuclear);
+
+						double NewRho;
+						int MinMaxInd = TermRhoVals.index_max();
+						NewRho = TermRhoVals[MinMaxInd];
+						CompPt = GPs[MinMaxInd][-1];
+
+						CalcEigenSystemForPoint(CompPt,
+							EigVals,
+							EigVecs,
+							RootParams[ThreadNum]);
+
+						for (int i = 0; i < 3; ++i) {
+							if (EigVals[i] > 0)
+								Type++;
+							else
+								Type--;
+						}
+						PrincDir = EigVecs.row(0).t();
   
-	  // #ifdef _DEBUG
-  // 							GP.SaveAsOrderedZone();
-  // #endif
-  
-							CompPt = TermMidPoint;
-//   							CompPt = GP[-1];
-  							vec3 EigVals, PrincDir;
-  							mat33 EigVecs;
-  							char Type = 0;
-  
-  							CalcEigenSystemForPoint(CompPt,
-  								EigVals,
-  								EigVecs,
-  								RootParams[ThreadNum]);
-  
-  							for (int i = 0; i < 3; ++i){
-  								if (EigVals[i] > 0)
-  									Type++;
-  								else
-  									Type--;
-  							}
-  							if (Type == CPType_Nuclear || Type == CPType_Ring)
-  								PrincDir = EigVecs.row(0).t();
-  							else
-  								PrincDir = EigVecs.row(2).t();
-  
-  							IsMaxMin = (Type == CPType_Nuclear || Type == CPType_Cage);
-  
-  							// 						if (IsMaxMin)
-  							// 						ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, Type);
-  							ThreadCPs[ThreadNum].AddPoint(mean(TermRhoVals), CompPt, PrincDir, (s == 0 ? CPType_Nuclear : CPType_Cage));
-  						}
- 						else {
- 							IsMaxMin = false;
- 						}
-  
-  						break;
+  						// 						if (IsMax)
+  						// 						ThreadCPs[ThreadNum].AddPoint(GP.RhoAt(-1), CompPt, PrincDir, Type);
+  						ThreadCPs[ThreadNum].AddPoint(NewRho, CompPt, PrincDir, CPType_Nuclear);
+
   					}
+ 					else {
+ 						IsMax = false;
+ 					}
+  
+  					break;
   				}
 				/*
 				*	Rigorous check using Newton-Raphson method
 				*/
-// 				if (!IsMaxMin && CritPointInCell(CellMinXYZ[ThreadNum],
+// 				if (!IsMax && CritPointInCell(CellMinXYZ[ThreadNum],
 // 					CellMaxXYZ[ThreadNum],
 // 					TmpPoint[ThreadNum],
 // 					PrincDir[ThreadNum],
@@ -2027,7 +2082,7 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 // 					TmpType[ThreadNum],
 // 					RootParams[ThreadNum],
 // 					MR[ThreadNum]))
-				if (!IsMaxMin && CritPointInCellDataAgitation(CellMinXYZ[ThreadNum],
+				if (!IsMax && CritPointInCellDataAgitation(CellMinXYZ[ThreadNum],
 					CellMaxXYZ[ThreadNum],
 					TmpPoint[ThreadNum],
 					PrincDir[ThreadNum],
@@ -2044,7 +2099,7 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 					AgitationFactor,
 					AgitationMaxNumIter))
 				{
- 					ThreadCPs[ThreadNum].AddPoint(TmpRho[ThreadNum], TmpPoint[ThreadNum], PrincDir[ThreadNum], TmpType[ThreadNum]);
+					ThreadCPs[ThreadNum].AddPoint(TmpRho[ThreadNum], TmpPoint[ThreadNum], PrincDir[ThreadNum], TmpType[ThreadNum]);
 				}
 
 				// 				CellMinXYZ[ThreadNum][0] += CellSpacing;
@@ -2067,4 +2122,3 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 
 	return IsOk;
 }
-

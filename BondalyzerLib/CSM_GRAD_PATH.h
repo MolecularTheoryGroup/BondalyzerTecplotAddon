@@ -22,7 +22,7 @@ using std::vector;
 #define GP_MaxNumPoints				30000
 #define GP_PlaneCPStallCount		30
 #define GP_PlaneCPMaxIter			100
-#define GP_MaxStepSize				5e-3
+#define GP_MaxStepSize				0.05
 
 static double const GP_DeviationAngleMaxCutoff = 170. / 180. * PI;
 

@@ -221,3 +221,7 @@ void ResizeSpheresGetUserInfo();
 void SubdivideSpheresGetUserInfo();
 
 void FindContourCurvaturePointsGetUserInfo();
+
+void DefineBlankingRadiusGetUserInfo();
+
+void VolZoneReverseIndexGetUserInfo();
