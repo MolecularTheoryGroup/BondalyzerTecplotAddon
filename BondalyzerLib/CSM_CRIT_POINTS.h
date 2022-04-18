@@ -144,9 +144,7 @@ public:
 		vec3 const & Pos,
 		vec3 const & PrincDir,
 		char Type);
-	Boolean_t RemPoint(int PointIndex);
-	Boolean_t RemPoint(int PointIndex,
-		char Type);
+	void RemPoint(int TypeNum, int PointIndex);
 	void Append(CritPoints_c const & rhs);
 
 	/*

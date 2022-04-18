@@ -615,8 +615,8 @@ void NewMainFunction() {
 			RadialApprxRadius = UserRadialApprxRadius;
 		}
 
-
-		double GPNCPTermRadius = MAX(0.001, SeedRadius * 0.01);
+		double GPNCPCellSpacingTermRadiusFactor = 3.0;
+		double GPNCPTermRadius = MAX(GPNCPCellSpacingTermRadiusFactor * norm(VolInfo.PointSpacingV123), SeedRadius * 0.01);
 		double GPTermRadius = MIN(0.01, GPNCPTermRadius);
 		double RTypeGPTermRadiusFactor = 1.0;
 		double RTypeTermRadius = GPTermRadius * RTypeGPTermRadiusFactor;
@@ -771,6 +771,7 @@ void NewMainFunction() {
 		 *	Get sphere intersecting ring surfaces
 		 */
 		vector<int> RingSurfZoneNums;
+		std::map<int, vector<vec3> > RingSurfIntPaths;
 		int NumZones = TecUtilDataSetGetNumZones();
 #ifdef SUPERDEBUG
 		vector<int> ZoneNumVec = { 238 };
@@ -783,14 +784,20 @@ void NewMainFunction() {
  		for (int z = 1; z <= NumZones; ++z) {
  #endif
   			if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeRSSegment)) {
-  				for (int ci = 0; ci < 3; ++ci) {
-  					if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZFSCornerCPTypes[ci], CPNameList[CPTypeNum_Nuclear])
-  						&& AuxDataZoneItemMatches(z, CSMAuxData.CC.ZFSCornerCPNumStrs[ci], to_string(CPNum)))
-  					{
-  						RingSurfZoneNums.push_back(z);
-  						break;
-  					}
-  				}
+				FESurface_c Surf(z, XYZVarNums);
+				vector<vec3> IntPoints = Surf.GetSphereIntersectionPath(CPPos, SeedRadius);
+				if (IntPoints.size() > 1) {
+					RingSurfZoneNums.push_back(z);
+					RingSurfIntPaths[z] = IntPoints;
+				}
+//   				for (int ci = 0; ci < 3; ++ci) {
+//   					if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZFSCornerCPTypes[ci], CPNameList[CPTypeNum_Nuclear])
+//   						&& AuxDataZoneItemMatches(z, CSMAuxData.CC.ZFSCornerCPNumStrs[ci], to_string(CPNum)))
+//   					{
+//   						RingSurfZoneNums.push_back(z);
+//   						break;
+//   					}
+//   				}
   			}
 		}
 
@@ -800,6 +807,7 @@ void NewMainFunction() {
 
 		TmpString = ProgressStr1.str() + "Finding ring surface intersections";
 		StatusLaunch(TmpString, AddOnID, TRUE, TRUE, TRUE);
+
 		int zi = 0;
 		for (int z : RingSurfZoneNums) {
 			zi++;
@@ -816,7 +824,7 @@ void NewMainFunction() {
 			}
 			if (!UserQuit) {
 				FESurface_c Surf(z, XYZVarNums);
-				vector<vec3> IntPoints = Surf.GetSphereIntersectionPath(CPPos, SeedRadius);
+				vector<vec3> IntPoints = RingSurfIntPaths[z];
 				if (IntPoints.size() > 1) {
 					/*
 						 * Now project each point back to the sphere radius
@@ -842,6 +850,29 @@ void NewMainFunction() {
 						for (auto & p : IntPoints) {
 							p = CPPos + normalise(p - CPPos) * SeedRadius;
 						}
+
+						// check for duplicate intersections
+						bool DupInt = false;
+						double DupCheckMinDist = 0.1;
+						for (auto const & i2 : AllIntSurfPoints){
+							double TmpDist = 0.;
+							int ijunk;
+							for (auto const & p1 : IntPoints){
+								TmpDist += Distance(p1, ClosestPointOnPathToOtherPoint(i2, p1, ijunk));
+								if (TmpDist > DupCheckMinDist) {
+									break;
+								}
+							}
+							if (TmpDist <= DupCheckMinDist) {
+								DupInt = true;
+								break;
+							}
+						}
+						if (DupInt){
+// 							TecUtilDialogMessageBox(string("Skipping duplicate sphere intersection with zone " + to_string(z)).c_str(), MessageBoxType_Information);
+							continue;
+						}
+
 						IntSurfs.push_back(Surf);
 #ifdef _DEBUG
 						if (!TestRun) {
@@ -1658,6 +1689,32 @@ void NewMainFunction() {
 					EdgeIntSurfNums.erase(MinDotPdtEdge);
 				}
 			}
+
+			{
+				// Check using distance of nodes to the constraint edge
+				bool do_iter = true;
+				double MaxDotPdt = -0.7;
+				while (do_iter) {
+					do_iter = false;
+					for (auto e : EdgeIntSurfNums) {
+						double EdgeDist = Distance(SphereNodes[e.first.first], SphereNodes[e.first.second]);
+						for (int ni = 0; ni < SphereNodes.size(); ++ni) {
+							if (ni != e.first.first && ni != e.first.second
+								&& Distance(SphereNodes[ni], SphereNodes[e.first.first]) <= EdgeDist
+								&& Distance(SphereNodes[ni], SphereNodes[e.first.second]) <= EdgeDist
+								&& dot(SphereNodes[e.first.first] - SphereNodes[ni], SphereNodes[e.first.second] - SphereNodes[ni]) < MaxDotPdt
+								) {
+								do_iter = true;
+								ConstrainedEdgeNodes.insert(ni);
+								EdgeIntSurfNums[MakeEdge(ni, e.first.first)] = e.second;
+								EdgeIntSurfNums[MakeEdge(ni, e.first.second)] = e.second;
+								EdgeIntSurfNums.erase(e.first);
+								break;
+							}
+						}
+					}
+				}
+			}
 		}
 
 
@@ -2149,14 +2206,35 @@ void NewMainFunction() {
 			auto TmpSphere = FESurface_c(SphereNodes, SphereElems);
 			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after bond path intersection element subdivision before edge flipping");
 			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+			for (auto const & e : EdgeIntSurfNums){
+				SaveVec3VecAsScatterZone({ SphereNodes[e.first.first], SphereNodes[e.first.second] }, "Constraint edge " + to_string(e.first.first+1) + "," + to_string(e.first.second+1) + " : surface-" + to_string(e.second));
+				SetZoneStyle({}, ZoneStyle_Points, (ColorIndex_t)((e.second % 10) + 1), 0.5);
+			}
 // 			continue;
 		}
 
+		// collect edges sharing common ring surface intersection
+
+		std::map<int, std::set<Edge> > SurfIntPathEdges;
+		for (auto const & e1 : EdgeIntSurfNums) {
+			if (!SurfIntPathEdges.count(e1.second)) {
+				std::set<Edge> PathEdges;
+				for (auto const & e2 : EdgeIntSurfNums) {
+					if (e2.second == e1.second) {
+						PathEdges.insert(e2.first);
+					}
+				}
+				SurfIntPathEdges[e1.second] = PathEdges;
+			}
+		}
+
+		bool IntPathsFailed = false;
+
 		vector<vec3> RingNucPathConstrainedPts;
 		{
-			std::map<int, vector<Edge> > SurfIntPathEdges;
+			std::map<int, vector<Edge> > SurfIntPathEdgesSorted;
 			for (auto const & e1 : EdgeIntSurfNums) {
-				if (!SurfIntPathEdges.count(e1.second)) {
+				if (!SurfIntPathEdgesSorted.count(e1.second)) {
 					std::set<Edge> PathEdges;
 					for (auto const & e2 : EdgeIntSurfNums) {
 						if (e2.second == e1.second) {
@@ -2185,6 +2263,7 @@ void NewMainFunction() {
 					}
 					if (EndPtNodeInd < 0) {
 						TecUtilDialogErrMsg("Failed to find ring surface intersection path end point");
+						IntPathsFailed = true;
 						continue;
 					}
 					// Now build the path edge by edge
@@ -2213,15 +2292,18 @@ void NewMainFunction() {
 						}
 					}
 
-					SurfIntPathEdges[e1.second] = PathEdgeVec;
+					SurfIntPathEdgesSorted[e1.second] = PathEdgeVec;
 					if (PathNodeInds.size() != NodeCounts.size()) {
-						TecUtilDialogErrMsg("Failed to build ring surface intersection path");
+// 						TecUtilDialogErrMsg("Failed to build ring surface intersection path");
+						IntPathsFailed = true;
 						continue;
 					}
 				}
 			}
 		}
-
+		if (IntPathsFailed){
+			break;
+		}
 
 
 		vector<int> ElemTodo;
@@ -2719,7 +2801,7 @@ void NewMainFunction() {
 
 					SurfIntPathEdges[e1.second] = PathEdgeVec;
 					if (PathNodeInds.size() != NodeCounts.size()) {
-						TecUtilDialogErrMsg("Failed to build ring surface intersection path");
+// 						TecUtilDialogErrMsg("Failed to build ring surface intersection path");
 						continue;
 					}
 
@@ -6238,7 +6320,7 @@ void NewMainFunction() {
 			}
 		}
 
-		if (RadialSphereApprx && false) {
+		if (RadialSphereApprx) {
 			if (SaveGBs) {
 #ifdef SUPERDEBUG
 				for (int ti : ElemTodo) {

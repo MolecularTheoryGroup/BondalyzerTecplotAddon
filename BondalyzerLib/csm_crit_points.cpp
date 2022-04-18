@@ -613,6 +613,21 @@ void CritPoints_c::RemoveSpuriousCPs(double const & CheckDist){
 
 }
 
+void CritPoints_c::RemPoint(int TypeNum, int PointIndex){
+	if (TypeNum >= 0 && PointIndex >= 0 && PointIndex < m_NumCPs[TypeNum]) {
+		m_NumCPs[TypeNum] -= 1;
+		m_TotNumCPs -= 1;
+		m_XYZ[TypeNum].erase(m_XYZ[TypeNum].begin() + PointIndex);
+		m_Rho[TypeNum].erase(m_Rho[TypeNum].begin() + PointIndex);
+		if (m_PrincDir[TypeNum].size() > PointIndex)
+			m_PrincDir[TypeNum].erase(m_PrincDir[TypeNum].begin() + PointIndex);
+		if (m_EigVals[TypeNum].size() > PointIndex)
+			m_EigVals[TypeNum].erase(m_EigVals[TypeNum].begin() + PointIndex);
+		if (m_EigVecs[TypeNum].size() > PointIndex)
+			m_EigVecs[TypeNum].erase(m_EigVecs[TypeNum].begin() + PointIndex);
+	}
+}
+
 void CritPoints_c::GenerateCPGraph(vector<string> const & AuxDataSubTypeList){
 	if (m_ZoneNum <= 0)
 		return;
@@ -1829,7 +1844,7 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 		}
 #pragma omp flush (IsOk)
 		PtNum += GPStepMultiplier;
-		auto ijk = IJKFromIndex(ind, NumGPs);
+		vector<int> ijk = (TotNumGPs >= 8 ? IJKFromIndex(ind, NumGPs) : vector<int>({1, 1, 1}));
 		vec3 iXYZ = { (double)ijk[0] - 0.5, (double)ijk[1] - 0.5, (double)ijk[2] - 0.5 };
 		vec3 StartPtXYZ = VolInfo.MinXYZ + GPLatticeVector * iXYZ;
 		GradPath_c GP(StartPtXYZ,
@@ -2082,7 +2097,7 @@ Boolean_t FindCPs(CritPoints_c & CPs,
 // 					TmpType[ThreadNum],
 // 					RootParams[ThreadNum],
 // 					MR[ThreadNum]))
-				if (!IsMax && CritPointInCellDataAgitation(CellMinXYZ[ThreadNum],
+				if (CritPointInCellDataAgitation(CellMinXYZ[ThreadNum],
 					CellMaxXYZ[ThreadNum],
 					TmpPoint[ThreadNum],
 					PrincDir[ThreadNum],

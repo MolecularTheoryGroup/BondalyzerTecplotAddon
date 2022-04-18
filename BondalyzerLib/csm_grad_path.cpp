@@ -3044,7 +3044,7 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 
 				// shorten steps that result in the function moving in the wrong direction,
 				// and lower the stepsize h.
-				{
+				if (NumStalledPoints > 1){
 					double Rho = this->m_ODE_Data.RhoPtr.At(PtI, this->m_ODE_Data.VolZoneInfo);
 					double DeltaRho = Rho - m_RhoList.back();
 					bool ShortenStep = (Direction == StreamDir_Forward && DeltaRho < 0.0)
