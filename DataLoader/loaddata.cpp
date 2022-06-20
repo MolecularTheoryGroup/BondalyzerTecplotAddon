@@ -478,9 +478,9 @@ Boolean_t LoadVASPData(){
 		 *	loop over words until first data point
 		 *	in the block of data is found again
 		 */
-		char* TmpCStr = strtok(FileData.data(), " \n");
+		char* TmpCStr = strtok(FileData.data(), " \n\t");
 		while (TmpCStr != nullptr && NextValue.compare(TmpCStr))
-			TmpCStr = strtok(nullptr, " \n");
+			TmpCStr = strtok(nullptr, " \n\t");
 
 		/*
 		 *	Now simply parse through the char array, saving each
@@ -496,7 +496,7 @@ Boolean_t LoadVASPData(){
 // 				return FALSE;
 // 			}
 // 			Charge[i] = atof(TmpCStr);
-// 			TmpCStr = strtok(nullptr, " \n");
+// 			TmpCStr = strtok(nullptr, " \n\t");
 // 		}
 
 		for (int k = 0; k < Mz; ++k){
@@ -510,7 +510,7 @@ Boolean_t LoadVASPData(){
 			for (int j = 0; j < My; ++j){
 				for (int i = 0; i < Mx && TmpCStr != nullptr; ++i){
 					Charge[k][j][i] = atof(TmpCStr);
-					TmpCStr = strtok(nullptr, " \n");
+					TmpCStr = strtok(nullptr, " \n\t");
 				}
 			}
 		}
@@ -542,7 +542,7 @@ Boolean_t LoadVASPData(){
 // 				Diff.resize(NumPts, BlankValue);
 				Diff.resize(Mz, vector<vector<double> >(My, vector<double>(Mx, BlankValue)));
 				StatusLaunch("Reading data...", AddOnID, TRUE);
-				TmpCStr = strtok(nullptr, " \n");
+				TmpCStr = strtok(nullptr, " \n\t");
 
 // 				for (int i = 0; i < NumPts; ++i){
 // 					if (!SetPercent(i + CurPt, NumPtsTotal, "Reading data... Spin Density", AddOnID)){
@@ -553,7 +553,7 @@ Boolean_t LoadVASPData(){
 // 						return FALSE;
 // 					}
 // 					Diff[i] = atof(TmpCStr);
-// 					TmpCStr = strtok(nullptr, " \n");
+// 					TmpCStr = strtok(nullptr, " \n\t");
 // 				}
 
 				for (int k = 0; k < Mz; ++k){
@@ -567,7 +567,7 @@ Boolean_t LoadVASPData(){
 					for (int j = 0; j < My; ++j){
 						for (int i = 0; i < Mx && TmpCStr != nullptr; ++i){
 							Diff[k][j][i] = atof(TmpCStr);
-							TmpCStr = strtok(nullptr, " \n");
+							TmpCStr = strtok(nullptr, " \n\t");
 						}
 					}
 				}
@@ -4963,9 +4963,9 @@ void LoadGaussianCubeFiles()
 			 *	Run through the char vector CubeFileContents to find the first data value
 			 */
 
-			char* TmpCStr = strtok(CubeFileContents.data(), " \n");
+			char* TmpCStr = strtok(CubeFileContents.data(), " \n\t");
 			while (TmpCStr != nullptr && FirstVal.compare(TmpCStr))
-				TmpCStr = strtok(nullptr, " \n");
+				TmpCStr = strtok(nullptr, " \n\t");
 
 			/*
 			 *	Make dataset and volume zone if necessary
@@ -5097,7 +5097,7 @@ void LoadGaussianCubeFiles()
 							for (VarNum = 3; VarNum < NumVarBlocks + 3 && TmpCStr != nullptr; ++VarNum){
 								Val = atof(TmpCStr);
 								Ptrs[VarNum].Write(Index, Val);
-								TmpCStr = strtok(nullptr, " \n");
+								TmpCStr = strtok(nullptr, " \n\t");
 							}
 							++TmpIJK[2];
 						}
@@ -5118,7 +5118,7 @@ void LoadGaussianCubeFiles()
 								for (int jVar = 0; jVar < VarUserNames[VarNameIndices[GaussVarNum][iVar]].size() && TmpCStr != nullptr; ++jVar){
 									Val = atof(TmpCStr);
 									Ptrs[VarNum + jVar].Write(Index, Val);
-									TmpCStr = strtok(nullptr, " \n");
+									TmpCStr = strtok(nullptr, " \n\t");
 								}
 								++TmpIJK[2];
 							}
@@ -5413,15 +5413,15 @@ bool GetFLAPWMultiCHARGEFileFieldData(string const & fileName, string const & fi
 	*	Run through the char vector CubeFileContents to find the first data value
 	*/
 
-	char* TmpCStr = strtok(CHARGEFileContents.data(), " \n");
+	char* TmpCStr = strtok(CHARGEFileContents.data(), " \n\t");
 	while (TmpCStr != nullptr && firstVal.compare(TmpCStr))
-		TmpCStr = strtok(nullptr, " \n");
+		TmpCStr = strtok(nullptr, " \n\t");
 
 	// size of data tells us how many values are expected
 	int i = 0;
 	while (TmpCStr != nullptr && i < data.size()){
 		data[i] = atof(TmpCStr);
-		TmpCStr = strtok(nullptr, " \n");
+		TmpCStr = strtok(nullptr, " \n\t");
 		i++;
 	}
 
@@ -5468,15 +5468,15 @@ bool GetFLAPWCHARGEFileFieldData(ifstream & CHARGEFile, unsigned long long int p
 	*	Run through the char vector CubeFileContents to find the first data value
 	*/
 
-	char* TmpCStr = strtok(CharArray.data(), " \n");
+	char* TmpCStr = strtok(CharArray.data(), " \n\t");
 // 	while (TmpCStr != nullptr && firstVal.compare(TmpCStr))
-// 		TmpCStr = strtok(nullptr, " \n");
+// 		TmpCStr = strtok(nullptr, " \n\t");
 
 	// size of data tells us how many values are expected
 	int i = 0;
 	while (TmpCStr != nullptr && i < data.size()) {
 		data[i] = atof(TmpCStr);
-		TmpCStr = strtok(nullptr, " \n");
+		TmpCStr = strtok(nullptr, " \n\t");
 		i++;
 	}
 
@@ -6622,9 +6622,9 @@ void LoadTurboMoleCubeFiles()
 			*	Run through the char vector CubeFileContents to find the first data value
 			*/
 
-			char* TmpCStr = strtok(CubeFileContents.data(), " \n");
+			char* TmpCStr = strtok(CubeFileContents.data(), " \n\t");
 			while (TmpCStr != nullptr && FirstVal.compare(TmpCStr))
-				TmpCStr = strtok(nullptr, " \n");
+				TmpCStr = strtok(nullptr, " \n\t");
 
 			/*
 			*	Make dataset and volume zone if necessary
@@ -6747,7 +6747,7 @@ void LoadTurboMoleCubeFiles()
 // 						}
 						Val = atof(TmpCStr);
 						VarPtr.Write(Index, Val);
-						TmpCStr = strtok(nullptr, " \n");
+						TmpCStr = strtok(nullptr, " \n\t");
 
 						++TmpIJK[2];
 					}

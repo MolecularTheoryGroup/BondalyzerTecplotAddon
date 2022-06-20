@@ -189,6 +189,8 @@ enum GPType_e
 */
 struct VolExtentIndexWeights_s;
 
+class FESurface_c;
+
 struct MultiRootParams_s{
 	GPType_e CalcType = GPType_Invalid;
 	VolExtentIndexWeights_s * VolInfo = nullptr;
@@ -205,6 +207,10 @@ struct MultiRootParams_s{
 	cube * RhoSpareSupercell = nullptr;
 	VolExtentIndexWeights_s * VolInfo2 = nullptr;
 	FieldDataPointer_c * RhoPtr2 = nullptr;
+	FESurface_c * ProjectionSurface = nullptr;
+	vector<vector<double> > * ProjectionSurfaceNodalValues = nullptr;
+	vector<int> * ProjectionSurfaceNodalGradValNums = nullptr;
+	vector<int> * ProjectionSurfaceNodalHessValNums = nullptr;
 
 	int Index = -1;
 

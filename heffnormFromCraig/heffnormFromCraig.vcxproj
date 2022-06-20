@@ -27,6 +27,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\sphericalGradUpdateAndHeffNorm\calculateGradientOnSphere.h" />
     <ClInclude Include="ADDONVER.h" />
     <ClInclude Include="Edge.h" />
     <ClInclude Include="heffNorm.h" />
@@ -39,6 +40,7 @@
     <None Include="Fernet_all_steps.mcr" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\sphericalGradUpdateAndHeffNorm\calculateGradientOnSphere.cpp" />
     <ClCompile Include="Edge.cpp" />
     <ClCompile Include="heffNorm.cpp" />
     <ClCompile Include="testHeffAndTraing.cpp" />

@@ -17,3 +17,5 @@ void GradPathTest();
 void CreateCircularGBsGetUserInfo();
 
 void FindSphereBasins();
+
+void ComputeGradientOnSphereSurface(int SphereZoneNum, vector<int> XYZVarNums, int ValVarNum);

@@ -787,6 +787,11 @@ double FESurface_c::PointDistanceToElementSquared(vec3 const & P, int elem, vec3
 	 */
 	vec3 v0 = m_XYZList[m_ElemList[elem][0]] - P;
 
+	if (m_edge0.empty()){
+		TecUtilDialogErrMsg("Attempt to project point to FE surface before precalculating element normal data!");
+		return -1.;
+	}
+
 	double d = dot(m_edge0[elem], v0),
 		e = dot(m_edge1[elem], v0),
 		s = m_b[elem] * e - m_c[elem] * d,
@@ -966,6 +971,11 @@ bool FESurface_c::ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, 
 	}
 
 	if (ProjectedElemIndex >= 0) {
+		ProjectionIsInterior = ProjectedPointToTriangleIsInterior(OldPoint,
+			NewPoint,
+			m_XYZList[m_ElemList[ProjectedElemIndex][0]],
+			m_XYZList[m_ElemList[ProjectedElemIndex][1]],
+			m_XYZList[m_ElemList[ProjectedElemIndex][2]]);
 		PointDistanceToElementSquared(OldPoint, ProjectedElemIndex, NewPoint);
 #if 0
 		SaveVec3VecAsScatterZone({ OldPoint }, string("Element " + to_string(ProjectedElemIndex + 1) + " old point"), Red_C);
@@ -995,8 +1005,24 @@ bool FESurface_c::ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, 
 	// 	}
 
 	IsOk = ProjectedElemIndex >= 0;
-	if (!IsOk) return IsOk;
+	return IsOk;
+}
 
+bool FESurface_c::ValueAtPointOnSurface(vec3 const & InPoint, vector<vector<double> > const & InNodeVals, vector<double> & OutVals, vec3 & OutPoint, int & ProjectedElemIndex, bool & ProjectionIsInterior, int MaxBFSDepth, bool StartWithBFS) const{
+	ProjectPointToSurface(InPoint, OutPoint, ProjectedElemIndex, ProjectionIsInterior, MaxBFSDepth, StartWithBFS);
+	double w[3];
+	Barycentric(OutPoint,
+				m_XYZList[m_ElemList[ProjectedElemIndex][0]],
+				m_XYZList[m_ElemList[ProjectedElemIndex][1]],
+				m_XYZList[m_ElemList[ProjectedElemIndex][2]],
+				w[0], w[1], w[2]);
+	OutVals.resize(InNodeVals[0].size(), 0.0);
+	for (int i = 0; i < OutVals.size(); ++i){
+		for (int wi = 0; wi < 3; ++wi){
+			OutVals[i] += w[wi] * InNodeVals[m_ElemList[ProjectedElemIndex][wi]][i];
+		}
+	}
+	
 	return true;
 }
 

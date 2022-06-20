@@ -29,8 +29,11 @@ static double const SpuriousCPDistanceRatioOfSearchGrid = 0.5;
 
 enum CPType_e{
 	CPType_Nuclear = -3,
+	CPType_2DMax = -2,
 	CPType_Bond = -1,
+	CPType_2DSaddle = 0,
 	CPType_Ring = 1,
+	CPType_2DMin = 2,
 	CPType_Cage = 3,
 	CPType_RingFF = 11,
 	CPType_CageFF = 13,

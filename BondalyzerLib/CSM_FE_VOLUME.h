@@ -81,6 +81,8 @@ public:
 	vector<vec3> GetSphereIntersectionPath(vec3 const & SphereCenter, double const & SphereRadius);
 	bool ProjectPointToSurface(vec3 const & OldPoint, vec3 & NewPoint, int & ProjectedElemIndex, bool & ProjectionIsInterior, int MaxBFSDepth = DefaultProjectPointToSurfaceMaxBFSDepth, bool StartWithBFS = true) const;
 
+	bool ValueAtPointOnSurface(vec3 const & InPoint, vector<vector<double> > const & InNodeVals, vector<double> & OutVals, vec3 & OutPoint, int & ProjectedElemIndex, bool & ProjectionIsInterior, int MaxBFSDepth = DefaultProjectPointToSurfaceMaxBFSDepth, bool StartWithBFS = true) const;
+
 	/*
 	*	Setters
 	*/

@@ -1419,12 +1419,15 @@ Boolean_t CritPointInCellDataAgitation(
 
 		if (DataAgitationIter > 0){
 			// Copy supercell rho values, then agitate
-			double RhoDiffLowCutoff = 5e-7;
+			double RhoDiffLowCutoff = 1e-7;
+			int MaxAgitIter = 100000;
 			for (int k = 0; k < RootParams.RhoSupercell->n_slices; ++k) {
 				for (int j = 0; j < RootParams.RhoSupercell->n_cols; ++j) {
 					for (int i = 0; i < RootParams.RhoSupercell->n_rows; ++i) {
-						while (true) // for each value, check that it's not too close to neighboring values
+						int AgitIter = 0;
+						while (AgitIter < MaxAgitIter) // for each value, check that it's not too close to neighboring values
 						{
+							AgitIter++;
 							double rho = RootParams.RhoSpareSupercell->at(i, j, k);
 							double logrho = log(rho);
 							double rand_dbl = distr(eng);
@@ -1506,7 +1509,7 @@ Boolean_t CritPointInCellDataAgitation(
 
 		if (CPInCell) {
 			gsl_multiroot_fdfsolver_set(MR.s, &MR.Func, MR.pos);
-
+			gsl_set_error_handler_off();
 
 			// 		TecUtilDialogMessageBox("solver set", MessageBoxType_Information);
 			CPInCell = TRUE;
@@ -1517,7 +1520,13 @@ Boolean_t CritPointInCellDataAgitation(
 				// 			string str = "iteration " + to_string(Iter);
 				// 			TecUtilDialogMessageBox(str.c_str(), MessageBoxType_Information);
 
-				Status = gsl_multiroot_fdfsolver_iterate(MR.s);
+				try {
+					Status = gsl_multiroot_fdfsolver_iterate(MR.s);
+				}
+				catch (int err){
+					CPInCell = FALSE;
+					Status = GSL_EDOM;
+				}
 
 				if (Status != GSL_CONTINUE && Status != GSL_SUCCESS)
 					break;

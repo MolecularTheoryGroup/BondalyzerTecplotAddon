@@ -36,6 +36,9 @@
     <ClInclude Include="Vec3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\sphericalGradUpdateAndHeffNorm\calculateGradientOnSphere.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Fernet_all_steps.mcr" />
@@ -51,6 +54,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Edge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sphericalGradUpdateAndHeffNorm\calculateGradientOnSphere.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -42,6 +42,9 @@
 #include "CSM_CALC_VARS.h"
 
 #include "updateSphericalTriangulation.h"
+#include "calculateGradientOnSphere.h"
+#include "Vec3.h"
+#include "TriNodes.h"
 
 #include "GBAENGINE.h"
 
@@ -7757,6 +7760,11 @@ void FindSphereBasins() {
 		}
 	}
 
+	int IntVarNum = VarNumByName(BasinDefineVarName);
+	ComputeGradientOnSphereSurface(SphereZoneNums[0], { 1,2,3 }, IntVarNum);
+
+	return;
+
 	bool SaveBondSurfaces = TecGUIToggleGet(TGL_TOG_T3_1);
 	bool SaveRingCageSurfaces = TecGUIToggleGet(TGLRCSf_TOG_T3_1);
 
@@ -8986,4 +8994,234 @@ vector<vec3> Make1dPlotProbePoints;
 void Make1dPlotFromSphereSliceProbeCB(Boolean_t WasSuccessful, Boolean_t IsNearestPoint, ArbParam_t ClientData)
 {
 
+}
+
+
+
+
+void FindCriticalPointsOnSphere(int SphereZoneNum, vector<int>XYZVarNums, int ValVarNum){
+
+}
+
+int SphereCP_F2D(gsl_vector const * pos, void * params, gsl_vector * GradValues){
+	MultiRootParams_s * RootParams = reinterpret_cast<MultiRootParams_s*>(params);
+
+	vec3 Point(pos->data);
+
+	vector<double> InterpVals;
+	vec3 InterpPoint;
+	int ProjectedElemIndex;
+	bool ProjectionInInterior;
+	int MaxBFSDepth = 3;
+	bool StartWithBFS = true;
+
+	RootParams->ProjectionSurface->ValueAtPointOnSurface(Point, *(RootParams->ProjectionSurfaceNodalValues), InterpVals, InterpPoint, ProjectedElemIndex, ProjectionInInterior, MaxBFSDepth, StartWithBFS);
+	for (int i = 0; i < 3; ++i) {
+		gsl_vector_set(GradValues, i, InterpVals[RootParams->ProjectionSurfaceNodalGradValNums->at(i)]);
+	}
+
+	return GSL_SUCCESS;
+}
+
+int SphereCP_DF2D(gsl_vector const * pos, void * params, gsl_matrix * Jacobian) {
+	MultiRootParams_s * RootParams = reinterpret_cast<MultiRootParams_s*>(params);
+
+	vec3 Point(pos->data);
+
+	vector<double> InterpVals;
+	vec3 InterpPoint;
+	int ProjectedElemIndex;
+	bool ProjectionInInterior;
+	int MaxBFSDepth = 3;
+	bool StartWithBFS = true;
+
+	RootParams->ProjectionSurface->ValueAtPointOnSurface(Point, *(RootParams->ProjectionSurfaceNodalValues), InterpVals, InterpPoint, ProjectedElemIndex, ProjectionInInterior, MaxBFSDepth, StartWithBFS);
+
+	int HessIndices[3][3] = {
+		{ 0, 1, 2 },
+		{ 1, 3, 4 },
+		{ 2, 4, 5 }
+	};
+
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 3; ++j) {
+			if (j >= i)
+				gsl_matrix_set(Jacobian, i, j, InterpVals[RootParams->ProjectionSurfaceNodalHessValNums->at(HessIndices[j][i])]);
+			else
+				gsl_matrix_set(Jacobian, i, j, gsl_matrix_get(Jacobian, j, i));
+		}
+	}
+
+	return GSL_SUCCESS;
+}
+
+int SphereCP_FDF3D(gsl_vector const * pos, void * params, gsl_vector * GradValues, gsl_matrix * Jacobian) {
+	int Status = SphereCP_F2D(pos, params, GradValues);
+
+	if (Status == GSL_SUCCESS)
+		Status = SphereCP_DF2D(pos, params, Jacobian);
+
+	return Status;
+}
+
+bool CritPointInCell(int ElemNum, 
+	vec3 & Point,
+	vec3 & PrincDir,
+	double & RhoValue,
+	double const & RhoCutoff,
+	char & Type,
+	MultiRootParams_s & RootParams,
+	MultiRootObjects_s & MR)
+{
+	bool CPInCell = true;
+
+ 	auto const Surf = RootParams.ProjectionSurface;
+ 	auto const Elems = Surf->GetElemListPtr();
+ 	auto const Nodes = Surf->GetXYZListPtr();
+ 	vec3 CurPoint;
+ 
+ 	Point = Surf->GetElemMidpointsPtr()->at(ElemNum);
+ 	Surf->ProjectPointToSurface(Point, Point, ElemNum, CPInCell, 3);
+ 	
+ 	gsl_multiroot_fdfsolver_set(MR.s, &MR.Func, MR.pos);
+ 	int Iter = 0;
+ 	int MaxIter = 1000;
+ 	int Status = GSL_SUCCESS;
+ 	do 
+ 	{
+ 		++Iter;
+ 		Status = gsl_multiroot_fdfsolver_iterate(MR.s);
+ 
+ 		if (Status != GSL_CONTINUE && Status != GSL_SUCCESS)
+ 			break;
+ 		
+ 		CurPoint = MR.s->x->data;
+ 
+ 		CPInCell = ProjectedPointToTriangleIsInterior(CurPoint,
+ 			Point,
+ 			Nodes->at(Elems->at(ElemNum)[0]),
+ 			Nodes->at(Elems->at(ElemNum)[1]),
+ 			Nodes->at(Elems->at(ElemNum)[2]));
+ 
+ 		if (CPInCell) {
+ 			Surf->ProjectPointToSurface(CurPoint, Point, ElemNum, CPInCell, 3);
+ 
+ 			Status = gsl_multiroot_test_residual(MR.s->f, 1e-7);
+ 		}
+ 
+ 	} while (CPInCell && Status && GSL_CONTINUE && Iter < MaxIter);
+
+	RhoValue = 0.0;
+	if (CPInCell) {
+		CPInCell = SetIndexAndWeightsForPoint(Point, *RootParams.VolInfo);
+		RhoValue = ValByCurrentIndexAndWeightsFromRawPtr(*RootParams.VolInfo, *RootParams.RhoPtr);
+	}
+
+	if (CPInCell && RhoValue >= RhoCutoff) {
+		vec3 EigVals;
+		mat33 EigVecs;
+
+
+
+		for (int i = 0; i < 3; ++i) {
+			if (EigVals[i] > 0)
+				Type++;
+			else
+				Type--;
+		}
+		if (Type == CPType_Nuclear || Type == CPType_Ring)
+			PrincDir = EigVecs.row(0).t();
+		else
+			PrincDir = EigVecs.row(2).t();
+	}
+
+	return CPInCell;
+}
+
+
+void ComputeGradientOnSphereSurface(int SphereZoneNum, vector<int> XYZVarNums, int ValVarNum){
+	FESurface_c Sphere(SphereZoneNum, XYZVarNums);
+	vector<tpcsm::Vec3> nodeXYZs(Sphere.GetNumNodes());
+	vector<double> scalarValues(Sphere.GetNumElems());
+	vector<TriNodes> surfaceTriangles(Sphere.GetNumElems());
+	tpcsm::_GradientCalcMethod const gradientCalcMethod = tpcsm::GradientCalcMethod_AllConnectedCellCenters;
+	vector<tpcsm::Vec3> gradients;
+
+	FieldDataPointer_c ValPtr;
+	ValPtr.InitializeReadPtr(SphereZoneNum, ValVarNum);
+	auto NodeList = Sphere.GetXYZListPtr();
+	auto ElemList = Sphere.GetElemListPtr();
+	tpcsm::Vec3 sphereMinXYZ(NodeList->at(0)[0], NodeList->at(0)[1], NodeList->at(0)[2]);
+	tpcsm::Vec3 sphereMaxXYZ = sphereMinXYZ;
+	for (int ni = 0; ni < NodeList->size(); ++ni){
+		nodeXYZs[ni] = tpcsm::Vec3(NodeList->at(ni)[0], NodeList->at(ni)[1], NodeList->at(ni)[2]);
+		sphereMinXYZ = sphereMinXYZ.min(nodeXYZs[ni]);
+		sphereMaxXYZ = sphereMaxXYZ.max(nodeXYZs[ni]);
+	}
+	tpcsm::Vec3 const sphereCenter = (sphereMinXYZ + sphereMaxXYZ) / 2.0;
+	tpcsm::Vec3 const sphereExtents = (sphereMaxXYZ - sphereMinXYZ) / 2.0;
+	double const sphereRadius = sphereExtents.getNorm() / sqrt(3.0);
+	for (int ei = 0; ei < ElemList->size(); ++ei){
+		scalarValues[ei] = ValPtr[ei];
+		surfaceTriangles[ei] = TriNodes(ElemList->at(ei)[0], ElemList->at(ei)[1], ElemList->at(ei)[2]);
+	}
+	ValPtr.Close();
+	char const * statusMessage = NULL;
+	bool GradCalculated = tpcsm::calculateGradientOnSphere(nodeXYZs, scalarValues, surfaceTriangles, sphereCenter, sphereRadius, gradientCalcMethod, gradients, statusMessage);
+
+	// testing interpolation within elements
+// 	vector<vector<double> > ElemVals(Sphere.GetNumElems());
+// 	for (int ei = 0; ei < ElemVals.size(); ++ei){
+// 		ElemVals[ei] = { scalarValues[ei] };
+// 	}
+// 
+// 	vec3 SphereCenter = { sphereCenter.x(), sphereCenter.y(), sphereCenter.z() };
+// 	vector<vector<double> > NodeVals = Sphere.CellCenteredToNodalVals(ElemVals, &SphereCenter);
+// 	Sphere.GeneratePointElementDistanceCheckData();
+// 	auto ElemMidpoints = Sphere.GetElemMidpointsPtr();
+// 
+// 	vector<double> InterpVals;
+// 	vec3 InterpPoint;
+// 	int ProjectedElemIndex;
+// 	bool ProjectionInInterior;
+// 	int MaxBFSDepth = 3;
+// 	bool StartWithBFS = true;
+// 
+// 	Sphere.ValueAtPointOnSurface(ElemMidpoints->at(0), NodeVals, InterpVals, InterpPoint, ProjectedElemIndex, ProjectionInInterior, MaxBFSDepth, StartWithBFS);
+
+
+	// Save grad variables
+
+	string OutVarStrBase = "CondensedGrad";
+	vector<string> XYZStrs = { "X","Y","Z" };
+
+	int NumZones = TecUtilDataSetGetNumZones();
+	vector<FieldDataType_e> ZoneDataTypes(NumZones, FieldDataType_Bit);
+	vector<ValueLocation_e> ZoneDataLocs(NumZones, ValueLocation_CellCentered);
+	for (int i = 1; i <= NumZones; ++i) {
+		if (AuxDataZoneItemMatches(i, CSMAuxData.GBA.ZoneType, CSMAuxData.GBA.ZoneTypeSphereZone)) {
+			ZoneDataTypes[i - 1] = FieldDataType_Float;
+		}
+	}
+
+	vector<int> NewVarNums;
+	for (int i = 0; i < 3; ++i){
+		string VarName = OutVarStrBase + XYZStrs[i];
+		NewVarNums.push_back(VarNumByName(VarName));
+		if (NewVarNums.back() <= 0) {
+			ArgList args;
+			args.appendString(SV_NAME, VarName.c_str());
+			args.appendArray(SV_VARDATATYPE, ZoneDataTypes.data());
+			args.appendArray(SV_VALUELOCATION, ZoneDataLocs.data());
+			TecUtilDataSetAddVarX(args.getRef());
+			NewVarNums.back() = TecUtilDataSetGetNumVars();
+		}
+	}
+
+	FieldVecPointer_c OutGradientPtr;
+	OutGradientPtr.InitializeWritePtr(SphereZoneNum, NewVarNums);
+	for (int ei = 0; ei < gradients.size(); ++ei){
+		OutGradientPtr.Write(ei, vec({ gradients[ei].x(), gradients[ei].y(), gradients[ei].z() }));
+	}
+	OutGradientPtr.Close();
 }
