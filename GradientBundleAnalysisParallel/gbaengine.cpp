@@ -719,7 +719,7 @@ void NewMainFunction() {
 		for (int i = 0; i < NumElems; ++i)
 			PreElems[i] = TriNodes(meshT[i][0], meshT[i][1], meshT[i][2]);
 
-#ifdef DEBUG_SAVEZONES
+if (TestRun)
 		{
 			vector<vec3> SphereNodes;
 			vector<vector<int> > SphereElems;
@@ -734,7 +734,6 @@ void NewMainFunction() {
 			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "Initial sphere mesh");
 			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
 		}
-#endif
 
 		/*
 		 *	Get average sphere triangulation edge length so that we can
@@ -1203,31 +1202,31 @@ void NewMainFunction() {
 				}
 			}
 
-#ifdef DEBUG_SAVEZONES
-			SphereNodes.reserve(PreNodes.size());
-			for (auto const & i : PreNodes)
-				SphereNodes.push_back({ i.x(), i.y(), i.z() });
-			NumNodes = SphereNodes.size();
-			SphereElems.reserve(PreElems.size());
-			for (auto const & i : PreElems)
-				SphereElems.push_back({ i[0], i[1], i[2] });
-			FESurface_c TmpSphere(SphereNodes, SphereElems);
-			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "Before triangulation update after node moving to constraint nodes");
-			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
-			SphereNodes.clear();
-			SphereElems.clear();
-
-			{
-				vector<vec3> tmp;
-				for (auto const & i : tmpConstraintNodes)
-					tmp.push_back({ i.x(),i.y(),i.z() });
-
-				SaveVec3VecAsScatterZone(tmp, "constraint nodes", White_C);
-				SetZoneStyle({ TecUtilDataSetGetNumZones() }, ZoneStyle_Path, Blue_C, 0.8);
-				TecUtilZoneSetScatter(SV_SHOW, Set(TecUtilDataSetGetNumZones()).getRef(), 0, TRUE);
+			if (TestRun) {
+				SphereNodes.reserve(PreNodes.size());
+				for (auto const & i : PreNodes)
+					SphereNodes.push_back({ i.x(), i.y(), i.z() });
+				NumNodes = SphereNodes.size();
+				SphereElems.reserve(PreElems.size());
+				for (auto const & i : PreElems)
+					SphereElems.push_back({ i[0], i[1], i[2] });
+				FESurface_c TmpSphere(SphereNodes, SphereElems);
+				TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "Before triangulation update after node moving to constraint nodes");
 				TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+				SphereNodes.clear();
+				SphereElems.clear();
+
+				{
+					vector<vec3> tmp;
+					for (auto const & i : tmpConstraintNodes)
+						tmp.push_back({ i.x(),i.y(),i.z() });
+
+					SaveVec3VecAsScatterZone(tmp, "constraint nodes", White_C);
+					SetZoneStyle({ TecUtilDataSetGetNumZones() }, ZoneStyle_Path, Blue_C, 0.8);
+					TecUtilZoneSetScatter(SV_SHOW, Set(TecUtilDataSetGetNumZones()).getRef(), 0, TRUE);
+					TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+				}
 			}
-#endif
 
 			/*
 			 *	Now do the same check but for edges, that is, check for edges that are sufficiently
@@ -1269,6 +1268,8 @@ void NewMainFunction() {
 					}
 				}
 			}
+
+			vector<bool> EdgeSplitForConstraintNode(tmpConstraintNodes.size(), false);
 			
 			// Now loop over constraint nodes and if the closest edge is within tolerance
 			// (they're all within tolerance),
@@ -1292,6 +1293,8 @@ void NewMainFunction() {
 						&& (tmpConstraintNodes[pi] - PreNodes[pe.first]).getNormSquared() < EdgeLen && (tmpConstraintNodes[pi] - PreNodes[pe.second]).getNormSquared() < EdgeLen
 						&& e.first.cbegin()->second == pi)
 					{
+						EdgeSplitForConstraintNode[pi] == true;
+
 						// Split the edge
 						int ni = PreNodes.size();
 						PreNodes.push_back(tmpConstraintNodes[pi]);
@@ -1332,26 +1335,56 @@ void NewMainFunction() {
 							}
 						}
 
+						// Now remake the distance maps used to match edges with constraint nodes,
+						// since one of the new edges may be a better match for a yet unmatched 
+						// constraint node.
+						SphereEdgeConstraintNodeDistanceTriNumsMap.clear();
+						MinDistEdges = std::vector<std::map<double, Edge> >(tmpConstraintNodes.size());
+						for (int ti = 0; ti < PreElems.size(); ++ti) {
+							auto * t = &PreElems[ti];
+							SphereEdgeConstraintNodeDistanceTriNumsMap[MakeEdge(t->v1(), t->v2())].second.insert(ti);
+							SphereEdgeConstraintNodeDistanceTriNumsMap[MakeEdge(t->v1(), t->v3())].second.insert(ti);
+							SphereEdgeConstraintNodeDistanceTriNumsMap[MakeEdge(t->v2(), t->v3())].second.insert(ti);
+						}
+
+						// Keep track of min distance from each constraint point to any edge
+						for (auto & e : SphereEdgeConstraintNodeDistanceTriNumsMap) {
+							auto x1 = &PreNodes[e.first.first], x2 = &PreNodes[e.first.second];
+							for (int pi = 0; pi < tmpConstraintNodes.size(); ++pi) {
+								auto x0 = &tmpConstraintNodes[pi];
+								if (!ConstraintNodeMoved[pi] && !EdgeSplitForConstraintNode[pi]) {
+									double TmpDist = PointLineDist(*x0, *x1, *x2);
+									if (TmpDist <= CoincidentCheckEpsilon) {
+										double EdgeLen = (*x2 - *x1).getNormSquared();
+										if ((*x0 - *x1).getNormSquared() < EdgeLen && (*x0 - *x2).getNormSquared() < EdgeLen) {
+											MinDistEdges[pi][TmpDist] = e.first;
+											e.second.first[TmpDist] = pi;
+										}
+									}
+								}
+							}
+						}
+
 						break;
 					}
 					p->erase(p->begin());
 				}
 			}
 
-#ifdef DEBUG_SAVEZONES
-			SphereNodes.reserve(PreNodes.size());
-			for (auto const & i : PreNodes)
-				SphereNodes.push_back({ i.x(), i.y(), i.z() });
-			NumNodes = SphereNodes.size();
-			SphereElems.reserve(PreElems.size());
-			for (auto const & i : PreElems)
-				SphereElems.push_back({ i[0], i[1], i[2] });
-			TmpSphere = FESurface_c(SphereNodes, SphereElems);
-			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "Before triangulation update after edge splitting");
-			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
-			SphereNodes.clear();
-			SphereElems.clear();
-#endif
+			if (TestRun) {
+				SphereNodes.reserve(PreNodes.size());
+				for (auto const & i : PreNodes)
+					SphereNodes.push_back({ i.x(), i.y(), i.z() });
+				NumNodes = SphereNodes.size();
+				SphereElems.reserve(PreElems.size());
+				for (auto const & i : PreElems)
+					SphereElems.push_back({ i[0], i[1], i[2] });
+				auto TmpSphere = FESurface_c(SphereNodes, SphereElems);
+				TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "Before triangulation update after edge splitting");
+				TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+				SphereNodes.clear();
+				SphereElems.clear();
+			}
 
 			/*
 			 *	Do the same check again, but this time checking sphere nodes to see if they are close enough to
@@ -1413,20 +1446,20 @@ void NewMainFunction() {
 				}
 			}
 
-#ifdef DEBUG_SAVEZONES
-			SphereNodes.reserve(PreNodes.size());
-			for (auto const & i : PreNodes)
-				SphereNodes.push_back({ i.x(), i.y(), i.z() });
-			NumNodes = SphereNodes.size();
-			SphereElems.reserve(PreElems.size());
-			for (auto const & i : PreElems)
-				SphereElems.push_back({ i[0], i[1], i[2] });
-			TmpSphere = FESurface_c(SphereNodes, SphereElems);
-			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "Before triangulation update after moving nodes to constraint segments");
-			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
-			SphereNodes.clear();
-			SphereElems.clear();
-#endif
+			if (TestRun) {
+				SphereNodes.reserve(PreNodes.size());
+				for (auto const & i : PreNodes)
+					SphereNodes.push_back({ i.x(), i.y(), i.z() });
+				NumNodes = SphereNodes.size();
+				SphereElems.reserve(PreElems.size());
+				for (auto const & i : PreElems)
+					SphereElems.push_back({ i[0], i[1], i[2] });
+				auto TmpSphere = FESurface_c(SphereNodes, SphereElems);
+				TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "Before triangulation update after moving nodes to constraint segments");
+				TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+				SphereNodes.clear();
+				SphereElems.clear();
+			}
 
 
 			/*
@@ -1485,12 +1518,12 @@ void NewMainFunction() {
 
 		NumNodes = SphereNodes.size();
 		NumElems = SphereElems.size();
-
-#ifdef DEBUG_SAVEZONES
-  		FESurface_c TmpSphere(SphereNodes, SphereElems);
-		TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after triangulation update 1");
-		TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
-#endif
+		FESurface_c TmpSphere;
+		if (TestRun) {
+			TmpSphere = FESurface_c(SphereNodes, SphereElems);
+			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after triangulation update 1");
+			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+		}
 
 		// Check for and remove any duplicate nodes
 // 		vector<int> SphereNodesOldToNew;
@@ -1597,11 +1630,11 @@ void NewMainFunction() {
 				}
 			}
 
-#ifdef DEBUG_SAVEZONES
-			TmpSphere = FESurface_c(SphereNodes, SphereElems);
-			TmpSphere.SaveAsTriFEZone(XYZVarNums, "after triangulation update lost constraint nodes found");
-			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
-#endif
+			if (TestRun) {
+				TmpSphere = FESurface_c(SphereNodes, SphereElems);
+				TmpSphere.SaveAsTriFEZone(XYZVarNums, "after triangulation update lost constraint nodes found");
+				TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+			}
 		}
 
 		if (!AllIntSurfPoints.empty()) {
@@ -1650,11 +1683,11 @@ void NewMainFunction() {
 			SphereElems = TmpElems;
 			NumElems = SphereElems.size();
 
-#ifdef DEBUG_SAVEZONES
-			TmpSphere = FESurface_c(SphereNodes, SphereElems);
-			TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after triangulation update remove constraint segment tris");
-			TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
-#endif
+			if (TestRun) {
+				TmpSphere = FESurface_c(SphereNodes, SphereElems);
+				TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after triangulation update remove constraint segment tris");
+				TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+			}
 		}
 
 		if (!AllIntSurfPoints.empty())
@@ -2313,7 +2346,7 @@ void NewMainFunction() {
 		int Iter1 = 0;
 		int IterIntSurfTri = 0;
 		bool DoOuterIter = true;
-		while (DoOuterIter) {
+		while (DoOuterIter && Iter1 < 10) {
 			DoOuterIter = false;
 			Iter1++;
 
@@ -2452,7 +2485,7 @@ void NewMainFunction() {
  
  			bool DoIter = true;
 			int Iter2 = 0;
-		 	while (DoIter && Iter2 < 100){
+		 	while (DoIter && Iter2 < 15){
 		 		DoIter = false;
 				Iter2++;
 		
@@ -2892,10 +2925,10 @@ void NewMainFunction() {
 			}
 
 			// Now move neighbor nodes of constrained edges to make the edge elements perfect
-			if (!DoOuterIter && IterIntSurfTri < 100){// only run when other methods have converged
+			if (!DoOuterIter && IterIntSurfTri < 10){// only run when other methods have converged
 				IterIntSurfTri++;
 				DoOuterIter = true;
-				Iter1--;
+				//Iter1--;
 				std::map<Edge, vector<int>> EdgeToTriMap;
 				for (int ti = 0; ti < SphereElems.size(); ++ti) {
 					auto const & t = SphereElems[ti];
@@ -3059,122 +3092,122 @@ void NewMainFunction() {
 			 * Can't flip ring surface intersection edges, of course.
 			 */
 			{
-			bool DoIter = true;
-			int Iter2 = 0;
-			while (DoIter && Iter2 < 100) {
-				DoIter = false;
-				Iter2++;
-				std::map<Edge, vector<int>> EdgeToTriMap;
-				for (int ti = 0; ti < SphereElems.size(); ++ti) {
-					auto const & t = SphereElems[ti];
-					for (int ci = 0; ci < 3; ++ci) {
-						auto e = MakeEdge(t[ci], t[(ci + 1) % 3]);
-						if (EdgeToTriMap.count(e)) {
-							EdgeToTriMap[e].push_back(ti);
-						}
-						else {
-							EdgeToTriMap[e] = { ti };
-						}
-					}
-				}
-
-				for (auto const & et : EdgeToTriMap) {
-					if (NodeTypes[et.first.first] >= NETypeB || NodeTypes[et.first.second] >= NETypeB || et.second.size() < 2) {
-						continue;
-					}
-					vector<int> vi = { et.first.first, et.first.second };
-					for (auto const & t : et.second) {
-						for (auto const & c : SphereElems[t]) {
-							if (c != et.first.first && c != et.first.second) {
-								vi.push_back(c);
-								break;
-							}
-						}
-					}
-					vector<vec3> v;
-					v.reserve(4);
-					for (auto const & i : vi) {
-						v.push_back(SphereNodes[i]);
-					}
-
-					if (QuadIsConvex(v[0], v[1], v[2], v[3])) {
-						// Now construct the reciprocal triangle pair made by flipping the edge
-						vector<int> t1 = { vi[0], vi[3], vi[2] },
-							t2 = { vi[1], vi[2], vi[3] };
-						double ar0, ar1, ar2, ar3;
-
-						{
-							auto const & t = SphereElems[et.second.front()];
-							ar0 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
-						}
-						{
-							auto const & t = SphereElems[et.second.back()];
-							ar1 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
-						}
-						{
-							auto const & t = t1;
-							ar2 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
-						}
-						{
-							auto const & t = t2;
-							ar3 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
-						}
-
-						if (MAX(ar0, ar1) > MAX(ar2, ar3)) {
-							if (!EdgeIntSurfNums.count(et.first)) {
-								// Aspect ratio will be lowered with flipped edges
-								SphereElems[et.second.front()] = t1;
-								SphereElems[et.second.back()] = t2;
-								// #ifdef SUPERDEBUG
-								// 									ElemTodo.push_back(et.second.front());
-								// 									ElemTodo.push_back(et.second.back());
-								// #endif
-								DoIter = true;
-								break;
+				bool DoIter = true;
+				int Iter2 = 0;
+				while (DoIter && Iter2 < 100) {
+					DoIter = false;
+					Iter2++;
+					std::map<Edge, vector<int>> EdgeToTriMap;
+					for (int ti = 0; ti < SphereElems.size(); ++ti) {
+						auto const & t = SphereElems[ti];
+						for (int ci = 0; ci < 3; ++ci) {
+							auto e = MakeEdge(t[ci], t[(ci + 1) % 3]);
+							if (EdgeToTriMap.count(e)) {
+								EdgeToTriMap[e].push_back(ti);
 							}
 							else {
-								// Aspect ratio will be lowered with flipped edges, but can't flip because this is a constrained edge.
-								// Instead add new node along current edge where new edge would have crossed.
-								vec3 NewNode = ProjectPointToLine((v[2] + v[3]) * 0.5, v[0], v[1]);
-								NewNode = CPPos + normalise(NewNode - CPPos) * SeedRadius;
-								int NewNodeNum = SphereNodes.size();
-								SphereNodes.push_back(NewNode);
-								SphereElems.push_back({ vi[1], vi[2], NewNodeNum });
-								SphereElems.push_back({ vi[1], NewNodeNum, vi[3] });
-								SphereElems[et.second.front()] = { vi[0], NewNodeNum, vi[2] };
-								SphereElems[et.second.back()] = { vi[0], vi[3], NewNodeNum };
-								// #ifdef SUPERDEBUG
-								// 									ElemTodo.push_back(et.second.front());
-								// 									ElemTodo.push_back(et.second.back());
-								// 									ElemTodo.push_back(int(SphereElems.size()) - 2);
-								// 									ElemTodo.push_back(int(SphereElems.size()) - 1);
-								// #endif
-								NodeIntSurfNums.push_back(EdgeIntSurfNums[et.first]);
-								EdgeIntSurfNums[MakeEdge(vi[0], NewNodeNum)] = EdgeIntSurfNums[et.first];
-								EdgeIntSurfNums[MakeEdge(vi[1], NewNodeNum)] = EdgeIntSurfNums[et.first];
-								EdgeIntSurfNums.erase(et.first);
-								NodeTypes.push_back(NETypeR);
-								ElemTypes.insert(ElemTypes.end(), 2, NETypeR);
-								for (auto const & ti : vector<int>({ et.second.front(), et.second.back(), int(SphereElems.size()) - 2, int(SphereElems.size()) - 1 })) {
-									for (auto const & c : SphereElems[ti]) {
-										ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[c]);
-									}
+								EdgeToTriMap[e] = { ti };
+							}
+						}
+					}
+
+					for (auto const & et : EdgeToTriMap) {
+						if (NodeTypes[et.first.first] >= NETypeB || NodeTypes[et.first.second] >= NETypeB || et.second.size() < 2) {
+							continue;
+						}
+						vector<int> vi = { et.first.first, et.first.second };
+						for (auto const & t : et.second) {
+							for (auto const & c : SphereElems[t]) {
+								if (c != et.first.first && c != et.first.second) {
+									vi.push_back(c);
+									break;
 								}
-								NumNodes++;
-								NumElems += 2;
-								DoIter = true;
-								DoOuterIter = true;
-								break;
+							}
+						}
+						vector<vec3> v;
+						v.reserve(4);
+						for (auto const & i : vi) {
+							v.push_back(SphereNodes[i]);
+						}
+
+						if (QuadIsConvex(v[0], v[1], v[2], v[3])) {
+							// Now construct the reciprocal triangle pair made by flipping the edge
+							vector<int> t1 = { vi[0], vi[3], vi[2] },
+								t2 = { vi[1], vi[2], vi[3] };
+							double ar0, ar1, ar2, ar3;
+
+							{
+								auto const & t = SphereElems[et.second.front()];
+								ar0 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
+							}
+							{
+								auto const & t = SphereElems[et.second.back()];
+								ar1 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
+							}
+							{
+								auto const & t = t1;
+								ar2 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
+							}
+							{
+								auto const & t = t2;
+								ar3 = TriAspectRatio(SphereNodes[t[0]], SphereNodes[t[1]], SphereNodes[t[2]]);
+							}
+
+							if (MAX(ar0, ar1) > MAX(ar2, ar3)) {
+								if (!EdgeIntSurfNums.count(et.first)) {
+									// Aspect ratio will be lowered with flipped edges
+									SphereElems[et.second.front()] = t1;
+									SphereElems[et.second.back()] = t2;
+									// #ifdef SUPERDEBUG
+									// 									ElemTodo.push_back(et.second.front());
+									// 									ElemTodo.push_back(et.second.back());
+									// #endif
+									DoIter = true;
+									break;
+								}
+								else {
+									// Aspect ratio will be lowered with flipped edges, but can't flip because this is a constrained edge.
+									// Instead add new node along current edge where new edge would have crossed.
+									vec3 NewNode = ProjectPointToLine((v[2] + v[3]) * 0.5, v[0], v[1]);
+									NewNode = CPPos + normalise(NewNode - CPPos) * SeedRadius;
+									int NewNodeNum = SphereNodes.size();
+									SphereNodes.push_back(NewNode);
+									SphereElems.push_back({ vi[1], vi[2], NewNodeNum });
+									SphereElems.push_back({ vi[1], NewNodeNum, vi[3] });
+									SphereElems[et.second.front()] = { vi[0], NewNodeNum, vi[2] };
+									SphereElems[et.second.back()] = { vi[0], vi[3], NewNodeNum };
+									// #ifdef SUPERDEBUG
+									// 									ElemTodo.push_back(et.second.front());
+									// 									ElemTodo.push_back(et.second.back());
+									// 									ElemTodo.push_back(int(SphereElems.size()) - 2);
+									// 									ElemTodo.push_back(int(SphereElems.size()) - 1);
+									// #endif
+									NodeIntSurfNums.push_back(EdgeIntSurfNums[et.first]);
+									EdgeIntSurfNums[MakeEdge(vi[0], NewNodeNum)] = EdgeIntSurfNums[et.first];
+									EdgeIntSurfNums[MakeEdge(vi[1], NewNodeNum)] = EdgeIntSurfNums[et.first];
+									EdgeIntSurfNums.erase(et.first);
+									NodeTypes.push_back(NETypeR);
+									ElemTypes.insert(ElemTypes.end(), 2, NETypeR);
+									for (auto const & ti : vector<int>({ et.second.front(), et.second.back(), int(SphereElems.size()) - 2, int(SphereElems.size()) - 1 })) {
+										for (auto const & c : SphereElems[ti]) {
+											ElemTypes[ti] = MAX(ElemTypes[ti], NodeTypes[c]);
+										}
+									}
+									NumNodes++;
+									NumElems += 2;
+									DoIter = true;
+									DoOuterIter = true;
+									break;
+								}
 							}
 						}
 					}
 				}
-			}
-			if (TestRun) {
-				auto TmpSphere = FESurface_c(SphereNodes, SphereElems);
-				TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after edge flipping iteration");
-				TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
-			}
+				if (TestRun) {
+					auto TmpSphere = FESurface_c(SphereNodes, SphereElems);
+					TmpSphere.SaveAsTriFEZone({ 1,2,3 }, "after edge flipping iteration");
+					TecUtilZoneSetActive(Set(TecUtilDataSetGetNumZones()).getRef(), AssignOp_MinusEquals);
+				}
 			}
 			
 		}
@@ -7761,9 +7794,9 @@ void FindSphereBasins() {
 	}
 
 	int IntVarNum = VarNumByName(BasinDefineVarName);
-	ComputeGradientOnSphereSurface(SphereZoneNums[0], { 1,2,3 }, IntVarNum);
-
-	return;
+// 	ComputeGradientOnSphereSurface(SphereZoneNums[0], { 1,2,3 }, IntVarNum);
+// 
+// 	return;
 
 	bool SaveBondSurfaces = TecGUIToggleGet(TGL_TOG_T3_1);
 	bool SaveRingCageSurfaces = TecGUIToggleGet(TGLRCSf_TOG_T3_1);

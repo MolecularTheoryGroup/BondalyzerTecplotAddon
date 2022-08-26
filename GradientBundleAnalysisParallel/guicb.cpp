@@ -750,6 +750,8 @@ Boolean_t GBAProcessSystemPrepareGUI(){
 				int ElemNum = SearchVectorForString(ElementSymbolList, ZoneName, false);
 				if (ElemNum < 0)
 					ElemNum = SearchVectorForString(ElementNameList, ZoneName);
+				if (ElemNum < 0)
+					ElemNum = SearchVectorForString(ElementSymbolList, ZoneName, false, "", ".fixed");
 				if (ElemNum >= 0) {
 					int NumPts;
 					TecUtilZoneGetIJK(ZoneNum, &NumPts, nullptr, nullptr);

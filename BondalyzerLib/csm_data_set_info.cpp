@@ -60,14 +60,16 @@ size_t getTotalSystemMemory()
 // 	return ElemNum;
 // }
 
-int SearchVectorForString(vector<string> const & Vec, string const & SearchString, bool UseVectorStringLength){
+int SearchVectorForString(vector<string> const & Vec, string const & SearchString, bool UseVectorStringLength, string const ElemPrefixString, string const ElemSuffixString){
 	Boolean_t IsFound = FALSE;
 
-	for (int i = 0; i < Vec.size(); ++i)
-		if (UseVectorStringLength && SearchString.compare(0, Vec[i].length(), Vec[i]) == 0)
+	for (int i = 0; i < Vec.size(); ++i) {
+		string s = ElemPrefixString + Vec[i] + ElemSuffixString;
+		if (UseVectorStringLength && SearchString.compare(0, s.length(), s) == 0)
 			return i;
-		else if (!UseVectorStringLength && SearchString == Vec[i])
+		else if (!UseVectorStringLength && SearchString == s)
 			return i;
+	}
 
 	return -1;
 }

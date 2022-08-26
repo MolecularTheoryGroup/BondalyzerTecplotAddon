@@ -264,8 +264,6 @@ Boolean_t LoadVASPData(){
 	EntIndex_t VolZoneNum;
 	LgIndex_t TotNumPoints = 0;
 
-// 	vector<vector<double> > TmpCharge, TmpDiff;
-	vector<vector<vector<vector<double> > > > TmpCharge, TmpDiff;
 
 	double LatticeConstant = -1.0;
 // 	mat33 LatticeVector = -ones<vec>(3,3);
@@ -434,8 +432,8 @@ Boolean_t LoadVASPData(){
 		TecUtilMemoryChangeNotify(ArrayMemoryKB);
 
 		vector<vector<vector<double> > > Charge(Mz, vector<vector<double> >(My, vector<double>(Mx, BlankValue)));
-		vector<vector<vector<double> > > Diff;
-		// 		vector<double> Charge(NumPts), Diff;
+		vector<vector<vector<vector<double> > > > SpinFields, TmpCharge;
+		vector<vector<vector<vector<vector<double> > > > > TmpSpinFields;
 
 		StatusLaunch("Reading data...", AddOnID, TRUE);
 
@@ -526,7 +524,6 @@ Boolean_t LoadVASPData(){
 			return FALSE;
 		}
 
-		Boolean_t IsPolar = FALSE;
 
 		/*
 		 *	If another block exists, then it represents
@@ -535,12 +532,12 @@ Boolean_t LoadVASPData(){
 		 *	If this is found, parse the char array
 		 *	and save the values as with the charge density.
 		 */
+		int SpinNum = 0;
 		while (TmpCStr != nullptr){
 			if (!Title1.compare(TmpCStr)){
-				IsPolar = TRUE;
 				TecUtilMemoryChangeNotify(ArrayMemoryKB);
 // 				Diff.resize(NumPts, BlankValue);
-				Diff.resize(Mz, vector<vector<double> >(My, vector<double>(Mx, BlankValue)));
+				SpinFields.emplace_back(Mz, vector<vector<double> >(My, vector<double>(Mx, BlankValue)));
 				StatusLaunch("Reading data...", AddOnID, TRUE);
 				TmpCStr = strtok(nullptr, " \n\t");
 
@@ -557,7 +554,7 @@ Boolean_t LoadVASPData(){
 // 				}
 
 				for (int k = 0; k < Mz; ++k){
-					if (!StatusUpdate(k + CurK, MzTotal, "Reading data... Spin Density", AddOnID)){
+					if (!StatusUpdate(k + CurK, MzTotal, "Reading data... Spin Density " + to_string(SpinFields.size()), AddOnID)){
 						StatusDrop(AddOnID);
 						TecUtilMemoryChangeNotify(-2 * ArrayMemoryKB);
 						TecUtilDataLoadEnd();
@@ -566,7 +563,7 @@ Boolean_t LoadVASPData(){
 					}
 					for (int j = 0; j < My; ++j){
 						for (int i = 0; i < Mx && TmpCStr != nullptr; ++i){
-							Diff[k][j][i] = atof(TmpCStr);
+							SpinFields.back()[k][j][i] = atof(TmpCStr);
 							TmpCStr = strtok(nullptr, " \n\t");
 						}
 					}
@@ -575,15 +572,13 @@ Boolean_t LoadVASPData(){
 				StatusDrop(AddOnID);
 
 // 				if (Diff[NumPts - 1] == BlankValue){
-				if (Diff[Mz - 1][My - 1][Mx - 1] == BlankValue){
+				if (SpinFields.back()[Mz - 1][My - 1][Mx - 1] == BlankValue){
 					TecUtilDialogErrMsg("CHGCAR file ended sooner than expected. Import failed.");
 					TecUtilMemoryChangeNotify(-2*ArrayMemoryKB);
 					TecUtilDataLoadEnd();
 					TecUtilLockFinish(AddOnID);
 					return FALSE;
 				}
-
-				break;
 			}
 			TmpCStr = strtok(nullptr, "\n");
 		}
@@ -600,27 +595,20 @@ Boolean_t LoadVASPData(){
 		V3 = LatticeVector.at(0, 2) * (LatticeVector.at(1, 0) * LatticeVector.at(2, 1) - LatticeVector.at(1, 1) * LatticeVector.at(2, 0));
 		Volume = V1 + V2 + V3;
 
-// #pragma omp parallel for
-// 		for (int i = 0; i < NumPts; ++i){
-// 			Charge[i] /= Volume;
-// 			if (IsPolar)
-// 				Diff[i] /= Volume;
-// 		}
-
 #pragma omp parallel for
 		for (int k = 0; k < Mz; ++k){
 			for (int j = 0; j < My; ++j){
 				for (int i = 0; i < Mx; ++i){
 					Charge[k][j][i] /= Volume;
-					if (IsPolar)
-						Diff[k][j][i] /= Volume;
+					for (auto & Spin : SpinFields)
+						Spin[k][j][i] /= Volume;
 				}
 			}
 		}
 
 		/*
 		 *	If there are multiple files (such as when using
-		 *	AECCAR files), then need to save the contects read
+		 *	AECCAR files), then need to save the contents read
 		 *	from the first file(s) for later.
 		 *	If there's only 1 file, or the current file is
 		 *	the last of multiple files, then sum the values
@@ -630,10 +618,8 @@ Boolean_t LoadVASPData(){
 		if (FileNum < FileNameStrs.size() - 1){
 			TmpCharge.push_back(Charge);
 			Charge.clear();
-			if (IsPolar){
-				TmpDiff.push_back(Diff);
-				Diff.clear();
-			}
+			TmpSpinFields.push_back(SpinFields);
+			SpinFields.clear();
 
 		}
 		else{
@@ -647,46 +633,33 @@ Boolean_t LoadVASPData(){
 					if (TmpCharge[ChargeNum].size() * TmpCharge[ChargeNum][0].size() * TmpCharge[ChargeNum][0][0].size() != NumPts){
 						TecUtilDialogErrMsg("Files do not have same system size. Cancelling import.");
 						TecUtilMemoryChangeNotify(-ArrayMemoryKB);
-						if (IsPolar)
+						for (auto const & i : TmpSpinFields[ChargeNum])
 							TecUtilMemoryChangeNotify(-ArrayMemoryKB);
 						TecUtilDataLoadEnd();
 						TecUtilLockFinish(AddOnID);
 						return FALSE;
 					}
 					
-					/*
-					 *	Combining charge/diff for sevaral files
-					 */
-// #pragma omp parallel for
-// 					for (int i = 0; i < NumPts; ++i){
-// 						Charge[i] += TmpCharge[ChargeNum][i];
-// 						if (IsPolar)
-// 							Diff[i] += TmpDiff[ChargeNum][i];
-// 					}
-// 
-// 					if (!IsPolar && TmpDiff.size() > 0 && TmpDiff[ChargeNum].size() == Mz){
-// 						Diff = TmpDiff[ChargeNum];
-// 						IsPolar = TRUE;
-// 					}
 
 #pragma omp parallel for
 					for (int k = 0; k < Mz; ++k){
 						for (int j = 0; j < My; ++j){
 							for (int i = 0; i < Mx; ++i){
 								Charge[k][j][i] += TmpCharge[ChargeNum][k][j][i];
-								if (IsPolar)
-									Diff[k][j][i] += TmpDiff[ChargeNum][k][j][i];
+								for (int iSpin = 0; iSpin < TmpSpinFields[ChargeNum].size(); ++iSpin) {
+									SpinFields[iSpin][k][j][i] += TmpSpinFields[ChargeNum][iSpin][k][j][i];
+								}
 							}
 						}
 					}
 
-					if (!IsPolar && TmpDiff.size() > 0 &&
-						TmpDiff[ChargeNum].size() == Mz &&
-						TmpDiff[ChargeNum][0].size() == My &&
-						TmpDiff[ChargeNum][0][0].size() == Mx){
-						Diff = TmpDiff[ChargeNum];
-						IsPolar = TRUE;
-					}
+// 					if (!IsPolar && TmpSpinFields.size() > 0 &&
+// 						TmpSpinFields[ChargeNum].size() == Mz &&
+// 						TmpSpinFields[ChargeNum][0].size() == My &&
+// 						TmpSpinFields[ChargeNum][0][0].size() == Mx){
+// 						Diff = TmpSpinFields[ChargeNum];
+// 						IsPolar = TRUE;
+// 					}
 				}
 			}
 
@@ -722,11 +695,23 @@ Boolean_t LoadVASPData(){
 			TecUtilStringListAppendString(VarNames, "Z");
 
 			int NumVars = 4;
-			if (IsPolar){
+			if (SpinFields.size() == 1){
 				NumVars = 6;
 				TecUtilStringListAppendString(VarNames, "Electron Density Sum");
 				TecUtilStringListAppendString(VarNames, "Electron Density A");
 				TecUtilStringListAppendString(VarNames, "Electron Density B");
+			}
+			else if (SpinFields.size() == 3){
+				NumVars = 12;
+				TecUtilStringListAppendString(VarNames, "Electron Density total");
+				TecUtilStringListAppendString(VarNames, "Electron Density (total + x) / 2");
+				TecUtilStringListAppendString(VarNames, "Electron Density (total - x) / 2");
+				TecUtilStringListAppendString(VarNames, "Electron Density (total + y) / 2");
+				TecUtilStringListAppendString(VarNames, "Electron Density (total - y) / 2");
+				TecUtilStringListAppendString(VarNames, "Electron Density (total + z) / 2");
+				TecUtilStringListAppendString(VarNames, "Electron Density (total - z) / 2");
+				TecUtilStringListAppendString(VarNames, "Electron Density (total + x + y + z) / 6");
+				TecUtilStringListAppendString(VarNames, "Electron Density (total - x - y - z) / 6");
 			}
 			else{
 				TecUtilStringListAppendString(VarNames, "Electron Density");
@@ -777,40 +762,78 @@ Boolean_t LoadVASPData(){
 								for (LgIndex_t i = 1; i <= Mx; ++i){
 									LgIndex_t IJK[3] = { i - 1, j - 1, k - 1 };
 									LgIndex_t TIJK[3] = { i + Zx*Mx, j + Zy*My, k + Zz*Mz };
-// 									LgIndex_t Index = IndexFromIJK(i, j, k, Mx, My, Mz, TRUE) - 1;
 									LgIndex_t TotIndex = IndexFromIJK(i + Zx*Mx, j + Zy*My, k + Zz*Mz, TMx, TMy, TMz, TRUE) - 1;
 									for (EntIndex_t VarNum = 0; VarNum < NumVars; ++VarNum){
-										double Value;
+										double PointValue;
 										if (VarNum < 3){
 											/*
 											 *	Here, for the generation of x,y,z values, using
 											 *	the lattice vectors so that non-cartesian systems
 											 *	are property represented as well.
 											 */
-											Value = 0.0;
+											PointValue = 0.0;
 											for (int Dir = 0; Dir < 3; ++Dir)
-												Value += static_cast<double>(TIJK[Dir]) / static_cast<double>(MXYZ[Dir]) * LatticeVector.at(Dir, VarNum);
+												PointValue += static_cast<double>(TIJK[Dir]) / static_cast<double>(MXYZ[Dir]) * LatticeVector.at(Dir, VarNum);
 										}
 										else{
-// 											Value = Charge[Index];
-											Value = Charge[k - 1][j - 1][i - 1];
+											PointValue = Charge[k - 1][j - 1][i - 1];
 											if (VarNum >= 4){
-												double PtDiff;
-												if (IsPolar)
-// 													PtDiff = Diff[Index];
-													PtDiff = Diff[k - 1][j - 1][i - 1];
-												switch (VarNum - 3){
+												if (SpinFields.size() == 1) {
+													double PtDiff = SpinFields[0][k - 1][j - 1][i - 1];
+													switch (VarNum - 3) {
 													case 1:
-														Value = (Value + PtDiff) / 2.0;
+														PointValue = (PointValue + PtDiff) / 2.0;
 														break;
 													default:
-														Value = (Value - PtDiff) / 2.0;
+														PointValue = (PointValue - PtDiff) / 2.0;
 														break;
+													}
+												}
+												else if (SpinFields.size() == 3) {
+													double SpinVal;
+													switch (VarNum - 3) {
+													case 1: // (total + x) / 2
+														SpinVal = SpinFields[0][k - 1][j - 1][i - 1];
+														PointValue = (PointValue + SpinVal) / 2.0;
+														break;
+													case 2: // (total - x) / 2
+														SpinVal = SpinFields[0][k - 1][j - 1][i - 1];
+														PointValue = (PointValue - SpinVal) / 2.0;
+														break;
+													case 3: // (total + y) / 2
+														SpinVal = SpinFields[1][k - 1][j - 1][i - 1];
+														PointValue = (PointValue + SpinVal) / 2.0;
+														break;
+													case 4: // (total - y) / 2
+														SpinVal = SpinFields[1][k - 1][j - 1][i - 1];
+														PointValue = (PointValue - SpinVal) / 2.0;
+														break;
+													case 5: // (total + z) / 2
+														SpinVal = SpinFields[2][k - 1][j - 1][i - 1];
+														PointValue = (PointValue + SpinVal) / 2.0;
+														break;
+													case 6: // (total - z) / 2
+														SpinVal = SpinFields[2][k - 1][j - 1][i - 1];
+														PointValue = (PointValue - SpinVal) / 2.0;
+														break;
+													case 7: // (total + x + y + z) / 6
+														for (auto const & Spin : SpinFields){
+															PointValue += Spin[k - 1][j - 1][i - 1];
+														}
+														PointValue /= 6.0;
+														break;
+													case 8: // (total - x - y - z) / 6
+														for (auto const & Spin : SpinFields) {
+															PointValue -= Spin[k - 1][j - 1][i - 1];
+														}
+														PointValue /= 6.0;
+														break;
+													}
 												}
 											}
 										}
 
-										VarRawPtrs[VarNum].Write(TotIndex, Value);
+										VarRawPtrs[VarNum].Write(TotIndex, PointValue);
 									}
 								}
 							}
@@ -823,7 +846,7 @@ Boolean_t LoadVASPData(){
 			StatusDrop(AddOnID);
 			if (TaskQuit){
 				TecUtilMemoryChangeNotify(-ArrayMemoryKB);
-				if (IsPolar)
+				for (int i = 0; i < SpinFields.size(); ++i)
 					TecUtilMemoryChangeNotify(-ArrayMemoryKB);
 				TecUtilDataLoadEnd();
 				TecUtilLockFinish(AddOnID);

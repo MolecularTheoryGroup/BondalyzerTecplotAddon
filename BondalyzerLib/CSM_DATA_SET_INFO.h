@@ -436,7 +436,7 @@ int VectorGetElementNum(vector<T> const & SearchVec, T const & Item){
 	ElemNum = itr - SearchVec.cbegin();
 	return ElemNum;
 }
-int SearchVectorForString(vector<string> const & Vec, string const & SearchString, bool UseVectorStringLength = true);
+int SearchVectorForString(vector<string> const & Vec, string const & SearchString, bool UseVectorStringLength = true, string const ElemPrefixString = "", string const ElemSuffixString = "");
 
 // template <class T>
 // vector<T> SplitString(string const &s, string const & delim, bool RemoveAllBlanks = false, bool RemoveBlankAtEnd = false);
