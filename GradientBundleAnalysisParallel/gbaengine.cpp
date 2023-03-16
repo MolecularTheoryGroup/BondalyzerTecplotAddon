@@ -56,7 +56,7 @@ using namespace arma;
 using namespace tecplot::toolbox;
 
 
-//  #define SUPERDEBUG
+ #define SUPERDEBUG
 // #define DEBUG_SAVEZONES
 
 #ifdef _DEBUG
@@ -405,7 +405,7 @@ void NewMainFunction() {
 	EdgeGPCheckDistance = (double)TecGUIScaleGetValue(SCEGPDist_SC_T1_1) / 10.;
 	double RingBondEdgeGPCheckDistanceFactor = 0.6;
 	int MaxEdgeGPs = 42;
-	bool MinEdgeGPs = false;
+	bool MinEdgeGPs = true;
 
 
 #ifdef _DEBUG
@@ -776,10 +776,10 @@ if (TestRun)
 		std::map<int, vector<vec3> > RingSurfIntPaths;
 		int NumZones = TecUtilDataSetGetNumZones();
 #ifdef SUPERDEBUG
-		vector<int> ZoneNumVec = { 238 };
-		ZoneNumVec.resize(NumZones);
-		for (int z = 1; z <= NumZones; ++z)
-			ZoneNumVec[z - 1] = z;
+		vector<int> ZoneNumVec = {  };
+// 		ZoneNumVec.resize(NumZones);
+// 		for (int z = 1; z <= NumZones; ++z)
+// 			ZoneNumVec[z - 1] = z;
 
 		for (int z : ZoneNumVec){
  #else
@@ -3376,13 +3376,13 @@ if (TestRun)
 
 
 #ifdef SUPERDEBUG
-// 			ElemTodo = { 196 }; // base 0 (tecplot is base 1)
-			ElemTodo.clear();
-			for (int ti = 0; ti < SphereElems.size(); ++ti) {
-				if (ElemTypes[ti] >= NETypeR) {
-					ElemTodo.push_back(ti);
-				}
-			}
+			ElemTodo = { 34 }; // base 0 (tecplot is base 1)
+// 			ElemTodo.clear();
+// 			for (int ti = 0; ti < SphereElems.size(); ++ti) {
+// 				if (ElemTypes[ti] >= NETypeR) {
+// 					ElemTodo.push_back(ti);
+// 				}
+// 			}
 // 			
 			std::set<int> TmpElems(ElemTodo.begin(), ElemTodo.end());
 			ElemTodo = vector<int>(TmpElems.begin(), TmpElems.end());
@@ -3978,6 +3978,10 @@ if (TestRun)
 				}
 
 				for (auto const & e : TmpEdgeSet) EdgeDistList.emplace_back(e, 0.0);
+
+#ifdef SUPERDEBUG
+				TecUtilDialogMessageBox(string("Subdividing " + to_string(EdgeDistList.size()) + " edges").c_str(), MessageBoxType_Information);
+#endif
 
 				if (!EdgeDistList.empty()) {
 					// Get separation distances for edge GPs
@@ -8453,7 +8457,7 @@ void FindSphereBasins() {
 							for (int ei = 0; ei < 3; ++ei) {
 								if (EdgeSet.count(MakeEdge(elem[ei], elem[(ei + 1) % 3]))){
 									for (int i = 0; i < BoundaryIntVals.size(); ++i){
-										BoundaryIntVals[i] += ElemIntVals[i][iElem];
+										BoundaryIntVals[i] += ElemIntVals[i][iElem] * 0.5; // only half the element is uncertain, otherwise the boundary would be on the other side
 									}
 									break;
 								}
@@ -8466,6 +8470,13 @@ void FindSphereBasins() {
 					if (SaveSurf) {
 
 						int NumSeedPts = SeedPts.size();
+
+						vec3 midPt = { 0.0, 0.0, 0.0 };
+						for (auto const & s : SeedPts){
+							midPt += s;
+						}
+						midPt /= MAX(float(NumSeedPts), 1.0);
+
 						/*
 							*	Check to see if any bond path-sphere intersections appear in the perimeter.
 							*	If they do, need to add them to the surface.
@@ -8483,8 +8494,11 @@ void FindSphereBasins() {
 						vector<GradPath_c> BasinParimeterGPs(NumSeedPts);
 						vector<GradPath_c*> GPPtrs;
 						for (int p = 0; p < NumSeedPts; ++p) {
+							vec3 offsetVec = normalise(midPt - SeedPts[p]);
+							vec3 seedPt = SeedPts[p] + offsetVec * 0.005;
+							seedPt = SphereOrigin + normalise(seedPt - SphereOrigin) * SphereRadius;
 							BasinParimeterGPs[p].SetupGradPath(
-								SeedPts[p],
+								seedPt,
 								StreamDir_Both,
 								NumGPPts,
 								GPType_Classic,

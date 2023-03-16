@@ -2537,13 +2537,24 @@ GradPath_c::GradPath_c(vector<GradPath_c const *> const & GPs,
 // 		else
 // 			TmpGPs[i] = *GPs[i];
 	}
+	if (GPs.size() == 2) {
+		// add element to guarantee that surface extends under seedpoint
+		if (DistSqr(TmpGPs[0][0], TmpGPs[0][-1]) < DistSqr(TmpGPs[0][0], SeedPoint)
+			&& DistSqr(TmpGPs[1][0], TmpGPs[1][-1]) < DistSqr(TmpGPs[1][0], SeedPoint)) {
+			TmpGPs[0].PointAppend(SeedPoint, 0.);
+			TmpGPs[1].PointAppend(SeedPoint, 0.);
+		}
+	}
 
 	FESurface_c Surf;
 	Surf.MakeFromGPs(GPPtrs);
+
+
+
 	Surf.GeneratePointElementDistanceCheckData();
 
 	//DEBUG
-	bool doSaveSurf = false;
+	bool doSaveSurf = true;
 	if (doSaveSurf) {
 		Surf.SaveAsTriFEZone({ 1,2,3 }, "InterGP Surface");
 		for (int i = 0; i < GPs.size(); ++i){
@@ -2928,7 +2939,7 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 	// 	gsl_odeiv2_driver_set_hmin(ODEDriver, 1e-8);
 	// 	gsl_odeiv2_driver_set_hmax(ODEDriver, 1e-1);
 
-	if (IsOk){
+	if (IsOk) {
 		double tInit = 0.0;
 		double tFinal = DBL_MAX;
 
@@ -2942,7 +2953,7 @@ Boolean_t GradPath_c::SeedInDirection(StreamDir_e const & Direction){
 		vector<vec3> SurfXYZList;
 		vector<double> SurfRhoList;
 
-		if (m_Surface != nullptr && m_Surface->IsMade() && m_SurfGPProjectionFrequency <= 1){
+		if (m_Surface != nullptr && m_Surface->IsMade()){// && m_SurfGPProjectionFrequency <= 1){
 			if (!m_Surface->ProjectPointToSurface(y, m_StartPoint, SurfLastProjectedElem, SurfProjectionFound)){
 				TecUtilDialogErrMsg("Projection of point to FESurface failed");
 			}

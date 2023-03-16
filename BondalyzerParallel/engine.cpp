@@ -3912,14 +3912,19 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 	// Increase number of GP points when working, then resample it to specified number
 	double NumGPPtsWorkingFactor = 5.0;
 	double TermRadiusCellSpacingFactor = 3.0;
-	double GPTermRadius = MAX(0.02, TermRadiusCellSpacingFactor * norm(VolInfo.PointSpacingV123));
+	double GPTermRadius = MAX(0.04, TermRadiusCellSpacingFactor * norm(VolInfo.PointSpacingV123));
 	double SaddleTermRadius = GPTermRadius * 5.0;
 	double TermRadiusWorking = GPTermRadius;
-	double CoincidentPointCheckDistSqr = 1e-12;
-	double CoincidentPointCheckAngle = 1e-40;
+	double CoincidentPointCheckDistSqr = 0;// 1e-12;
+	double CoincidentPointCheckAngle = 0;// 1e-40;
+	int MaxNCPPairDepth = 300;
+	int MaxFailedBPPathAttempts = 1;
+	int IncreaseBCPSearchRadiusNCPPairDepth = 8;
+	double IncreaseBCPSearchRadiusFactor = 1.1;
+	std::map<Edge, std::pair<int,double> > NCPPairDepth;
 	double GPMidPointConvergenceTolerance = 1e-6;
 	double GPMidPointUseCurvatureMidpointTolerance = 0.05;
-	int GPMidPointConvergenceNumCheckPts = 10;
+	int GPMidPointConvergenceNumCheckPts = 20;
 // 	double RhoCutoff = DefaultRhoCutoff;
 	int NumCircleCheckGPs = MinNumCircleCheckGPs;
 	int NumCircleGPs = MinNumCircleGPs;
@@ -4113,7 +4118,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		double MinCPDist = AllCPs.GetMinCPDist(TypeInd, CPNum, CPTypesForMinDistCheck);
 
 		TermRadiusWorking = 0.01 * MinCPDist;
-		SaddleTermRadius = TermRadiusWorking * 5.0;
+		SaddleTermRadius = MAX(0.01, TermRadiusWorking * 5.0);
 
 		StartPointOffset = MIN(0.05 * MinCPDist, DelXYZNorm);
 		double SourceCPTermRadius = 0.05 * StartPointOffset;
@@ -4460,7 +4465,11 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 		}
 
 
+		bool TerminatedAtSaddle = false;
+		int FailedBPPathAttempts = 0;
+
 		while (DoContinue && Path2 != GPList.end()) {
+			TerminatedAtSaddle = false;
 			TermRadiusWorking = GPTermRadius;
 			DoContinue = StatusUpdate(iCP * NumSteps + StepNum, StatusTotalNum, CPStatusStr + StepStrings[StepNum] + " found " + to_string(FoundSaddleCPNums.size()) + " saddle(s)", AddOnID, Time1);
 			if (Path2->IsSGP);
@@ -4530,6 +4539,17 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				// deviation angle is past the check angle.
 				GPWithInfo GP;
 
+				auto NCPPair = MakeEdge(Path1->CPNum, Path2->CPNum);
+				if (!NCPPairDepth.count(NCPPair)) {
+					NCPPairDepth[NCPPair] = std::make_pair(0, SaddleTermRadius);
+				}
+				else if (!TerminatedAtSaddle){
+					NCPPairDepth[NCPPair].first++;
+					if (NCPPairDepth[NCPPair].first >= IncreaseBCPSearchRadiusNCPPairDepth){
+						NCPPairDepth[NCPPair].second *= IncreaseBCPSearchRadiusFactor;
+					}
+				}
+
 				// DEBUG
 				GP.Identifier = (Path1->Identifier + Path2->Identifier) * 0.5;
 
@@ -4547,7 +4567,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 				while (GPMidPtDeque.size() > GPMidPointConvergenceNumCheckPts)
 					GPMidPtDeque.pop_front();
 
-				bool IsConverged = (GPMidPtDeque.size() >= 3 && MidPtStdDevScalar(GPMidPtDeque) < GPMidPointConvergenceTolerance || AngleDiff < CoincidentPointCheckAngle);
+				bool IsConverged = (GPMidPtDeque.size() >= GPMidPointConvergenceNumCheckPts/2 && MidPtStdDevScalar(GPMidPtDeque) < GPMidPointConvergenceTolerance) || AngleDiff < CoincidentPointCheckAngle || NCPPairDepth[NCPPair].first > MaxNCPPairDepth;
 				// 
 				// 				if (IsConverged)
 				// 					break;
@@ -4625,7 +4645,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 					double TmpSaddleTermRadius = TmpMinDist * 0.1;
 					TermRadiusWorking = TmpSaddleTermRadius;
 
-					GP.GP.SetupGradPath(GPMidPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &SaddleTermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+					GP.GP.SetupGradPath(GPMidPt, GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &NCPPairDepth[NCPPair].second, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 					GP.GP.SetTerminalCPTypeNums(GPTerminalCPTypeNums);
 					GP.GP.SetStartEndCPNum(CurrentCPNum, 0);
 					GP.GP.Seed(false);
@@ -4648,7 +4668,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 						// So, gather the two bond/ring path segments, then make the surface, seed
 						// back to the central CP, save to GPList, and move on in the search.
 
-
+						FailedBPPathAttempts = 0;
 
 						// First get the bond/ring paths
 						vector<int> CPNums;
@@ -4736,58 +4756,6 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 						Path1 = Path2;
 						Path2++;
 
-						// Midpoint has converged and there is a known saddle CP connecting
-						// the terminal CPs of Path1 and Path2.
-						// Start a binary search between the Points at Path1Ind and Path2Ind
-						// until the saddle CP is found.
-
-// 						int Iter = 0;
-// 						int MaxIter = 50;
-// 						double Low = 0.0, Mid = 0.5, High = 1.0;
-// 						if (GP.CPNum == Path1->CPNum)
-// 							Low = Mid;
-// 						else if (GP.CPNum == Path2->CPNum)
-// 							High = Mid;
-// 
-// 						while (GP.CPType != SaddleCPTermType && Iter++ < MaxIter){
-// 							Mid = (Low + High) * 0.5;
-// 							GPMidPt = Path1->GP.XYZAt(Path1Ind) * (1.0 - Mid) + Path2->GP.XYZAt(Path2Ind) * Mid;
-// 							GP.GP.Clear();
-// 							GP.GP.SetStartPoint(GPMidPt);
-// 							GP.GP.Seed(false);
-// 							GP.CPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
-// 							GP.CPType = AllCPs.GetTypeFromTotOffset(GP.CPNum);
-// 							if (GP.CPType != SaddleCPTermType){
-// 								if (GP.CPNum == Path1->CPNum)
-// 									Low = Mid;
-// 								else if (GP.CPNum == Path2->CPNum)
-// 									High = Mid;
-// 								else
-// 									TecUtilDialogErrMsg("Close range binary saddle search GP terminated at invalid CP");
-// 							}
-// 							else{
-// 								GP.Angle = Path1->Angle * (1.0 - Mid) + Path2->Angle * Mid;
-// 							}
-// 						}
-// 
-// 						if (Iter >= MaxIter) {
-// 							// Close range binary search for saddle CP failed, but we know that one
-// 							// both exists and that we're as close as were going to get to it using
-// 							// the deviation checking method, so we'll instead stitch the existing
-// 							// bond/ring path together with Path1 and Path2 to form a surface that
-// 							// can be used to seed a GP from the saddle CP back into the central CP.
-// 							// So, gather the two bond/ring path segments, then make the surface, seed
-// 							// back to the central CP, save to GPList, and move on in the search.
-// 							
-// 							TecUtilDialogErrMsg("Close range binary saddle search GP failed");
-// 							GPMidPt = (Path1->GP.XYZAt(Path1Ind) + Path2->GP.XYZAt(Path2Ind)) * 0.5;
-// 							GP.GP.Clear();
-// 							GP.GP.SetStartPoint(GPMidPt);
-// 							GP.GP.Seed(false);
-// 							GP.CPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
-// 							GP.CPType = AllCPs.GetTypeFromTotOffset(GP.CPNum);
-// 						}
-
 					}
 					// The GP could have terminated at either of the terminal CPs or at a third
 					// CP, which could be a nuclear/cage or bond/ring CP.
@@ -4813,10 +4781,18 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 						// make the decision.
 						// Just using a straight-line distance here rather than partial path lengths.
 						// 
+						// 
+						TerminatedAtSaddle = true;
+						vec3 TermPt = GP.GP[-1];
+						double TermRho = GP.GP.RhoAt(-1);
+						int CPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
+						CPType_e CPType = AllCPs.GetTypeFromTotOffset(GP.CPNum);
+
+
 						double DistStartToSeed = Distance(GPMidPt, CPPosition),
 							DistSeedToEnd = Distance(GPMidPt, GP.GP[-1]);
 
-						double DistSeedToStartEndRatioCutoff = 0.2; // this is the maximum value allowed of (DistSeedToEnd / DistStartToSeed), so if set to 0.25, then DistStartToSeed must be 4 times larger than DistSeedToEnd, that is, we must be much closer to the terminating saddle than to the originating one.
+						double DistSeedToStartEndRatioCutoff = 0.05; // this is the maximum value allowed of (DistSeedToEnd / DistStartToSeed), so if set to 0.25, then DistStartToSeed must be 4 times larger than DistSeedToEnd, that is, we must be much closer to the terminating saddle than to the originating one.
 
 						double DistSeedToStartEndRatio;
 
@@ -4843,6 +4819,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 							GP.CPType = AllCPs.GetTypeFromTotOffset(GP.CPNum);
 
 							Reiterate = true;
+							FailedBPPathAttempts = 0;
 						}
 						else{
 
@@ -4854,7 +4831,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 							// Do a binary search on either side of the min to get larger values;
 							// 
 
-							GradPath_c GPSaddle(vec3(), GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &SaddleTermRadius, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
+							GradPath_c GPSaddle(vec3(), GPDir, NumGPPts, GPType_Classic, GPTerminate_AtCP, nullptr, &AllCPs, &NCPPairDepth[NCPPair].second, &RhoCutoff, VolInfo, HessPtrs, GradPtrs, RhoPtr);
 							GPSaddle.SetTerminalCPTypeNum(GPTerminalCPSaddleTypeNum);
 							GPSaddle.SetStartEndCPNum(CurrentCPNum, 0);
 							int Iter = 0, MaxIter = 10;
@@ -4895,9 +4872,12 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 							}
 							std::pair<vec3 const *, vec3 const *> StartPoints(&Pts[0], &Pts[1]);
 							double bMin = 0.5;
-							if (Iter >= MaxIter || !MinLengthGPBetweenPointsCheckStartPoints(GPSaddle, StartPoints, bMin)) {
+							if ((Iter >= MaxIter || !MinLengthGPBetweenPointsCheckStartPoints(GPSaddle, StartPoints, bMin)) && FailedBPPathAttempts < MaxFailedBPPathAttempts) {
 								// Failed to get a lower and upper bound for the minimization, so remake the GP so that 
 								// it won't terminate at the saddle CP, then we can iterate and try again.
+								// 
+								FailedBPPathAttempts++;
+
 								GP.GP.Clear();
 								GP.GP.SetStartPoint(GPMidPt);
 								GP.GP.SetTerminalCPTypeNum(GPTerminalCPTypeNum);
@@ -4919,49 +4899,100 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 								// 							GPSaddle.SetSurfPtr(&TmpSurf);
 								// 							GPSaddle.SetTermPoint(CPPosition);
 
-								if (MinLengthGPBetweenPoints(GPSaddle, StartPoints, bMin)) {
+								if (FailedBPPathAttempts >= MaxFailedBPPathAttempts || MinLengthGPBetweenPoints(GPSaddle, StartPoints, bMin)) {
 									FoundSaddleCPNums.insert(GP.CPNum);
-									// Minimum length GP found.
-									// Combine with midpoint GP from Path1 and Path2 and put into GPList.
-									vec3 bMinPt = Pts[0] * bMin + Pts[1] * (1.0 - bMin);
-									//  								MidPtRhoVal = ValAtPointByPtr(bMinPt, VolInfo, RhoPtr);
-									 // 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMin, MidPtRhoVal, -1);
-									 // 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMin, Path1->GP.RhoAt(Path1Ind), -1);
-									 // 								GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
-									// 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMinPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MIN(Path1Ind + NeighborGPSurfaceIndOffset, Path1->GP.GetCount() - 1)), std::make_pair(0, MIN(Path2Ind + NeighborGPSurfaceIndOffset, Path2->GP.GetCount() - 1)) }, &CPPosition);
-									GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMinPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), std::make_pair(0, MAX(Path2->GP.GetIndAtLength(Path2->GP.GetLength(Path2Ind) + Path2->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path2Ind + NeighborGPSurfaceIndOffset)) }, &CPPosition);
-									// Need to trim points off GP.GP to make sure that the resulting rho values
-									// when combined with GPSaddle are monotonic down the path.
-	// 								GPSaddle.Resample(NumGPPts, GPResampleMethod_Linear);
-									int tmpInd = 0;
-									while ((CPType == CPType_Ring && GP.GP.RhoAt(tmpInd) > GPSaddle.RhoAt(0)) || (CPType == CPType_Bond && GP.GP.RhoAt(tmpInd) < GPSaddle.RhoAt(0)))
-										tmpInd++;
+									if (FailedBPPathAttempts < MaxFailedBPPathAttempts) {
+										// Minimum length GP found.
+										// Combine with midpoint GP from Path1 and Path2 and put into GPList.
+										vec3 bMinPt = Pts[0] * bMin + Pts[1] * (1.0 - bMin);
+										//  								MidPtRhoVal = ValAtPointByPtr(bMinPt, VolInfo, RhoPtr);
+										 // 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMin, MidPtRhoVal, -1);
+										 // 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMin, Path1->GP.RhoAt(Path1Ind), -1);
+										 // 								GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+										// 								GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMinPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MIN(Path1Ind + NeighborGPSurfaceIndOffset, Path1->GP.GetCount() - 1)), std::make_pair(0, MIN(Path2Ind + NeighborGPSurfaceIndOffset, Path2->GP.GetCount() - 1)) }, &CPPosition);
+										GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, bMinPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), std::make_pair(0, MAX(Path2->GP.GetIndAtLength(Path2->GP.GetLength(Path2Ind) + Path2->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path2Ind + NeighborGPSurfaceIndOffset)) }, &CPPosition);
+										// Need to trim points off GP.GP to make sure that the resulting rho values
+										// when combined with GPSaddle are monotonic down the path.
+		// 								GPSaddle.Resample(NumGPPts, GPResampleMethod_Linear);
+										int tmpInd = 0;
+										while ((CPType == CPType_Ring && GP.GP.RhoAt(tmpInd) > GPSaddle.RhoAt(0)) || (CPType == CPType_Bond && GP.GP.RhoAt(tmpInd) < GPSaddle.RhoAt(0)))
+											tmpInd++;
 
-									if (tmpInd > 0)
-										GP.GP = GP.GP.SubGP(tmpInd, -1);
-									GP.GP += GPSaddle;
-									// 								GP.GP = GPSaddle;
+										if (tmpInd > 0)
+											GP.GP = GP.GP.SubGP(tmpInd, -1);
+										GP.GP += GPSaddle;
+										// 								GP.GP = GPSaddle;
 
-									GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
+										GP.GP.ReinterpolateRhoValuesFromVolume(&VolInfo, &RhoPtr);
 
-									GP.GP.Resample(NumGPPts + 5);
-									GP.GP.RemoveKinks();
+										GP.GP.Resample(NumGPPts + 5);
+										GP.GP.RemoveKinks();
 
-									if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition))
-										// Need to reverse GP
-										GP.GP.Reverse();
+										if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition))
+											// Need to reverse GP
+											GP.GP.Reverse();
 
-									// 								if ((CPType == CPType_Ring && GP.GP.RhoAt(0) > GP.GP.RhoAt(-1))
-									// 									|| (CPType == CPType_Bond && GP.GP.RhoAt(0) < GP.GP.RhoAt(-1))) {
-									// 									GP.GP.Reverse();
-									// 								}
-									GP.Identifier = Path1->Identifier * bMin + Path2->Identifier * (1.0 - bMin);
-									GP.SaddleCPNum = GP.GP.GetStartEndCPNum(EndCPPosition);
-									GP.CPType = AllCPs.GetTypeFromTotOffset(GP.SaddleCPNum);
-									GP.IsSGP = true;
+										// 								if ((CPType == CPType_Ring && GP.GP.RhoAt(0) > GP.GP.RhoAt(-1))
+										// 									|| (CPType == CPType_Bond && GP.GP.RhoAt(0) < GP.GP.RhoAt(-1))) {
+										// 									GP.GP.Reverse();
+										// 								}
+										GP.Identifier = Path1->Identifier * bMin + Path2->Identifier * (1.0 - bMin);
+										GP.SaddleCPNum = CPNum;
+										GP.CPType = AllCPs.GetTypeFromTotOffset(GP.SaddleCPNum);
+										GP.IsSGP = true;
 
 
-									DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle", PassNum, SubPassNum, 2);
+										DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle", PassNum, SubPassNum, 2);
+									}
+									else{
+										vec3 SeedPt = (Pts[0] + Pts[1]) * 0.5;
+										SeedPt = SeedPt * 0.1 + TermPt * 0.9;
+
+										Path1->GP.GetSeparationMidpointAtDistFromOtherGP(Path2->GP, SeedPt, Path1Ind, Path2Ind, Path2Pt, 0.001, Path1->GP.GetLength(Path1Ind-10) / Path1->GP.GetLength());
+
+										int ind1, ind2;
+										vec3 pt1 = Path1->GP.ClosestPoint(TermPt, ind1);
+										vec3 pt2 = Path2->GP.ClosestPoint(TermPt, ind2);
+// 										auto gp1 = Path1->GP.SubGP(0, ind1);
+// 										auto gp2 = Path2->GP.SubGP(0, ind2);
+// 										gp1.PointAppend(TermPt, TermRho);
+// 										gp2.PointAppend(TermPt, TermRho);
+										GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, SeedPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, Path1Ind), std::make_pair(0, Path2Ind) }, &CPPosition);
+	// 									GP.GP = GradPath_c({ &Path1->GP,&Path2->GP }, SeedPt, (CPType == CPType_Ring ? StreamDir_Reverse : StreamDir_Forward), { std::make_pair(0, MAX(Path1->GP.GetIndAtLength(Path1->GP.GetLength(Path1Ind) + Path1->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path1Ind + NeighborGPSurfaceIndOffset)), std::make_pair(0, MAX(Path2->GP.GetIndAtLength(Path2->GP.GetLength(Path2Ind) + Path2->GP.GetLength() * NeighborGPSurfaceIndLengthOffsetFactor), Path2Ind + NeighborGPSurfaceIndOffset)) }, &CPPosition);
+										GP.GP = GP.GP.SubGP(1, -2);
+										if (DistSqr(GP.GP[0], CPPosition) > DistSqr(GP.GP[-1], CPPosition)) {
+											// Need to reverse GP
+											GP.GP.PointAppend(CPPosition, CPRho);
+											int StartI = 0;
+											for (StartI = 1; StartI < GP.GP.GetCount(); StartI++){
+												if (GP.GP.RhoAt(StartI-1) < TermRho && GP.GP.RhoAt(StartI) >= TermRho){
+													GP.GP = GP.GP.SubGP(StartI, -1);
+													break;
+												}
+											}
+											GP.GP.PointPrepend(TermPt, TermRho);
+											GP.GP.Reverse();
+										}
+										else{
+											int EndI = 0;
+											for (EndI = GP.GP.GetCount() - 2; EndI > 0; EndI--) {
+												if (GP.GP.RhoAt(EndI - 1) < TermRho && GP.GP.RhoAt(EndI) >= TermRho) {
+													GP.GP = GP.GP.SubGP(0, EndI);
+													break;
+												}
+											}
+											GP.GP.PointPrepend(CPPosition, CPRho);
+											GP.GP.PointAppend(TermPt, TermRho);
+										}
+										GP.GP.Resample(NumGPPts + 5);
+										GP.GP.RemoveKinks();										
+										GP.Identifier = Path1->Identifier * bMin + Path2->Identifier *0.5;
+										GP.SaddleCPNum = CPNum;
+										GP.CPType = AllCPs.GetTypeFromTotOffset(GP.SaddleCPNum);
+										GP.IsSGP = true;										
+										
+										DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: " + to_string(GP.CPType) + "\nTerminated at saddle (straight line approx)", PassNum, SubPassNum, 2);
+									}
 
 									// Find the end GPs to combine with the saddle GP at a later step.
 									// The saddle-min/max CP paths could go to the terminal CPs of Path1 and Path2,
@@ -5027,7 +5058,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 												sGP->Seed(false);
 												sGP->PointPrepend(SeedOrigin, AllCPs.GetRho(GP.SaddleCPNum));
 
-												if (GP.SaddleEndGPs[(i + 1) % 2].IsMade() && DistSqr(GP.SaddleEndGPs[(i + 1) % 2].XYZAt(-1), sGP->XYZAt(-1)) < TermRadiusWorking * TermRadiusWorking) {
+												if (GP.SaddleEndGPs[(i + 1) % 2].IsMade() && DistSqr(GP.SaddleEndGPs[(i + 1) % 2].XYZAt(-1), sGP->XYZAt(-1)) < NCPPairDepth[NCPPair].second * NCPPairDepth[NCPPair].second) {
 													// if (i == 1 && DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), sGP->XYZAt(-1)) < TermRadiusWorking * TermRadiusWorking) {
 		// 											if ((i == 1 && DistSqr(GP.SaddleEndGPs[0].XYZAt(-1), sGP->XYZAt(-1)) < TermRadiusWorking * TermRadiusWorking)
 		// 												|| (DistSqr(TmpPaths[i]->GP.XYZAt(-1), sGP->XYZAt(-1)) > DistSqr(TmpPaths[(i+1)%2]->GP.XYZAt(-1), sGP->XYZAt(-1)))) {
@@ -5177,7 +5208,7 @@ Boolean_t FindBondRingSurfaces2(int VolZoneNum,
 // 							TecUtilDialogMessageBox(string("iterating between two missing CPs: before printing GP\nGP made: " + to_string(GP.GP.IsMade())).c_str(), MessageBoxType_Information);
 // 						}
 
-						DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", type: ", PassNum, SubPassNum, 1);
+						DoPrintPaths = DoPrintPaths && DebugSaveGPWaitForUser(GP.GP, XYZVarNums, RhoVarNum, DebugPathStringBase + "\nTerminal CP: " + to_string(GP.CPNum) + ", terminal check radius = " + to_string(NCPPairDepth[NCPPair].second), PassNum, SubPassNum, 1);
 
 						// recheck region between new GP and Path1 by setting Path2 to the new GP
 						Path2--;
