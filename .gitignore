@@ -161,3 +161,4 @@ $RECYCLE.BIN/
 *.sqlite-journal
 *.db
 *.sqlite
+.vscode/settings.json
