@@ -5552,7 +5552,58 @@ if (TestRun)
 				}
 			}
 
-			
+			if (RadialSphereApprx) {
+				/* 
+				*  Perform a Monte Carlo integration of the sphere interior and overwrite the SphereIntVals
+				*/
+
+				double mc_tol = 1e-4;
+				std::random_device rd;
+				std::mt19937 gen(rd());
+				std::uniform_real_distribution<> dist(-RadialApprxRadius, RadialApprxRadius);
+				auto old_vals = SphereIntVals;
+				auto new_vals = SphereIntVals;
+				auto mc_val_sums = SphereIntVals;
+				double max_abs_diff = 1.0;
+				int mc_num_samples = 0;
+				int mc_iter_max = 10000000;
+				int mc_iter_min = 100000;
+				int mc_num_hits = 0;
+				int check_iter = 1000;
+
+				while ((mc_num_samples < mc_iter_max && max_abs_diff > mc_tol) || mc_num_samples < mc_iter_min) {
+					vec3 test_point = vec3(dist(gen), dist(gen), dist(gen)) - CPPos;
+					double radius = norm(test_point);
+					if (radius < RadialApprxRadius){
+						mc_num_hits++;
+						// Get variable values at the point
+						for (int i = 0; i < IntVarPtrs.size(); ++i) {
+							mc_val_sums[i] += ValByCurrentIndexAndWeightsFromRawPtr(VolInfo, IntVarPtrs[i]);
+						}
+						if (mc_num_hits % check_iter == 0) {
+							for (int i = 0; i < IntVarPtrs.size(); ++i) {
+								new_vals[i] = mc_val_sums[i] / mc_num_hits;
+								max_abs_diff = max(max_abs_diff, abs(new_vals[i] - old_vals[i]));
+								old_vals[i] = new_vals[i];
+							}
+						}
+					}
+					mc_num_samples++;
+				}
+
+				// Calculate volume
+				double volume = 4.0 / 3.0 * PI * pow(RadialApprxRadius, 3.0) * mc_num_hits / mc_num_samples;
+				// Save int vals into SphereIntVals, dividing the whole value enenly among the elements
+				double elem_factor = 1.0 / SphereElems.size();
+				for (int ti = 0; ti < SphereElems.size(); ++ti) {
+					// First SphereIntVals[ti].size() variables correspond to those in new_vals, then volume comes last
+					for (int iVar = 0; iVar < SphereIntVals[ti].size(); ++iVar) {
+						SphereIntVals[ti][iVar] = new_vals[iVar] * elem_factor;
+					}
+					SphereIntVals[ti].back() = volume * elem_factor;
+				}
+			}
+						
 
 
 			for (auto & IntVarPtr : IntVarPtrs) {
