@@ -635,9 +635,9 @@ void NewMainFunction() {
 		vector<int> XYZRhoVarNums = XYZVarNums;
 		XYZRhoVarNums.push_back(RhoVarNum);
 
-		double CoincidentCheckEpsilonSqr = 1e-5;
 
 		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
+			double CoincidentCheckEpsilonSqr = 1e-5;
 			if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPathSegment)) {
 				vec3 IntPoint;
 				GradPath_c TmpGP(z, XYZRhoVarNums, AddOnID);
