@@ -635,6 +635,8 @@ void NewMainFunction() {
 		vector<int> XYZRhoVarNums = XYZVarNums;
 		XYZRhoVarNums.push_back(RhoVarNum);
 
+		double CoincidentCheckEpsilonSqr = 1e-5;
+
 		for (int z = 1; z <= TecUtilDataSetGetNumZones(); ++z) {
 			if (AuxDataZoneItemMatches(z, CSMAuxData.CC.ZoneSubType, CSMAuxData.CC.ZoneSubTypeBondPathSegment)) {
 				vec3 IntPoint;
@@ -651,6 +653,22 @@ void NewMainFunction() {
 					IntersectingBondPathPoints.push_back(IntPoint);
 					IntersectingBondPaths.push_back(TmpGP);
 					IntersectingBondPathsUntrimmed.push_back(TmpGP);
+				}
+
+				// check if point just added is too close to previously added points
+				if (IntersectingBondPathPoints.size() > 1) {
+					bool TooClose = false;
+					for (int i = 0; i < IntersectingBondPathPoints.size() - 1; ++i) {
+						if (DistSqr(IntersectingBondPathPoints[i], IntersectingBondPathPoints.back()) < CoincidentCheckEpsilonSqr) {
+							TooClose = true;
+							break;
+						}
+					}
+					if (TooClose) {
+						IntersectingBondPathPoints.pop_back();
+						IntersectingBondPaths.pop_back();
+						IntersectingBondPathsUntrimmed.pop_back();
+					}
 				}
 
 			}
