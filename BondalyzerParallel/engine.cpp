@@ -1571,7 +1571,7 @@ Boolean_t FindBondRingLines(int VolZoneNum,
 
 	double const StartPointOffset = 0.01 * AllCPs.GetMinCPDist(MinDistTypes);
 // 	int const NumGPPts = 300;
-	double TermRadius = 0.1 * AllCPs.GetMinCPDist(MinDistTypes);
+	double TermRadius = 0.1; //* AllCPs.GetMinCPDist(MinDistTypes);
 	double RhoCutoff = DefaultRhoCutoff;
 
 	CPTypeNum_e TermTypeNum = (CPType == CPType_Bond ? CPTypeNum_Nuclear : CPTypeNum_Cage);

@@ -16,9 +16,9 @@ using namespace arma;
 using std::vector;
 
 #define GP_NumPointsBufferFactor	10
-#define GP_StallPointCount			20
+#define GP_StallPointCount			100
 #define GP_StallNumPointsToCheck	10
-#define GP_StallPointDistTol		1e-8
+#define GP_StallPointDistTol		1e-10
 #define GP_MaxNumPoints				30000
 #define GP_PlaneCPStallCount		30
 #define GP_PlaneCPMaxIter			100

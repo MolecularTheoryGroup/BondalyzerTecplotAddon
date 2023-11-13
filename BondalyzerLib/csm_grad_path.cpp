@@ -2554,7 +2554,7 @@ GradPath_c::GradPath_c(vector<GradPath_c const *> const & GPs,
 	Surf.GeneratePointElementDistanceCheckData();
 
 	//DEBUG
-	bool doSaveSurf = true;
+	bool doSaveSurf = false;
 	if (doSaveSurf) {
 		Surf.SaveAsTriFEZone({ 1,2,3 }, "InterGP Surface");
 		for (int i = 0; i < GPs.size(); ++i){

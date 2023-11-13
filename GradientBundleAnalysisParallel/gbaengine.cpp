@@ -56,7 +56,7 @@ using namespace arma;
 using namespace tecplot::toolbox;
 
 
- #define SUPERDEBUG
+//  #define SUPERDEBUG
 // #define DEBUG_SAVEZONES
 
 #ifdef _DEBUG
@@ -217,6 +217,10 @@ void NewMainFunction() {
 	double CutoffVal = 0.001;
 	TecGUITextFieldGetDouble(TFCutoff_TF_T1_1, &CutoffVal);
 	EntIndex_t RhoVarNum = VarNumByName("Electron Density");
+
+	if (!TecUtilDialogGetVariables("Please select electron charge density variable to be used to define gradient paths/bundles","Electron density", "", "", &RhoVarNum, NULL, NULL)){
+	return;
+}
 
 	vector<string> AtomNameList;
 	vector<string> IntVarNameList, BaseIntVarNameList;
