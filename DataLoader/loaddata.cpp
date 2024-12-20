@@ -1995,23 +1995,32 @@ LoaderStatus_e GetT41Contents(Boolean_t IsADFFile, Boolean_t SaveToList){
 				 *	First check against "main" variables
 				 */
 				if (!VarFound) for (string const & Sec : T41Sec){
-					unsigned int VarChkNum = 0;
-					for (string const & Var : T41Var){
-						for (string const & Suffix : T41VarSuffices){
-							string Str1 = Sec + "%" + Var + Suffix;
-							if (Str1 == ChkStr){
-								string Str2 = VarStrings[VarChkNum] + Suffix + " " + Sec;
-								T41LoadKFVarStrings.push_back(Str1);
-								T41LoadUserVarStrings.push_back(Str2);
-								T41DataSizes.push_back(LengthList[SecNum][VarNum]);
-								VarFound = TRUE;
+					// Check if SectionNames[SecNum] starts with Sec
+					if (SectionNames[SecNum].substr(0, Sec.length()) == Sec) {
+						// Get the suffix (if any) from SectionNames[SecNum]
+						string SectionSuffix = "";
+						if (SectionNames[SecNum].length() > Sec.length()) {
+							SectionSuffix = SectionNames[SecNum].substr(Sec.length());
+						}
+
+						unsigned int VarChkNum = 0;
+						for (string const & Var : T41Var){
+							for (string const & Suffix : T41VarSuffices){
+								string Str1 = SectionNames[SecNum] + "%" + Var + Suffix;  // Use actual section name
+								if (Str1 == ChkStr){
+									string Str2 = VarStrings[VarChkNum] + Suffix + " " + Sec + SectionSuffix;  // Add section suffix
+									T41LoadKFVarStrings.push_back(Str1);
+									T41LoadUserVarStrings.push_back(Str2);
+									T41DataSizes.push_back(LengthList[SecNum][VarNum]);
+									VarFound = TRUE;
+								}
+								if (VarFound) break;
 							}
+							++VarChkNum;
 							if (VarFound) break;
 						}
-						++VarChkNum;
 						if (VarFound) break;
 					}
-					if (VarFound) break;
 				}
 
 				/*
@@ -4794,7 +4803,7 @@ void LoadGaussianCubeFiles()
 			 *	N2, X2, Y2, Z2
 			 *	N3, X3, Y3, Z3               # of increments in the fastest running direction
 			 *	IA1, Chg1, X1, Y1, Z1        Atomic number, charge, and coordinates of the first atom
-			 *	…
+			 *	ï¿½
 			 *	IAn, Chgn, Xn, Yn, Zn        Atomic number, charge, and coordinates of the last atom
 			 *	(N1*N2) records, each of length N3     Values of the density at each point in the grid
 			 */
@@ -6494,7 +6503,7 @@ void LoadTurboMoleCubeFiles()
 			*	N2, X2, Y2, Z2
 			*	N3, X3, Y3, Z3               # of increments in the fastest running direction
 			*	IA1, Chg1, X1, Y1, Z1        Atomic number, charge, and coordinates of the first atom
-			*	…
+			*	ï¿½
 			*	IAn, Chgn, Xn, Yn, Zn        Atomic number, charge, and coordinates of the last atom
 			*	(N1*N2) records, each of length N3     Values of the density at each point in the grid
 			*/
