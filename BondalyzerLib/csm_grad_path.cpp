@@ -630,16 +630,9 @@ struct Tri{
 		Initialize(PointVec);
 	}
 
-// 	bool operator>(Tri const & rhs){
-// 		return Area > rhs.Area;
-// 	}
-// 	bool operator<(Tri const & rhs){
-// 		return !(*this > rhs);
-// 	}
 };
 using ResampleAdaptive_MyPair_t = Tri;
 using ResampleAdaptive_MyContainer_t = vector<ResampleAdaptive_MyPair_t>;
-// bool ResampleAdaptive_CompFunc(ResampleAdaptive_MyPair_t const & e1, ResampleAdaptive_MyPair_t const & e2) { return e1.first < e2.first; }
 
 Boolean_t GradPathBase_c::ResampleAdaptive(int TargetNumPoints, vector<int> & ProtectedPoints) {
 	this->Resample(TargetNumPoints * 2, ProtectedPoints, GPResampleMethod_Linear);
@@ -665,28 +658,17 @@ Boolean_t GradPathBase_c::ResampleAdaptive(int TargetNumPoints, vector<int> & Pr
 	double MaxSegLength = this->GetLength() / (double)TargetNumPoints * 2.0;
 
 	auto ResampleAdaptive_AreaCompFunc = [](ResampleAdaptive_MyPair_t const & e1, ResampleAdaptive_MyPair_t const & e2) { return e1.Area > e2.Area; };
-//   	auto ResampleAdaptive_LengthCompFunc = [](ResampleAdaptive_MyPair_t const & e1, ResampleAdaptive_MyPair_t const & e2) { return e1.MidLength < e2.MidLength; };
 
 	std::priority_queue<ResampleAdaptive_MyPair_t, ResampleAdaptive_MyContainer_t, decltype(ResampleAdaptive_AreaCompFunc)> AreaQueue(ResampleAdaptive_AreaCompFunc, TriVec);
-// 	std::priority_queue<ResampleAdaptive_MyPair_t, ResampleAdaptive_MyContainer_t, decltype(ResampleAdaptive_LengthCompFunc)> LengthQueue(ResampleAdaptive_LengthCompFunc, TriVec);
 	while (NumPoints > TargetNumPoints && !AreaQueue.empty()){
 		while (NodeIsProtected[AreaQueue.top().Ind[1]]) 
 			AreaQueue.pop();
 
 		auto MinAreaTri = AreaQueue.top();// ,
-// 			MaxLengthTri = LengthQueue.top();
 		AreaQueue.pop();
-
-// 		if (MinAreaTri == MaxLengthTri){
-// 			LengthQueue.pop();
-// 			continue;
-// 		}
-// 		
 		if (MinAreaTri.MidLength > MaxSegLength && AreaQueue.size() > TargetNumPoints)
 			continue;
 
-		// See if MinAreaTri is a valid triangle (i.e. all three of its vertices are 'true' in
-		// NodeIsIncluded).
 		bool TriIsValid = true;
 		for (int i = 0; i < 3 && TriIsValid; ++i)
 			TriIsValid = NodeIsIncluded[MinAreaTri.Ind[i]];
@@ -713,14 +695,12 @@ Boolean_t GradPathBase_c::ResampleAdaptive(int TargetNumPoints, vector<int> & Pr
 			Tri->Ind[2] = RightInd;
 			Tri->Initialize(m_XYZList);
 			AreaQueue.push(*Tri);
-// 			LengthQueue.push(*Tri);
 		}
 		if (RightInd < m_XYZList.size() - 1) {
 			auto * Tri = &TriVec[RightInd - 1];
 			Tri->Ind[0] = LeftInd;
 			Tri->Initialize(m_XYZList);
 			AreaQueue.push(*Tri);
-// 			LengthQueue.push(*Tri);
 		}
 	}
 
@@ -734,8 +714,6 @@ Boolean_t GradPathBase_c::ResampleAdaptive(int TargetNumPoints, vector<int> & Pr
 	int NumTrue = 0;
 	for (auto i : NodeIsIncluded)
 		NumTrue += (int)i;
-
-
 
 	for (int i = 0; i < NodeIsIncluded.size(); ++i){
 		if (NodeIsIncluded[i]) {
@@ -4059,7 +4037,7 @@ void StitchCapPaths(
 		if (RightPathDeviationPointInd >= 0)
 			RightPathDeviationPointInd = CLAMP(RightPathDeviationPointInd, 0, R.size() - 1);
 
-		// midpoint of the cap, where we’ll transition to it
+		// midpoint of the cap, where weï¿½ll transition to it
 		int iL = 0, iR = 0;
 		int nL = L.size() - 1, nR = R.size() - 1;
 		while (iL < nL || iR < nR)
